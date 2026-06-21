@@ -36,9 +36,10 @@ public struct SupplementPlanItem: Hashable, Sendable {
 }
 
 /// Learn-more article tile (title + read time), from `mockData.articles`.
-public struct Article: Hashable, Sendable {
+public struct Article: Identifiable, Hashable, Sendable {
     public let title: String
     public let read: String
+    public var id: String { title }
     public init(_ title: String, _ read: String) { self.title = title; self.read = read }
 }
 

@@ -24,7 +24,6 @@
 		3C786426F8C9E9FF5E55F9F2 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC4D301E002F9F92D74DCA2E /* MainTabView.swift */; };
 		3D63A628C151330C2E790EF8 /* PersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 303189AF2EDB7CEDB86E0060 /* PersistenceTests.swift */; };
 		418519E200B5ADC61C205C13 /* GenesyxApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6D08C3E4A12054491D85DD8 /* GenesyxApp.swift */; };
-		44621B7BFA773A0093F7DE97 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = AE7E1156301A0B0D47CF8C23 /* README.md */; };
 		53EC9804151012E24437EAE6 /* AppContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E09AC27EDAF43B78E3C886BF /* AppContainer.swift */; };
 		57841B3DEE07C928CEF38FBC /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29302184F2B6D0C0053D36D1 /* Theme.swift */; };
 		5D61FD77753CAD3C6DC9F99A /* TrackView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8235770B012CBBA13E031E3 /* TrackView.swift */; };
@@ -55,7 +54,6 @@
 		EC5AD95C81D8E668D0AA8B59 /* InsightsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9CDAEFE038258E2457FE471 /* InsightsView.swift */; };
 		ED6676295BABDD824EE51AE4 /* GenesyxCore in Frameworks */ = {isa = PBXBuildFile; productRef = 9A6451E74177E670774A6BAA /* GenesyxCore */; };
 		F224834DAF0D1D8314BAF564 /* PreferencesRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 406D34D93DA7A1D21CCC5069 /* PreferencesRepository.swift */; };
-		F27E0046814D77E729EF29EC /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 9D89F08312D97D15BA44689D /* README.md */; };
 		F8747CF476AB6AC7AE8256B2 /* CalendarDate+Foundation.swift in Sources */ = {isa = PBXBuildFile; fileRef = F344C06C360FBD7A34BA772B /* CalendarDate+Foundation.swift */; };
 /* End PBXBuildFile section */
 
@@ -100,9 +98,7 @@
 		98022BBAD2E97CCAD9CBDF20 /* ErrorStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorStateView.swift; sourceTree = "<group>"; };
 		9C3ADEDF6CA1AE1E9D790580 /* Genesyx.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Genesyx.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D2256A8461234A12EC51385 /* GenesyxColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenesyxColors.swift; sourceTree = "<group>"; };
-		9D89F08312D97D15BA44689D /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		A6D08C3E4A12054491D85DD8 /* GenesyxApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenesyxApp.swift; sourceTree = "<group>"; };
-		AE7E1156301A0B0D47CF8C23 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		AEB6BAF8FC459A7A15C72AB8 /* BackendSwapTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendSwapTests.swift; sourceTree = "<group>"; };
 		B272F6444F9A44B3497D5370 /* SupabaseBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseBackend.swift; sourceTree = "<group>"; };
 		BC4D301E002F9F92D74DCA2E /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
@@ -367,21 +363,11 @@
 			path = Util;
 			sourceTree = "<group>";
 		};
-		DF431B3E4D48894639E44133 /* Fonts */ = {
-			isa = PBXGroup;
-			children = (
-				AE7E1156301A0B0D47CF8C23 /* README.md */,
-			);
-			path = Fonts;
-			sourceTree = "<group>";
-		};
 		E549DE0644CFE0037CFD0820 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
 				31FA256D16825BC48D9FF01C /* Assets.xcassets */,
 				31285057904654880C873C5C /* PrivacyInfo.xcprivacy */,
-				9D89F08312D97D15BA44689D /* README.md */,
-				DF431B3E4D48894639E44133 /* Fonts */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -478,8 +464,6 @@
 			files = (
 				E35A43E19769AF5855E930A7 /* Assets.xcassets in Resources */,
 				95374EE4612300DE8ECB082C /* PrivacyInfo.xcprivacy in Resources */,
-				F27E0046814D77E729EF29EC /* README.md in Resources */,
-				44621B7BFA773A0093F7DE97 /* README.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

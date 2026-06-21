@@ -25,8 +25,9 @@ extension AppContainer {
 extension View {
     /// Injects a seeded container and all repositories into the environment for previews.
     @MainActor
-    func withPreviewEnvironment(_ container: AppContainer = .previewSeeded()) -> some View {
-        self
+    func withPreviewEnvironment() -> some View {
+        let container = AppContainer.previewSeeded()
+        return self
             .environmentObject(container)
             .environmentObject(container.cycle)
             .environmentObject(container.dailyLog)
