@@ -1,0 +1,95 @@
+# XcodeGen manifest — generates Genesyx.xcodeproj from this declarative spec, so the project
+# file never needs to be hand-edited or committed in a fragile state.
+#
+# On your Mac:
+#   brew install xcodegen
+#   xcodegen generate
+#   open Genesyx.xcodeproj
+#
+# The app target links the local GenesyxCore Swift package (pure domain logic + tests).
+
+name: Genesyx
+options:
+  bundleIdPrefix: com.genesyx
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+
+packages:
+  GenesyxCore:
+    path: .
+
+targets:
+  Genesyx:
+    type: application
+    platform: iOS
+    sources:
+      - path: App/Genesyx
+    dependencies:
+      - package: GenesyxCore
+        product: GenesyxCore
+    info:
+      path: App/Genesyx/Info.plist
+      properties:
+        CFBundleDisplayName: Genesyx
+        UILaunchScreen: {}
+        # Supabase credentials (empty for local-only v1). Provide via Secrets.xcconfig or build
+        # settings to activate the remote layer — see docs/SUPABASE.md.
+        SUPABASE_URL: $(SUPABASE_URL)
+        SUPABASE_ANON_KEY: $(SUPABASE_ANON_KEY)
+        # No standard/exempt encryption beyond HTTPS → skips the export-compliance prompt each upload.
+        ITSAppUsesNonExemptEncryption: false
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        # Bundled fonts (drop the .ttf files into App/Genesyx/Resources/Fonts/, then
+        # switch Typography.swift from .system to .custom). Missing files fall back to system.
+        UIAppFonts:
+          - Outfit-Regular.ttf
+          - Outfit-Medium.ttf
+          - Outfit-SemiBold.ttf
+          - Inter-Regular.ttf
+          - Inter-Medium.ttf
+          - Inter-SemiBold.ttf
+        # Deep link for partner invites (genesyx://invite/{code})
+        CFBundleURLTypes:
+          - CFBundleURLName: com.genesyx.app
+            CFBundleURLSchemes:
+              - genesyx
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.genesyx.app
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "5.9"
+        TARGETED_DEVICE_FAMILY: "1" # iPhone
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        ENABLE_USER_SCRIPT_SANDBOXING: YES
+        # Empty defaults so the local-only v1 builds with no secrets; override in Secrets.xcconfig.
+        SUPABASE_URL: ""
+        SUPABASE_ANON_KEY: ""
+        # Set your team to enable automatic signing:
+        # DEVELOPMENT_TEAM: XXXXXXXXXX
+
+  GenesyxAppTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: App/GenesyxTests
+    dependencies:
+      - target: Genesyx
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.genesyx.app.tests
+        GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  Genesyx:
+    build:
+      targets:
+        Genesyx: all
+        GenesyxAppTests: [test]
+    test:
+      targets:
+        - GenesyxAppTests
+      gatherCoverageData: true

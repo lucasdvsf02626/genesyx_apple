@@ -1,0 +1,17 @@
+# Swift / SwiftPM
+.build/
+.swiftpm/
+Package.resolved
+
+# Xcode
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+DerivedData/
+*.xcuserstate
+
+# macOS
+.DS_Store
+
+# Secrets (never commit Supabase keys etc.)
+Secrets.xcconfig
+*.local.xcconfig
