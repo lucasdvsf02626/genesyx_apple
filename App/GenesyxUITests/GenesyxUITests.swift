@@ -55,4 +55,32 @@ final class GenesyxUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Delete account"].exists || app.buttons["Delete account"].exists,
                       "Profile should offer account deletion (App Store requirement)")
     }
+
+    /// Device-side data-isolation guard: seeded (User A) health data must be gone after sign-out,
+    /// so a next user on the same device starts clean. Runs FULLY LOCALLY via the seed harness —
+    /// no production accounts. Server-side RLS isolation is proven separately by backend probes.
+    func testSignOutClearsHealthDataLocally() {
+        let app = launchSeeded(tab: 0)   // Home, with seeded cycle data
+        let tabBar = app.tabBars.firstMatch
+        XCTAssertTrue(tabBar.waitForExistence(timeout: 10))
+
+        // Seeded cycle is present → the first-run setup prompt must NOT be showing yet.
+        let setupPrompt = app.staticTexts["When did your last period start? We'll map your cycle from there."]
+        XCTAssertFalse(setupPrompt.exists, "Seeded cycle should render, not the empty setup prompt")
+
+        // Sign out from Profile.
+        tabBar.buttons["Profile"].tap()
+        let logout = app.buttons["Log out"]
+        XCTAssertTrue(logout.waitForExistence(timeout: 5), "Signed-in Profile should offer Log out")
+        logout.tap()
+
+        // Home now shows the empty setup prompt (cycle wiped, no relaunch).
+        tabBar.buttons["Home"].tap()
+        XCTAssertTrue(setupPrompt.waitForExistence(timeout: 5), "After sign-out, cycle data must be cleared")
+
+        // Insights pH is empty too.
+        tabBar.buttons["Insights"].tap()
+        XCTAssertTrue(app.staticTexts["No pH readings yet. Log your first one on Track or Nutrition."].waitForExistence(timeout: 5),
+                      "After sign-out, pH readings must be cleared")
+    }
 }

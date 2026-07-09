@@ -72,4 +72,50 @@ final class RepositoryTests: XCTestCase {
         XCTAssertFalse(reloaded.pushEnabled)
         XCTAssertEqual(reloaded.focusMode, .pregnancy)
     }
+
+    // MARK: - Local health-data wipe on auth transitions
+
+    /// Seeds cycle/pH/daily-log data into a container, then asserts sign-out clears both the
+    /// in-memory state AND the on-device store keys — so a different user never sees it.
+    func testSignOutClearsLocalHealthData() {
+        let store = makeStore()
+        let c = AppContainer(store: store, backend: nil)
+        c.cycle.upsert(CycleSettings(lastPeriodDate: .today(), cycleLength: 28, periodLength: 5))
+        c.ph.create(PhReading(phValue: 6.5, recordedAt: Date()))
+        c.dailyLog.setWater(500)
+        XCTAssertNotNil(c.cycle.settings)
+        XCTAssertFalse(c.ph.readings.isEmpty)
+        XCTAssertFalse(c.dailyLog.logByDate.isEmpty)
+
+        c.session.signOut()
+
+        // In-memory reset.
+        XCTAssertNil(c.cycle.settings)
+        XCTAssertTrue(c.ph.readings.isEmpty)
+        XCTAssertTrue(c.dailyLog.logByDate.isEmpty)
+        // Store keys absent → a fresh repo on the same store (i.e. a next user) loads empty.
+        XCTAssertNil(store.load(CycleSettings.self, forKey: "cycle_settings"))
+        XCTAssertNil(store.load([PhReadingDTO].self, forKey: "ph_readings"))
+        XCTAssertNil(store.load([String: DailyLogDTO].self, forKey: "daily_logs"))
+        XCTAssertNil(CycleRepository(store: store).settings)
+        XCTAssertTrue(PhRepository(store: store).readings.isEmpty)
+    }
+
+    /// Account deletion (success path) must wipe the same on-device health data.
+    func testDeleteAccountClearsLocalHealthData() async throws {
+        let store = makeStore()
+        let c = AppContainer(store: store, backend: nil)
+        c.cycle.upsert(CycleSettings(lastPeriodDate: .today(), cycleLength: 30, periodLength: 4))
+        c.ph.create(PhReading(phValue: 7.0, recordedAt: Date()))
+        c.dailyLog.setWater(750)
+
+        try await c.session.deleteAccount()
+
+        XCTAssertNil(c.cycle.settings)
+        XCTAssertTrue(c.ph.readings.isEmpty)
+        XCTAssertTrue(c.dailyLog.logByDate.isEmpty)
+        XCTAssertNil(store.load(CycleSettings.self, forKey: "cycle_settings"))
+        XCTAssertNil(store.load([PhReadingDTO].self, forKey: "ph_readings"))
+        XCTAssertNil(store.load([String: DailyLogDTO].self, forKey: "daily_logs"))
+    }
 }

@@ -71,4 +71,10 @@ final class DailyLogRepository: ObservableObject {
         let snapshot = Dictionary(uniqueKeysWithValues: logByDate.map { ($0.key.iso, $0.value.dto) })
         store.save(snapshot, forKey: key)
     }
+
+    /// Clear on-device state (memory + store). Invoked on sign-out / account deletion.
+    func clearLocalState() {
+        logByDate = [:]
+        store.remove(forKey: key)
+    }
 }

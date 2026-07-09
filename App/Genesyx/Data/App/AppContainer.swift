@@ -31,15 +31,32 @@ final class AppContainer: ObservableObject {
         self.session = SessionRepository(auth: backend?.auth)
         self.partner = PartnerRepository(backend: backend?.partner)
 
+        // Auth-transition wiring: wipe on-device health data on sign-out / account deletion, and
+        // rehydrate from the backend on sign-in. Weak self avoids a retain cycle (container owns session).
+        session.onClearLocalState = { [weak self] in self?.clearLocalState() }
+        session.onHydrate = { [weak self] in await self?.hydrate() }
+
         // Online-first hydration when a backend is present (no-op when local-only).
         if backend != nil {
-            Task { @MainActor in
-                await cycle.refresh()
-                await ph.refresh()
-                await dailyLog.refresh()
-                await partner.refresh()
-            }
+            Task { @MainActor in await self.hydrate() }
         }
+    }
+
+    /// Pull each repository's latest state from the backend. No-op per-repo when local-only.
+    func hydrate() async {
+        await cycle.refresh()
+        await ph.refresh()
+        await dailyLog.refresh()
+        await partner.refresh()
+    }
+
+    /// Wipe on-device health data (cycle settings, pH readings, daily logs) from memory and the
+    /// local store on sign-out / account deletion, so a different user never sees the previous
+    /// user's cached data. Session/prefs are cleared by their own teardown.
+    func clearLocalState() {
+        cycle.clearLocalState()
+        ph.clearLocalState()
+        dailyLog.clearLocalState()
     }
 
     /// Production init — standard on-device store + resolved backend.

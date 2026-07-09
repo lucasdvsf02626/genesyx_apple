@@ -31,4 +31,10 @@ final class CycleRepository: ObservableObject {
         settings = remote
         store.save(remote, forKey: key)
     }
+
+    /// Clear on-device state (memory + store). Invoked on sign-out / account deletion.
+    func clearLocalState() {
+        settings = nil
+        store.remove(forKey: key)
+    }
 }

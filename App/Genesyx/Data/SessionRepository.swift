@@ -11,6 +11,11 @@ final class SessionRepository: ObservableObject {
 
     private let auth: AuthBackend?
 
+    /// Auth-transition hooks wired by `AppContainer`: wipe on-device health data on sign-out /
+    /// account deletion, and rehydrate from the backend on sign-in. No-ops in isolation.
+    var onClearLocalState: (() -> Void)?
+    var onHydrate: (() async -> Void)?
+
     init(auth: AuthBackend? = nil) {
         self.auth = auth
         if auth?.currentUserId != nil { isSignedIn = true }
@@ -44,6 +49,8 @@ final class SessionRepository: ObservableObject {
         let trimmed = name?.trimmingCharacters(in: .whitespacesAndNewlines)
         self.displayName = (trimmed?.isEmpty == false ? trimmed : String(email.prefix(while: { $0 != "@" })))
         self.isSignedIn = true
+        // Any sign-in path: pull the signing-in user's data from the backend (no-op when local-only).
+        if let onHydrate { Task { await onHydrate() } }
     }
 
     func updateDisplayName(_ name: String) {
@@ -55,6 +62,8 @@ final class SessionRepository: ObservableObject {
         email = nil
         displayName = nil
         if let auth { Task { try? await auth.signOut() } }
+        // Wipe the previous user's on-device health data so a next sign-in starts clean.
+        onClearLocalState?()
     }
 
     /// Permanently deletes the account via the backend, then clears local session state.
@@ -65,5 +74,7 @@ final class SessionRepository: ObservableObject {
         email = nil
         displayName = nil
         isSignedIn = false
+        // Deletion succeeded — wipe the on-device health data too.
+        onClearLocalState?()
     }
 }
