@@ -105,7 +105,8 @@ struct ProfileView: View {
                 focusSeg("Fertility Prep", selected: prefs.focusMode == .prep) { prefs.focusMode = .prep }
                 focusSeg("Pregnancy", selected: prefs.focusMode == .pregnancy) {
                     prefs.focusMode = .pregnancy
-                    showPregnancy = true
+                    // v1: Pregnancy preview entry hidden (destination intact, unreachable). Restore by uncommenting.
+                    // showPregnancy = true
                 }
             }
             .padding(4).background(GenesyxColor.muted).clipShape(RoundedRectangle(cornerRadius: 16))

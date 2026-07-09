@@ -25,7 +25,8 @@ struct HomeView: View {
                         focusCard(for: settings)
                         hydrationCard
                         GxPrimaryButton(title: "Log today", leadingSystemImage: "square.and.pencil") { showLog = true }
-                        pregnancyPathwayLink
+                        // v1: Pregnancy preview entry hidden (destination intact, unreachable). Restore by uncommenting.
+                        // pregnancyPathwayLink
                     } else {
                         setupCard
                     }
