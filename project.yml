@@ -18,6 +18,12 @@ options:
 packages:
   GenesyxCore:
     path: .
+  Supabase:
+    url: https://github.com/supabase/supabase-swift
+    from: "2.50.0"
+  GoogleSignIn:
+    url: https://github.com/google/GoogleSignIn-iOS
+    from: "9.2.0"
 
 targets:
   Genesyx:
@@ -30,6 +36,15 @@ targets:
     dependencies:
       - package: GenesyxCore
         product: GenesyxCore
+      - package: Supabase
+        product: Supabase
+      - package: GoogleSignIn
+        product: GoogleSignIn
+    entitlements:
+      path: App/Genesyx/Genesyx.entitlements
+      properties:
+        com.apple.developer.applesignin:
+          - Default
     info:
       path: App/Genesyx/Info.plist
       properties:
@@ -53,10 +68,14 @@ targets:
           - Inter-Medium.ttf
           - Inter-SemiBold.ttf
         # Deep link for partner invites (genesyx://invite/{code})
+        GIDClientID: 413702980668-tfah1knspa8ip82p51c3i3veuh3ljul4.apps.googleusercontent.com
         CFBundleURLTypes:
           - CFBundleURLName: com.genesyx.app
             CFBundleURLSchemes:
               - genesyx
+          - CFBundleURLName: com.genesyx.app.google
+            CFBundleURLSchemes:
+              - com.googleusercontent.apps.413702980668-tfah1knspa8ip82p51c3i3veuh3ljul4
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.genesyx.app
@@ -67,11 +86,12 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         ENABLE_USER_SCRIPT_SANDBOXING: YES
-        # Empty defaults so the local-only v1 builds with no secrets; override in Secrets.xcconfig.
-        SUPABASE_URL: ""
-        SUPABASE_ANON_KEY: ""
-        # Set your team to enable automatic signing:
-        # DEVELOPMENT_TEAM: XXXXXXXXXX
+        # Supabase (publishable/anon key is public — safe to ship). project epltxklawpcxxbaleswg.
+        SUPABASE_URL: "https://epltxklawpcxxbaleswg.supabase.co"
+        SUPABASE_ANON_KEY: "sb_publishable_eR7nEFBHD_4ATbjEeRbicA_Z3Qj_Elb"
+        # SF MEDIA & PR LTD — enables automatic signing for archive/upload.
+        DEVELOPMENT_TEAM: M5L3MM75SG
+        CODE_SIGN_STYLE: Automatic
 
   GenesyxAppTests:
     type: bundle.unit-test
@@ -85,13 +105,27 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.genesyx.app.tests
         GENERATE_INFOPLIST_FILE: YES
 
+  GenesyxUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: App/GenesyxUITests
+    dependencies:
+      - target: Genesyx
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.genesyx.app.uitests
+        GENERATE_INFOPLIST_FILE: YES
+
 schemes:
   Genesyx:
     build:
       targets:
         Genesyx: all
         GenesyxAppTests: [test]
+        GenesyxUITests: [test]
     test:
       targets:
         - GenesyxAppTests
+        - GenesyxUITests
       gatherCoverageData: true

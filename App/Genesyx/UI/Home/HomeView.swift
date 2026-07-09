@@ -9,19 +9,23 @@ struct HomeView: View {
 
     @EnvironmentObject private var cycle: CycleRepository
     @EnvironmentObject private var dailyLog: DailyLogRepository
+    @EnvironmentObject private var session: SessionRepository
 
     @State private var lastPeriod = Date()
     @State private var showLog = false
+    @State private var showPregnancy = false
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
+                    greetingHeader
                     if let settings = cycle.settings {
                         phaseCard(for: settings)
                         focusCard(for: settings)
                         hydrationCard
                         GxPrimaryButton(title: "Log today", leadingSystemImage: "square.and.pencil") { showLog = true }
+                        pregnancyPathwayLink
                     } else {
                         setupCard
                     }
@@ -30,9 +34,50 @@ struct HomeView: View {
             }
             .frame(maxWidth: .infinity)
             .background(GenesyxColor.background)
-            .navigationTitle("Today")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $showLog) { LogView() }
+            .sheet(isPresented: $showPregnancy) { PregnancyView() }
         }
+    }
+
+    // MARK: - Greeting header
+
+    private var greetingHeader: some View {
+        HStack(alignment: .center) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(Self.greeting).font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+                Text(session.displayName ?? "there").font(.gxDisplayLarge).foregroundStyle(GenesyxColor.foreground)
+            }
+            Spacer()
+            Text((session.displayName?.first).map { String($0).uppercased() } ?? "G")
+                .font(.system(size: 16, weight: .semibold)).foregroundStyle(.white)
+                .frame(width: 44, height: 44)
+                .background(LinearGradient(colors: [GenesyxColor.babyLavender, GenesyxColor.electricPink], startPoint: .topLeading, endPoint: .bottomTrailing))
+                .clipShape(Circle())
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private static var greeting: String {
+        switch Calendar.current.component(.hour, from: Date()) {
+        case 5..<12: return "Good morning"
+        case 12..<18: return "Good afternoon"
+        default: return "Good evening"
+        }
+    }
+
+    private var pregnancyPathwayLink: some View {
+        Button { showPregnancy = true } label: {
+            HStack(spacing: 6) {
+                Text("Preview pregnancy pathway").font(.gxBodySmall.weight(.medium))
+                Image(systemName: "arrow.right").font(.system(size: 12, weight: .semibold))
+            }
+            .foregroundStyle(GenesyxColor.mutedForeground)
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.plain)
+        .padding(.top, 2)
     }
 
     // MARK: - Phase hero

@@ -1,5 +1,8 @@
 import SwiftUI
 import GenesyxCore
+#if canImport(GoogleSignIn)
+import GoogleSignIn
+#endif
 
 /// Decides the top-level surface: onboarding until complete, then the main tabs.
 /// Also handles partner-invite deep links (custom scheme + Universal Links).
@@ -22,6 +25,9 @@ struct RootView: View {
         }
         .preferredColorScheme(colorScheme)
         .onOpenURL { url in
+            #if canImport(GoogleSignIn)
+            if GIDSignIn.sharedInstance.handle(url) { return }   // Google OAuth callback
+            #endif
             if let code = DeepLink.inviteCode(from: url) { invite = InvitePresentation(code: code) }
         }
         .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in

@@ -1,6 +1,8 @@
 // Accept a partner invite by code, linking both profiles bidirectionally.
-// Requires the caller's email to match the invite's invitee_email and the invite to be pending
-// and unexpired. Uses the service role to write the reciprocal partner_id. STUB — verify vs schema.
+// Security: the invite must be pending and addressed to the caller's email (invitee_email).
+// Uses the service role to write the reciprocal partner_id.
+// Columns match docs/supabase_schema.sql (partner_invites: id, inviter_id, invitee_email,
+// code, status). No expires_at / accepted_* columns — kept in step with the live schema.
 import { serviceClient, requireUser, json } from "../_shared/client.ts";
 
 Deno.serve(async (req) => {
@@ -13,28 +15,26 @@ Deno.serve(async (req) => {
 
     const { data: invite, error: invErr } = await db
       .from("partner_invites")
-      .select("*")
+      .select("id, inviter_id, invitee_email, status")
       .eq("code", code)
-      .single();
-    if (invErr || !invite) return json({ error: "Invite not found" }, 404);
-
+      .maybeSingle();
+    if (invErr) return json({ error: invErr.message }, 500);
+    if (!invite) return json({ error: "Invite not found" }, 404);
     if (invite.status !== "pending") return json({ error: "Invite is not pending" }, 409);
-    if (invite.expires_at && new Date(invite.expires_at) < new Date()) {
-      return json({ error: "Invite expired" }, 410);
-    }
-    if (!user.email_confirmed_at) return json({ error: "Verify your email first" }, 403);
+    if (invite.inviter_id === user.id) return json({ error: "Cannot accept your own invite" }, 400);
     if (invite.invitee_email?.toLowerCase() !== user.email?.toLowerCase()) {
       return json({ error: "This invite was sent to a different email" }, 403);
     }
 
     // Link both profiles.
-    await db.from("profiles").update({ partner_id: invite.inviter_id }).eq("id", user.id);
-    await db.from("profiles").update({ partner_id: user.id }).eq("id", invite.inviter_id);
-    await db.from("partner_invites")
-      .update({ status: "accepted", accepted_by: user.id, accepted_at: new Date().toISOString() })
-      .eq("id", invite.id);
+    const a = await db.from("profiles").update({ partner_id: invite.inviter_id }).eq("id", user.id);
+    if (a.error) return json({ error: a.error.message }, 500);
+    const b = await db.from("profiles").update({ partner_id: user.id }).eq("id", invite.inviter_id);
+    if (b.error) return json({ error: b.error.message }, 500);
+    const m = await db.from("partner_invites").update({ status: "accepted" }).eq("id", invite.id);
+    if (m.error) return json({ error: m.error.message }, 500);
 
-    return json({ ok: true });
+    return json({ ok: true, partner_id: invite.inviter_id });
   } catch (e) {
     return json({ error: String(e) }, 401);
   }

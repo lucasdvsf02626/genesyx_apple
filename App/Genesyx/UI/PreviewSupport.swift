@@ -14,6 +14,16 @@ extension AppContainer {
         let container = AppContainer(store: store, backend: nil)
         container.cycle.upsert(CycleSettings(lastPeriodDate: CalendarDate.today().minusDays(8), cycleLength: 28, periodLength: 5))
         container.dailyLog.setWater(750)
+        container.dailyLog.upsert(
+            DailyLog(mood: .good, energy: .normal, symptoms: ["Fatigue", "Cramps"],
+                     sleepMinutes: 445, supplements: ["Folic acid", "Vitamin D"],
+                     notes: "Felt steady today, gentle walk in the evening.", waterMl: 1_800),
+            on: CalendarDate.today().minusDays(1))
+        container.dailyLog.upsert(
+            DailyLog(mood: .great, energy: .high, symptoms: ["Bloating"],
+                     sleepMinutes: 480, supplements: ["Omega-3"],
+                     notes: "Great energy, good focus at work.", waterMl: 2_100),
+            on: CalendarDate.today().minusDays(3))
         container.ph.create(PhReading(phValue: 6.3, recordedAt: Date().addingTimeInterval(-5 * 86_400)))
         container.ph.create(PhReading(phValue: 6.7, recordedAt: Date().addingTimeInterval(-2 * 86_400)))
         container.ph.create(PhReading(phValue: 6.9, recordedAt: Date()))
@@ -43,6 +53,8 @@ extension View {
 #Preview("Track") { TrackView().withPreviewEnvironment() }
 #Preview("Nutrition") { NutritionView().withPreviewEnvironment() }
 #Preview("Insights") { InsightsView().withPreviewEnvironment() }
+#Preview("Log History") { NavigationStack { LogHistoryView() }.withPreviewEnvironment() }
+#Preview("pH Tracker") { NavigationStack { ScrollView { PhTrackerSection().padding(20) } }.withPreviewEnvironment() }
 #Preview("Profile") { ProfileView().withPreviewEnvironment() }
 #Preview("Daily Log") { LogView().withPreviewEnvironment() }
 #Preview("Auth") { AuthView().withPreviewEnvironment() }

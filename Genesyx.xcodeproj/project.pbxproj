@@ -12,25 +12,28 @@
 		0DC6B2D021CC16BAFACC6B2E /* GenesyxControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D297DB3865857FC294B954E /* GenesyxControls.swift */; };
 		0DCC3D33A978CC1789DDCDB2 /* CycleSettingsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E5C7355A555DF5D7CDD47A0 /* CycleSettingsSheet.swift */; };
 		171C66812D35CE18F49E8077 /* ErrorStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98022BBAD2E97CCAD9CBDF20 /* ErrorStateView.swift */; };
+		179450D82831FD20FBB06431 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FAEDB5BABAF4DB17A1EA885 /* RootView.swift */; };
+		191ABA3EA2167B60289B39E7 /* AppBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C6AEDE2C83DDBA1A2CF2E59 /* AppBackend.swift */; };
 		19D20718E9D21DC08671E277 /* OnboardingFlowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAB2D6EDC638116F42330F79 /* OnboardingFlowView.swift */; };
 		19E192F77DEF4C7726F9A530 /* DeepLinkTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43EE7B189D1FA0D84CB24653 /* DeepLinkTests.swift */; };
 		1B161462363D78E3F6630794 /* GenesyxColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D2256A8461234A12EC51385 /* GenesyxColors.swift */; };
-		298BEEF270FB5AC7A3C8E454 /* AppBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA7E30E8661E067F46051763 /* AppBackend.swift */; };
 		2A61DF86DC8A79DAB133FEAF /* RepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FD8DC508575F00BB7566E22 /* RepositoryTests.swift */; };
+		2CFBB75151ED772EF42BE762 /* AppContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A724E422A810E5B8921F4A15 /* AppContainer.swift */; };
 		36C87A06EB5CFFF312367D11 /* InviteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E8224E3C264A5AAABD3B6F4 /* InviteView.swift */; };
 		3924E9760802BE0291932FD9 /* PartnerRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CEF9376EE55F833D33CFEA5 /* PartnerRepository.swift */; };
 		3B236BD816ADD547436DCF4A /* NutritionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F21E5D92371409ED4064F9DA /* NutritionView.swift */; };
 		3C2FD7275110E323A3A88875 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CC221F6E9BDD623F1EC146C /* ProfileView.swift */; };
 		3C786426F8C9E9FF5E55F9F2 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC4D301E002F9F92D74DCA2E /* MainTabView.swift */; };
 		3D63A628C151330C2E790EF8 /* PersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 303189AF2EDB7CEDB86E0060 /* PersistenceTests.swift */; };
-		418519E200B5ADC61C205C13 /* GenesyxApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6D08C3E4A12054491D85DD8 /* GenesyxApp.swift */; };
-		53EC9804151012E24437EAE6 /* AppContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E09AC27EDAF43B78E3C886BF /* AppContainer.swift */; };
 		57841B3DEE07C928CEF38FBC /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29302184F2B6D0C0053D36D1 /* Theme.swift */; };
 		5D61FD77753CAD3C6DC9F99A /* TrackView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8235770B012CBBA13E031E3 /* TrackView.swift */; };
+		640142F8AD057E25E3BE3BB8 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = EE200336765087672A45DFBE /* GoogleSignIn */; };
 		6835DB6E7BBE2692B1220320 /* FlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18B326C15BF47D3EA69920B6 /* FlowLayout.swift */; };
 		795CDA6439BC0D8D1A06F880 /* PregnancyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65216CD3083B221BA523E62A /* PregnancyView.swift */; };
+		7DEE045EA130EDC0364688A0 /* GenesyxUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD452495CEE851EB8D542EDD /* GenesyxUITests.swift */; };
 		7E4CD1BF46B1F859F7A9E624 /* LogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49849D9AB56307E72089D622 /* LogView.swift */; };
-		84A915E0AABC6C7D368726BD /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 634F76E03F820E533976627D /* RootView.swift */; };
+		80E86EC3B5ADC14AABBDB677 /* GenesyxApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40F30A3F8C1E804BE4B86F8F /* GenesyxApp.swift */; };
+		86B9753D403F1175DD52D577 /* DeepLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E5056238C379BFC87EEE98F /* DeepLink.swift */; };
 		92C49067F4CFC43B2EEEC85E /* SupabaseBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = B272F6444F9A44B3497D5370 /* SupabaseBackend.swift */; };
 		95374EE4612300DE8ECB082C /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 31285057904654880C873C5C /* PrivacyInfo.xcprivacy */; };
 		9BAF00B09D32CC497A7FB2A5 /* AuthPartnerBackendTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CFFA90DC002A583118F417 /* AuthPartnerBackendTests.swift */; };
@@ -44,9 +47,9 @@
 		C8D8A6E74E7EA7B0F2070013 /* PlaceholderScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A00188AAFEE31CD41906486 /* PlaceholderScreen.swift */; };
 		C9EE7E47540C49C939B39E43 /* PhTrackerSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = D48509B6EC8A02B3A142AF09 /* PhTrackerSection.swift */; };
 		CD66002B3D5BBE1411B24650 /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 080CEB58B93445D2DB9D5400 /* AuthView.swift */; };
-		CEAB8A50D8E0206D925F062D /* DeepLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = E164B8043CB4D6F270B510AB /* DeepLink.swift */; };
 		DE9C3F479BE6E8224ED0C78C /* BackendSwapTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEB6BAF8FC459A7A15C72AB8 /* BackendSwapTests.swift */; };
 		E11E796D15E7BC987E6780E2 /* PersistenceDTOs.swift in Sources */ = {isa = PBXBuildFile; fileRef = C514C0E95E071BDA9843904E /* PersistenceDTOs.swift */; };
+		E173C6750E0F0556C6C306F2 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = DEAB44EE02032528E4C7A894 /* Supabase */; };
 		E35A43E19769AF5855E930A7 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 31FA256D16825BC48D9FF01C /* Assets.xcassets */; };
 		E54366A509A127056046BEC5 /* DailyLogRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF6F37408A02568413C57CE0 /* DailyLogRepository.swift */; };
 		E6031BE67078AE4BEF7ED0D1 /* LocalStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B2790DAD76D0036331A0789 /* LocalStore.swift */; };
@@ -65,19 +68,30 @@
 			remoteGlobalIDString = 144114A9DE8B8CC8CA5003BF;
 			remoteInfo = Genesyx;
 		};
+		E4B8F0CA94868029A93CB26B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8E7F883601C36F1243B5EE31 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 144114A9DE8B8CC8CA5003BF;
+			remoteInfo = Genesyx;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		00A35F920C88F39DE4A48AA3 /* YearMonth+Foundation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YearMonth+Foundation.swift"; sourceTree = "<group>"; };
 		080CEB58B93445D2DB9D5400 /* AuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthView.swift; sourceTree = "<group>"; };
+		0C6AEDE2C83DDBA1A2CF2E59 /* AppBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppBackend.swift; sourceTree = "<group>"; };
+		0E5056238C379BFC87EEE98F /* DeepLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLink.swift; sourceTree = "<group>"; };
 		18B326C15BF47D3EA69920B6 /* FlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
 		1B2790DAD76D0036331A0789 /* LocalStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalStore.swift; sourceTree = "<group>"; };
 		29302184F2B6D0C0053D36D1 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		303189AF2EDB7CEDB86E0060 /* PersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceTests.swift; sourceTree = "<group>"; };
-		31285057904654880C873C5C /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		31285057904654880C873C5C /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		31FA256D16825BC48D9FF01C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		34BB4B2C82E7B1C0F7CA015A /* Genesyx.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Genesyx.entitlements; sourceTree = "<group>"; };
 		397DC99D1C37CD68DFB1AA05 /* RemoteModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteModels.swift; sourceTree = "<group>"; };
 		406D34D93DA7A1D21CCC5069 /* PreferencesRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesRepository.swift; sourceTree = "<group>"; };
+		40F30A3F8C1E804BE4B86F8F /* GenesyxApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenesyxApp.swift; sourceTree = "<group>"; };
 		41348920BE9C91F44EC334CD /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		43EE7B189D1FA0D84CB24653 /* DeepLinkTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinkTests.swift; sourceTree = "<group>"; };
 		48F5A8AF942299142460B70F /* RemoteBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteBackend.swift; sourceTree = "<group>"; };
@@ -86,20 +100,21 @@
 		5BD8D73ED6547E875275A4E1 /* Typography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Typography.swift; sourceTree = "<group>"; };
 		5E5C7355A555DF5D7CDD47A0 /* CycleSettingsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CycleSettingsSheet.swift; sourceTree = "<group>"; };
 		61F659240568EB47E350BFB0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		634F76E03F820E533976627D /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		65216CD3083B221BA523E62A /* PregnancyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PregnancyView.swift; sourceTree = "<group>"; };
 		6A00188AAFEE31CD41906486 /* PlaceholderScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaceholderScreen.swift; sourceTree = "<group>"; };
 		6CC221F6E9BDD623F1EC146C /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		6D297DB3865857FC294B954E /* GenesyxControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenesyxControls.swift; sourceTree = "<group>"; };
 		709D1C1FC95A6647B86AFD2E /* SessionRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionRepository.swift; sourceTree = "<group>"; };
 		70CFFA90DC002A583118F417 /* AuthPartnerBackendTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthPartnerBackendTests.swift; sourceTree = "<group>"; };
+		7FAEDB5BABAF4DB17A1EA885 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		8E8224E3C264A5AAABD3B6F4 /* InviteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InviteView.swift; sourceTree = "<group>"; };
 		8FD8DC508575F00BB7566E22 /* RepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepositoryTests.swift; sourceTree = "<group>"; };
 		98022BBAD2E97CCAD9CBDF20 /* ErrorStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorStateView.swift; sourceTree = "<group>"; };
-		9C3ADEDF6CA1AE1E9D790580 /* Genesyx.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Genesyx.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		9C3ADEDF6CA1AE1E9D790580 /* Genesyx.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Genesyx.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D2256A8461234A12EC51385 /* GenesyxColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenesyxColors.swift; sourceTree = "<group>"; };
-		A6D08C3E4A12054491D85DD8 /* GenesyxApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenesyxApp.swift; sourceTree = "<group>"; };
+		A724E422A810E5B8921F4A15 /* AppContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppContainer.swift; sourceTree = "<group>"; };
 		AEB6BAF8FC459A7A15C72AB8 /* BackendSwapTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendSwapTests.swift; sourceTree = "<group>"; };
+		B109D7AA3E1A1E26FE200791 /* GenesyxUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = GenesyxUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B272F6444F9A44B3497D5370 /* SupabaseBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseBackend.swift; sourceTree = "<group>"; };
 		BC4D301E002F9F92D74DCA2E /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		C514C0E95E071BDA9843904E /* PersistenceDTOs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceDTOs.swift; sourceTree = "<group>"; };
@@ -110,14 +125,12 @@
 		D9CDAEFE038258E2457FE471 /* InsightsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsView.swift; sourceTree = "<group>"; };
 		DAB2D6EDC638116F42330F79 /* OnboardingFlowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFlowView.swift; sourceTree = "<group>"; };
 		E090A64261B2333C8D7643F1 /* CycleRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CycleRepository.swift; sourceTree = "<group>"; };
-		E09AC27EDAF43B78E3C886BF /* AppContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppContainer.swift; sourceTree = "<group>"; };
-		E164B8043CB4D6F270B510AB /* DeepLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLink.swift; sourceTree = "<group>"; };
+		E1E9DB93360F5E3469EA18FF /* genesxy_apple.V1.02 */ = {isa = PBXFileReference; lastKnownFileType = folder; name = genesxy_apple.V1.02; path = .; sourceTree = SOURCE_ROOT; };
 		E8235770B012CBBA13E031E3 /* TrackView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackView.swift; sourceTree = "<group>"; };
 		F1D34D08C3CECE90DB71985D /* PreviewSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewSupport.swift; sourceTree = "<group>"; };
 		F21E5D92371409ED4064F9DA /* NutritionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionView.swift; sourceTree = "<group>"; };
 		F344C06C360FBD7A34BA772B /* CalendarDate+Foundation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CalendarDate+Foundation.swift"; sourceTree = "<group>"; };
-		F723442A95ACFB73B6A9EFFC /* genesyx_apple */ = {isa = PBXFileReference; lastKnownFileType = folder; name = genesyx_apple; path = .; sourceTree = SOURCE_ROOT; };
-		FA7E30E8661E067F46051763 /* AppBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppBackend.swift; sourceTree = "<group>"; };
+		FD452495CEE851EB8D542EDD /* GenesyxUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenesyxUITests.swift; sourceTree = "<group>"; };
 		FF6F37408A02568413C57CE0 /* DailyLogRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyLogRepository.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -127,6 +140,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				ED6676295BABDD824EE51AE4 /* GenesyxCore in Frameworks */,
+				E173C6750E0F0556C6C306F2 /* Supabase in Frameworks */,
+				640142F8AD057E25E3BE3BB8 /* GoogleSignIn in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -139,6 +154,14 @@
 				65216CD3083B221BA523E62A /* PregnancyView.swift */,
 			);
 			path = Pregnancy;
+			sourceTree = "<group>";
+		};
+		0952FCF63835F3947DFCA862 /* GenesyxUITests */ = {
+			isa = PBXGroup;
+			children = (
+				FD452495CEE851EB8D542EDD /* GenesyxUITests.swift */,
+			);
+			path = GenesyxUITests;
 			sourceTree = "<group>";
 		};
 		124CDB4900CE5C43FFCFB5C9 /* Track */ = {
@@ -177,23 +200,12 @@
 			path = GenesyxTests;
 			sourceTree = "<group>";
 		};
-		29E60D28BCEFC8A1608BEE29 /* App */ = {
-			isa = PBXGroup;
-			children = (
-				FA7E30E8661E067F46051763 /* AppBackend.swift */,
-				E09AC27EDAF43B78E3C886BF /* AppContainer.swift */,
-				E164B8043CB4D6F270B510AB /* DeepLink.swift */,
-				A6D08C3E4A12054491D85DD8 /* GenesyxApp.swift */,
-				634F76E03F820E533976627D /* RootView.swift */,
-			);
-			path = App;
-			sourceTree = "<group>";
-		};
 		38AB8AFCAD8A17E824A1C426 /* App */ = {
 			isa = PBXGroup;
 			children = (
 				7D48BCCB3A4003C8EFA89E47 /* Genesyx */,
 				28476119E04335E1227D0A58 /* GenesyxTests */,
+				0952FCF63835F3947DFCA862 /* GenesyxUITests */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -229,6 +241,7 @@
 				CA1FD2DBFCCA2572F4AF84F1 /* PhRepository.swift */,
 				406D34D93DA7A1D21CCC5069 /* PreferencesRepository.swift */,
 				709D1C1FC95A6647B86AFD2E /* SessionRepository.swift */,
+				F90F9045207B60D13F0BE507 /* App */,
 				F9597355B76D96354A513FF7 /* Remote */,
 			);
 			path = Data;
@@ -255,7 +268,7 @@
 		7089D7A816AD44C8742AF6AC /* Packages */ = {
 			isa = PBXGroup;
 			children = (
-				F723442A95ACFB73B6A9EFFC /* genesyx_apple */,
+				E1E9DB93360F5E3469EA18FF /* genesxy_apple.V1.02 */,
 			);
 			name = Packages;
 			sourceTree = "<group>";
@@ -263,8 +276,8 @@
 		7D48BCCB3A4003C8EFA89E47 /* Genesyx */ = {
 			isa = PBXGroup;
 			children = (
+				34BB4B2C82E7B1C0F7CA015A /* Genesyx.entitlements */,
 				61F659240568EB47E350BFB0 /* Info.plist */,
-				29E60D28BCEFC8A1608BEE29 /* App */,
 				5D528A6354110BE26D154154 /* Data */,
 				E549DE0644CFE0037CFD0820 /* Resources */,
 				AD6ABB849EFC71CDE545593B /* UI */,
@@ -295,6 +308,7 @@
 			children = (
 				9C3ADEDF6CA1AE1E9D790580 /* Genesyx.app */,
 				D262BD3C0DBE243270F855CB /* GenesyxAppTests.xctest */,
+				B109D7AA3E1A1E26FE200791 /* GenesyxUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -372,6 +386,18 @@
 			path = Resources;
 			sourceTree = "<group>";
 		};
+		F90F9045207B60D13F0BE507 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				0C6AEDE2C83DDBA1A2CF2E59 /* AppBackend.swift */,
+				A724E422A810E5B8921F4A15 /* AppContainer.swift */,
+				0E5056238C379BFC87EEE98F /* DeepLink.swift */,
+				40F30A3F8C1E804BE4B86F8F /* GenesyxApp.swift */,
+				7FAEDB5BABAF4DB17A1EA885 /* RootView.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
 		F9597355B76D96354A513FF7 /* Remote */ = {
 			isa = PBXGroup;
 			children = (
@@ -400,6 +426,8 @@
 			name = Genesyx;
 			packageProductDependencies = (
 				9A6451E74177E670774A6BAA /* GenesyxCore */,
+				DEAB44EE02032528E4C7A894 /* Supabase */,
+				EE200336765087672A45DFBE /* GoogleSignIn */,
 			);
 			productName = Genesyx;
 			productReference = 9C3ADEDF6CA1AE1E9D790580 /* Genesyx.app */;
@@ -423,6 +451,24 @@
 			productReference = D262BD3C0DBE243270F855CB /* GenesyxAppTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		D9704A8E449080CC0757F7F7 /* GenesyxUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0964803421A0A8DD5D306188 /* Build configuration list for PBXNativeTarget "GenesyxUITests" */;
+			buildPhases = (
+				E86BD4FABDC7FD01BBD1E7B9 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				14DEC0F2FB48394260C6E142 /* PBXTargetDependency */,
+			);
+			name = GenesyxUITests;
+			packageProductDependencies = (
+			);
+			productName = GenesyxUITests;
+			productReference = B109D7AA3E1A1E26FE200791 /* GenesyxUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -430,8 +476,17 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
+				KnownAssetTags = (
+					New,
+				);
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					144114A9DE8B8CC8CA5003BF = {
+						ProvisioningStyle = Automatic;
+					};
+					D9704A8E449080CC0757F7F7 = {
+						TestTargetID = 144114A9DE8B8CC8CA5003BF;
+					};
 				};
 			};
 			buildConfigurationList = 73451269B08AD90FECBFD585 /* Build configuration list for PBXProject "Genesyx" */;
@@ -444,6 +499,8 @@
 			mainGroup = 880852CC7C5B5F996A90D493;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				B38580FCE55D8E470DD5D28C /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+				3AABFD8221EDDD42CC624BCB /* XCRemoteSwiftPackageReference "supabase-swift" */,
 				EC58C311427435D3B2A4490E /* XCLocalSwiftPackageReference "." */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -453,6 +510,7 @@
 			targets = (
 				144114A9DE8B8CC8CA5003BF /* Genesyx */,
 				44FFB2E1550DA5444CD100BC /* GenesyxAppTests */,
+				D9704A8E449080CC0757F7F7 /* GenesyxUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -474,18 +532,18 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				298BEEF270FB5AC7A3C8E454 /* AppBackend.swift in Sources */,
-				53EC9804151012E24437EAE6 /* AppContainer.swift in Sources */,
+				191ABA3EA2167B60289B39E7 /* AppBackend.swift in Sources */,
+				2CFBB75151ED772EF42BE762 /* AppContainer.swift in Sources */,
 				CD66002B3D5BBE1411B24650 /* AuthView.swift in Sources */,
 				F8747CF476AB6AC7AE8256B2 /* CalendarDate+Foundation.swift in Sources */,
 				E6C31815C8A833D847C2404E /* CycleRepository.swift in Sources */,
 				0DCC3D33A978CC1789DDCDB2 /* CycleSettingsSheet.swift in Sources */,
 				E54366A509A127056046BEC5 /* DailyLogRepository.swift in Sources */,
-				CEAB8A50D8E0206D925F062D /* DeepLink.swift in Sources */,
+				86B9753D403F1175DD52D577 /* DeepLink.swift in Sources */,
 				A8CFAFC54BE8362144D42958 /* EmailValidator.swift in Sources */,
 				171C66812D35CE18F49E8077 /* ErrorStateView.swift in Sources */,
 				6835DB6E7BBE2692B1220320 /* FlowLayout.swift in Sources */,
-				418519E200B5ADC61C205C13 /* GenesyxApp.swift in Sources */,
+				80E86EC3B5ADC14AABBDB677 /* GenesyxApp.swift in Sources */,
 				1B161462363D78E3F6630794 /* GenesyxColors.swift in Sources */,
 				0DC6B2D021CC16BAFACC6B2E /* GenesyxControls.swift in Sources */,
 				A5CFFE487FC1011AC30B6196 /* HomeView.swift in Sources */,
@@ -507,7 +565,7 @@
 				3C2FD7275110E323A3A88875 /* ProfileView.swift in Sources */,
 				02CDDD6278836CD356A2B6E9 /* RemoteBackend.swift in Sources */,
 				9F148CCE3A2DE5173BFFAA39 /* RemoteModels.swift in Sources */,
-				84A915E0AABC6C7D368726BD /* RootView.swift in Sources */,
+				179450D82831FD20FBB06431 /* RootView.swift in Sources */,
 				0A98509A9EDFF1F6335455A5 /* SessionRepository.swift in Sources */,
 				92C49067F4CFC43B2EEEC85E /* SupabaseBackend.swift in Sources */,
 				57841B3DEE07C928CEF38FBC /* Theme.swift in Sources */,
@@ -529,6 +587,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E86BD4FABDC7FD01BBD1E7B9 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7DEE045EA130EDC0364688A0 /* GenesyxUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -537,16 +603,41 @@
 			target = 144114A9DE8B8CC8CA5003BF /* Genesyx */;
 			targetProxy = BCFF137D76D6258A885B108D /* PBXContainerItemProxy */;
 		};
+		14DEC0F2FB48394260C6E142 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 144114A9DE8B8CC8CA5003BF /* Genesyx */;
+			targetProxy = E4B8F0CA94868029A93CB26B /* PBXContainerItemProxy */;
+		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		31F591617513CCC751938CD4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.genesyx.app.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Genesyx;
+			};
+			name = Debug;
+		};
 		44FFB77D0D4154A15F04E444 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = App/Genesyx/Genesyx.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = M5L3MM75SG;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				INFOPLIST_FILE = App/Genesyx/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -556,8 +647,8 @@
 				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.genesyx.app;
 				SDKROOT = iphoneos;
-				SUPABASE_ANON_KEY = "";
-				SUPABASE_URL = "";
+				SUPABASE_ANON_KEY = sb_publishable_eR7nEFBHD_4ATbjEeRbicA_Z3Qj_Elb;
+				SUPABASE_URL = "https://epltxklawpcxxbaleswg.supabase.co";
 				SWIFT_VERSION = 5.9;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
@@ -568,8 +659,11 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = App/Genesyx/Genesyx.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = M5L3MM75SG;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				INFOPLIST_FILE = App/Genesyx/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -579,8 +673,8 @@
 				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.genesyx.app;
 				SDKROOT = iphoneos;
-				SUPABASE_ANON_KEY = "";
-				SUPABASE_URL = "";
+				SUPABASE_ANON_KEY = sb_publishable_eR7nEFBHD_4ATbjEeRbicA_Z3Qj_Elb;
+				SUPABASE_URL = "https://epltxklawpcxxbaleswg.supabase.co";
 				SWIFT_VERSION = 5.9;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
@@ -722,6 +816,23 @@
 			};
 			name = Release;
 		};
+		F4E6DD0043CF143146CB9727 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.genesyx.app.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Genesyx;
+			};
+			name = Release;
+		};
 		F4FDFA13517AEE35607682AA /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -742,6 +853,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		0964803421A0A8DD5D306188 /* Build configuration list for PBXNativeTarget "GenesyxUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				31F591617513CCC751938CD4 /* Debug */,
+				F4E6DD0043CF143146CB9727 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		24A8B22D4CB4D002D6305AC1 /* Build configuration list for PBXNativeTarget "Genesyx" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -778,10 +898,39 @@
 		};
 /* End XCLocalSwiftPackageReference section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		3AABFD8221EDDD42CC624BCB /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase/supabase-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.50.0;
+			};
+		};
+		B38580FCE55D8E470DD5D28C /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 9.2.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		9A6451E74177E670774A6BAA /* GenesyxCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = GenesyxCore;
+		};
+		DEAB44EE02032528E4C7A894 /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 3AABFD8221EDDD42CC624BCB /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+		EE200336765087672A45DFBE /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B38580FCE55D8E470DD5D28C /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

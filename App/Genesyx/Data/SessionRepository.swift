@@ -30,6 +30,15 @@ final class SessionRepository: ObservableObject {
         applySignIn(email: email, name: name)
     }
 
+    /// Social sign-in (Google/Apple). Exchanges the provider ID token for a Supabase session
+    /// when a backend is present, then updates local state. Works as a local mock otherwise.
+    func signInWithSocial(provider: SocialProvider, idToken: String, accessToken: String?, nonce: String?, email: String?, name: String?) async throws {
+        if let auth {
+            try await auth.signInWithIdToken(provider: provider, idToken: idToken, accessToken: accessToken, nonce: nonce)
+        }
+        applySignIn(email: email ?? "", name: name)
+    }
+
     private func applySignIn(email: String, name: String?) {
         self.email = email
         let trimmed = name?.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -46,5 +55,15 @@ final class SessionRepository: ObservableObject {
         email = nil
         displayName = nil
         if let auth { Task { try? await auth.signOut() } }
+    }
+
+    /// Permanently deletes the account via the backend, then clears local session state.
+    /// With no backend (local-only), this just signs the user out. Throws if the remote
+    /// deletion fails, so the UI can surface the error and leave the account intact.
+    func deleteAccount() async throws {
+        if let auth { try await auth.deleteAccount() }
+        email = nil
+        displayName = nil
+        isSignedIn = false
     }
 }

@@ -29,6 +29,16 @@ private struct SupabaseAuth: AuthBackend {
     func signUp(email: String, password: String) async throws { _ = try await client.auth.signUp(email: email, password: password) }
     func signIn(email: String, password: String) async throws { _ = try await client.auth.signIn(email: email, password: password) }
     func signOut() async throws { try await client.auth.signOut() }
+    func deleteAccount() async throws {
+        try await client.functions.invoke("delete_account", options: .init(body: [String: String]()))
+        try? await client.auth.signOut()   // clear the now-invalid local session token
+    }
+    func signInWithIdToken(provider: SocialProvider, idToken: String, accessToken: String?, nonce: String?) async throws {
+        let supaProvider: OpenIDConnectCredentials.Provider = (provider == .google) ? .google : .apple
+        try await client.auth.signInWithIdToken(
+            credentials: .init(provider: supaProvider, idToken: idToken, accessToken: accessToken, nonce: nonce)
+        )
+    }
 }
 
 private func requireUID(_ auth: AuthBackend) throws -> String {

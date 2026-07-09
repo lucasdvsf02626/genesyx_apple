@@ -1,11 +1,18 @@
 import SwiftUI
+import AuthenticationServices
+import CryptoKit
+import Security
 #if canImport(UIKit)
 import UIKit
 #endif
+#if canImport(GoogleSignIn)
+import GoogleSignIn
+#endif
 
-/// Email + password sign in / sign up (with a mock "Continue with Google").
+/// Email + password sign in / sign up, plus Sign in with Apple and Continue with Google.
 /// Ported from the Android `AuthScreen`; presented as a sheet. Writes to `SessionRepository`.
-/// (When Supabase is wired, replace the mock sign-in with real auth + Sign in with Apple.)
+/// Google is shown only when the GoogleSignIn package is linked; the token exchange happens
+/// via Supabase once that backend is active (falls back to a local mock otherwise).
 struct AuthView: View {
 
     @EnvironmentObject private var session: SessionRepository
@@ -17,6 +24,7 @@ struct AuthView: View {
     @State private var email = ""
     @State private var password = ""
     @State private var error: String?
+    @State private var currentNonce: String?
 
     @State private var submitting = false
 
@@ -41,11 +49,98 @@ struct AuthView: View {
         }
     }
 
-    /// Mock "Continue with Google" — local sign-in (real Google OAuth lands with Supabase).
-    private func complete(emailOverride: String?) {
-        session.signIn(email: (emailOverride ?? email).trimmingCharacters(in: .whitespaces), name: signupMode ? name : nil)
-        onSignedIn?()
-        dismiss()
+    // MARK: - Sign in with Apple
+
+    private func configureAppleRequest(_ request: ASAuthorizationAppleIDRequest) {
+        let nonce = Self.randomNonce()
+        currentNonce = nonce
+        request.requestedScopes = [.fullName, .email]
+        request.nonce = Self.sha256(nonce)
+    }
+
+    private func handleApple(_ result: Result<ASAuthorization, Error>) {
+        switch result {
+        case .success(let authorization):
+            guard let cred = authorization.credential as? ASAuthorizationAppleIDCredential,
+                  let tokenData = cred.identityToken,
+                  let idToken = String(data: tokenData, encoding: .utf8) else {
+                error = "Apple sign-in failed. Please try again."
+                return
+            }
+            let fullName = [cred.fullName?.givenName, cred.fullName?.familyName].compactMap { $0 }.joined(separator: " ")
+            Task {
+                do {
+                    try await session.signInWithSocial(
+                        provider: .apple, idToken: idToken, accessToken: nil, nonce: currentNonce,
+                        email: cred.email, name: fullName.isEmpty ? nil : fullName
+                    )
+                    onSignedIn?(); dismiss()
+                } catch {
+                    print("[AppleSignIn] Supabase exchange FAILED: \(error)")
+                    self.error = "Apple exchange failed: \(error.localizedDescription)"
+                }
+            }
+        case .failure(let err):
+            print("[AppleSignIn] SDK failed: \(err)")
+            error = "Apple sign-in cancelled/failed: \(err.localizedDescription)"
+        }
+    }
+
+    // MARK: - Continue with Google
+
+    #if canImport(GoogleSignIn)
+    private func handleGoogle() {
+        guard let root = Self.rootViewController() else { error = "Couldn't start Google sign-in."; return }
+        GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: RemoteConfig.googleIOSClientID)
+        Task {
+            do {
+                let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: root)
+                print("[GoogleSignIn] SDK sign-in OK. email=\(result.user.profile?.email ?? "nil") hasIDToken=\(result.user.idToken != nil)")
+                guard let idToken = result.user.idToken?.tokenString else {
+                    error = "Google: no ID token returned."; return
+                }
+                do {
+                    try await session.signInWithSocial(
+                        provider: .google, idToken: idToken,
+                        accessToken: result.user.accessToken.tokenString, nonce: nil,
+                        email: result.user.profile?.email, name: result.user.profile?.name
+                    )
+                } catch {
+                    print("[GoogleSignIn] Supabase exchange FAILED: \(error)")
+                    self.error = "Supabase exchange failed: \(error.localizedDescription)"
+                    return
+                }
+                onSignedIn?(); dismiss()
+            } catch {
+                print("[GoogleSignIn] SDK sign-in FAILED: \(error)")
+                self.error = "Google SDK failed: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    /// The top-most presented controller — GoogleSignIn must present ON the visible sheet,
+    /// not the window root (the root is already presenting AuthView, which would throw).
+    private static func rootViewController() -> UIViewController? {
+        let scene = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first { $0.activationState == .foregroundActive } ?? UIApplication.shared.connectedScenes.first as? UIWindowScene
+        var top = scene?.keyWindow?.rootViewController ?? scene?.windows.first?.rootViewController
+        while let presented = top?.presentedViewController { top = presented }
+        return top
+    }
+    #endif
+
+    // MARK: - Nonce helpers (Sign in with Apple)
+
+    private static func randomNonce(length: Int = 32) -> String {
+        var bytes = [UInt8](repeating: 0, count: length)
+        _ = SecRandomCopyBytes(kSecRandomDefault, length, &bytes)
+        let charset = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-._")
+        return String(bytes.map { charset[Int($0) % charset.count] })
+    }
+
+    private static func sha256(_ input: String) -> String {
+        SHA256.hash(data: Data(input.utf8)).map { String(format: "%02x", $0) }.joined()
     }
 
     var body: some View {
@@ -88,13 +183,21 @@ struct AuthView: View {
                 HStack { divider; Text("  OR  ").font(.gxEyebrow).foregroundStyle(GenesyxColor.mutedForeground); divider }
                     .padding(.vertical, 24)
 
-                Button { complete(emailOverride: email.isEmpty ? "you@genesyx.app" : email) } label: {
+                SignInWithAppleButton(.signIn, onRequest: configureAppleRequest, onCompletion: handleApple)
+                    .signInWithAppleButtonStyle(.black)
+                    .frame(height: 48)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                #if canImport(GoogleSignIn)
+                Spacer().frame(height: 12)
+                Button(action: handleGoogle) {
                     Text("Continue with Google")
                         .font(.gxBody).foregroundStyle(GenesyxColor.foreground)
                         .frame(maxWidth: .infinity).frame(height: 48)
                         .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(GenesyxColor.border, lineWidth: 1))
                 }
                 .buttonStyle(.plain)
+                #endif
 
                 Spacer().frame(height: 28)
                 HStack(spacing: 0) {

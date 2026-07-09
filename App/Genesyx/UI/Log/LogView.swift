@@ -215,7 +215,6 @@ struct LogView: View {
             }
             HStack(spacing: 12) {
                 miniCard("pills.fill", "Supplements", "\(selectedSupplements.count) of \(Self.supplements.count)", GenesyxColor.primary) { suppOpen = true }
-                miniCard("fork.knife", "Nutrition", "On track", GenesyxColor.electricPink) {}
             }
         }
         .padding(.top, 16)
