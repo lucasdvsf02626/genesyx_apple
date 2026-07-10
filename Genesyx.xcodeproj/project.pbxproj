@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		009BA7CB261C91DBBEC1D8C5 /* LearnViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE0BDF46FCE64B4692A96017 /* LearnViews.swift */; };
+		023C7A8E010B52705228034E /* QuizContentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F8902F736BE65A51377ABF0 /* QuizContentTests.swift */; };
 		02CDDD6278836CD356A2B6E9 /* RemoteBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48F5A8AF942299142460B70F /* RemoteBackend.swift */; };
 		0A98509A9EDFF1F6335455A5 /* SessionRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 709D1C1FC95A6647B86AFD2E /* SessionRepository.swift */; };
 		0DC6B2D021CC16BAFACC6B2E /* GenesyxControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D297DB3865857FC294B954E /* GenesyxControls.swift */; };
@@ -114,6 +115,7 @@
 		6D297DB3865857FC294B954E /* GenesyxControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenesyxControls.swift; sourceTree = "<group>"; };
 		709D1C1FC95A6647B86AFD2E /* SessionRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionRepository.swift; sourceTree = "<group>"; };
 		70CFFA90DC002A583118F417 /* AuthPartnerBackendTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthPartnerBackendTests.swift; sourceTree = "<group>"; };
+		7F8902F736BE65A51377ABF0 /* QuizContentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuizContentTests.swift; sourceTree = "<group>"; };
 		7FAEDB5BABAF4DB17A1EA885 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		8E8224E3C264A5AAABD3B6F4 /* InviteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InviteView.swift; sourceTree = "<group>"; };
 		8FD8DC508575F00BB7566E22 /* RepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepositoryTests.swift; sourceTree = "<group>"; };
@@ -207,6 +209,7 @@
 				3396EA1311B91F430A9A56FC /* LearnContentTests.swift */,
 				04A99C624A4D983AB1E3D538 /* NutritionHydrationTests.swift */,
 				303189AF2EDB7CEDB86E0060 /* PersistenceTests.swift */,
+				7F8902F736BE65A51377ABF0 /* QuizContentTests.swift */,
 				8FD8DC508575F00BB7566E22 /* RepositoryTests.swift */,
 			);
 			path = GenesyxTests;
@@ -609,6 +612,7 @@
 				5F63C8C182860F732EFAD1B4 /* LearnContentTests.swift in Sources */,
 				65A5F1876DC627D25E629435 /* NutritionHydrationTests.swift in Sources */,
 				3D63A628C151330C2E790EF8 /* PersistenceTests.swift in Sources */,
+				023C7A8E010B52705228034E /* QuizContentTests.swift in Sources */,
 				2A61DF86DC8A79DAB133FEAF /* RepositoryTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -662,7 +666,7 @@
 				CODE_SIGN_ENTITLEMENTS = App/Genesyx/Genesyx.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				DEVELOPMENT_TEAM = M5L3MM75SG;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				INFOPLIST_FILE = App/Genesyx/Info.plist;
@@ -688,7 +692,7 @@
 				CODE_SIGN_ENTITLEMENTS = App/Genesyx/Genesyx.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				DEVELOPMENT_TEAM = M5L3MM75SG;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				INFOPLIST_FILE = App/Genesyx/Info.plist;
