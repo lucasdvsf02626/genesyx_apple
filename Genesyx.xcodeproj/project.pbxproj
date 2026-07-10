@@ -63,6 +63,7 @@
 		E6C31815C8A833D847C2404E /* CycleRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = E090A64261B2333C8D7643F1 /* CycleRepository.swift */; };
 		EC5AD95C81D8E668D0AA8B59 /* InsightsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9CDAEFE038258E2457FE471 /* InsightsView.swift */; };
 		ED6676295BABDD824EE51AE4 /* GenesyxCore in Frameworks */ = {isa = PBXBuildFile; productRef = 9A6451E74177E670774A6BAA /* GenesyxCore */; };
+		EEDE83F0AF5220C2F2BD57D2 /* RealInsightsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A6A7DAC8C3FC99236B1ADB7 /* RealInsightsTests.swift */; };
 		F224834DAF0D1D8314BAF564 /* PreferencesRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 406D34D93DA7A1D21CCC5069 /* PreferencesRepository.swift */; };
 		F8747CF476AB6AC7AE8256B2 /* CalendarDate+Foundation.swift in Sources */ = {isa = PBXBuildFile; fileRef = F344C06C360FBD7A34BA772B /* CalendarDate+Foundation.swift */; };
 /* End PBXBuildFile section */
@@ -93,6 +94,7 @@
 		18B326C15BF47D3EA69920B6 /* FlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
 		1B2790DAD76D0036331A0789 /* LocalStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalStore.swift; sourceTree = "<group>"; };
 		29302184F2B6D0C0053D36D1 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		2A6A7DAC8C3FC99236B1ADB7 /* RealInsightsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealInsightsTests.swift; sourceTree = "<group>"; };
 		303189AF2EDB7CEDB86E0060 /* PersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceTests.swift; sourceTree = "<group>"; };
 		31285057904654880C873C5C /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		31FA256D16825BC48D9FF01C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -213,6 +215,7 @@
 				04A99C624A4D983AB1E3D538 /* NutritionHydrationTests.swift */,
 				303189AF2EDB7CEDB86E0060 /* PersistenceTests.swift */,
 				7F8902F736BE65A51377ABF0 /* QuizContentTests.swift */,
+				2A6A7DAC8C3FC99236B1ADB7 /* RealInsightsTests.swift */,
 				8FD8DC508575F00BB7566E22 /* RepositoryTests.swift */,
 			);
 			path = GenesyxTests;
@@ -617,6 +620,7 @@
 				65A5F1876DC627D25E629435 /* NutritionHydrationTests.swift in Sources */,
 				3D63A628C151330C2E790EF8 /* PersistenceTests.swift in Sources */,
 				023C7A8E010B52705228034E /* QuizContentTests.swift in Sources */,
+				EEDE83F0AF5220C2F2BD57D2 /* RealInsightsTests.swift in Sources */,
 				2A61DF86DC8A79DAB133FEAF /* RepositoryTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
