@@ -310,7 +310,7 @@ private struct WaitlistView: View {
                     Text("We'll send your free fertility nutrition guide to \(email) shortly.")
                         .font(.gxBody).foregroundStyle(GenesyxColor.mutedForeground).multilineTextAlignment(.center)
                     Spacer().frame(height: 28)
-                    GxPrimaryButton(title: "Continue to app", action: onContinue)
+                    GxPrimaryButton(title: "Register / Login to continue", action: onContinue)
                 } else {
                     Spacer().frame(height: 24)
                     Eyebrow("Free with early access", color: GenesyxColor.primary)
@@ -340,7 +340,7 @@ private struct WaitlistView: View {
                         if isValidEmail(email) { submitted = true }
                         else { error = "Please enter a valid email address." }
                     }
-                    GxGhostButton(title: "Continue to app", action: onContinue)
+                    GxGhostButton(title: "Register / Login to continue", action: onContinue)
                 }
             }
             .padding(.horizontal, 24)
