@@ -8,9 +8,31 @@ struct InsightsView: View {
     @EnvironmentObject private var ph: PhRepository
     @EnvironmentObject private var dailyLog: DailyLogRepository
 
-    // Mock analytics, ported verbatim from the Android InsightsScreen.
+    // Mock analytics, ported verbatim from the Android InsightsScreen (kept hidden for v1).
     private let cycleBars = [82, 78, 90, 85, 88, 80, 92]
     private let nutritionBars = [60, 75, 70, 85, 78, 90, 82]
+
+    private static let waterGoalMl = 2400
+
+    /// Real water for the last 7 days (oldest → newest) with narrow weekday-initial labels.
+    private var last7Days: [(label: String, ml: Int)] {
+        let today = CalendarDate.today()
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEEEE"   // single-letter weekday
+        return (0..<7).reversed().map { back in
+            let day = today.minusDays(back)
+            return (formatter.string(from: day.toDate()), dailyLog.waterMl(on: day))
+        }
+    }
+
+    private var hydrationInsightsCard: some View {
+        let week = last7Days
+        let insights = HydrationInsightLogic.compute(
+            dailyMl: week.map(\.ml), goalMl: Self.waterGoalMl, streak: dailyLog.streak())
+        return HydrationInsightsCard(
+            insights: insights, labels: week.map(\.label),
+            goalMl: Self.waterGoalMl, hasPh: !ph.readings.isEmpty)
+    }
 
     var body: some View {
         let insights = PhInsightLogic.compute(ph.readings)
@@ -20,6 +42,7 @@ struct InsightsView: View {
                     header
                     logHistoryLink
                     PhInsightsCard(ph: insights)
+                    hydrationInsightsCard
                     // v1: mock analytics (cycle regularity, symptom heatmap, nutrition consistency)
                     // are hidden pending real data — only the pH insight above is computed from real
                     // readings. To restore, remove the /* */ around the block below.
@@ -153,6 +176,89 @@ private struct PhInsightsCard: View {
             Eyebrow(label, color: GenesyxColor.mutedForeground)
             Text(value.map { String(format: "%.2f", $0) } ?? "—")
                 .font(.gxCardHeading).foregroundStyle(GenesyxColor.foreground)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(GenesyxColor.muted.opacity(0.4))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+}
+
+private struct DashedLine: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: 0, y: rect.midY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.midY))
+        return path
+    }
+}
+
+/// Real weekly hydration — 7-day bar chart (scaled to the 2.4L goal), goal line, two summary
+/// tiles, a de-pressured insight line, and (only if pH readings exist) an honest pH-connection line.
+private struct HydrationInsightsCard: View {
+    let insights: HydrationInsights
+    let labels: [String]
+    let goalMl: Int
+    let hasPh: Bool
+    private let barHeight: CGFloat = 112
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .bottom) {
+                Text("Hydration").font(.gxCardHeading).foregroundStyle(GenesyxColor.foreground)
+                Spacer()
+                Text("This week").font(.gxBodySmall.weight(.medium)).foregroundStyle(GenesyxColor.electricBlue)
+            }
+            chart.padding(.top, 18)
+            HStack(spacing: 12) {
+                tile("7-day total", String(format: "%.1f L", Double(insights.totalMl) / 1000))
+                tile("Days on goal", "\(insights.daysOnGoal) / 7")
+            }
+            .padding(.top, 16)
+            Text(insights.insight)
+                .font(.gxBodySmall).foregroundStyle(GenesyxColor.foreground.opacity(0.8))
+                .fixedSize(horizontal: false, vertical: true).padding(.top, 14)
+            if hasPh {
+                Text("Steady hydration makes your pH readings more comparable — concentrated urine reads more acidic.")
+                    .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+                    .fixedSize(horizontal: false, vertical: true).padding(.top, 6)
+            }
+        }
+        .padding(20)
+        .background(GenesyxColor.card)
+        .clipShape(RoundedRectangle(cornerRadius: 24))
+    }
+
+    private var chart: some View {
+        ZStack(alignment: .top) {
+            HStack(alignment: .bottom, spacing: 8) {
+                ForEach(Array(insights.dailyMl.enumerated()), id: \.offset) { index, ml in
+                    VStack(spacing: 6) {
+                        Spacer(minLength: 0)
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(LinearGradient(colors: [GenesyxColor.electricBlue, GenesyxColor.powderBlue],
+                                                 startPoint: .top, endPoint: .bottom))
+                            .frame(height: max(barHeight * CGFloat(min(Double(ml) / Double(goalMl), 1)), 2))
+                        Text(index < labels.count ? labels[index] : "")
+                            .font(.system(size: 10)).foregroundStyle(GenesyxColor.mutedForeground)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+            .frame(height: barHeight + 18)
+            // Goal line at 100% (top of the bar area).
+            HStack(spacing: 6) {
+                DashedLine().stroke(style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                    .foregroundStyle(GenesyxColor.mutedForeground.opacity(0.6)).frame(height: 1)
+                Text("2.4L goal").font(.system(size: 9)).foregroundStyle(GenesyxColor.mutedForeground).fixedSize()
+            }
+        }
+    }
+
+    private func tile(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Eyebrow(label, color: GenesyxColor.mutedForeground)
+            Text(value).font(.gxCardHeading).foregroundStyle(GenesyxColor.foreground)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
