@@ -1,28 +1,79 @@
 import SwiftUI
 
-/// The 5-tab main surface — all tabs translated from the Android build.
+/// The 6-tab main surface (Home, Track, Nutrition, Insights, Learn, Profile).
+///
+/// iOS's native `TabView` only shows five tabs before collapsing the rest into a "More" list,
+/// which would bury Learn and Profile. Android shows all six, so we use a custom bottom bar to
+/// match: every tab stays visible, and each screen is kept alive (state preserved) via a ZStack.
 struct MainTabView: View {
-    @State private var selection: Int = MainTabView.initialSelection
+    @StateObject private var router = TabRouter(selection: MainTabView.initialSelection)
+
+    private static let items: [(title: String, icon: String)] = [
+        ("Home", "house"),
+        ("Track", "calendar"),
+        ("Nutrition", "leaf"),
+        ("Insights", "chart.bar"),
+        ("Learn", "book"),
+        ("Profile", "person"),
+    ]
 
     var body: some View {
-        TabView(selection: $selection) {
-            HomeView()
-                .tag(0)
-                .tabItem { Label("Home", systemImage: "house") }
-            TrackView()
-                .tag(1)
-                .tabItem { Label("Track", systemImage: "calendar") }
-            NutritionView()
-                .tag(2)
-                .tabItem { Label("Nutrition", systemImage: "leaf") }
-            InsightsView()
-                .tag(3)
-                .tabItem { Label("Insights", systemImage: "chart.bar") }
-            ProfileView()
-                .tag(4)
-                .tabItem { Label("Profile", systemImage: "person") }
+        VStack(spacing: 0) {
+            ZStack {
+                tabContent(0, HomeView())
+                tabContent(1, TrackView())
+                tabContent(2, NutritionView())
+                tabContent(3, InsightsView())
+                tabContent(4, LearnLandingView())
+                tabContent(5, ProfileView())
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            tabBar
         }
-        .tint(GenesyxColor.primary)
+        .environmentObject(router)
+    }
+
+    /// Keeps every tab's view alive so state (scroll position, in-tab nav) survives switching,
+    /// showing only the selected one and routing touches only to it.
+    private func tabContent<Content: View>(_ index: Int, _ content: Content) -> some View {
+        let active = router.selection == index
+        return content
+            .opacity(active ? 1 : 0)
+            .allowsHitTesting(active)
+            .accessibilityHidden(!active)
+    }
+
+    private var tabBar: some View {
+        HStack(spacing: 0) {
+            ForEach(Array(Self.items.enumerated()), id: \.offset) { index, item in
+                tabButton(index, item)
+            }
+        }
+        .padding(.top, 8)
+        .background(
+            GenesyxColor.card
+                .overlay(Rectangle().fill(GenesyxColor.border).frame(height: 0.5), alignment: .top)
+                .ignoresSafeArea(edges: .bottom)
+        )
+    }
+
+    private func tabButton(_ index: Int, _ item: (title: String, icon: String)) -> some View {
+        let selected = router.selection == index
+        return Button {
+            router.selection = index
+        } label: {
+            VStack(spacing: 3) {
+                Image(systemName: item.icon).font(.system(size: 20))
+                Text(item.title).font(.system(size: 10, weight: .medium))
+            }
+            .foregroundStyle(selected ? GenesyxColor.primary : GenesyxColor.mutedForeground)
+            .frame(maxWidth: .infinity)
+            .padding(.bottom, 2)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(item.title)
+        .accessibilityLabel(item.title)
     }
 
     /// Initial tab for screenshot capture (`-uiTestTab N` launch arg); always Home in Release.
