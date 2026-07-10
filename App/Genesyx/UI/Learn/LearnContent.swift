@@ -529,4 +529,101 @@ let learnArticles: [LearnArticle] = [
         cta: ArticleCta(type: .openNutrition, label: "Open Nutrition")!,
         disclaimerRequired: true
     ),
+
+    // MARK: - Urine pH (understanding the reading)
+
+    LearnArticle(
+        id: "ph1",
+        slug: "ph-what-it-measures",
+        title: "What your urine pH actually measures",
+        excerpt: "pH is a number on a scale — here's what it reflects, and the one thing it does not.",
+        body: [
+            .heading("What this is for"),
+            .paragraph("Urine pH is a measure of how acidic or alkaline your urine is, on a scale from about 4.5 to 9.0. A lower number is more acidic, a higher number is more alkaline, and the middle is roughly neutral. It reflects what your kidneys are clearing out at that moment — which shifts naturally through the day."),
+            .heading("What it tells you"),
+            .bulletList([
+                "A snapshot of this moment, not a fixed trait. Your urine pH changes with hydration, food, and time of day.",
+                "Something worth watching as a trend, not a single verdict. One reading rarely means much.",
+                "A number that becomes useful once you have several, logged at a similar time and hydration state.",
+            ]),
+            .heading("What it does NOT tell you"),
+            .paragraph("Urine pH is not the same as your body's pH. Your blood is held at a tightly regulated pH of around 7.4 no matter what you eat — your lungs and kidneys keep it there, and food does not move it. The idea that a diet can alkalinise your body, or that urine pH reveals your body's acidity, does not hold up. Urine pH tells you about your urine. That's genuinely useful, but it's a smaller claim than the internet often makes."),
+            .callout("If your readings are persistently at the far edges of the range, or change suddenly and stay changed, that's worth mentioning to a doctor — not something to fix by yourself."),
+            .heading("Conclusion"),
+            .paragraph("Think of urine pH as one honest, low-cost signal you can track over time. Read it as a trend, hold it lightly, and don't ask it to mean more than it does."),
+        ],
+        category: .insights,
+        tags: ["ph", "urine", "basics", "insights"],
+        readingTime: "4 min read",
+        heroImage: "learn_hero_insights",
+        featured: false,
+        relatedArticleIds: ["ph2", "ph3", "g1"],
+        cta: ArticleCta(type: .openTrack, label: "Open the pH tracker")!,
+        disclaimerRequired: true
+    ),
+
+    LearnArticle(
+        id: "ph2",
+        slug: "ph-what-shifts-it",
+        title: "What shifts your urine pH",
+        excerpt: "Hydration, time of day, and food all move the number — here's how, so your readings make sense.",
+        body: [
+            .heading("What this is for"),
+            .paragraph("If your urine pH readings jump around, that's usually not a problem — it's the number doing exactly what it should. Knowing what moves it helps you read your own trend honestly instead of chasing noise."),
+            .heading("The main things that move it"),
+            .bulletList([
+                "Hydration. Concentrated urine (when you've drunk little) tends to read more acidic; well-hydrated urine reads closer to neutral. This is the single biggest day-to-day influence.",
+                "Time of day. First-morning urine is the most concentrated of the day, so it often reads more acidic than a mid-afternoon sample.",
+                "Food. A very protein-heavy day can nudge urine more acidic; a day rich in fruit and vegetables can nudge it more alkaline. These are modest shifts in your urine, not changes to your body.",
+                "Exercise and illness. Both can move the number temporarily.",
+            ]),
+            .heading("What this means for logging"),
+            .paragraph("Because hydration and timing move the number so much, the trick is to log at a similar time and a similar hydration state each time. That way you're comparing like with like, and your trend reflects your body rather than whether you happened to be thirsty that morning."),
+            .callout("Persistent, unusual readings alongside other symptoms are worth raising with a clinician. A single acidic morning reading is not."),
+            .heading("Conclusion"),
+            .paragraph("Your urine pH is supposed to move. Keep the conditions steady when you log, and the wobble stops looking like a problem and starts looking like normal."),
+        ],
+        category: .nutrition,
+        tags: ["ph", "hydration", "nutrition", "urine"],
+        readingTime: "4 min read",
+        heroImage: "learn_hero_hydration",
+        featured: false,
+        relatedArticleIds: ["ph1", "a4", "g3"],
+        cta: ArticleCta(type: .openNutrition, label: "Check your hydration")!,
+        disclaimerRequired: true
+    ),
+
+    LearnArticle(
+        id: "ph3",
+        slug: "ph-reading-your-trend",
+        title: "Reading your pH trend without over-reading it",
+        excerpt: "One reading is noise. Several weeks is a signal. Here's how to tell them apart.",
+        body: [
+            .heading("What this is for"),
+            .paragraph("A single pH reading is close to meaningless on its own — bodies vary, and one number caught on one morning tells you almost nothing. The value is in the trend: what your readings do over weeks, once you've logged enough of them at a steady time and hydration state."),
+            .heading("What the app shows you"),
+            .bulletList([
+                "Your current reading with a status colour — acidic, optimal, or alkaline.",
+                "A trend arrow comparing your latest reading to the one before it.",
+                "7-day and 30-day averages, which smooth out the daily wobble.",
+            ]),
+            .heading("How to read it honestly"),
+            .bulletList([
+                "Ignore single outliers. One dramatic reading on an unusual day is noise, not a pattern.",
+                "Trust what persists. A shift that holds across several weeks — and doesn't vanish when you drop the most dramatic day — is worth noticing.",
+                "Give it time. Three weeks is barely anything; a couple of months starts to mean something.",
+            ]),
+            .callout("A trend that is persistent, new for you, and unexplained is worth bringing to a clinician — with your logs in hand. \"Here's six weeks of my urine pH\" is a far better opening than \"I've been feeling off.\""),
+            .heading("Conclusion"),
+            .paragraph("Log steadily, look at the averages rather than the last number, and let the trend build. The goal isn't a perfect reading today — it's an honest picture over time."),
+        ],
+        category: .insights,
+        tags: ["ph", "trends", "insights", "urine"],
+        readingTime: "4 min read",
+        heroImage: "learn_hero_trends",
+        featured: false,
+        relatedArticleIds: ["ph1", "ph2", "a8"],
+        cta: ArticleCta(type: .openInsights, label: "See your pH trend")!,
+        disclaimerRequired: true
+    ),
 ]
