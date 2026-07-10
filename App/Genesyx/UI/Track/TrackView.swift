@@ -6,6 +6,9 @@ import GenesyxCore
 struct TrackView: View {
 
     @EnvironmentObject private var cycle: CycleRepository
+    @EnvironmentObject private var dailyLog: DailyLogRepository
+
+    private static let waterGoalMl = 2400
 
     @State private var monthAnchor = YearMonth.current
     @State private var showCycleSheet = false
@@ -23,6 +26,7 @@ struct TrackView: View {
                     calendarCard
                     currentPhaseCard
                     GxPrimaryButton(title: "Add to today's log", leadingSystemImage: "plus") { showLog = true }
+                    hydrationCard
                     PhTrackerSection()
                 }
                 .padding(.horizontal, 20)
@@ -209,6 +213,49 @@ struct TrackView: View {
             return "You're in your fertile window. Stay hydrated and prioritise rest."
         }
         return "About \(info.daysUntilNextPeriod) days until your next period."
+    }
+
+    // MARK: Hydration
+
+    private var hydrationCard: some View {
+        let waterMl = dailyLog.waterMl(on: today)
+        let remaining = max(Self.waterGoalMl - waterMl, 0)
+        return VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Eyebrow("Hydration", color: GenesyxColor.mutedForeground)
+                    HStack(alignment: .bottom, spacing: 4) {
+                        Text(String(format: "%.1f", Double(waterMl) / 1000))
+                            .font(.system(size: 28, weight: .semibold)).foregroundStyle(GenesyxColor.foreground)
+                        Text("/ \(String(format: "%.1f", Double(Self.waterGoalMl) / 1000)) L")
+                            .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground).padding(.bottom, 4)
+                    }
+                }
+                Spacer()
+                HStack(spacing: 8) {
+                    waterButton("minus", bg: GenesyxColor.muted, fg: GenesyxColor.foreground) { dailyLog.adjustWater(-200) }
+                    waterButton("plus", bg: GenesyxColor.primary, fg: .white) { dailyLog.adjustWater(200) }
+                }
+            }
+            ProgressView(value: min(Double(waterMl) / Double(Self.waterGoalMl), 1))
+                .tint(GenesyxColor.foreground)
+            HStack(spacing: 6) {
+                Image(systemName: "drop").font(.system(size: 13)).foregroundStyle(GenesyxColor.mutedForeground)
+                Text(remaining > 0 ? "\(remaining)ml to go" : "Target reached — nice work")
+                    .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+            }
+        }
+        .padding(20)
+        .background(GenesyxColor.card)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+    }
+
+    private func waterButton(_ symbol: String, bg: Color, fg: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol).font(.system(size: 16, weight: .semibold)).foregroundStyle(fg)
+                .frame(width: 36, height: 36).background(bg).clipShape(Circle())
+        }
+        .buttonStyle(.plain)
     }
 }
 
