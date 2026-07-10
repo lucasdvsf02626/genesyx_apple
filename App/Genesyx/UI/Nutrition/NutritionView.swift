@@ -13,6 +13,7 @@ struct NutritionView: View {
 
     @State private var expandedFood: String?
     @State private var planOpen = false
+    @State private var whyExpanded = false
     @EnvironmentObject private var router: TabRouter
     @State private var articlePath: [String] = []
 
@@ -59,19 +60,32 @@ struct NutritionView: View {
 
     // MARK: Hydration
 
+    /// Hydration Coach — live, time-of-day-aware coaching over today's water.
     private var hydrationCard: some View {
         let waterMl = dailyLog.waterMl(on: today)
         let remaining = max(waterGoalMl - waterMl, 0)
-        return VStack(alignment: .leading, spacing: 16) {
+        let hour = Calendar.current.component(.hour, from: Date())
+        let pct = Double(waterMl) / Double(waterGoalMl)
+        let streak = dailyLog.streak()
+        return VStack(alignment: .leading, spacing: 14) {
+            // Eyebrow + (de-pressured) streak
             HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Eyebrow("Hydration", color: GenesyxColor.mutedForeground)
-                    HStack(alignment: .bottom, spacing: 4) {
-                        Text(String(format: "%.1f", Double(waterMl) / 1000))
-                            .font(.system(size: 28, weight: .semibold)).foregroundStyle(GenesyxColor.foreground)
-                        Text("/ \(String(format: "%.1f", Double(waterGoalMl) / 1000)) L")
-                            .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground).padding(.bottom, 4)
+                Eyebrow("Hydration", color: GenesyxColor.mutedForeground)
+                Spacer()
+                if streak > 0 {
+                    HStack(spacing: 4) {
+                        Image(systemName: "flame.fill").font(.system(size: 11)).foregroundStyle(GenesyxColor.electricPink)
+                        Text("\(streak)-day streak").font(.system(size: 11.5, weight: .medium)).foregroundStyle(GenesyxColor.mutedForeground)
                     }
+                }
+            }
+            // Big number + steppers
+            HStack(alignment: .bottom) {
+                HStack(alignment: .bottom, spacing: 4) {
+                    Text(String(format: "%.1f", Double(waterMl) / 1000))
+                        .font(.system(size: 28, weight: .semibold)).foregroundStyle(GenesyxColor.foreground)
+                    Text("/ \(String(format: "%.1f", Double(waterGoalMl) / 1000)) L")
+                        .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground).padding(.bottom, 4)
                 }
                 Spacer()
                 HStack(spacing: 8) {
@@ -79,12 +93,36 @@ struct NutritionView: View {
                     waterButton("plus", bg: GenesyxColor.primary, fg: .white) { dailyLog.adjustWater(200) }
                 }
             }
-            ProgressView(value: min(Double(waterMl) / Double(waterGoalMl), 1))
+            ProgressView(value: min(pct, 1))
                 .tint(GenesyxColor.foreground)
+            // Coach line — names the part of the day + the action
+            Text(HydrationCoach.coachLine(hour: hour, pct: pct))
+                .font(.gxBody.weight(.semibold)).foregroundStyle(GenesyxColor.foreground)
+                .fixedSize(horizontal: false, vertical: true)
+            // Context line — phase-aware, behavioural only
+            Text(HydrationCoach.contextLine(phase: phase))
+                .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+                .fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 6) {
                 Image(systemName: "drop").font(.system(size: 13)).foregroundStyle(GenesyxColor.mutedForeground)
                 Text(remaining > 0 ? "\(remaining)ml to go" : "Target reached — nice work")
                     .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+            }
+            // Collapsible "Why hydration?" explainer
+            Rectangle().fill(GenesyxColor.border.opacity(0.6)).frame(height: 1)
+            Button { withAnimation(.easeInOut(duration: 0.2)) { whyExpanded.toggle() } } label: {
+                HStack {
+                    Text("Why hydration?").font(.gxBodySmall.weight(.medium)).foregroundStyle(GenesyxColor.primary)
+                    Spacer()
+                    Image(systemName: "chevron.down").font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(GenesyxColor.mutedForeground).rotationEffect(.degrees(whyExpanded ? 180 : 0))
+                }
+            }
+            .buttonStyle(.plain)
+            if whyExpanded {
+                Text(HydrationCoach.whyText)
+                    .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground.opacity(0.9))
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(20)
@@ -198,6 +236,76 @@ struct NutritionView: View {
                 .buttonStyle(.plain)
             }
         }
+    }
+}
+
+/// Pure copy + time-of-day logic for the Hydration Coach — kept separate so it's unit-testable
+/// and its strings can be scanned by the content-safety test. Behavioural, never medical.
+enum HydrationCoach {
+
+    enum DayPart: Equatable {
+        case morning, midday, afternoon, evening, night
+        static func at(hour: Int) -> DayPart {
+            switch hour {
+            case 5...11:  return .morning
+            case 12...15: return .midday
+            case 16...19: return .afternoon
+            case 20...22: return .evening
+            default:      return .night      // 23, 0–4
+            }
+        }
+    }
+
+    /// First two words always name the part of the day. Column chosen by `pct` (scales to the goal).
+    static func coachLine(hour: Int, pct: Double) -> String {
+        let under = pct < 1.0
+        switch DayPart.at(hour: hour) {
+        case .morning:
+            return under
+                ? "Morning — start with a glass now. Anchor it to breakfast so you don't have to remember later."
+                : "Great start — you're already hydrated this morning."
+        case .midday:
+            return under
+                ? "Midday — a glass with lunch keeps you steady through the afternoon dip."
+                : "Steady through lunch — nice."
+        case .afternoon:
+            return under
+                ? "Afternoon — one glass with your desk break. This is where most days slip."
+                : "You've kept it steady through the afternoon."
+        case .evening:
+            return under
+                ? "Evening — small sips only. Don't front-load before bed."
+                : "Target hit — ease off the water before bed."
+        case .night:
+            return under
+                ? "Late night — a small sip if you're thirsty, nothing more."
+                : "You're hydrated for the day."
+        }
+    }
+
+    static func contextLine(phase: Phase?) -> String {
+        guard let phase else { return "Log your cycle to get phase-aware hydration guidance." }
+        switch phase {
+        case .period:     return "Iron-rich foods and steady water help during your period."
+        case .follicular: return "You likely have energy this week — keep water steady to match."
+        case .ovulatory:  return "Nothing special required — keep drinking."
+        case .luteal:     return "Smaller, regular meals and water can ease energy dips."
+        }
+    }
+
+    static let whyText = "Steady hydration supports your energy and mood, and it makes your pH readings more consistent — concentrated urine reads more acidic, well-hydrated reads closer to neutral. The old 'eight glasses a day' rule came from a 1945 recommendation whose next sentence got lost: most of that water already comes from food. Thirst is a reasonable guide. Anchor a glass to meals and routines, and you won't have to think about it."
+
+    /// Every user-facing string, for the content-safety scan.
+    static var allStrings: [String] {
+        var out: [String] = []
+        for hour in [7, 13, 17, 21, 2] {
+            out.append(coachLine(hour: hour, pct: 0.2))
+            out.append(coachLine(hour: hour, pct: 1.0))
+        }
+        for phase in Phase.allCases { out.append(contextLine(phase: phase)) }
+        out.append(contextLine(phase: nil))
+        out.append(whyText)
+        return out
     }
 }
 

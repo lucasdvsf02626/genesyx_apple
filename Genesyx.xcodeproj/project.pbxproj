@@ -31,6 +31,7 @@
 		5F63C8C182860F732EFAD1B4 /* LearnContentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3396EA1311B91F430A9A56FC /* LearnContentTests.swift */; };
 		640142F8AD057E25E3BE3BB8 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = EE200336765087672A45DFBE /* GoogleSignIn */; };
 		651A078688B74ECA03A31657 /* LearnContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = C945804E1BB5F3133A5710D6 /* LearnContent.swift */; };
+		65A5F1876DC627D25E629435 /* NutritionHydrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04A99C624A4D983AB1E3D538 /* NutritionHydrationTests.swift */; };
 		6835DB6E7BBE2692B1220320 /* FlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18B326C15BF47D3EA69920B6 /* FlowLayout.swift */; };
 		795CDA6439BC0D8D1A06F880 /* PregnancyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65216CD3083B221BA523E62A /* PregnancyView.swift */; };
 		7DEE045EA130EDC0364688A0 /* GenesyxUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD452495CEE851EB8D542EDD /* GenesyxUITests.swift */; };
@@ -83,6 +84,7 @@
 
 /* Begin PBXFileReference section */
 		00A35F920C88F39DE4A48AA3 /* YearMonth+Foundation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YearMonth+Foundation.swift"; sourceTree = "<group>"; };
+		04A99C624A4D983AB1E3D538 /* NutritionHydrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionHydrationTests.swift; sourceTree = "<group>"; };
 		080CEB58B93445D2DB9D5400 /* AuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthView.swift; sourceTree = "<group>"; };
 		0C6AEDE2C83DDBA1A2CF2E59 /* AppBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppBackend.swift; sourceTree = "<group>"; };
 		0E5056238C379BFC87EEE98F /* DeepLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLink.swift; sourceTree = "<group>"; };
@@ -203,6 +205,7 @@
 				AEB6BAF8FC459A7A15C72AB8 /* BackendSwapTests.swift */,
 				43EE7B189D1FA0D84CB24653 /* DeepLinkTests.swift */,
 				3396EA1311B91F430A9A56FC /* LearnContentTests.swift */,
+				04A99C624A4D983AB1E3D538 /* NutritionHydrationTests.swift */,
 				303189AF2EDB7CEDB86E0060 /* PersistenceTests.swift */,
 				8FD8DC508575F00BB7566E22 /* RepositoryTests.swift */,
 			);
@@ -604,6 +607,7 @@
 				DE9C3F479BE6E8224ED0C78C /* BackendSwapTests.swift in Sources */,
 				19E192F77DEF4C7726F9A530 /* DeepLinkTests.swift in Sources */,
 				5F63C8C182860F732EFAD1B4 /* LearnContentTests.swift in Sources */,
+				65A5F1876DC627D25E629435 /* NutritionHydrationTests.swift in Sources */,
 				3D63A628C151330C2E790EF8 /* PersistenceTests.swift in Sources */,
 				2A61DF86DC8A79DAB133FEAF /* RepositoryTests.swift in Sources */,
 			);
@@ -658,7 +662,7 @@
 				CODE_SIGN_ENTITLEMENTS = App/Genesyx/Genesyx.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = M5L3MM75SG;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				INFOPLIST_FILE = App/Genesyx/Info.plist;
@@ -684,7 +688,7 @@
 				CODE_SIGN_ENTITLEMENTS = App/Genesyx/Genesyx.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = M5L3MM75SG;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				INFOPLIST_FILE = App/Genesyx/Info.plist;
