@@ -72,11 +72,12 @@ struct NutritionView: View {
             HStack {
                 Eyebrow("Hydration", color: GenesyxColor.mutedForeground)
                 Spacer()
-                if streak > 0 {
-                    HStack(spacing: 4) {
-                        Image(systemName: "flame.fill").font(.system(size: 11)).foregroundStyle(GenesyxColor.electricPink)
-                        Text("\(streak)-day streak").font(.system(size: 11.5, weight: .medium)).foregroundStyle(GenesyxColor.mutedForeground)
-                    }
+                HStack(spacing: 4) {
+                    Image(systemName: streak > 0 ? "flame.fill" : "flame")
+                        .font(.system(size: 11))
+                        .foregroundStyle(streak > 0 ? GenesyxColor.electricPink : GenesyxColor.mutedForeground)
+                    Text(HydrationCoach.streakLabel(streak))
+                        .font(.system(size: 11.5, weight: .medium)).foregroundStyle(GenesyxColor.mutedForeground)
                 }
             }
             // Big number + steppers
@@ -293,6 +294,15 @@ enum HydrationCoach {
         }
     }
 
+    /// Always-visible daily-streak pill copy — de-pressured, encouraging even at zero.
+    static func streakLabel(_ streak: Int) -> String {
+        switch streak {
+        case 0:  return "Daily streak — start today"
+        case 1:  return "Day 1 — great start"
+        default: return "\(streak)-day daily streak"
+        }
+    }
+
     static let whyText = "Steady hydration supports your energy and mood, and it makes your pH readings more consistent — concentrated urine reads more acidic, well-hydrated reads closer to neutral. The old 'eight glasses a day' rule came from a 1945 recommendation whose next sentence got lost: most of that water already comes from food. Thirst is a reasonable guide. Anchor a glass to meals and routines, and you won't have to think about it."
 
     /// Every user-facing string, for the content-safety scan.
@@ -304,6 +314,7 @@ enum HydrationCoach {
         }
         for phase in Phase.allCases { out.append(contextLine(phase: phase)) }
         out.append(contextLine(phase: nil))
+        for streak in [0, 1, 3] { out.append(streakLabel(streak)) }
         out.append(whyText)
         return out
     }

@@ -43,6 +43,13 @@ final class NutritionHydrationTests: XCTestCase {
         XCTAssertEqual(HydrationCoach.DayPart.at(hour: 3), .night)
     }
 
+    func testStreakLabelIsAlwaysMotivating() {
+        XCTAssertEqual(HydrationCoach.streakLabel(0), "Daily streak — start today")
+        XCTAssertEqual(HydrationCoach.streakLabel(1), "Day 1 — great start")
+        XCTAssertEqual(HydrationCoach.streakLabel(2), "2-day daily streak")
+        XCTAssertEqual(HydrationCoach.streakLabel(9), "9-day daily streak")
+    }
+
     func testContextLineByPhase() {
         XCTAssertTrue(HydrationCoach.contextLine(phase: nil).contains("Log your cycle"))
         XCTAssertTrue(HydrationCoach.contextLine(phase: .period).lowercased().contains("iron"))
