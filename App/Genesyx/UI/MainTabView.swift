@@ -7,6 +7,7 @@ import SwiftUI
 /// match: every tab stays visible, and each screen is kept alive (state preserved) via a ZStack.
 struct MainTabView: View {
     @StateObject private var router = TabRouter(selection: MainTabView.initialSelection)
+    @EnvironmentObject private var notifications: NotificationService
 
     private static let items: [(title: String, icon: String)] = [
         ("Home", "house"),
@@ -31,6 +32,13 @@ struct MainTabView: View {
             tabBar
         }
         .environmentObject(router)
+        // Notification taps: route to the target tab (and article, for Learn).
+        .onChange(of: notifications.pendingTab) { tab in
+            if let tab { router.selection = tab; notifications.pendingTab = nil }
+        }
+        .onChange(of: notifications.pendingLearnSlug) { slug in
+            if let slug { router.selection = 4; router.pendingLearnSlug = slug; notifications.pendingLearnSlug = nil }
+        }
     }
 
     /// Keeps every tab's view alive so state (scroll position, in-tab nav) survives switching,

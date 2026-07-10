@@ -1,5 +1,8 @@
 import SwiftUI
 import GenesyxCore
+#if canImport(UIKit)
+import UIKit
+#endif
 
 /// Profile — account, focus toggle, partner linking, preferences (theme/push), and about.
 /// Ported from the Android `ProfileScreen` + `ProfileViewModel`.
@@ -8,6 +11,7 @@ struct ProfileView: View {
     @EnvironmentObject private var session: SessionRepository
     @EnvironmentObject private var prefs: PreferencesRepository
     @EnvironmentObject private var partner: PartnerRepository
+    @EnvironmentObject private var notifications: NotificationService
 
     @State private var nameOpen = false
     @State private var detail: String?
@@ -36,6 +40,7 @@ struct ProfileView: View {
                     PartnerSectionView(showAuth: $showAuth)
                     accountGroup
                     trackingGroup
+                    remindersSection
                     themeSection
                     aboutGroup
                     signOutButton
@@ -144,6 +149,32 @@ struct ProfileView: View {
                 rowItem("Health Profile") { detail = "Health Profile" }
                 divider
                 rowItem("Tracking Preferences") { detail = "Tracking Preferences" }
+            }
+        }
+    }
+
+    private var remindersSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            groupLabel("Notifications")
+            cardGroup {
+                Toggle("Weekly reminders", isOn: Binding(
+                    get: { prefs.pushEnabled },
+                    set: { notifications.setEnabled($0) }
+                ))
+                .tint(GenesyxColor.primary)
+                .foregroundStyle(GenesyxColor.foreground)
+                .padding(.horizontal, 14).padding(.vertical, 8)
+            }
+            if notifications.isSystemDenied && prefs.pushEnabled {
+                Button {
+                    #if canImport(UIKit)
+                    if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
+                    #endif
+                } label: {
+                    Text("Enable notifications in Settings to receive weekly reminders")
+                        .font(.gxBodySmall).foregroundStyle(GenesyxColor.primary)
+                        .frame(maxWidth: .infinity, alignment: .leading).padding(.leading, 4)
+                }
             }
         }
     }

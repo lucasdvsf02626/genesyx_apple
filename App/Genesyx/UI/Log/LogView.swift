@@ -6,6 +6,7 @@ import GenesyxCore
 struct LogView: View {
 
     @EnvironmentObject private var dailyLog: DailyLogRepository
+    @EnvironmentObject private var notifications: NotificationService
     @Environment(\.dismiss) private var dismiss
 
     private let date = CalendarDate.today()
@@ -93,6 +94,7 @@ struct LogView: View {
             ),
             on: date
         )
+        notifications.checkStreakMilestones()
         dismiss()
     }
 
