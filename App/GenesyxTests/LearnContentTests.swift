@@ -53,9 +53,14 @@ final class LearnContentTests: XCTestCase {
             "reading-your-trends",
             "small-habits-that-hold",
             "using-what-you-learn",
+            // Health-adjacent guides (A, C, D, F) also carry the disclaimer.
+            "guide-urine-tracker-with-stick",
+            "guide-how-to-log-ph",
+            "guide-nutrition-focus",
+            "guide-track-ph-in-nutrition",
         ]
         let actual = Set(LearnLibrary.articles.filter { $0.disclaimerRequired }.map { $0.slug })
-        XCTAssertEqual(actual, expected, "Medical disclaimer must be pinned to exactly these six slugs")
+        XCTAssertEqual(actual, expected, "Medical disclaimer must be pinned to exactly these slugs (6 articles + 4 guides)")
     }
 
     func testArticleCtaRequiresTarget() {
@@ -69,10 +74,10 @@ final class LearnContentTests: XCTestCase {
 
     func testLibraryIntegrity() {
         let articles = LearnLibrary.articles
-        XCTAssertEqual(articles.count, 10, "Exactly ten bundled articles")
+        XCTAssertEqual(articles.count, 16, "Ten articles + six guides")
         XCTAssertEqual(articles.filter { $0.featured }.count, 1, "Exactly one featured article")
-        XCTAssertEqual(Set(articles.map { $0.slug }).count, 10, "Slugs must be unique")
-        XCTAssertEqual(Set(articles.map { $0.id }).count, 10, "Ids must be unique")
+        XCTAssertEqual(Set(articles.map { $0.slug }).count, 16, "Slugs must be unique")
+        XCTAssertEqual(Set(articles.map { $0.id }).count, 16, "Ids must be unique")
         for a in articles {
             for id in a.relatedArticleIds {
                 XCTAssertNotNil(LearnLibrary.articleById(id),

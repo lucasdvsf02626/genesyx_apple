@@ -18,6 +18,7 @@ enum LearnCategory: String, CaseIterable, Identifiable {
     case nutrition = "NUTRITION"
     case insights = "INSIGHTS"
     case wellness = "WELLNESS"
+    case guides = "GUIDES"
 
     var id: String { rawValue }
 
@@ -28,6 +29,7 @@ enum LearnCategory: String, CaseIterable, Identifiable {
         case .nutrition: return "Nutrition"
         case .insights: return "Insights"
         case .wellness: return "Wellness"
+        case .guides: return "Guides"
         }
     }
 
@@ -39,6 +41,7 @@ enum LearnCategory: String, CaseIterable, Identifiable {
         case .nutrition: return GenesyxColor.electricPink
         case .insights: return GenesyxColor.electricLavender
         case .wellness: return GenesyxColor.powderBlue
+        case .guides: return GenesyxColor.babyLavender
         }
     }
 }
