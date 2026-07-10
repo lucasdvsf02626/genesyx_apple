@@ -1,16 +1,62 @@
 import SwiftUI
 import GenesyxCore
 
-/// Insights — pH insights (from real readings) + cycle regularity, symptom heatmap, and
-/// nutrition consistency (mock analytics, ported verbatim from `mockData.ts`).
+/// Insights — every card is computed from the user's real logged data: urine pH, hydration,
+/// cycle regularity, symptom patterns, and predicted ovulation. No mock/hardcoded/sine values.
+/// (The old Android "Nutrition consistency" mock card is intentionally dropped — the Hydration
+/// card is the honest weekly-water view.)
 struct InsightsView: View {
 
     @EnvironmentObject private var ph: PhRepository
     @EnvironmentObject private var dailyLog: DailyLogRepository
+    @EnvironmentObject private var cycle: CycleRepository
 
-    // Mock analytics, ported verbatim from the Android InsightsScreen.
-    private let cycleBars = [82, 78, 90, 85, 88, 80, 92]
-    private let nutritionBars = [60, 75, 70, 85, 78, 90, 82]
+    private static let waterGoalMl = 2400
+
+    /// Real water for the last 7 days (oldest → newest) with narrow weekday-initial labels.
+    private var last7Days: [(label: String, ml: Int)] {
+        let today = CalendarDate.today()
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEEEE"   // single-letter weekday
+        return (0..<7).reversed().map { back in
+            let day = today.minusDays(back)
+            return (formatter.string(from: day.toDate()), dailyLog.waterMl(on: day))
+        }
+    }
+
+    private var hydrationInsightsCard: some View {
+        let week = last7Days
+        let insights = HydrationInsightLogic.compute(
+            dailyMl: week.map(\.ml), goalMl: Self.waterGoalMl, streak: dailyLog.streak())
+        return HydrationInsightsCard(
+            insights: insights, labels: week.map(\.label),
+            goalMl: Self.waterGoalMl, hasPh: !ph.readings.isEmpty)
+    }
+
+    private var cycleRegularityCard: some View {
+        CycleRegularityCard(insights: CycleRegularityLogic.compute(settings: cycle.settings))
+    }
+
+    private var symptomPatternsCard: some View {
+        SymptomPatternsCard(
+            insights: SymptomPatternLogic.compute(logs: dailyLog.logByDate),
+            weekdayLabels: weekdayInitials)
+    }
+
+    private var ovulationCard: some View {
+        OvulationCard(
+            insights: OvulationLogic.compute(settings: cycle.settings),
+            cycleLength: cycle.settings?.cycleLength ?? 28,
+            periodLength: cycle.settings?.periodLength ?? 5)
+    }
+
+    /// Weekday initials for the last 7 days (oldest → newest); aligns the symptom heatmap columns.
+    private var weekdayInitials: [String] {
+        let today = CalendarDate.today()
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEEEE"
+        return (0..<7).reversed().map { formatter.string(from: today.minusDays($0).toDate()) }
+    }
 
     var body: some View {
         let insights = PhInsightLogic.compute(ph.readings)
@@ -20,24 +66,10 @@ struct InsightsView: View {
                     header
                     logHistoryLink
                     PhInsightsCard(ph: insights)
-                    // v1: mock analytics (cycle regularity, symptom heatmap, nutrition consistency)
-                    // are hidden pending real data — only the pH insight above is computed from real
-                    // readings. To restore, remove the /* */ around the block below.
-                    /*
-                    BarsCard(
-                        title: "Cycle regularity", trailing: "Last 7 cycles",
-                        values: cycleBars, labels: (1...7).map { "C\($0)" }, barHeight: 128,
-                        gradient: LinearGradient(colors: [GenesyxColor.primary.opacity(0.8), GenesyxColor.primary.opacity(0.4)], startPoint: .top, endPoint: .bottom),
-                        insight: "Your cycles are tracking with steady consistency — a small day-to-day variation is completely typical."
-                    )
-                    SymptomPatternsCard()
-                    BarsCard(
-                        title: "Nutrition consistency", trailing: nil,
-                        values: nutritionBars, labels: ["M", "T", "W", "T", "F", "S", "S"], barHeight: 112,
-                        gradient: LinearGradient(colors: [GenesyxColor.electricBlue, GenesyxColor.powderBlue], startPoint: .top, endPoint: .bottom),
-                        insight: "You've stayed close to your hydration goal four days this week — gentle progress."
-                    )
-                    */
+                    hydrationInsightsCard
+                    cycleRegularityCard
+                    symptomPatternsCard
+                    ovulationCard
                 }
                 .padding(.horizontal, 20).padding(.bottom, 24)
             }
@@ -161,75 +193,263 @@ private struct PhInsightsCard: View {
     }
 }
 
-private struct BarsCard: View {
-    let title: String
-    let trailing: String?
-    let values: [Int]
+private struct DashedLine: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: 0, y: rect.midY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.midY))
+        return path
+    }
+}
+
+/// Real weekly hydration — 7-day bar chart (scaled to the 2.4L goal), goal line, two summary
+/// tiles, a de-pressured insight line, and (only if pH readings exist) an honest pH-connection line.
+private struct HydrationInsightsCard: View {
+    let insights: HydrationInsights
     let labels: [String]
-    let barHeight: CGFloat
-    let gradient: LinearGradient
-    let insight: String
+    let goalMl: Int
+    let hasPh: Bool
+    private let barHeight: CGFloat = 112
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .bottom) {
-                Text(title).font(.gxCardHeading).foregroundStyle(GenesyxColor.foreground)
+                Text("Hydration").font(.gxCardHeading).foregroundStyle(GenesyxColor.foreground)
                 Spacer()
-                if let trailing { Text(trailing).font(.gxBodySmall.weight(.medium)).foregroundStyle(GenesyxColor.primary) }
+                Text("This week").font(.gxBodySmall.weight(.medium)).foregroundStyle(GenesyxColor.electricBlue)
             }
+            chart.padding(.top, 18)
+            HStack(spacing: 12) {
+                tile("7-day total", String(format: "%.1f L", Double(insights.totalMl) / 1000))
+                tile("Days on goal", "\(insights.daysOnGoal) / 7")
+            }
+            .padding(.top, 16)
+            Text(insights.insight)
+                .font(.gxBodySmall).foregroundStyle(GenesyxColor.foreground.opacity(0.8))
+                .fixedSize(horizontal: false, vertical: true).padding(.top, 14)
+            if hasPh {
+                Text("Steady hydration makes your pH readings more comparable — concentrated urine reads more acidic.")
+                    .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+                    .fixedSize(horizontal: false, vertical: true).padding(.top, 6)
+            }
+        }
+        .padding(20)
+        .background(GenesyxColor.card)
+        .clipShape(RoundedRectangle(cornerRadius: 24))
+    }
+
+    private var chart: some View {
+        ZStack(alignment: .top) {
             HStack(alignment: .bottom, spacing: 8) {
-                ForEach(values.indices, id: \.self) { i in
+                ForEach(Array(insights.dailyMl.enumerated()), id: \.offset) { index, ml in
                     VStack(spacing: 6) {
                         Spacer(minLength: 0)
                         RoundedRectangle(cornerRadius: 8)
-                            .fill(gradient)
-                            .frame(height: barHeight * CGFloat(values[i]) / 100)
-                        Text(labels[i]).font(.system(size: 10)).foregroundStyle(GenesyxColor.mutedForeground)
+                            .fill(LinearGradient(colors: [GenesyxColor.electricBlue, GenesyxColor.powderBlue],
+                                                 startPoint: .top, endPoint: .bottom))
+                            .frame(height: max(barHeight * CGFloat(min(Double(ml) / Double(goalMl), 1)), 2))
+                        Text(index < labels.count ? labels[index] : "")
+                            .font(.system(size: 10)).foregroundStyle(GenesyxColor.mutedForeground)
                     }
                     .frame(maxWidth: .infinity)
                 }
             }
             .frame(height: barHeight + 18)
-            .padding(.top, 18)
-            Text(insight).font(.gxBodySmall).foregroundStyle(GenesyxColor.foreground.opacity(0.8)).padding(.top, 14)
+            // Goal line at 100% (top of the bar area).
+            HStack(spacing: 6) {
+                DashedLine().stroke(style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                    .foregroundStyle(GenesyxColor.mutedForeground.opacity(0.6)).frame(height: 1)
+                Text("2.4L goal").font(.system(size: 9)).foregroundStyle(GenesyxColor.mutedForeground).fixedSize()
+            }
         }
-        .padding(20)
-        .background(GenesyxColor.card)
-        .clipShape(RoundedRectangle(cornerRadius: 24))
+    }
+
+    private func tile(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Eyebrow(label, color: GenesyxColor.mutedForeground)
+            Text(value).font(.gxCardHeading).foregroundStyle(GenesyxColor.foreground)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(GenesyxColor.muted.opacity(0.4))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 }
 
-private struct SymptomPatternsCard: View {
+// MARK: - Real-data cards (cycle regularity, symptom patterns, ovulation)
+
+/// Cycle length vs the typical 21–35 day range (honest single-cycle view — no fabricated history).
+private struct CycleRegularityCard: View {
+    let insights: CycleRegularityInsights?
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Symptom patterns").font(.gxCardHeading).foregroundStyle(GenesyxColor.foreground)
-            VStack(spacing: 6) {
-                ForEach(0..<5, id: \.self) { r in
-                    HStack(spacing: 6) {
-                        ForEach(0..<7, id: \.self) { c in
-                            let intensity = (sin(Double(r * 7 + c) * 1.7) + 1) / 2
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(GenesyxColor.primary.opacity(alpha(intensity)))
-                                .frame(height: 26)
-                                .frame(maxWidth: .infinity)
-                        }
+            HStack {
+                Text("Cycle regularity").font(.gxCardHeading).foregroundStyle(GenesyxColor.foreground)
+                Spacer()
+                Text("Current setup").font(.gxBodySmall.weight(.medium)).foregroundStyle(GenesyxColor.primary)
+            }
+            if let insights {
+                rangeBar(cycleLength: insights.cycleLength).frame(height: 22).padding(.top, 20)
+                HStack {
+                    Text("Your cycle: \(insights.cycleLength) days").font(.gxBodySmall.weight(.medium)).foregroundStyle(GenesyxColor.foreground)
+                    Spacer()
+                    Text("Typical: 21–35 days").font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+                }
+                .padding(.top, 12)
+                Text(insights.insight).font(.gxBodySmall).foregroundStyle(GenesyxColor.foreground.opacity(0.8))
+                    .fixedSize(horizontal: false, vertical: true).padding(.top, 12)
+            } else {
+                Text("Log your last period to see cycle regularity.")
+                    .font(.gxBody).foregroundStyle(GenesyxColor.mutedForeground).padding(.top, 12)
+            }
+        }
+        .padding(20).background(GenesyxColor.card).clipShape(RoundedRectangle(cornerRadius: 24))
+    }
+
+    private func rangeBar(cycleLength: Int) -> some View {
+        GeometryReader { geo in rangeContent(width: geo.size.width, cycleLength: cycleLength) }
+    }
+
+    private func rangeContent(width: Double, cycleLength: Int) -> some View {
+        let axisMin = 15.0, axisMax = 40.0
+        func x(_ day: Double) -> Double { (day - axisMin) / (axisMax - axisMin) * width }
+        return ZStack(alignment: .leading) {
+            Capsule().fill(GenesyxColor.muted.opacity(0.5)).frame(height: 10)
+            Capsule()
+                .fill(LinearGradient(colors: [GenesyxColor.electricLavender.opacity(0.6), GenesyxColor.babyLavender.opacity(0.6)],
+                                     startPoint: .leading, endPoint: .trailing))
+                .frame(width: max(x(35) - x(21), 2), height: 10).offset(x: x(21))
+            Circle().fill(GenesyxColor.primary).frame(width: 16, height: 16)
+                .overlay(Circle().strokeBorder(.white, lineWidth: 2))
+                .offset(x: min(max(x(Double(cycleLength)) - 8, 0), width - 16))
+        }
+        .frame(height: 22)
+    }
+}
+
+/// 4×7 heatmap of real logged-symptom counts over 28 days, with an honest thin-data guard.
+private struct SymptomPatternsCard: View {
+    let insights: SymptomPatternInsights
+    let weekdayLabels: [String]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text("Symptom patterns").font(.gxCardHeading).foregroundStyle(GenesyxColor.foreground)
+                Spacer()
+                Text("Last 4 weeks").font(.gxBodySmall.weight(.medium)).foregroundStyle(GenesyxColor.primary)
+            }
+            if insights.daysWithSymptoms == 0 {
+                Text("No symptoms logged yet. Log how you feel to see patterns.")
+                    .font(.gxBody).foregroundStyle(GenesyxColor.mutedForeground).padding(.top, 12)
+            } else {
+                heatmap.padding(.top, 16)
+            }
+            Text(insights.insight).font(.gxBodySmall).foregroundStyle(GenesyxColor.foreground.opacity(0.8))
+                .fixedSize(horizontal: false, vertical: true).padding(.top, 14)
+        }
+        .padding(20).background(GenesyxColor.card).clipShape(RoundedRectangle(cornerRadius: 24))
+    }
+
+    private var heatmap: some View {
+        VStack(spacing: 6) {
+            HStack(spacing: 6) {
+                Color.clear.frame(width: 32, height: 1)
+                ForEach(Array(weekdayLabels.enumerated()), id: \.offset) { _, label in
+                    Text(label).font(.system(size: 9)).foregroundStyle(GenesyxColor.mutedForeground).frame(maxWidth: .infinity)
+                }
+            }
+            ForEach(0..<4, id: \.self) { week in
+                HStack(spacing: 6) {
+                    Text("Wk \(week + 1)").font(.system(size: 9)).foregroundStyle(GenesyxColor.mutedForeground)
+                        .frame(width: 32, alignment: .leading)
+                    ForEach(0..<7, id: \.self) { day in
+                        let index = week * 7 + day
+                        let count = index < insights.dailyCounts.count ? insights.dailyCounts[index] : 0
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(GenesyxColor.electricLavender.opacity(alpha(count)))
+                            .frame(height: 26).frame(maxWidth: .infinity)
                     }
                 }
             }
-            .padding(.top, 14)
-            Text("Fatigue tends to ease in the second half of your cycle — useful to plan rest accordingly.")
-                .font(.gxBodySmall).foregroundStyle(GenesyxColor.foreground.opacity(0.8)).padding(.top, 14)
         }
-        .padding(20)
-        .background(GenesyxColor.card)
-        .clipShape(RoundedRectangle(cornerRadius: 24))
     }
 
-    private func alpha(_ intensity: Double) -> Double {
-        if intensity > 0.7 { return 0.5 }
-        if intensity > 0.4 { return 0.3 }
-        if intensity > 0.15 { return 0.15 }
-        return 0.05
+    private func alpha(_ count: Int) -> Double {
+        switch count {
+        case 0:  return 0.05
+        case 1:  return 0.2
+        case 2:  return 0.35
+        default: return 0.5
+        }
+    }
+}
+
+/// Predicted ovulation + fertile window on a cycle timeline. Everything is labelled "predicted".
+private struct OvulationCard: View {
+    let insights: OvulationInsights?
+    let cycleLength: Int
+    let periodLength: Int
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text("Ovulation").font(.gxCardHeading).foregroundStyle(GenesyxColor.foreground)
+                Spacer()
+                Text("This cycle").font(.gxBodySmall.weight(.medium)).foregroundStyle(GenesyxColor.primary)
+            }
+            if let insights {
+                timeline(insights).frame(height: 26).padding(.top, 20)
+                HStack(spacing: 12) {
+                    tile("Ovulation day", "Day \(insights.ovulationDay)")
+                    tile("Fertile window", "Day \(insights.fertileWindow.startDay)–\(insights.fertileWindow.endDay)")
+                }
+                .padding(.top, 16)
+                Text(insights.insight).font(.gxBodySmall).foregroundStyle(GenesyxColor.foreground.opacity(0.8))
+                    .fixedSize(horizontal: false, vertical: true).padding(.top, 14)
+            } else {
+                Text("Set up your cycle to see your ovulation window.")
+                    .font(.gxBody).foregroundStyle(GenesyxColor.mutedForeground).padding(.top, 12)
+            }
+        }
+        .padding(20).background(GenesyxColor.card).clipShape(RoundedRectangle(cornerRadius: 24))
+    }
+
+    private func timeline(_ ins: OvulationInsights) -> some View {
+        GeometryReader { geo in timelineContent(width: geo.size.width, ins: ins) }
+    }
+
+    private func timelineContent(width: Double, ins: OvulationInsights) -> some View {
+        let total = Double(max(cycleLength, 1))
+        func x(_ day: Int) -> Double { Double(max(day - 1, 0)) / total * width }
+        let fertileStart = max(ins.fertileWindow.startDay, 1)
+        let fertileEnd = min(ins.fertileWindow.endDay, cycleLength)
+        return ZStack(alignment: .leading) {
+            Capsule().fill(GenesyxColor.muted.opacity(0.5)).frame(height: 10)
+            Capsule().fill(GenesyxColor.electricPink.opacity(0.55))
+                .frame(width: max(x(periodLength + 1) - x(1), 2), height: 10).offset(x: x(1))
+            Capsule().fill(GenesyxColor.electricLavender.opacity(0.6))
+                .frame(width: max(x(fertileEnd + 1) - x(fertileStart), 2), height: 10).offset(x: x(fertileStart))
+            Circle().fill(GenesyxColor.primary).frame(width: 12, height: 12)
+                .overlay(Circle().strokeBorder(.white, lineWidth: 1.5))
+                .offset(x: min(max(x(ins.ovulationDay) - 6, 0), width - 12))
+            Rectangle().fill(GenesyxColor.foreground)
+                .frame(width: 2, height: 22)
+                .offset(x: min(max(x(ins.cycleDay) - 1, 0), width - 2), y: -6)
+        }
+        .frame(height: 22)
+    }
+
+    private func tile(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Eyebrow(label, color: GenesyxColor.mutedForeground)
+            Text(value).font(.gxCardHeading).foregroundStyle(GenesyxColor.foreground)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(GenesyxColor.muted.opacity(0.4))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 }
 

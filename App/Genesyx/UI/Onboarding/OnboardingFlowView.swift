@@ -10,22 +10,30 @@ struct OnboardingFlowView: View {
 
     private enum Step { case splash, intro, quiz, summary, waitlist }
     @State private var step: Step = .splash
+    @State private var showAuth = false
 
     var body: some View {
         ZStack {
             GenesyxColor.background.ignoresSafeArea()
             switch step {
             case .splash:
-                SplashView(onStart: { step = .intro }, onSignIn: onFinished)
+                SplashView(onStart: { step = .intro }, onSignIn: { showAuth = true })
             case .intro:
                 OnboardingIntroView(onContinue: { step = .quiz }, onBack: { step = .splash })
             case .quiz:
                 QuizView(onComplete: { step = .summary }, onBack: { step = .intro })
             case .summary:
-                ReadinessSummaryView(onUnlockGuide: { step = .waitlist }, onContinue: onFinished, onBack: { step = .quiz })
+                ReadinessSummaryView(onUnlockGuide: { step = .waitlist }, onContinue: { showAuth = true }, onBack: { step = .quiz })
             case .waitlist:
-                WaitlistView(onContinue: onFinished, onBack: { step = .summary })
+                WaitlistView(onContinue: { showAuth = true }, onBack: { step = .summary })
             }
+        }
+        // Auth gates the dashboard (Android parity): every onboarding exit routes through Auth,
+        // and only a successful sign-in calls `onFinished` (which sets onboardingComplete → main
+        // tabs), so back cannot return to the gate. In local-only v1, AuthView falls back to a
+        // permissive mock that does not verify passwords; the gate still enforces "go through Auth."
+        .fullScreenCover(isPresented: $showAuth) {
+            AuthView(onSignedIn: onFinished)
         }
     }
 }
@@ -265,7 +273,7 @@ private struct ReadinessSummaryView: View {
 
                 Spacer().frame(height: 24)
                 GxPrimaryButton(title: "Unlock My Free Guide", leadingSystemImage: "book", action: onUnlockGuide)
-                GxGhostButton(title: "Continue to dashboard", action: onContinue)
+                GxGhostButton(title: "Register / Login to continue", action: onContinue)
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 24)
@@ -302,7 +310,7 @@ private struct WaitlistView: View {
                     Text("We'll send your free fertility nutrition guide to \(email) shortly.")
                         .font(.gxBody).foregroundStyle(GenesyxColor.mutedForeground).multilineTextAlignment(.center)
                     Spacer().frame(height: 28)
-                    GxPrimaryButton(title: "Continue to app", action: onContinue)
+                    GxPrimaryButton(title: "Register / Login to continue", action: onContinue)
                 } else {
                     Spacer().frame(height: 24)
                     Eyebrow("Free with early access", color: GenesyxColor.primary)
@@ -332,7 +340,7 @@ private struct WaitlistView: View {
                         if isValidEmail(email) { submitted = true }
                         else { error = "Please enter a valid email address." }
                     }
-                    GxGhostButton(title: "Continue to app", action: onContinue)
+                    GxGhostButton(title: "Register / Login to continue", action: onContinue)
                 }
             }
             .padding(.horizontal, 24)

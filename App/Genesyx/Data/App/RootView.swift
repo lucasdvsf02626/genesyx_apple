@@ -6,7 +6,8 @@ import GoogleSignIn
 
 /// Decides the top-level surface: onboarding until complete, then the main tabs.
 /// Also handles partner-invite deep links (custom scheme + Universal Links).
-/// (Auth gating is deferred — v1 is local-only with a mock session; Auth is reachable from Profile.)
+/// The dashboard is gated behind Auth: `onboardingComplete` only becomes true after a successful
+/// sign-in inside the onboarding flow (Android parity), so the main tabs are unreachable otherwise.
 struct RootView: View {
 
     @EnvironmentObject private var prefs: PreferencesRepository

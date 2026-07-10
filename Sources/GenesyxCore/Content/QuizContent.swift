@@ -81,20 +81,15 @@ public enum QuizContent {
         ),
         QuizQuestion(
             id: "gender",
-            question: "Do you have a gender preference for your baby?",
+            question: "When it comes to your baby's sex, what feels right for you?",
             helper: "This is just for you — we keep it gentle and private.",
             options: [
-                QuizOption("girl", "A girl"),
-                QuizOption("boy", "A boy"),
-                QuizOption("either", "Either is wonderful"),
-                QuizOption("surprise", "Keep it a surprise"),
-            ],
-            fact: DidYouKnow(
-                title: "Did you know?",
-                body: "Research suggests that timing, diet, and even pH balance can subtly "
-                    + "influence the likelihood of conceiving a boy or girl. Nothing is guaranteed "
-                    + "— but small, gentle shifts can support your hopes."
-            )
+                QuizOption("hope", "I have a hope in mind"),
+                QuizOption("either", "I'm happy either way"),
+                QuizOption("private", "I'd rather not say"),
+            ]
+            // No "Did you know?" fact: the previous claim that diet/pH can influence a baby's sex
+            // is unsupported and contradicts the Learn content. Removed for Android parity.
         ),
         QuizQuestion(
             id: "support",

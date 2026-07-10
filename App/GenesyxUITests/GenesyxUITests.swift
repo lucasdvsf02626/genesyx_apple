@@ -9,7 +9,8 @@ final class GenesyxUITests: XCTestCase {
         continueAfterFailure = false
     }
 
-    /// Launches the app seeded, starting on the given tab index (0=Home … 4=Profile).
+    /// Launches the app seeded, starting on the given tab index
+    /// (0=Home, 1=Track, 2=Nutrition, 3=Insights, 4=Learn, 5=Profile).
     private func launchSeeded(tab: Int = 0) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments += ["-uiTestSeed", "YES", "-uiTestTab", "\(tab)"]
@@ -19,11 +20,17 @@ final class GenesyxUITests: XCTestCase {
 
     func testMainTabsPresent() {
         let app = launchSeeded()
-        let tabBar = app.tabBars.firstMatch
-        XCTAssertTrue(tabBar.waitForExistence(timeout: 10), "Tab bar should appear on seeded launch")
-        for label in ["Home", "Track", "Nutrition", "Insights", "Profile"] {
-            XCTAssertTrue(tabBar.buttons[label].exists, "Missing tab: \(label)")
+        // Custom six-icon bottom bar (all tabs visible, no "More" overflow).
+        XCTAssertTrue(app.buttons["Home"].waitForExistence(timeout: 10), "Tab bar should appear on seeded launch")
+        for label in ["Home", "Track", "Nutrition", "Insights", "Learn", "Profile"] {
+            XCTAssertTrue(app.buttons[label].exists, "Missing tab: \(label)")
         }
+    }
+
+    func testLearnTabShowsArticles() {
+        let app = launchSeeded(tab: 4)   // Learn
+        XCTAssertTrue(app.staticTexts["Your first week with Genesyx"].waitForExistence(timeout: 10),
+                      "Learn should show the featured article")
     }
 
     func testHomeShowsLogToday() {
@@ -33,11 +40,10 @@ final class GenesyxUITests: XCTestCase {
 
     func testTabNavigation() {
         let app = launchSeeded(tab: 0)
-        let tabBar = app.tabBars.firstMatch
-        XCTAssertTrue(tabBar.waitForExistence(timeout: 10))
-        for label in ["Track", "Nutrition", "Insights", "Profile", "Home"] {
-            tabBar.buttons[label].tap()
-            XCTAssertTrue(tabBar.buttons[label].isSelected || tabBar.buttons[label].exists, "Should switch to \(label)")
+        XCTAssertTrue(app.buttons["Home"].waitForExistence(timeout: 10))
+        for label in ["Track", "Nutrition", "Insights", "Learn", "Profile", "Home"] {
+            app.buttons[label].tap()
+            XCTAssertTrue(app.buttons[label].exists, "Should switch to \(label)")
         }
     }
 
@@ -50,7 +56,7 @@ final class GenesyxUITests: XCTestCase {
     }
 
     func testProfileShowsAccountActions() {
-        let app = launchSeeded(tab: 4)   // Profile
+        let app = launchSeeded(tab: 5)   // Profile
         XCTAssertTrue(app.staticTexts["Edit name"].waitForExistence(timeout: 10), "Profile should show account rows")
         XCTAssertTrue(app.staticTexts["Delete account"].exists || app.buttons["Delete account"].exists,
                       "Profile should offer account deletion (App Store requirement)")
@@ -61,25 +67,24 @@ final class GenesyxUITests: XCTestCase {
     /// no production accounts. Server-side RLS isolation is proven separately by backend probes.
     func testSignOutClearsHealthDataLocally() {
         let app = launchSeeded(tab: 0)   // Home, with seeded cycle data
-        let tabBar = app.tabBars.firstMatch
-        XCTAssertTrue(tabBar.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["Home"].waitForExistence(timeout: 10))
 
         // Seeded cycle is present → the first-run setup prompt must NOT be showing yet.
         let setupPrompt = app.staticTexts["When did your last period start? We'll map your cycle from there."]
         XCTAssertFalse(setupPrompt.exists, "Seeded cycle should render, not the empty setup prompt")
 
         // Sign out from Profile.
-        tabBar.buttons["Profile"].tap()
+        app.buttons["Profile"].tap()
         let logout = app.buttons["Log out"]
         XCTAssertTrue(logout.waitForExistence(timeout: 5), "Signed-in Profile should offer Log out")
         logout.tap()
 
         // Home now shows the empty setup prompt (cycle wiped, no relaunch).
-        tabBar.buttons["Home"].tap()
+        app.buttons["Home"].tap()
         XCTAssertTrue(setupPrompt.waitForExistence(timeout: 5), "After sign-out, cycle data must be cleared")
 
         // Insights pH is empty too.
-        tabBar.buttons["Insights"].tap()
+        app.buttons["Insights"].tap()
         XCTAssertTrue(app.staticTexts["No pH readings yet. Log your first one on Track or Nutrition."].waitForExistence(timeout: 5),
                       "After sign-out, pH readings must be cleared")
     }
