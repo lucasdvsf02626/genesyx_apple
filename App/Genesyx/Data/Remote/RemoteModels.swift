@@ -41,8 +41,12 @@ struct CycleSettingsRow: Codable {
     }
 }
 
-/// `updated_at` is authored by the client, not by a server trigger: it is what decides the winner
-/// when two devices have edited the same reading.
+/// The client sends `updated_at`, but the live table has a `trg_ph_readings_updated_at` trigger
+/// that stamps `now()` on update — so the SERVER's clock decides it, and two devices that both
+/// pushed resolve last-push-wins rather than last-edit-wins. That is fine: the rule that actually
+/// protects her data — an unsynced local edit always beats the server copy — lives in
+/// `PhSync.merge` on the device and is unaffected, and an online edit pushes immediately, so
+/// edit-time and push-time are the same moment in every case except a same-reading race.
 ///
 /// The tombstone is the table's existing `deleted_at` timestamp — null means alive. The app models
 /// it as a plain `deleted` flag (`PhRecord`), and the mapping happens here; there is no separate

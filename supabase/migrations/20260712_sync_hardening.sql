@@ -32,13 +32,16 @@ create index if not exists ph_readings_user_recorded_idx
 -- Server-authoritative for profiles / cycle_settings / daily_logs: the client does no cross-device
 -- merge on those, so a trigger owns the column.
 --
--- ph_readings is deliberately EXCLUDED. It is the one table with conflict resolution, and the
--- CLIENT authors updated_at (last edit wins; an unpushed local edit always wins — see
--- PhSync.merge). A trigger stamping now() on every push would overwrite the client's ordering and
--- the merge would start losing edits.
+-- ph_readings is EXCLUDED here because the live table already has its own
+-- `trg_ph_readings_updated_at` trigger (verified 2026-07-12) — adding a second would be pointless.
 --
--- ⚠️ CHECK FIRST — if a bump trigger already exists on ph_readings, it must be DROPPED, or pH
--- last-write-wins will misbehave across devices. Run the verification query at the bottom.
+-- Consequence, recorded deliberately: the server's clock owns ph_readings.updated_at, so two
+-- devices that have both pushed resolve last-push-wins rather than last-edit-wins. We are keeping
+-- it. The rule that actually protects her data — an unsynced local edit always beats the server
+-- copy — lives in PhSync.merge on the device and does not depend on this column, and an online
+-- edit pushes immediately, so the two clocks only diverge in a same-reading race between two
+-- online devices. Dropping the trigger would restore last-edit-wins, but other clients may rely on
+-- the column being maintained server-side; not worth breaking them for that corner.
 
 create or replace function public.bump_updated_at()
 returns trigger language plpgsql as $$
