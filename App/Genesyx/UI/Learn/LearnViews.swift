@@ -7,6 +7,8 @@ import UIKit
 @MainActor
 final class TabRouter: ObservableObject {
     @Published var selection: Int
+    /// Set by a Learn notification tap; consumed by `LearnLandingView`, which pushes the article.
+    @Published var pendingLearnSlug: String?
     init(selection: Int = 0) { self.selection = selection }
 }
 
@@ -48,6 +50,7 @@ struct LearnHero: View {
 // MARK: - Learn landing (tab root)
 
 struct LearnLandingView: View {
+    @EnvironmentObject private var router: TabRouter
     @AppStorage("learn_intro_seen") private var introSeen = false
     @State private var path: [String] = []
     @State private var showSearch = false
@@ -94,6 +97,11 @@ struct LearnLandingView: View {
                     showSearch = false
                     path.append(slug)
                 }
+            }
+            .onChange(of: router.pendingLearnSlug) { slug in
+                guard let slug else { return }
+                path.append(slug)
+                router.pendingLearnSlug = nil
             }
         }
     }

@@ -27,7 +27,7 @@ final class AppContainer: ObservableObject {
         self.cycle = CycleRepository(store: store, backend: backend?.cycle)
         self.dailyLog = DailyLogRepository(store: store, backend: backend?.dailyLog)
         self.ph = PhRepository(store: store, backend: backend?.ph)
-        self.prefs = PreferencesRepository(store: store)
+        self.prefs = PreferencesRepository(store: store, backend: backend?.profile)
         self.session = SessionRepository(auth: backend?.auth)
         self.partner = PartnerRepository(backend: backend?.partner)
 
@@ -35,6 +35,10 @@ final class AppContainer: ObservableObject {
         // rehydrate from the backend on sign-in. Weak self avoids a retain cycle (container owns session).
         session.onClearLocalState = { [weak self] in self?.clearLocalState() }
         session.onHydrate = { [weak self] in await self?.hydrate() }
+        session.onDisplayNameChanged = { name in
+            guard let profile = backend?.profile else { return }
+            Task { try? await profile.upsert(displayName: name) }
+        }
 
         // Online-first hydration when a backend is present (no-op when local-only).
         if backend != nil {
@@ -42,12 +46,25 @@ final class AppContainer: ObservableObject {
         }
     }
 
-    /// Pull each repository's latest state from the backend. No-op per-repo when local-only.
+    /// Sync each repository with the backend, cheapest table first so a slow one never holds up
+    /// the rest: profile → cycle → daily logs → pH. Each one pushes what it still owes the server
+    /// before pulling, so nothing on the device is overwritten by a staler copy in the cloud.
+    /// No-op per-repo when local-only.
     func hydrate() async {
+        await prefs.refresh()
         await cycle.refresh()
-        await ph.refresh()
         await dailyLog.refresh()
+        await ph.refresh()
         await partner.refresh()
+    }
+
+    /// Retry everything a failed push left owed to the server. Called when the app is foregrounded
+    /// — the moment the network is most likely back.
+    func drainPending() async {
+        await prefs.drainPending()
+        await cycle.drainPending()
+        await dailyLog.drainPending()
+        await ph.drainPending()
     }
 
     /// Wipe on-device health data (cycle settings, pH readings, daily logs) from memory and the

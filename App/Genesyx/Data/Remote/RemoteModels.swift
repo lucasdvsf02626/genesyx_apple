@@ -41,12 +41,21 @@ struct CycleSettingsRow: Codable {
     }
 }
 
+/// `updated_at` is authored by the client, not by a server trigger: it is what decides the winner
+/// when two devices have edited the same reading.
+///
+/// The tombstone is the table's existing `deleted_at` timestamp — null means alive. The app models
+/// it as a plain `deleted` flag (`PhRecord`), and the mapping happens here; there is no separate
+/// `deleted` boolean column, and no `pending_sync` column either (that is local bookkeeping the
+/// server has no use for).
 struct PhReadingRow: Codable {
     var id: String
     var userId: String
     var phValue: Double
     var recordedAt: String
     var notes: String?
+    var updatedAt: String
+    var deletedAt: String?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -54,16 +63,29 @@ struct PhReadingRow: Codable {
         case phValue = "ph_value"
         case recordedAt = "recorded_at"
         case notes
+        case updatedAt = "updated_at"
+        case deletedAt = "deleted_at"
     }
 
-    var domain: PhReading { PhReading(id: id, phValue: phValue, recordedAt: parseISO(recordedAt), notes: notes) }
+    var domain: PhRecord {
+        PhRecord(
+            reading: PhReading(id: id, phValue: phValue, recordedAt: parseISO(recordedAt), notes: notes),
+            updatedAt: parseISO(updatedAt),
+            pendingSync: false,
+            deleted: deletedAt != nil
+        )
+    }
 
-    init(userId: String, reading: PhReading) {
-        self.id = reading.id
+    init(userId: String, record: PhRecord) {
+        self.id = record.reading.id
         self.userId = userId
-        self.phValue = reading.phValue
-        self.recordedAt = isoFormatter.string(from: reading.recordedAt)
-        self.notes = reading.notes
+        self.phValue = record.reading.phValue
+        self.recordedAt = isoFormatter.string(from: record.reading.recordedAt)
+        self.notes = record.reading.notes
+        self.updatedAt = isoFormatter.string(from: record.updatedAt)
+        // The deletion's timestamp is the edit that made it — so a later edit on another device
+        // still wins the merge.
+        self.deletedAt = record.deleted ? isoFormatter.string(from: record.updatedAt) : nil
     }
 }
 
@@ -138,5 +160,39 @@ struct ProfileRow: Codable {
         case id
         case displayName = "display_name"
         case partnerId = "partner_id"
+    }
+}
+
+/// Just the preference columns of `profiles` — kept separate from `ProfileRow` so writing prefs
+/// can't touch `display_name` or `partner_id`.
+///
+/// The theme column is the table's existing `theme` (NOT `theme_mode`): it already ships, other
+/// clients may read it, and renaming a live column to match a doc would be gratuitous.
+struct ProfilePrefsRow: Codable {
+    var id: String
+    var focusMode: String
+    var theme: String
+    var pushEnabled: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case focusMode = "focus_mode"
+        case theme
+        case pushEnabled = "push_enabled"
+    }
+
+    var domain: ProfilePrefs {
+        ProfilePrefs(
+            focusMode: FocusMode(rawValue: focusMode) ?? .prep,
+            themeMode: ThemeMode(rawValue: theme) ?? .system,
+            pushEnabled: pushEnabled
+        )
+    }
+
+    init(id: String, prefs: ProfilePrefs) {
+        self.id = id
+        self.focusMode = prefs.focusMode.rawValue
+        self.theme = prefs.themeMode.rawValue
+        self.pushEnabled = prefs.pushEnabled
     }
 }
