@@ -1,5 +1,8 @@
 import SwiftUI
 import GenesyxCore
+#if canImport(UIKit)
+import UIKit
+#endif
 
 /// Profile — account, focus toggle, partner linking, preferences (theme/push), and about.
 /// Ported from the Android `ProfileScreen` + `ProfileViewModel`.
@@ -8,6 +11,7 @@ struct ProfileView: View {
     @EnvironmentObject private var session: SessionRepository
     @EnvironmentObject private var prefs: PreferencesRepository
     @EnvironmentObject private var partner: PartnerRepository
+    @EnvironmentObject private var notifications: NotificationService
 
     @State private var nameOpen = false
     @State private var detail: String?
@@ -15,6 +19,7 @@ struct ProfileView: View {
     @State private var deleteError: String?
     @State private var showAuth = false
     @State private var showPregnancy = false
+    @State private var showReminderPrePrompt = false
 
     private var name: String { session.displayName ?? "Guest" }
 
@@ -36,6 +41,7 @@ struct ProfileView: View {
                     PartnerSectionView(showAuth: $showAuth)
                     accountGroup
                     trackingGroup
+                    remindersSection
                     themeSection
                     aboutGroup
                     signOutButton
@@ -71,6 +77,48 @@ struct ProfileView: View {
         } message: {
             Text(deleteError ?? "")
         }
+        .alert("Turn on weekly reminders?", isPresented: $showReminderPrePrompt) {
+            Button("Not now", role: .cancel) {}
+            Button("Turn on") { notifications.setEnabled(true) }
+        } message: {
+            Text("A few gentle nudges each week — log your pH, check your phase, and read something short. No spam, and you can turn them off any time.")
+        }
+    }
+
+    // MARK: Reminders (§4 — gated behind the push feature flag)
+
+    @ViewBuilder
+    private var remindersSection: some View {
+        if FeatureFlags.pushNotifications {
+            VStack(alignment: .leading, spacing: 8) {
+                groupLabel("Reminders")
+                cardGroup {
+                    switchRow("Weekly reminders", isOn: Binding(
+                        get: { prefs.pushEnabled },
+                        set: { on in
+                            if on {
+                                // Pre-prompt first; the OS prompt only follows a "Turn on" tap (§4).
+                                showReminderPrePrompt = true
+                            } else {
+                                notifications.setEnabled(false)
+                            }
+                        }
+                    ))
+                    if notifications.isSystemDenied && prefs.pushEnabled {
+                        divider
+                        rowItem("Enable in Settings", action: openSystemSettings)
+                    }
+                }
+            }
+        }
+    }
+
+    private func openSystemSettings() {
+        #if canImport(UIKit)
+        if let url = URL(string: UIApplication.openSettingsURLString) {
+            UIApplication.shared.open(url)
+        }
+        #endif
     }
 
     // MARK: User card

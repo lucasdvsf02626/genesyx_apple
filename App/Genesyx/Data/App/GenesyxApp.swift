@@ -4,6 +4,7 @@ import SwiftUI
 struct GenesyxApp: App {
 
     @StateObject private var container: AppContainer
+    @Environment(\.scenePhase) private var scenePhase
 
     init() {
         #if DEBUG
@@ -25,7 +26,14 @@ struct GenesyxApp: App {
                 .environmentObject(container.prefs)
                 .environmentObject(container.session)
                 .environmentObject(container.partner)
+                .environmentObject(container.notifications)
                 .tint(GenesyxColor.primary)
+                .task { await container.notifications.refresh() }
+                .onChange(of: scenePhase) { phase in
+                    if phase == .active {
+                        Task { await container.notifications.refresh() }
+                    }
+                }
         }
     }
 }

@@ -7,6 +7,9 @@ import UIKit
 @MainActor
 final class TabRouter: ObservableObject {
     @Published var selection: Int
+    /// A Learn article slug to deep-link into (set by a notification tap); the Learn
+    /// landing view consumes and clears it.
+    @Published var pendingLearnSlug: String?
     init(selection: Int = 0) { self.selection = selection }
 }
 
@@ -48,6 +51,7 @@ struct LearnHero: View {
 // MARK: - Learn landing (tab root)
 
 struct LearnLandingView: View {
+    @EnvironmentObject private var router: TabRouter
     @AppStorage("learn_intro_seen") private var introSeen = false
     @State private var path: [String] = []
     @State private var showSearch = false
@@ -94,6 +98,12 @@ struct LearnLandingView: View {
                     showSearch = false
                     path.append(slug)
                 }
+            }
+            // Deep-link from a Learn notification tap: open the article, then clear.
+            .onChange(of: router.pendingLearnSlug) { slug in
+                guard let slug else { return }
+                path.append(slug)
+                router.pendingLearnSlug = nil
             }
         }
     }

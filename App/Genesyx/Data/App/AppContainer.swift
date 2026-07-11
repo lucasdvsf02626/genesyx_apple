@@ -18,6 +18,7 @@ final class AppContainer: ObservableObject {
     let prefs: PreferencesRepository
     let session: SessionRepository
     let partner: PartnerRepository
+    let notifications: NotificationService
 
     /// Designated init. Allows an injected store (used by previews/tests for isolation).
     init(store: LocalStore, backend: GenesyxBackend?) {
@@ -30,6 +31,7 @@ final class AppContainer: ObservableObject {
         self.prefs = PreferencesRepository(store: store)
         self.session = SessionRepository(auth: backend?.auth)
         self.partner = PartnerRepository(backend: backend?.partner)
+        self.notifications = NotificationService(prefs: prefs, dailyLog: dailyLog, ph: ph, cycle: cycle)
 
         // Auth-transition wiring: wipe on-device health data on sign-out / account deletion, and
         // rehydrate from the backend on sign-in. Weak self avoids a retain cycle (container owns session).
