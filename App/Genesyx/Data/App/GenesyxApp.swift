@@ -4,6 +4,7 @@ import SwiftUI
 struct GenesyxApp: App {
 
     @StateObject private var container: AppContainer
+    @Environment(\.scenePhase) private var scenePhase
 
     init() {
         #if DEBUG
@@ -26,6 +27,12 @@ struct GenesyxApp: App {
                 .environmentObject(container.session)
                 .environmentObject(container.partner)
                 .tint(GenesyxColor.primary)
+                // Anything a failed push left owed to the server goes up when we're foregrounded —
+                // the point at which the network is most likely back.
+                .onChange(of: scenePhase) { phase in
+                    guard phase == .active else { return }
+                    Task { await container.drainPending() }
+                }
         }
     }
 }

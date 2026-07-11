@@ -41,12 +41,17 @@ struct CycleSettingsRow: Codable {
     }
 }
 
+/// `updated_at` is authored by the client, not by a server trigger: it is what decides the winner
+/// when two devices have edited the same reading. `deleted` is the tombstone. `pending_sync` is
+/// deliberately absent — that is local bookkeeping the server has no use for.
 struct PhReadingRow: Codable {
     var id: String
     var userId: String
     var phValue: Double
     var recordedAt: String
     var notes: String?
+    var updatedAt: String
+    var deleted: Bool
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -54,16 +59,27 @@ struct PhReadingRow: Codable {
         case phValue = "ph_value"
         case recordedAt = "recorded_at"
         case notes
+        case updatedAt = "updated_at"
+        case deleted
     }
 
-    var domain: PhReading { PhReading(id: id, phValue: phValue, recordedAt: parseISO(recordedAt), notes: notes) }
+    var domain: PhRecord {
+        PhRecord(
+            reading: PhReading(id: id, phValue: phValue, recordedAt: parseISO(recordedAt), notes: notes),
+            updatedAt: parseISO(updatedAt),
+            pendingSync: false,
+            deleted: deleted
+        )
+    }
 
-    init(userId: String, reading: PhReading) {
-        self.id = reading.id
+    init(userId: String, record: PhRecord) {
+        self.id = record.reading.id
         self.userId = userId
-        self.phValue = reading.phValue
-        self.recordedAt = isoFormatter.string(from: reading.recordedAt)
-        self.notes = reading.notes
+        self.phValue = record.reading.phValue
+        self.recordedAt = isoFormatter.string(from: record.reading.recordedAt)
+        self.notes = record.reading.notes
+        self.updatedAt = isoFormatter.string(from: record.updatedAt)
+        self.deleted = record.deleted
     }
 }
 
@@ -138,5 +154,36 @@ struct ProfileRow: Codable {
         case id
         case displayName = "display_name"
         case partnerId = "partner_id"
+    }
+}
+
+/// Just the preference columns of `profiles` — kept separate from `ProfileRow` so writing prefs
+/// can't touch `display_name` or `partner_id`.
+struct ProfilePrefsRow: Codable {
+    var id: String
+    var focusMode: String
+    var themeMode: String
+    var pushEnabled: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case focusMode = "focus_mode"
+        case themeMode = "theme_mode"
+        case pushEnabled = "push_enabled"
+    }
+
+    var domain: ProfilePrefs {
+        ProfilePrefs(
+            focusMode: FocusMode(rawValue: focusMode) ?? .prep,
+            themeMode: ThemeMode(rawValue: themeMode) ?? .system,
+            pushEnabled: pushEnabled
+        )
+    }
+
+    init(id: String, prefs: ProfilePrefs) {
+        self.id = id
+        self.focusMode = prefs.focusMode.rawValue
+        self.themeMode = prefs.themeMode.rawValue
+        self.pushEnabled = prefs.pushEnabled
     }
 }

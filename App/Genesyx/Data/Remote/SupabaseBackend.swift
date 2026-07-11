@@ -15,6 +15,7 @@ final class SupabaseBackend: GenesyxBackend {
     lazy var cycle: CycleBackend = SupabaseCycle(client: client, auth: auth)
     lazy var ph: PhBackend = SupabasePh(client: client, auth: auth)
     lazy var dailyLog: DailyLogBackend = SupabaseDailyLog(client: client, auth: auth)
+    lazy var profile: ProfileBackend = SupabaseProfile(client: client, auth: auth)
     lazy var partner: PartnerBackend = SupabasePartner(client: client, auth: auth)
 
     init?() {
@@ -67,7 +68,9 @@ private struct SupabasePh: PhBackend {
     let client: SupabaseClient
     let auth: AuthBackend
 
-    func list(sinceDays: Int?) async throws -> [PhReading] {
+    /// Tombstones are included — a row deleted on another device has to arrive as a deletion, not
+    /// as an absence (an absence is indistinguishable from "never pushed" and would resurrect it).
+    func list(sinceDays: Int?) async throws -> [PhRecord] {
         let uid = try requireUID(auth)
         var query = client.from("ph_readings").select().eq("user_id", value: uid)
         if let days = sinceDays {
@@ -78,19 +81,10 @@ private struct SupabasePh: PhBackend {
         return rows.map(\.domain)
     }
 
-    func create(_ reading: PhReading) async throws {
+    /// Creates, edits and deletes all land here — the row's `deleted` flag carries the tombstone.
+    func upsert(_ record: PhRecord) async throws {
         let uid = try requireUID(auth)
-        try await client.from("ph_readings").insert(PhReadingRow(userId: uid, reading: reading)).execute()
-    }
-
-    func update(_ reading: PhReading) async throws {
-        let uid = try requireUID(auth)
-        try await client.from("ph_readings").update(PhReadingRow(userId: uid, reading: reading)).eq("id", value: reading.id).execute()
-    }
-
-    func delete(id: String) async throws {
-        _ = try requireUID(auth)
-        try await client.from("ph_readings").delete().eq("id", value: id).execute()
+        try await client.from("ph_readings").upsert(PhReadingRow(userId: uid, record: record)).execute()
     }
 }
 
@@ -105,9 +99,43 @@ private struct SupabaseDailyLog: DailyLogBackend {
         return rows.first?.domain
     }
 
+    func list() async throws -> [CalendarDate: DailyLog] {
+        let uid = try requireUID(auth)
+        let rows: [DailyLogRow] = try await client.from("daily_logs")
+            .select().eq("user_id", value: uid).execute().value
+        return rows.reduce(into: [:]) { map, row in
+            if let date = CalendarDate(iso: row.date) { map[date] = row.domain }
+        }
+    }
+
     func upsert(_ log: DailyLog, on date: CalendarDate) async throws {
         let uid = try requireUID(auth)
         try await client.from("daily_logs").upsert(DailyLogRow(userId: uid, date: date, log: log)).execute()
+    }
+}
+
+/// Prefs and display name are written as separate partial upserts: `profiles` also holds
+/// `partner_id`, and a whole-row write would clobber whatever this device doesn't know about.
+private struct SupabaseProfile: ProfileBackend {
+    let client: SupabaseClient
+    let auth: AuthBackend
+
+    func fetch() async throws -> ProfilePrefs? {
+        let uid = try requireUID(auth)
+        let rows: [ProfilePrefsRow] = try await client.from("profiles")
+            .select("id,focus_mode,theme_mode,push_enabled").eq("id", value: uid).limit(1).execute().value
+        return rows.first?.domain
+    }
+
+    func upsert(_ prefs: ProfilePrefs) async throws {
+        let uid = try requireUID(auth)
+        try await client.from("profiles").upsert(ProfilePrefsRow(id: uid, prefs: prefs)).execute()
+    }
+
+    func upsert(displayName: String) async throws {
+        let uid = try requireUID(auth)
+        try await client.from("profiles")
+            .upsert(["id": uid, "display_name": displayName]).execute()
     }
 }
 

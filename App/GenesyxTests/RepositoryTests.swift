@@ -101,6 +101,72 @@ final class RepositoryTests: XCTestCase {
         XCTAssertTrue(PhRepository(store: store).readings.isEmpty)
     }
 
+    // MARK: - pH sync (the device is the source of truth; the cloud is a mirror)
+
+    /// The regression this suite exists for: `refresh()` used to assign the remote snapshot over
+    /// the local one, so hydrating a signed-in user against an empty cloud table wiped her pH
+    /// history — and persisted the wipe. It must merge, keep the local rows, and push them up.
+    func testEmptyCloudDoesNotWipeLocalHistoryAndPushesItUp() async {
+        let backend = FakePhBackend()                       // the cloud has never seen her
+        let repo = PhRepository(store: makeStore(), backend: backend)
+        repo.create(PhReading(id: "a", phValue: 6.5, recordedAt: Date()))
+
+        await repo.refresh()
+
+        XCTAssertEqual(repo.readings.map(\.id), ["a"], "an empty cloud must not wipe the device")
+        XCTAssertEqual(backend.remote.map(\.id), ["a"], "the local-only reading is carried up")
+    }
+
+    /// A v1.0 install has readings with no sync bookkeeping. They must decode as "never pushed"
+    /// so the first sign-in carries the existing history to the cloud (the one-time migration).
+    func testLegacyReadingsAreCarriedUpOnFirstSync() async {
+        let store = makeStore()
+        store.save([PhReadingDTO(id: "old", phValue: 6.2, recordedAt: Date(), notes: nil)], forKey: "ph_readings")
+        let backend = FakePhBackend()
+
+        await PhRepository(store: store, backend: backend).refresh()
+
+        XCTAssertEqual(backend.remote.map(\.id), ["old"])
+    }
+
+    /// Offline: the local save still succeeds and the push is queued, not dropped. It lands when
+    /// the network comes back (app foreground → `drainPending`).
+    func testFailedPushStaysQueuedAndLandsWhenBackOnline() async {
+        let backend = FakePhBackend()
+        backend.online = false
+        let repo = PhRepository(store: makeStore(), backend: backend)
+
+        repo.create(PhReading(id: "a", phValue: 6.5, recordedAt: Date()))
+        await repo.drainPending()
+
+        XCTAssertEqual(repo.readings.map(\.id), ["a"], "an offline save is never dropped")
+        XCTAssertTrue(backend.remote.isEmpty)
+
+        backend.online = true
+        await repo.drainPending()
+
+        XCTAssertEqual(backend.remote.map(\.id), ["a"])
+    }
+
+    /// A delete is a tombstone, not a removal — otherwise the next pull would resurrect it (and
+    /// other devices would never learn about the deletion).
+    func testDeleteIsATombstoneAndSurvivesAPull() async {
+        let backend = FakePhBackend()
+        let repo = PhRepository(store: makeStore(), backend: backend)
+        repo.create(PhReading(id: "a", phValue: 6.5, recordedAt: Date()))
+        await repo.drainPending()
+
+        repo.delete(id: "a")
+        await repo.drainPending()
+
+        XCTAssertTrue(repo.readings.isEmpty)
+        XCTAssertEqual(backend.remote.first?.deleted, true, "the server gets a tombstone, not a delete")
+
+        await repo.refresh()
+
+        XCTAssertTrue(repo.readings.isEmpty, "a pull must not resurrect a deleted reading")
+    }
+
     /// Account deletion (success path) must wipe the same on-device health data.
     func testDeleteAccountClearsLocalHealthData() async throws {
         let store = makeStore()
@@ -117,5 +183,23 @@ final class RepositoryTests: XCTestCase {
         XCTAssertNil(store.load(CycleSettings.self, forKey: "cycle_settings"))
         XCTAssertNil(store.load([PhReadingDTO].self, forKey: "ph_readings"))
         XCTAssertNil(store.load([String: DailyLogDTO].self, forKey: "daily_logs"))
+    }
+}
+
+/// In-memory stand-in for the pH table. `online = false` makes every call fail the way an offline
+/// device does, so the queue's behaviour is testable without a network.
+@MainActor
+private final class FakePhBackend: PhBackend {
+    var remote: [PhRecord] = []
+    var online = true
+
+    func list(sinceDays: Int?) async throws -> [PhRecord] {
+        guard online else { throw RemoteError.notConfigured }
+        return remote
+    }
+
+    func upsert(_ record: PhRecord) async throws {
+        guard online else { throw RemoteError.notConfigured }
+        remote = remote.filter { $0.id != record.id } + [record.marking(pendingSync: false)]
     }
 }

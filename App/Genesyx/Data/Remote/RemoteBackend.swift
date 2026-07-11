@@ -44,16 +44,33 @@ protocol CycleBackend {
     func upsert(_ settings: CycleSettings) async throws
 }
 
+/// One write path: creates, edits and deletes are all an upsert of a `PhRecord` (a delete is a
+/// record with `deleted == true`). `list` returns tombstones too, so deletions propagate.
 protocol PhBackend {
-    func list(sinceDays: Int?) async throws -> [PhReading]
-    func create(_ reading: PhReading) async throws
-    func update(_ reading: PhReading) async throws
-    func delete(id: String) async throws
+    func list(sinceDays: Int?) async throws -> [PhRecord]
+    func upsert(_ record: PhRecord) async throws
 }
 
 protocol DailyLogBackend {
     func fetch(date: CalendarDate) async throws -> DailyLog?
+    /// Every logged day. Needed on sign-in: a device that only ever pulled "today" could never
+    /// rebuild a history after a reinstall.
+    func list() async throws -> [CalendarDate: DailyLog]
     func upsert(_ log: DailyLog, on date: CalendarDate) async throws
+}
+
+/// The user's own row in `profiles`. Written column-by-column so a partial write (prefs only)
+/// never nulls out a column it doesn't know about (e.g. `partner_id`).
+protocol ProfileBackend {
+    func fetch() async throws -> ProfilePrefs?
+    func upsert(_ prefs: ProfilePrefs) async throws
+    func upsert(displayName: String) async throws
+}
+
+struct ProfilePrefs: Equatable {
+    var focusMode: FocusMode
+    var themeMode: ThemeMode
+    var pushEnabled: Bool
 }
 
 protocol PartnerBackend {
@@ -71,5 +88,6 @@ protocol GenesyxBackend {
     var cycle: CycleBackend { get }
     var ph: PhBackend { get }
     var dailyLog: DailyLogBackend { get }
+    var profile: ProfileBackend { get }
     var partner: PartnerBackend { get }
 }
