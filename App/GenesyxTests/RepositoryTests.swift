@@ -167,6 +167,90 @@ final class RepositoryTests: XCTestCase {
         XCTAssertTrue(repo.readings.isEmpty, "a pull must not resurrect a deleted reading")
     }
 
+    // MARK: - Cycle, daily-log and profile sync (same contract: a stale cloud never wins)
+
+    func testCycleOfflineEditIsNotOverwrittenByAStalePull() async {
+        let backend = FakeCycleBackend()
+        backend.remote = CycleSettings(lastPeriodDate: CalendarDate(2026, 1, 1), cycleLength: 28, periodLength: 5)
+        backend.online = false
+        let repo = CycleRepository(store: makeStore(), backend: backend)
+
+        let edited = CycleSettings(lastPeriodDate: CalendarDate(2026, 6, 1), cycleLength: 30, periodLength: 4)
+        repo.upsert(edited)              // offline: the push fails and stays owed
+        await repo.refresh()
+
+        XCTAssertEqual(repo.settings, edited, "a stale cloud copy must not undo an offline edit")
+
+        backend.online = true
+        await repo.refresh()
+
+        XCTAssertEqual(backend.remote, edited, "the owed write lands once we're back online")
+        XCTAssertEqual(repo.settings, edited)
+    }
+
+    func testDailyLogOfflineEditIsNotOverwrittenByAStalePull() async {
+        let backend = FakeDailyLogBackend()
+        let today = CalendarDate.today()
+        backend.remote[today] = DailyLog(waterMl: 250)      // stale cloud copy
+        backend.online = false
+        let repo = DailyLogRepository(store: makeStore(), backend: backend)
+
+        repo.setWater(1_500)
+        await repo.refresh()
+
+        XCTAssertEqual(repo.waterMl(on: today), 1_500, "a stale cloud copy must not undo an offline log")
+
+        backend.online = true
+        await repo.refresh()
+
+        XCTAssertEqual(backend.remote[today]?.waterMl, 1_500)
+    }
+
+    /// A pull still brings down the days this device has never seen — that's the point of it.
+    func testDailyLogPullAdoptsCloudDaysTheDeviceDoesNotHave() async {
+        let backend = FakeDailyLogBackend()
+        let yesterday = CalendarDate.today().minusDays(1)
+        backend.remote[yesterday] = DailyLog(waterMl: 900)
+        let repo = DailyLogRepository(store: makeStore(), backend: backend)
+
+        await repo.refresh()
+
+        XCTAssertEqual(repo.waterMl(on: yesterday), 900)
+    }
+
+    /// A v1.0 install has a history but has never pushed anything: first sync carries it up.
+    func testDailyLogHistoryIsCarriedUpOnFirstSync() async {
+        let store = makeStore()
+        DailyLogRepository(store: store).setWater(800)      // local-only, as v1.0 was
+        let backend = FakeDailyLogBackend()
+
+        await DailyLogRepository(store: store, backend: backend).refresh()
+
+        XCTAssertEqual(backend.remote[.today()]?.waterMl, 800)
+    }
+
+    func testProfileIsSeededFromTheDeviceWhenTheCloudHasNone() async {
+        let backend = FakeProfileBackend()                 // no row up there
+        let repo = PreferencesRepository(store: makeStore(), backend: backend)
+
+        repo.focusMode = .pregnancy
+        await repo.refresh()
+
+        XCTAssertEqual(backend.remote?.focusMode, .pregnancy)
+    }
+
+    func testProfilePullAppliesRemotePrefs() async {
+        let backend = FakeProfileBackend()
+        backend.remote = ProfilePrefs(focusMode: .pregnancy, themeMode: .dark, pushEnabled: false)
+        let repo = PreferencesRepository(store: makeStore(), backend: backend)
+
+        await repo.refresh()
+
+        XCTAssertEqual(repo.themeMode, .dark)
+        XCTAssertEqual(repo.focusMode, .pregnancy)
+        XCTAssertFalse(repo.pushEnabled)
+    }
+
     /// Account deletion (success path) must wipe the same on-device health data.
     func testDeleteAccountClearsLocalHealthData() async throws {
         let store = makeStore()
@@ -186,8 +270,9 @@ final class RepositoryTests: XCTestCase {
     }
 }
 
-/// In-memory stand-in for the pH table. `online = false` makes every call fail the way an offline
-/// device does, so the queue's behaviour is testable without a network.
+// In-memory stand-ins for the four synced tables. `online = false` makes every call fail the way
+// an offline device does, so the queue behaviour is testable without a network.
+
 @MainActor
 private final class FakePhBackend: PhBackend {
     var remote: [PhRecord] = []
@@ -201,5 +286,64 @@ private final class FakePhBackend: PhBackend {
     func upsert(_ record: PhRecord) async throws {
         guard online else { throw RemoteError.notConfigured }
         remote = remote.filter { $0.id != record.id } + [record.marking(pendingSync: false)]
+    }
+}
+
+@MainActor
+private final class FakeCycleBackend: CycleBackend {
+    var remote: CycleSettings?
+    var online = true
+
+    func fetch() async throws -> CycleSettings? {
+        guard online else { throw RemoteError.notConfigured }
+        return remote
+    }
+
+    func upsert(_ settings: CycleSettings) async throws {
+        guard online else { throw RemoteError.notConfigured }
+        remote = settings
+    }
+}
+
+@MainActor
+private final class FakeDailyLogBackend: DailyLogBackend {
+    var remote: [CalendarDate: DailyLog] = [:]
+    var online = true
+
+    func fetch(date: CalendarDate) async throws -> DailyLog? {
+        guard online else { throw RemoteError.notConfigured }
+        return remote[date]
+    }
+
+    func list() async throws -> [CalendarDate: DailyLog] {
+        guard online else { throw RemoteError.notConfigured }
+        return remote
+    }
+
+    func upsert(_ log: DailyLog, on date: CalendarDate) async throws {
+        guard online else { throw RemoteError.notConfigured }
+        remote[date] = log
+    }
+}
+
+@MainActor
+private final class FakeProfileBackend: ProfileBackend {
+    var remote: ProfilePrefs?
+    var displayName: String?
+    var online = true
+
+    func fetch() async throws -> ProfilePrefs? {
+        guard online else { throw RemoteError.notConfigured }
+        return remote
+    }
+
+    func upsert(_ prefs: ProfilePrefs) async throws {
+        guard online else { throw RemoteError.notConfigured }
+        remote = prefs
+    }
+
+    func upsert(displayName: String) async throws {
+        guard online else { throw RemoteError.notConfigured }
+        self.displayName = displayName
     }
 }
