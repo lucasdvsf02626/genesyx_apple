@@ -49,6 +49,11 @@ targets:
       path: App/Genesyx/Info.plist
       properties:
         CFBundleDisplayName: Genesyx
+        # Driven by MARKETING_VERSION / CURRENT_PROJECT_VERSION below. Without these two lines
+        # xcodegen rewrites Info.plist with its defaults (1.0 / 1) on every regenerate, silently
+        # undoing the shipped build number.
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}
         # Supabase credentials (empty for local-only v1). Provide via Secrets.xcconfig or build
         # settings to activate the remote layer — see docs/SUPABASE.md.
