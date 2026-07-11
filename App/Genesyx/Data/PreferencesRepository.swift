@@ -29,6 +29,24 @@ final class PreferencesRepository: ObservableObject {
         didSet { store.setBool(pendingPush, forKey: pendingKey) }
     }
 
+    /// Streak milestones already celebrated, by `Milestone.flagKey`. Device-local: a celebration is
+    /// a moment, not a record, and re-celebrating on a second device would be noise.
+    private(set) var celebratedMilestones: Set<String> {
+        didSet { store.save(Array(celebratedMilestones), forKey: celebratedKey) }
+    }
+    private let celebratedKey = "celebrated_milestones"
+
+    func celebrate(_ flagKeys: [String]) {
+        guard !flagKeys.isEmpty else { return }
+        celebratedMilestones.formUnion(flagKeys)
+    }
+
+    /// Un-flag milestones whose streak has since lapsed, so re-achieving one celebrates again.
+    func clearCelebrations(_ flagKeys: Set<String>) {
+        guard !flagKeys.isEmpty else { return }
+        celebratedMilestones.subtract(flagKeys)
+    }
+
     init(store: LocalStore, backend: ProfileBackend? = nil) {
         self.store = store
         self.backend = backend
@@ -36,6 +54,7 @@ final class PreferencesRepository: ObservableObject {
         self.pushEnabled = store.bool(forKey: pushKey, default: true)
         self.focusMode = store.string(forKey: focusKey).flatMap(FocusMode.init(rawValue:)) ?? .prep
         self.pendingPush = store.bool(forKey: pendingKey, default: false)
+        self.celebratedMilestones = Set(store.load([String].self, forKey: celebratedKey) ?? [])
     }
 
     private var prefs: ProfilePrefs {

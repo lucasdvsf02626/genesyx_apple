@@ -8,6 +8,7 @@ struct ProfileView: View {
     @EnvironmentObject private var session: SessionRepository
     @EnvironmentObject private var prefs: PreferencesRepository
     @EnvironmentObject private var partner: PartnerRepository
+    @EnvironmentObject private var notifications: NotificationService
 
     @State private var nameOpen = false
     @State private var detail: String?
@@ -15,6 +16,7 @@ struct ProfileView: View {
     @State private var deleteError: String?
     @State private var showAuth = false
     @State private var showPregnancy = false
+    @State private var showReminderPrompt = false
 
     private var name: String { session.displayName ?? "Guest" }
 
@@ -36,6 +38,7 @@ struct ProfileView: View {
                     PartnerSectionView(showAuth: $showAuth)
                     accountGroup
                     trackingGroup
+                    remindersSection
                     themeSection
                     aboutGroup
                     signOutButton
@@ -47,6 +50,7 @@ struct ProfileView: View {
             .background(GenesyxColor.background)
             .navigationTitle("Profile")
         }
+        .sheet(isPresented: $showReminderPrompt) { reminderPromptSheet }
         .sheet(isPresented: $showAuth) { AuthView() }
         .sheet(isPresented: $showPregnancy) { PregnancyView() }
         .sheet(isPresented: $nameOpen) { EditNameSheet(initial: name) { session.updateDisplayName($0) } }
@@ -146,6 +150,63 @@ struct ProfileView: View {
                 rowItem("Tracking Preferences") { detail = "Tracking Preferences" }
             }
         }
+    }
+
+    /// Reminders. Turning this on opens a sheet that says what she'll get BEFORE iOS asks for
+    /// permission — the system dialog only appears once, so it should never be spent on a user who
+    /// doesn't yet know what she's agreeing to. Nothing is requested at launch.
+    private var remindersSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            groupLabel("Notifications")
+            cardGroup {
+                Toggle("Weekly reminders", isOn: Binding(
+                    get: { prefs.pushEnabled },
+                    set: { on in
+                        if on && notifications.authorizationStatus == .notDetermined {
+                            showReminderPrompt = true      // explain first, then ask
+                        } else {
+                            notifications.setEnabled(on)
+                        }
+                    }
+                ))
+                .tint(GenesyxColor.primary)
+                .foregroundStyle(GenesyxColor.foreground)
+                .padding(.horizontal, 14).padding(.vertical, 8)
+            }
+            if notifications.isSystemDenied && prefs.pushEnabled {
+                Button {
+                    #if canImport(UIKit)
+                    if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
+                    #endif
+                } label: {
+                    Text("Notifications are off for Genesyx — enable them in Settings")
+                        .font(.gxBodySmall).foregroundStyle(GenesyxColor.primary)
+                        .frame(maxWidth: .infinity, alignment: .leading).padding(.leading, 4)
+                }
+            }
+        }
+    }
+
+    private var reminderPromptSheet: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Gentle reminders").font(.gxCardHeading).foregroundStyle(GenesyxColor.foreground)
+            Text("A nudge on mornings you haven't logged water, a weekly pH reminder, your phase for the week, a nutrition check-in, and a Sunday read. Nothing in the evenings, and never a word about a streak you've missed.")
+                .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+            Text("You can turn these off any time.")
+                .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+            Spacer()
+            GxPrimaryButton(title: "Turn on reminders") {
+                showReminderPrompt = false
+                notifications.setEnabled(true)
+            }
+            Button("Not now") { showReminderPrompt = false }
+                .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+                .frame(maxWidth: .infinity)
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(GenesyxColor.background)
+        .presentationDetents([.height(320)])
     }
 
     private var themeSection: some View {

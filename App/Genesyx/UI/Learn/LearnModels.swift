@@ -6,7 +6,7 @@ enum FeatureFlags {
     static let phTracking = true
     static let adminClients = false
     static let partnerInvites = false
-    static let pushNotifications = false
+    static let pushNotifications = true
 }
 
 // MARK: - Learn content model (parity with Android LearnContent.kt)

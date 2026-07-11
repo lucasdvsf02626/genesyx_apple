@@ -4,16 +4,23 @@ import SwiftUI
 struct GenesyxApp: App {
 
     @StateObject private var container: AppContainer
+    @StateObject private var notifications: NotificationService
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
+        let resolved: AppContainer
         #if DEBUG
         if UserDefaults.standard.bool(forKey: "uiTestSeed") {
-            _container = StateObject(wrappedValue: AppContainer.uiTestSeeded())
-            return
+            resolved = AppContainer.uiTestSeeded()
+        } else {
+            resolved = AppContainer()
         }
+        #else
+        resolved = AppContainer()
         #endif
-        _container = StateObject(wrappedValue: AppContainer())
+        _container = StateObject(wrappedValue: resolved)
+        _notifications = StateObject(wrappedValue: NotificationService(
+            prefs: resolved.prefs, dailyLog: resolved.dailyLog, cycle: resolved.cycle, ph: resolved.ph))
     }
 
     var body: some Scene {
@@ -26,12 +33,18 @@ struct GenesyxApp: App {
                 .environmentObject(container.prefs)
                 .environmentObject(container.session)
                 .environmentObject(container.partner)
+                .environmentObject(notifications)
                 .tint(GenesyxColor.primary)
-                // Anything a failed push left owed to the server goes up when we're foregrounded —
-                // the point at which the network is most likely back.
+                .task { await notifications.reconcile() }
                 .onChange(of: scenePhase) { phase in
                     guard phase == .active else { return }
-                    Task { await container.drainPending() }
+                    // Anything a failed push left owed to the server goes up now — the point at
+                    // which the network is most likely back. And the notification schedule is
+                    // re-synced against her permission state, which may have changed in Settings.
+                    Task {
+                        await container.drainPending()
+                        await notifications.reconcile()
+                    }
                 }
         }
     }

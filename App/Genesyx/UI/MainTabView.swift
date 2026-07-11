@@ -7,6 +7,7 @@ import SwiftUI
 /// match: every tab stays visible, and each screen is kept alive (state preserved) via a ZStack.
 struct MainTabView: View {
     @StateObject private var router = TabRouter(selection: MainTabView.initialSelection)
+    @EnvironmentObject private var notifications: NotificationService
 
     private static let items: [(title: String, icon: String)] = [
         ("Home", "house"),
@@ -31,6 +32,13 @@ struct MainTabView: View {
             tabBar
         }
         .environmentObject(router)
+        // A notification tap lands on its tab — and, for the Learn nudge, on the article itself.
+        .onChange(of: notifications.pendingDestination) { destination in
+            guard let destination else { return }
+            router.selection = destination.tab.rawValue
+            router.pendingLearnSlug = destination.learnSlug
+            notifications.pendingDestination = nil
+        }
     }
 
     /// Keeps every tab's view alive so state (scroll position, in-tab nav) survives switching,
