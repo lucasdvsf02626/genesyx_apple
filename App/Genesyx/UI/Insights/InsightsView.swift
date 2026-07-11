@@ -24,13 +24,50 @@ struct InsightsView: View {
         }
     }
 
+    /// Daily/weekly streak + week-dots, computed from real logs and pH days (pH days count
+    /// toward weekly consistency). `celebrated: []` — milestone firing lives in WS2, not here.
+    private var streakState: StreakState {
+        StreakEngine.compute(
+            logsByDate: dailyLog.logByDate,
+            phByDate: Set(ph.readings.map { CalendarDate.today(now: $0.recordedAt) }),
+            today: CalendarDate.today(),
+            celebrated: [])
+    }
+
+    private var consistencyCard: some View {
+        ConsistencyCard(model: ConsistencyInsightLogic.model(from: streakState))
+    }
+
+    /// Week-over-week hydration delta — only shown when BOTH weeks have logged days (§8).
+    private var hydrationDeltaLine: String? {
+        let today = CalendarDate.today()
+        let thisWeek = (0..<7).map { dailyLog.waterMl(on: today.minusDays($0)) }.filter { $0 > 0 }
+        let lastWeek = (7..<14).map { dailyLog.waterMl(on: today.minusDays($0)) }.filter { $0 > 0 }
+        return HydrationDeltaLogic.weekOverWeekLine(thisWeekMl: thisWeek, lastWeekMl: lastWeek)
+    }
+
+    /// pH readings in the last 30 days — the "how solid is this trend" context line.
+    private var phCountLine: String {
+        let cutoff = CalendarDate.today().minusDays(30)
+        let count = ph.readings.filter { CalendarDate.today(now: $0.recordedAt) >= cutoff }.count
+        return PhContextLogic.readingCountLine(count: count)
+    }
+
+    /// The 28 dates behind the symptom heatmap (oldest → newest), so a tapped cell can jump
+    /// to that day's Log History entry.
+    private var symptomDates: [CalendarDate] {
+        let today = CalendarDate.today()
+        return (0..<28).reversed().map { today.minusDays($0) }
+    }
+
     private var hydrationInsightsCard: some View {
         let week = last7Days
         let insights = HydrationInsightLogic.compute(
             dailyMl: week.map(\.ml), goalMl: Self.waterGoalMl, streak: dailyLog.streak())
         return HydrationInsightsCard(
             insights: insights, labels: week.map(\.label),
-            goalMl: Self.waterGoalMl, hasPh: !ph.readings.isEmpty)
+            goalMl: Self.waterGoalMl, hasPh: !ph.readings.isEmpty,
+            deltaLine: hydrationDeltaLine)
     }
 
     private var cycleRegularityCard: some View {
@@ -40,7 +77,8 @@ struct InsightsView: View {
     private var symptomPatternsCard: some View {
         SymptomPatternsCard(
             insights: SymptomPatternLogic.compute(logs: dailyLog.logByDate),
-            weekdayLabels: weekdayInitials)
+            weekdayLabels: weekdayInitials,
+            dates: symptomDates)
     }
 
     private var ovulationCard: some View {
@@ -65,7 +103,8 @@ struct InsightsView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     header
                     logHistoryLink
-                    PhInsightsCard(ph: insights)
+                    consistencyCard
+                    PhInsightsCard(ph: insights, countLine: phCountLine)
                     hydrationInsightsCard
                     cycleRegularityCard
                     symptomPatternsCard
@@ -114,8 +153,78 @@ struct InsightsView: View {
     }
 }
 
+/// Consistency (WS1/WS3a §5.1) — daily & weekly streak, a Monday-first 7-dot "days logged this
+/// week" row, and a de-pressured insight line. Never guilt: the empty state invites, doesn't scold.
+private struct ConsistencyCard: View {
+    let model: ConsistencyCardModel
+    private static let dayLetters = ["M", "T", "W", "T", "F", "S", "S"]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text("Consistency").font(.gxCardHeading).foregroundStyle(GenesyxColor.foreground)
+                Spacer()
+                Text("This week").font(.gxBodySmall.weight(.medium)).foregroundStyle(GenesyxColor.primary)
+            }
+            if model.isEmpty {
+                Text(model.insight)
+                    .font(.gxBody).foregroundStyle(GenesyxColor.mutedForeground)
+                    .fixedSize(horizontal: false, vertical: true).padding(.top, 12)
+            } else {
+                HStack(spacing: 12) {
+                    tile("Daily streak", model.dailyStreak == 1 ? "1 day" : "\(model.dailyStreak) days")
+                    tile("Weekly streak", model.weeklyStreak == 1 ? "1 week" : "\(model.weeklyStreak) weeks")
+                }
+                .padding(.top, 16)
+                weekDots.padding(.top, 16)
+                Text(model.insight)
+                    .font(.gxBodySmall).foregroundStyle(GenesyxColor.foreground.opacity(0.8))
+                    .fixedSize(horizontal: false, vertical: true).padding(.top, 14)
+                if model.bestDailyStreak > model.dailyStreak {
+                    Text("Best daily streak: \(model.bestDailyStreak) days")
+                        .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground).padding(.top, 6)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(20)
+        .background(GenesyxColor.card)
+        .clipShape(RoundedRectangle(cornerRadius: 24))
+    }
+
+    private var weekDots: some View {
+        HStack(spacing: 8) {
+            ForEach(0..<7, id: \.self) { i in
+                let on = i < model.weekDots.count && model.weekDots[i]
+                VStack(spacing: 6) {
+                    Circle()
+                        .fill(on ? GenesyxColor.primary : GenesyxColor.muted.opacity(0.5))
+                        .frame(width: 22, height: 22)
+                        .overlay(
+                            Image(systemName: "checkmark").font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(.white).opacity(on ? 1 : 0))
+                    Text(Self.dayLetters[i]).font(.system(size: 10)).foregroundStyle(GenesyxColor.mutedForeground)
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+    }
+
+    private func tile(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Eyebrow(label, color: GenesyxColor.mutedForeground)
+            Text(value).font(.gxCardHeading).foregroundStyle(GenesyxColor.foreground)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(GenesyxColor.muted.opacity(0.4))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+}
+
 private struct PhInsightsCard: View {
     let ph: PhInsights
+    let countLine: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -159,6 +268,7 @@ private struct PhInsightsCard: View {
                 if !ph.recommendation.isEmpty {
                     Text(ph.recommendation).font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground).padding(.top, 6)
                 }
+                Text(countLine).font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground.opacity(0.9)).padding(.top, 6)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -209,6 +319,7 @@ private struct HydrationInsightsCard: View {
     let labels: [String]
     let goalMl: Int
     let hasPh: Bool
+    let deltaLine: String?
     private let barHeight: CGFloat = 112
 
     var body: some View {
@@ -224,6 +335,14 @@ private struct HydrationInsightsCard: View {
                 tile("Days on goal", "\(insights.daysOnGoal) / 7")
             }
             .padding(.top, 16)
+            if let deltaLine {
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.left.arrow.right")
+                        .font(.system(size: 12)).foregroundStyle(GenesyxColor.electricBlue)
+                    Text(deltaLine).font(.gxBodySmall.weight(.medium)).foregroundStyle(GenesyxColor.foreground.opacity(0.8))
+                }
+                .padding(.top, 12)
+            }
             Text(insights.insight)
                 .font(.gxBodySmall).foregroundStyle(GenesyxColor.foreground.opacity(0.8))
                 .fixedSize(horizontal: false, vertical: true).padding(.top, 14)
@@ -332,6 +451,7 @@ private struct CycleRegularityCard: View {
 private struct SymptomPatternsCard: View {
     let insights: SymptomPatternInsights
     let weekdayLabels: [String]
+    let dates: [CalendarDate]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -367,12 +487,26 @@ private struct SymptomPatternsCard: View {
                     ForEach(0..<7, id: \.self) { day in
                         let index = week * 7 + day
                         let count = index < insights.dailyCounts.count ? insights.dailyCounts[index] : 0
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(GenesyxColor.electricLavender.opacity(alpha(count)))
-                            .frame(height: 26).frame(maxWidth: .infinity)
+                        cell(index: index, count: count)
                     }
                 }
             }
+        }
+    }
+
+    /// A heatmap cell. Days with symptoms tap through to that day's Log History entry;
+    /// empty days are inert (nothing to open).
+    @ViewBuilder
+    private func cell(index: Int, count: Int) -> some View {
+        let swatch = RoundedRectangle(cornerRadius: 6)
+            .fill(GenesyxColor.electricLavender.opacity(alpha(count)))
+            .frame(height: 26).frame(maxWidth: .infinity)
+        if count > 0, index < dates.count {
+            NavigationLink { LogHistoryView(focusDate: dates[index]) } label: { swatch }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Symptoms logged, open this day")
+        } else {
+            swatch
         }
     }
 
@@ -473,6 +607,9 @@ private struct PhTrackerScreen: View {
 /// Pushed from Insights so the user can read back all their logs. Read-only.
 struct LogHistoryView: View {
 
+    /// When set (e.g. tapped from the symptom heatmap), scroll to and briefly highlight that day.
+    var focusDate: CalendarDate? = nil
+
     @EnvironmentObject private var dailyLog: DailyLogRepository
 
     private var entries: [(date: CalendarDate, log: DailyLog)] {
@@ -483,17 +620,27 @@ struct LogHistoryView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                if entries.isEmpty {
-                    emptyState
-                } else {
-                    ForEach(entries, id: \.date) { entry in
-                        LogHistoryCard(date: entry.date, log: entry.log)
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    if entries.isEmpty {
+                        emptyState
+                    } else {
+                        ForEach(entries, id: \.date) { entry in
+                            LogHistoryCard(date: entry.date, log: entry.log,
+                                           highlighted: entry.date == focusDate)
+                                .id(entry.date)
+                        }
                     }
                 }
+                .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 24)
             }
-            .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 24)
+            .onAppear {
+                guard let focusDate else { return }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                    withAnimation { proxy.scrollTo(focusDate, anchor: .top) }
+                }
+            }
         }
         .frame(maxWidth: .infinity)
         .background(GenesyxColor.background)
@@ -519,6 +666,7 @@ struct LogHistoryView: View {
 private struct LogHistoryCard: View {
     let date: CalendarDate
     let log: DailyLog
+    var highlighted: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -552,6 +700,9 @@ private struct LogHistoryCard: View {
         .padding(20)
         .background(GenesyxColor.card)
         .clipShape(RoundedRectangle(cornerRadius: 24))
+        .overlay(
+            RoundedRectangle(cornerRadius: 24)
+                .strokeBorder(GenesyxColor.primary, lineWidth: highlighted ? 2 : 0))
     }
 
     private func pill(_ label: String, _ value: String) -> some View {

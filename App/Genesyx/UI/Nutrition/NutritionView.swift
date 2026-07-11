@@ -7,6 +7,7 @@ struct NutritionView: View {
 
     @EnvironmentObject private var cycle: CycleRepository
     @EnvironmentObject private var dailyLog: DailyLogRepository
+    @EnvironmentObject private var ph: PhRepository
 
     private let today = CalendarDate.today()
     private let waterGoalMl = 2400
@@ -18,6 +19,16 @@ struct NutritionView: View {
     @State private var articlePath: [String] = []
 
     private var phase: Phase? { cycle.settings.map { CycleEngine.cyclePhase(settings: $0, target: today).phase } }
+
+    /// Consecutive complete weeks (≥5 of 7 days), for the de-pressured "steady weeks" line.
+    /// pH days count toward weekly consistency, so pH readings feed the engine here too.
+    private var weeklyStreak: Int {
+        StreakEngine.compute(
+            logsByDate: dailyLog.logByDate,
+            phByDate: Set(ph.readings.map { CalendarDate.today(now: $0.recordedAt) }),
+            today: today,
+            celebrated: []).weeklyStreak
+    }
 
     var body: some View {
         NavigationStack(path: $articlePath) {
@@ -104,6 +115,16 @@ struct NutritionView: View {
             Text(HydrationCoach.contextLine(phase: phase))
                 .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
                 .fixedSize(horizontal: false, vertical: true)
+            // Weekly consistency — only once there's a complete week to celebrate
+            if weeklyStreak >= 1 {
+                HStack(spacing: 6) {
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.system(size: 13)).foregroundStyle(GenesyxColor.primary)
+                    Text(HydrationCoach.weeklyStreakLabel(weeklyStreak))
+                        .font(.gxBodySmall.weight(.medium)).foregroundStyle(GenesyxColor.foreground.opacity(0.8))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
             HStack(spacing: 6) {
                 Image(systemName: "drop").font(.system(size: 13)).foregroundStyle(GenesyxColor.mutedForeground)
                 Text(remaining > 0 ? "\(remaining)ml to go" : "Target reached — nice work")
@@ -294,6 +315,14 @@ enum HydrationCoach {
         }
     }
 
+    /// Weekly-consistency line — only surfaced when there's at least one complete week (≥5 of 7
+    /// days). De-pressured: celebrates steadiness, never demands perfection.
+    static func weeklyStreakLabel(_ weeks: Int) -> String {
+        weeks == 1
+            ? "1 steady week — consistency is doing its quiet work."
+            : "\(weeks) steady weeks — consistency is doing its quiet work."
+    }
+
     /// Always-visible daily-streak pill copy — de-pressured, encouraging even at zero.
     static func streakLabel(_ streak: Int) -> String {
         switch streak {
@@ -315,6 +344,7 @@ enum HydrationCoach {
         for phase in Phase.allCases { out.append(contextLine(phase: phase)) }
         out.append(contextLine(phase: nil))
         for streak in [0, 1, 3] { out.append(streakLabel(streak)) }
+        for weeks in [1, 4] { out.append(weeklyStreakLabel(weeks)) }
         out.append(whyText)
         return out
     }
