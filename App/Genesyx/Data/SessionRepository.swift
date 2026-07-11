@@ -15,6 +15,8 @@ final class SessionRepository: ObservableObject {
     /// account deletion, and rehydrate from the backend on sign-in. No-ops in isolation.
     var onClearLocalState: (() -> Void)?
     var onHydrate: (() async -> Void)?
+    /// Mirrors a renamed display name to her `profiles` row.
+    var onDisplayNameChanged: ((String) -> Void)?
 
     init(auth: AuthBackend? = nil) {
         self.auth = auth
@@ -23,26 +25,42 @@ final class SessionRepository: ObservableObject {
 
     /// Unified entry used by the Auth screen. Calls the backend when present, then updates state.
     func authenticate(email: String, password: String, name: String?, signUp: Bool) async throws {
-        if let auth {
-            if signUp { try await auth.signUp(email: email, password: password) }
-            else { try await auth.signIn(email: email, password: password) }
+        guard let auth else {
+            try requireMockIsAllowed()
+            applySignIn(email: email, name: name)
+            return
         }
+        if signUp { try await auth.signUp(email: email, password: password) }
+        else { try await auth.signIn(email: email, password: password) }
         applySignIn(email: email, name: name)
     }
 
-    /// Local/mock sign-in (no backend) — also used by the mock "Continue with Google".
+    /// Social sign-in (Google/Apple). Exchanges the provider ID token for a Supabase session.
+    func signInWithSocial(provider: SocialProvider, idToken: String, accessToken: String?, nonce: String?, email: String?, name: String?) async throws {
+        guard let auth else {
+            try requireMockIsAllowed()
+            applySignIn(email: email ?? "", name: name)
+            return
+        }
+        try await auth.signInWithIdToken(provider: provider, idToken: idToken, accessToken: accessToken, nonce: nonce)
+        applySignIn(email: email ?? "", name: name)
+    }
+
+    /// With no backend, "signing in" means accepting whatever was typed — no password is ever
+    /// checked. That is fine for a local-only dev build and must never happen in a shipped one, so
+    /// a Release build with no configured backend refuses to sign in rather than faking it.
+    private func requireMockIsAllowed() throws {
+        #if !DEBUG
+        throw RemoteError.notConfigured
+        #endif
+    }
+
+    #if DEBUG
+    /// Local sign-in with no backend. Debug-only: it verifies nothing.
     func signIn(email: String, name: String?) {
         applySignIn(email: email, name: name)
     }
-
-    /// Social sign-in (Google/Apple). Exchanges the provider ID token for a Supabase session
-    /// when a backend is present, then updates local state. Works as a local mock otherwise.
-    func signInWithSocial(provider: SocialProvider, idToken: String, accessToken: String?, nonce: String?, email: String?, name: String?) async throws {
-        if let auth {
-            try await auth.signInWithIdToken(provider: provider, idToken: idToken, accessToken: accessToken, nonce: nonce)
-        }
-        applySignIn(email: email ?? "", name: name)
-    }
+    #endif
 
     private func applySignIn(email: String, name: String?) {
         self.email = email
@@ -54,7 +72,10 @@ final class SessionRepository: ObservableObject {
     }
 
     func updateDisplayName(_ name: String) {
-        if !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { displayName = name }
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        displayName = trimmed
+        onDisplayNameChanged?(trimmed)
     }
 
     func signOut() {
