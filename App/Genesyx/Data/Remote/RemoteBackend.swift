@@ -13,7 +13,13 @@ enum RemoteConfig {
     static let googleIOSClientID = "413702980668-tfah1knspa8ip82p51c3i3veuh3ljul4.apps.googleusercontent.com"
 }
 
-enum RemoteError: Error { case notConfigured, notAuthenticated }
+enum RemoteError: Error {
+    case notConfigured
+    case notAuthenticated
+    /// Sign-up succeeded but produced no session, because the project requires the user to confirm
+    /// her email address first. She is NOT signed in — she has to click the link, then sign in.
+    case emailConfirmationRequired
+}
 
 /// Social identity providers the app can exchange an ID token for a Supabase session.
 enum SocialProvider { case google, apple }

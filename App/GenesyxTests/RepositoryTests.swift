@@ -167,6 +167,37 @@ final class RepositoryTests: XCTestCase {
         XCTAssertTrue(repo.readings.isEmpty, "a pull must not resurrect a deleted reading")
     }
 
+    // MARK: - Auth
+
+    /// With "Confirm email" on, Supabase's sign-up returns a user but no session. She is not signed
+    /// in until she clicks the link — claiming otherwise would leave every write failing the
+    /// server's auth check while the UI insisted all was well.
+    func testSignUpWithoutASessionDoesNotSignHerIn() async {
+        let auth = FakeAuthBackend()
+        auth.grantsSessionOnSignUp = false          // the project requires email confirmation
+        let session = SessionRepository(auth: auth)
+
+        do {
+            try await session.authenticate(email: "a@b.com", password: "password123", name: nil, signUp: true)
+            XCTFail("sign-up without a session must not report success")
+        } catch RemoteError.emailConfirmationRequired {
+            // expected
+        } catch {
+            XCTFail("unexpected error: \(error)")
+        }
+
+        XCTAssertFalse(session.isSignedIn)
+    }
+
+    func testSignUpWithASessionSignsHerIn() async throws {
+        let session = SessionRepository(auth: FakeAuthBackend())   // confirmation off: session granted
+
+        try await session.authenticate(email: "a@b.com", password: "password123", name: "Ada", signUp: true)
+
+        XCTAssertTrue(session.isSignedIn)
+        XCTAssertEqual(session.displayName, "Ada")
+    }
+
     // MARK: - Cycle, daily-log and profile sync (same contract: a stale cloud never wins)
 
     func testCycleOfflineEditIsNotOverwrittenByAStalePull() async {
@@ -287,6 +318,21 @@ private final class FakePhBackend: PhBackend {
         guard online else { throw RemoteError.notConfigured }
         remote = remote.filter { $0.id != record.id } + [record.marking(pendingSync: false)]
     }
+}
+
+/// `grantsSessionOnSignUp = false` reproduces a project with "Confirm email" turned on: sign-up
+/// succeeds, but no session exists until she clicks the link.
+@MainActor
+private final class FakeAuthBackend: AuthBackend {
+    var currentUserId: String?
+    var grantsSessionOnSignUp = true
+
+    func signUp(email: String, password: String) async throws {
+        if grantsSessionOnSignUp { currentUserId = "user-1" }
+    }
+
+    func signIn(email: String, password: String) async throws { currentUserId = "user-1" }
+    func signOut() async throws { currentUserId = nil }
 }
 
 @MainActor

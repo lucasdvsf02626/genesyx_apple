@@ -42,6 +42,8 @@ struct AuthView: View {
                     signUp: signupMode
                 )
                 onSignedIn?(); dismiss()
+            } catch RemoteError.emailConfirmationRequired {
+                self.error = "Almost there — check your inbox and confirm your email, then sign in."
             } catch {
                 self.error = "Could not sign in. Please check your details and try again."
             }

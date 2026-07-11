@@ -30,8 +30,15 @@ final class SessionRepository: ObservableObject {
             applySignIn(email: email, name: name)
             return
         }
-        if signUp { try await auth.signUp(email: email, password: password) }
-        else { try await auth.signIn(email: email, password: password) }
+        if signUp {
+            try await auth.signUp(email: email, password: password)
+            // With email confirmation required, sign-up returns a user but NO session. Marking her
+            // signed in here would be a lie: every write would fail the server's auth check and
+            // queue forever while the UI said everything was fine.
+            guard auth.currentUserId != nil else { throw RemoteError.emailConfirmationRequired }
+        } else {
+            try await auth.signIn(email: email, password: password)
+        }
         applySignIn(email: email, name: name)
     }
 
