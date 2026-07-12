@@ -85,29 +85,55 @@ Tests: **86 core + 93 app + 9 UI, 0 failures.**
 
 ---
 
-## 4. The remaining gap — read this before you call invites "done"
+## 4. Universal Links — built, tested, and waiting on TWO things only you can do
 
-Even with email working, **a partner who does not already have the app installed still cannot
-accept from the email.**
+Without this, **a partner who doesn't already have the app cannot accept from the email.** The
+`genesyx://` link opens nothing on a phone without Genesyx, and many mail clients won't even make
+it tappable.
 
-The link is `genesyx://invite/<code>` — a custom URL scheme. It opens nothing on a phone without
-Genesyx, and many mail clients won't even make it tappable. The email works around this by telling
-them to install the app first and including the code — but it's a workaround, not a fix.
+Everything on my side is now done: the AASA file, the link builders, the parser, the email, and
+tests. It is **switched off on purpose**, because switching it on early breaks things in two
+separate ways.
 
-**The real fix is Universal Links, and the app code for it already exists and is already dead:**
-`DeepLink.swift` parses `https://…/invite/<code>`, and `RootView` listens for
-`.onContinueUserActivity` — but `Genesyx.entitlements` has **no `associated-domains`**, so neither
-can ever fire.
+### ⚠️ Why it is off — I tested both failure modes, they're real
 
-To turn it on:
-1. Add `applinks:genesyx.co.uk` to `Genesyx.entitlements` (and the App ID's Associated Domains
-   capability in the Apple Developer portal).
-2. Host `apple-app-site-association` (JSON, no extension, served as `application/json` over HTTPS
-   at `https://genesyx.co.uk/.well-known/apple-app-site-association`) with your Team ID + bundle ID.
-3. Change `DeepLink.inviteURL` to build the `https://` link.
+**1. It breaks your archive.** With the `associated-domains` entitlement enabled, `xcodebuild
+archive` fails outright:
+```
+error: Provisioning profile "Genesyx App Store" doesn't include the Associated Domains capability.
+** ARCHIVE FAILED **
+```
+That is not a warning. **You could not upload build 12 at all.** So the entitlement sits
+commented-out in `App/Genesyx/Genesyx.entitlements`, with these same steps beside it. Archive
+currently **succeeds** — I re-verified after commenting it back out.
 
-I did **not** do this: it changes app entitlements and requires publishing a file to your live
-domain. Both are yours to authorise. It is roughly a 30-minute job once you say go.
+**2. It breaks every invite.** If the app hands out `https://genesyx.co.uk/invite/<code>` before
+that domain actually serves the AASA file, the link opens **Safari to a 404** — strictly worse than
+today, where the link at least opens the app for someone who has it. So `DeepLink.universalLinksLive`
+is `false`, and a test (`testHandedOutLinkMatchesWhatTheDomainCanActuallyServe`) fails if anyone
+flips it without shipping the file.
+
+### The switch-on sequence (do them in this order)
+
+1. **Apple Developer portal** → Identifiers → `com.genesyx.app` → tick **Associated Domains** → Save.
+2. **Regenerate + download** the `Genesyx App Store` provisioning profile.
+3. **Host the file.** It's already written for you at `public/.well-known/apple-app-site-association`
+   (Team ID `M5L3MM75SG`, bundle `com.genesyx.app`, path `/invite/*`). Serve it at
+   `https://genesyx.co.uk/.well-known/apple-app-site-association` — **HTTPS, no redirect,
+   `Content-Type: application/json`, no `.json` extension.**
+   Verify: `curl -sI https://genesyx.co.uk/.well-known/apple-app-site-association` → `200` + json.
+4. **Uncomment** the `associated-domains` block in `App/Genesyx/Genesyx.entitlements`.
+5. **Flip** `DeepLink.universalLinksLive` to `true` (one line, `DeepLink.swift`).
+6. **Set the mail secret** so the email uses the web link too:
+   `supabase secrets set INVITE_WEB_BASE=https://genesyx.co.uk`
+7. **Archive** — it should now succeed. Install that build, then tap a link.
+
+> Apple caches the AASA file. Test on a device with a **freshly installed** build, and be aware
+> the link only starts working from the build that carries the entitlement onward.
+
+**Old links never stop working.** The parser accepts both forms permanently, and a test pins it
+(`testCustomSchemeStillParsesAfterUniversalLinksGoLive`) — invites already sitting in someone's
+inbox stay valid after you switch the domain on.
 
 ---
 

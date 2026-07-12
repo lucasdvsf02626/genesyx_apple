@@ -1,0 +1,15 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["M5L3MM75SG.com.genesyx.app"],
+        "components": [
+          {
+            "/": "/invite/*",
+            "comment": "Partner invite links open the app directly."
+          }
+        ]
+      }
+    ]
+  }
+}

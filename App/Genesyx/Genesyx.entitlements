@@ -6,5 +6,31 @@
 	<array>
 		<string>Default</string>
 	</array>
+	<!--
+	  UNIVERSAL LINKS — ready to switch on, deliberately NOT on yet.
+
+	  Adding this entitlement makes `xcodebuild archive` FAIL with:
+	      Provisioning profile "Genesyx App Store" doesn't include the Associated Domains capability.
+	  (Verified — that is a real archive failure, not a warning. Leaving it enabled would mean
+	  build 12 could not be uploaded at all.)
+
+	  To turn Universal Links on, in this order:
+	    1. developer.apple.com → Identifiers → com.genesyx.app → tick "Associated Domains" → Save.
+	    2. Regenerate + download the "Genesyx App Store" provisioning profile.
+	    3. Serve public/.well-known/apple-app-site-association at
+	       https://genesyx.co.uk/.well-known/apple-app-site-association
+	       over HTTPS, no redirect, Content-Type: application/json.
+	       Check: curl -sI https://genesyx.co.uk/.well-known/apple-app-site-association
+	    4. Uncomment the block below.
+	    5. Set DeepLink.universalLinksLive = true, and set the edge-function secret
+	       INVITE_WEB_BASE=https://genesyx.co.uk
+	    6. Archive. It should now succeed.
+
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:genesyx.co.uk</string>
+		<string>applinks:www.genesyx.co.uk</string>
+	</array>
+	-->
 </dict>
 </plist>

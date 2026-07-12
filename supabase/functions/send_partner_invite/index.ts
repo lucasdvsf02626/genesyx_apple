@@ -46,6 +46,14 @@ Deno.serve(async (req) => {
       .from("profiles").select("display_name").eq("id", user.id).maybeSingle();
     const inviterName = profile?.display_name?.trim() || "Someone";
 
+    // Universal Link when the domain is live (set INVITE_WEB_BASE=https://genesyx.co.uk once
+    // apple-app-site-association is served); otherwise the custom scheme, which at least opens the
+    // app for someone who already has it. An https link with no AASA behind it is worse than
+    // useless — it opens Safari to a 404.
+    const webBase = Deno.env.get("INVITE_WEB_BASE")?.replace(/\/$/, "");
+    const link = webBase ? `${webBase}/invite/${code}` : `genesyx://invite/${code}`;
+    const needsInstallSteps = !webBase;
+
     const res = await fetch(RESEND_ENDPOINT, {
       method: "POST",
       headers: {
@@ -56,8 +64,8 @@ Deno.serve(async (req) => {
         from,
         to: [invite.invitee_email],
         subject: `${inviterName} invited you to Genesyx`,
-        text: plainBody(inviterName, code),
-        html: htmlBody(inviterName, code, invite.invitee_email),
+        text: plainBody(inviterName, code, link, needsInstallSteps),
+        html: htmlBody(inviterName, code, invite.invitee_email, link, needsInstallSteps),
       }),
     });
 
@@ -73,19 +81,31 @@ Deno.serve(async (req) => {
   }
 });
 
-// The invite link is a custom scheme, so it only opens on a phone that already has the app. The
-// copy therefore has to carry the instructions, not just the link. (A Universal Link on
-// genesyx.co.uk would survive a fresh install — see the fix report.)
-function plainBody(inviterName: string, code: string): string {
-  return [
+// With a custom-scheme link the copy has to carry the install instructions, because the link does
+// nothing on a phone without the app. With a Universal Link it survives a fresh install and can
+// stand on its own.
+function plainBody(inviterName: string, code: string, link: string, needsInstallSteps: boolean): string {
+  const intro = [
     `${inviterName} has invited you to join them on Genesyx.`,
     ``,
     `Genesyx is a calm fertility-prep companion — cycle awareness, hydration, nutrition and pH tracking.`,
     ``,
-    `To accept:`,
-    `1. Install Genesyx from the App Store.`,
-    `2. Sign in with THIS email address (the invite is tied to it).`,
-    `3. Open this link: genesyx://invite/${code}`,
+  ];
+  const steps = needsInstallSteps
+    ? [
+      `To accept:`,
+      `1. Install Genesyx from the App Store.`,
+      `2. Sign in with THIS email address (the invite is tied to it).`,
+      `3. Open this link: ${link}`,
+    ]
+    : [
+      `Open this link to accept: ${link}`,
+      ``,
+      `Sign in with THIS email address — the invite is tied to it.`,
+    ];
+  return [
+    ...intro,
+    ...steps,
     ``,
     `Or enter this invite code in the app: ${code}`,
     ``,
@@ -93,7 +113,7 @@ function plainBody(inviterName: string, code: string): string {
   ].join("\n");
 }
 
-function htmlBody(inviterName: string, code: string, to: string): string {
+function htmlBody(inviterName: string, code: string, to: string, link: string, needsInstallSteps: boolean): string {
   const esc = (s: string) => s.replace(/[<>&"]/g, (c) =>
     ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]!));
   return `
@@ -103,13 +123,17 @@ function htmlBody(inviterName: string, code: string, to: string): string {
     <p style="font-size:15px;line-height:1.6;color:#4a4a4a;margin:0 0 24px">
       Genesyx is a calm fertility-prep companion — cycle awareness, hydration, nutrition and pH tracking.
     </p>
-    <ol style="font-size:15px;line-height:1.8;color:#4a4a4a;padding-left:20px;margin:0 0 24px">
+    ${needsInstallSteps
+      ? `<ol style="font-size:15px;line-height:1.8;color:#4a4a4a;padding-left:20px;margin:0 0 24px">
       <li>Install Genesyx from the App Store.</li>
       <li>Sign in with <strong>${esc(to)}</strong> — the invite is tied to this address.</li>
       <li>Open the link below to accept.</li>
-    </ol>
+    </ol>`
+      : `<p style="font-size:15px;line-height:1.6;color:#4a4a4a;margin:0 0 24px">
+      Sign in with <strong>${esc(to)}</strong> — the invite is tied to this address.
+    </p>`}
     <p style="margin:0 0 24px">
-      <a href="genesyx://invite/${esc(code)}"
+      <a href="${esc(link)}"
          style="display:inline-block;background:#5a4fcf;color:#fff;text-decoration:none;font-weight:600;font-size:15px;padding:14px 28px;border-radius:16px">
         Accept invite
       </a>
