@@ -40,6 +40,7 @@ private struct SupabaseAuth: AuthBackend {
             credentials: .init(provider: supaProvider, idToken: idToken, accessToken: accessToken, nonce: nonce)
         )
     }
+    func resetPassword(email: String) async throws { try await client.auth.resetPasswordForEmail(email) }
 }
 
 private func requireUID(_ auth: AuthBackend) throws -> String {

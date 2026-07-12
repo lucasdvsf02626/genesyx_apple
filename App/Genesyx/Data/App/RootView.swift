@@ -11,10 +11,16 @@ import GoogleSignIn
 struct RootView: View {
 
     @EnvironmentObject private var prefs: PreferencesRepository
+    @EnvironmentObject private var session: SessionRepository
     @AppStorage("genesyx.onboardingComplete") private var onboardingComplete = false
 
     @State private var invite: InvitePresentation?
     @State private var showAuthFromInvite = false
+
+    /// The invite she's mid-way through accepting, held across the sign-in detour. A partner
+    /// arriving from a share link almost always has no account yet, so dropping the code here
+    /// (as we used to) meant the invite silently vanished on the one path everybody takes.
+    @State private var codeAwaitingSignIn: String?
 
     var body: some View {
         Group {
@@ -41,10 +47,19 @@ struct RootView: View {
                 code: presentation.code,
                 onAccepted: { invite = nil },
                 onBack: { invite = nil },
-                onSignIn: { invite = nil; showAuthFromInvite = true }
+                onSignIn: { codeAwaitingSignIn = presentation.code; invite = nil; showAuthFromInvite = true }
             )
         }
-        .sheet(isPresented: $showAuthFromInvite) { AuthView() }
+        .sheet(isPresented: $showAuthFromInvite, onDismiss: {
+            // Signed in? Bring her straight back to the invite she came here to accept.
+            // Cancelled? Drop it, so she isn't trapped in a sign-in/invite loop.
+            if let code = codeAwaitingSignIn, session.isSignedIn {
+                invite = InvitePresentation(code: code)
+            }
+            codeAwaitingSignIn = nil
+        }) {
+            AuthView()
+        }
     }
 
     private var colorScheme: ColorScheme? {

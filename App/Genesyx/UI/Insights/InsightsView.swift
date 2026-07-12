@@ -62,8 +62,11 @@ struct InsightsView: View {
 
     private var hydrationInsightsCard: some View {
         let week = last7Days
+        // Use the same streak the Consistency card shows (StreakEngine, with morning grace).
+        // `dailyLog.streak()` has no grace, so before she logged today the two cards on this very
+        // screen disagreed about the same number.
         let insights = HydrationInsightLogic.compute(
-            dailyMl: week.map(\.ml), goalMl: Self.waterGoalMl, streak: dailyLog.streak())
+            dailyMl: week.map(\.ml), goalMl: Self.waterGoalMl, streak: streakState.dailyHydration)
         return HydrationInsightsCard(
             insights: insights, labels: week.map(\.label),
             goalMl: Self.waterGoalMl, hasPh: !ph.readings.isEmpty,
@@ -104,7 +107,7 @@ struct InsightsView: View {
                     header
                     logHistoryLink
                     consistencyCard
-                    PhInsightsCard(ph: insights, countLine: phCountLine)
+                    PhInsightsCard(ph: insights, countLine: phCountLine, hasTrend: ph.readings.count >= 2)
                     hydrationInsightsCard
                     cycleRegularityCard
                     symptomPatternsCard
@@ -225,6 +228,8 @@ private struct ConsistencyCard: View {
 private struct PhInsightsCard: View {
     let ph: PhInsights
     let countLine: String
+    /// False with a single reading — there is no previous value to compare against.
+    let hasTrend: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -242,23 +247,26 @@ private struct PhInsightsCard: View {
                 Text("No pH readings yet. Log your first one on Track or Nutrition.")
                     .font(.gxBody).foregroundStyle(GenesyxColor.mutedForeground).padding(.top, 12)
             } else {
-                let status = ph.currentStatus ?? .optimal
-                let color = Theme.color(for: status)
-                HStack(alignment: .center) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Eyebrow("Current", color: GenesyxColor.mutedForeground)
-                        HStack(spacing: 8) {
-                            Text(String(format: "%.1f", ph.currentValue ?? 0))
-                                .font(.system(size: 30, weight: .semibold)).foregroundStyle(color)
-                            Text(status.label.uppercased()).font(.system(size: 10.5, weight: .semibold))
-                                .foregroundStyle(color).padding(.horizontal, 10).padding(.vertical, 3)
-                                .background(color.opacity(0.18)).clipShape(Capsule())
+                // Never invent a reading: a missing value/status renders nothing rather than
+                // falling back to "0.0 / OPTIMAL", which would be a clinical claim we never measured.
+                if let value = ph.currentValue, let status = ph.currentStatus {
+                    let color = Theme.color(for: status)
+                    HStack(alignment: .center) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Eyebrow("Current", color: GenesyxColor.mutedForeground)
+                            HStack(spacing: 8) {
+                                Text(String(format: "%.1f", value))
+                                    .font(.system(size: 30, weight: .semibold)).foregroundStyle(color)
+                                Text(status.label.uppercased()).font(.system(size: 10.5, weight: .semibold))
+                                    .foregroundStyle(color).padding(.horizontal, 10).padding(.vertical, 3)
+                                    .background(color.opacity(0.18)).clipShape(Capsule())
+                            }
                         }
+                        Spacer()
+                        trendBadge
                     }
-                    Spacer()
-                    trendBadge
+                    .padding(.top, 14)
                 }
-                .padding(.top, 14)
                 HStack(spacing: 12) {
                     avgTile("7-day avg", ph.avg7)
                     avgTile("30-day avg", ph.avg30)
@@ -277,16 +285,22 @@ private struct PhInsightsCard: View {
         .clipShape(RoundedRectangle(cornerRadius: 24))
     }
 
-    private var trendBadge: some View {
-        let symbol: String
-        switch ph.trend {
-        case .up: symbol = "arrow.up"
-        case .down: symbol = "arrow.down"
-        case .flat: symbol = "arrow.right"
+    /// A trend needs two readings. With one, `PhInsightLogic` reports `.flat` — showing that as
+    /// "→ vs previous" would compare against a reading that doesn't exist, so we show nothing.
+    @ViewBuilder private var trendBadge: some View {
+        if hasTrend {
+            HStack(spacing: 4) {
+                Image(systemName: trendSymbol).font(.system(size: 14)).foregroundStyle(GenesyxColor.mutedForeground)
+                Text("vs previous").font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+            }
         }
-        return HStack(spacing: 4) {
-            Image(systemName: symbol).font(.system(size: 14)).foregroundStyle(GenesyxColor.mutedForeground)
-            Text("vs previous").font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+    }
+
+    private var trendSymbol: String {
+        switch ph.trend {
+        case .up: return "arrow.up"
+        case .down: return "arrow.down"
+        case .flat: return "arrow.right"
         }
     }
 
@@ -363,10 +377,14 @@ private struct HydrationInsightsCard: View {
                 ForEach(Array(insights.dailyMl.enumerated()), id: \.offset) { index, ml in
                     VStack(spacing: 6) {
                         Spacer(minLength: 0)
+                        // A day with nothing logged gets a flat grey track, not a blue stub — the old
+                        // 2pt floor on the gradient drew "you drank a little" for days she never logged.
                         RoundedRectangle(cornerRadius: 8)
-                            .fill(LinearGradient(colors: [GenesyxColor.electricBlue, GenesyxColor.powderBlue],
-                                                 startPoint: .top, endPoint: .bottom))
-                            .frame(height: max(barHeight * CGFloat(min(Double(ml) / Double(goalMl), 1)), 2))
+                            .fill(ml > 0
+                                  ? AnyShapeStyle(LinearGradient(colors: [GenesyxColor.electricBlue, GenesyxColor.powderBlue],
+                                                                 startPoint: .top, endPoint: .bottom))
+                                  : AnyShapeStyle(GenesyxColor.muted))
+                            .frame(height: ml > 0 ? max(barHeight * CGFloat(min(Double(ml) / Double(goalMl), 1)), 2) : 2)
                         Text(index < labels.count ? labels[index] : "")
                             .font(.system(size: 10)).foregroundStyle(GenesyxColor.mutedForeground)
                     }
@@ -378,7 +396,8 @@ private struct HydrationInsightsCard: View {
             HStack(spacing: 6) {
                 DashedLine().stroke(style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
                     .foregroundStyle(GenesyxColor.mutedForeground.opacity(0.6)).frame(height: 1)
-                Text("2.4L goal").font(.system(size: 9)).foregroundStyle(GenesyxColor.mutedForeground).fixedSize()
+                Text(String(format: "%.1fL goal", Double(goalMl) / 1000)).font(.system(size: 9))
+                    .foregroundStyle(GenesyxColor.mutedForeground).fixedSize()
             }
         }
     }

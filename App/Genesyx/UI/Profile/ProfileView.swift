@@ -14,6 +14,8 @@ struct ProfileView: View {
     @State private var detail: String?
     @State private var deleteOpen = false
     @State private var deleteError: String?
+    @State private var resetConfirm = false
+    @State private var resetResult: String?
     @State private var showAuth = false
     @State private var showPregnancy = false
     @State private var showReminderPrompt = false
@@ -75,6 +77,22 @@ struct ProfileView: View {
         } message: {
             Text(deleteError ?? "")
         }
+        .alert("Change password", isPresented: $resetConfirm) {
+            Button("Send reset link") {
+                Task {
+                    do { try await session.resetPassword(); resetResult = "Check your inbox — we've emailed you a link to reset your password." }
+                    catch { resetResult = "We couldn't send the reset email. Please try again." }
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("We'll email a password-reset link to \(session.email ?? "your account").")
+        }
+        .alert("Password reset", isPresented: Binding(get: { resetResult != nil }, set: { if !$0 { resetResult = nil } })) {
+            Button("OK") { resetResult = nil }
+        } message: {
+            Text(resetResult ?? "")
+        }
     }
 
     // MARK: User card
@@ -109,8 +127,7 @@ struct ProfileView: View {
                 focusSeg("Fertility Prep", selected: prefs.focusMode == .prep) { prefs.focusMode = .prep }
                 focusSeg("Pregnancy", selected: prefs.focusMode == .pregnancy) {
                     prefs.focusMode = .pregnancy
-                    // v1: Pregnancy preview entry hidden (destination intact, unreachable). Restore by uncommenting.
-                    // showPregnancy = true
+                    showPregnancy = true   // opens the "coming soon" teaser (no functional pregnancy mode in v1)
                 }
             }
             .padding(4).background(GenesyxColor.muted).clipShape(RoundedRectangle(cornerRadius: 16))
@@ -134,7 +151,7 @@ struct ProfileView: View {
             cardGroup {
                 rowItem("Edit name") { session.isSignedIn ? (nameOpen = true) : (showAuth = true) }
                 divider
-                rowItem("Change password") { session.isSignedIn ? (detail = "Personal Details") : (showAuth = true) }
+                rowItem("Change password") { session.isSignedIn ? (resetConfirm = true) : (showAuth = true) }
             }
         }
     }
@@ -378,7 +395,7 @@ private struct PartnerSectionView: View {
                 Image(systemName: "heart.fill").font(.system(size: 14)).foregroundStyle(GenesyxColor.primary)
                 Text("Add your partner").font(.gxCardHeadingSmall).foregroundStyle(GenesyxColor.foreground)
             }
-            Text("Send an invite — when they accept, you'll be linked and can share your journey.")
+            Text("Send an invite — when they accept, your accounts are linked. Your logs and readings stay private to you.")
                 .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
             TextField("partner@example.com", text: $email)
                 .textInputAutocapitalization(.never).keyboardType(.emailAddress).autocorrectionDisabled()

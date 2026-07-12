@@ -36,6 +36,8 @@ protocol AuthBackend {
     func deleteAccount() async throws
     /// Exchanges a provider ID token (Google/Apple) for a Supabase session.
     func signInWithIdToken(provider: SocialProvider, idToken: String, accessToken: String?, nonce: String?) async throws
+    /// Emails a password-reset link to `email`.
+    func resetPassword(email: String) async throws
 }
 
 extension AuthBackend {
@@ -43,6 +45,7 @@ extension AuthBackend {
     // backend overrides them.
     func deleteAccount() async throws {}
     func signInWithIdToken(provider: SocialProvider, idToken: String, accessToken: String?, nonce: String?) async throws {}
+    func resetPassword(email: String) async throws {}
 }
 
 protocol CycleBackend {

@@ -79,12 +79,13 @@ struct AuthView: View {
                     onSignedIn?(); dismiss()
                 } catch {
                     print("[AppleSignIn] Supabase exchange FAILED: \(error)")
-                    self.error = "Apple exchange failed: \(error.localizedDescription)"
+                    self.error = "Couldn't complete Apple sign-in. Please try again."
                 }
             }
         case .failure(let err):
             print("[AppleSignIn] SDK failed: \(err)")
-            error = "Apple sign-in cancelled/failed: \(err.localizedDescription)"
+            if (err as? ASAuthorizationError)?.code == .canceled { return }   // she backed out — not an error
+            error = "Couldn't complete Apple sign-in. Please try again."
         }
     }
 
@@ -99,7 +100,7 @@ struct AuthView: View {
                 let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: root)
                 print("[GoogleSignIn] SDK sign-in OK. email=\(result.user.profile?.email ?? "nil") hasIDToken=\(result.user.idToken != nil)")
                 guard let idToken = result.user.idToken?.tokenString else {
-                    error = "Google: no ID token returned."; return
+                    error = "Couldn't complete Google sign-in. Please try again."; return
                 }
                 do {
                     try await session.signInWithSocial(
@@ -109,13 +110,14 @@ struct AuthView: View {
                     )
                 } catch {
                     print("[GoogleSignIn] Supabase exchange FAILED: \(error)")
-                    self.error = "Supabase exchange failed: \(error.localizedDescription)"
+                    self.error = "Couldn't complete Google sign-in. Please try again."
                     return
                 }
                 onSignedIn?(); dismiss()
             } catch {
                 print("[GoogleSignIn] SDK sign-in FAILED: \(error)")
-                self.error = "Google SDK failed: \(error.localizedDescription)"
+                if (error as NSError).code == -5 { return }   // GIDSignInError.canceled — she backed out
+                self.error = "Couldn't complete Google sign-in. Please try again."
             }
         }
     }

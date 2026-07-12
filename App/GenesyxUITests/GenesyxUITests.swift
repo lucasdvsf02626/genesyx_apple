@@ -27,6 +27,17 @@ final class GenesyxUITests: XCTestCase {
         }
     }
 
+    /// The supplement card used to print a hardcoded "3 of 4 taken today" to every user, on a
+    /// fresh install, forever. The seeded user logs water today but no supplements, so the only
+    /// honest thing the card can say is that none are logged.
+    func testSupplementCountReflectsTodaysLog() {
+        let app = launchSeeded(tab: 2)   // Nutrition
+        XCTAssertTrue(app.staticTexts["None logged yet today"].waitForExistence(timeout: 10),
+                      "Supplement count must come from today's log, not a placeholder")
+        XCTAssertFalse(app.staticTexts["3 of 4 taken today"].exists,
+                       "The hardcoded supplement count must never come back")
+    }
+
     func testLearnTabShowsArticles() {
         let app = launchSeeded(tab: 4)   // Learn
         XCTAssertTrue(app.staticTexts["Your first week with Genesyx"].waitForExistence(timeout: 10),
@@ -70,7 +81,7 @@ final class GenesyxUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Home"].waitForExistence(timeout: 10))
 
         // Seeded cycle is present → the first-run setup prompt must NOT be showing yet.
-        let setupPrompt = app.staticTexts["When did your last period start? We'll map your cycle from there."]
+        let setupPrompt = app.staticTexts["When did your last period start? Next we'll confirm your cycle length — every prediction is built from it."]
         XCTAssertFalse(setupPrompt.exists, "Seeded cycle should render, not the empty setup prompt")
 
         // Sign out from Profile.

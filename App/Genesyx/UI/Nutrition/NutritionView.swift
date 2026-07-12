@@ -202,6 +202,13 @@ struct NutritionView: View {
 
     // MARK: Supplement plan
 
+    /// Honest count of today's logged supplements (from the daily log), never a fixed placeholder.
+    private var supplementsTakenLabel: String {
+        let taken = dailyLog.log(on: today).supplements.count
+        let total = NutritionContent.supplementPlan.count
+        return taken > 0 ? "\(taken) of \(total) taken today" : "None logged yet today"
+    }
+
     private var supplementPlanCard: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .top, spacing: 16) {
@@ -216,7 +223,7 @@ struct NutritionView: View {
                         ForEach(Array(NutritionContent.supplementPlan.enumerated()), id: \.element.initial) { i, s in
                             SupplementAvatar(initial: s.initial, index: i)
                         }
-                        Text("3 of 4 taken today").font(.gxBodySmall)
+                        Text(supplementsTakenLabel).font(.gxBodySmall)
                             .foregroundStyle(GenesyxColor.mutedForeground).padding(.leading, 14)
                     }
                     .padding(.top, 6)

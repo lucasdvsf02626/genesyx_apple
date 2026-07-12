@@ -14,6 +14,7 @@ struct HomeView: View {
     @State private var lastPeriod = Date()
     @State private var showLog = false
     @State private var showPregnancy = false
+    @State private var showCycleSetup = false
 
     var body: some View {
         NavigationStack {
@@ -39,6 +40,11 @@ struct HomeView: View {
             .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $showLog) { LogView() }
             .sheet(isPresented: $showPregnancy) { PregnancyView() }
+            .sheet(isPresented: $showCycleSetup) {
+                CycleSettingsSheet(current: CycleSettings(lastPeriodDate: CalendarDate(date: lastPeriod))) {
+                    cycle.upsert($0)
+                }
+            }
         }
     }
 
@@ -195,12 +201,14 @@ struct HomeView: View {
     private var setupCard: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Welcome to Genesyx").font(.gxTitle).foregroundStyle(GenesyxColor.foreground)
-            Text("When did your last period start? We'll map your cycle from there.")
+            Text("When did your last period start? Next we'll confirm your cycle length — every prediction is built from it.")
                 .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
             DatePicker("Last period start", selection: $lastPeriod, in: ...Date(), displayedComponents: .date)
                 .datePickerStyle(.compact)
             Button {
-                cycle.upsert(CycleSettings(lastPeriodDate: CalendarDate(date: lastPeriod)))
+                // Her cycle length drives phases, ovulation and the fertile window. Ask for it here
+                // rather than defaulting to 28 silently, which would show every user the same cycle.
+                showCycleSetup = true
             } label: {
                 Text("Start tracking")
                     .font(.gxLabel)

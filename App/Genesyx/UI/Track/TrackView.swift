@@ -6,6 +6,7 @@ import GenesyxCore
 struct TrackView: View {
 
     @EnvironmentObject private var cycle: CycleRepository
+    @EnvironmentObject private var dailyLog: DailyLogRepository
 
     @State private var monthAnchor = YearMonth.current
     @State private var showCycleSheet = false
@@ -35,7 +36,7 @@ struct TrackView: View {
             CycleSettingsSheet(current: cycle.settings) { cycle.upsert($0) }
         }
         .sheet(isPresented: $showLog) { LogView() }
-        .sheet(item: $selectedDay) { day in DayDetailSheet(day: day, today: today) }
+        .sheet(item: $selectedDay) { day in DayDetailSheet(day: day, today: today, log: dailyLog.log(on: day.date)) }
     }
 
     // MARK: Header
@@ -222,6 +223,7 @@ struct DayInfo: Identifiable {
 private struct DayDetailSheet: View {
     let day: DayInfo
     let today: CalendarDate
+    let log: DailyLog
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -245,6 +247,20 @@ private struct DayDetailSheet: View {
         if isFuture && phase == .ovulatory { return "Predicted: ovulation day — peak fertility." }
         if isFuture && isFertile { return "Predicted: fertile window." }
         if isFuture { return "Predicted: \(CycleContent.phaseLabel[phase]!.lowercased())." }
-        return "No log yet for this day."
+        if let summary = loggedSummary { return summary }
+        return day.date == today ? "Nothing logged yet today." : "No log for this day."
+    }
+
+    /// A real summary of what she logged on this day, or nil if the day is empty.
+    private var loggedSummary: String? {
+        var parts: [String] = []
+        if log.waterMl > 0 { parts.append(String(format: "%.1f L water", Double(log.waterMl) / 1000)) }
+        if let mood = log.mood { parts.append("mood \(mood.label.lowercased())") }
+        if let energy = log.energy { parts.append("\(energy.rawValue) energy") }
+        if !log.symptoms.isEmpty { parts.append("\(log.symptoms.count) symptom\(log.symptoms.count == 1 ? "" : "s")") }
+        if !log.supplements.isEmpty { parts.append("\(log.supplements.count) supplement\(log.supplements.count == 1 ? "" : "s")") }
+        if let m = log.sleepMinutes, m > 0 { parts.append(String(format: "%.1f h sleep", Double(m) / 60)) }
+        guard !parts.isEmpty else { return nil }
+        return "Logged: " + parts.joined(separator: ", ") + "."
     }
 }

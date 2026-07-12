@@ -65,6 +65,10 @@ final class AppContainer: ObservableObject {
         await cycle.drainPending()
         await dailyLog.drainPending()
         await ph.drainPending()
+        // A partner accepting an invite is a change made on *another* device, so there is nothing
+        // owed to push — only something to pull. Without this the inviter had to fully relaunch
+        // the app before her partner ever showed up as linked.
+        await partner.refresh()
     }
 
     /// Wipe on-device health data (cycle settings, pH readings, daily logs) from memory and the

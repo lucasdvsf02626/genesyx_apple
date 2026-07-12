@@ -28,13 +28,17 @@ public enum HydrationInsightLogic {
             totalMl: total,
             daysOnGoal: onGoal,
             streak: streak,
-            insight: insightLine(daysOnGoal: onGoal, streak: streak)
+            insight: insightLine(daysOnGoal: onGoal, streak: streak, hasAnyWater: total > 0)
         )
     }
 
-    public static func insightLine(daysOnGoal: Int, streak: Int) -> String {
+    /// `hasAnyWater` separates "logged, but never hit goal" from "logged nothing at all" — both used
+    /// to land on daysOnGoal == 0, so a user who tracked nothing was told she'd started tracking.
+    public static func insightLine(daysOnGoal: Int, streak: Int, hasAnyWater: Bool = true) -> String {
         var base: String
         switch daysOnGoal {
+        case 0 where !hasAnyWater:
+            base = "No water logged yet this week — one glass, whenever you think of it, is enough to start."
         case 0:     base = "You've started tracking water this week — small, steady sips build the habit."
         case 1...3: base = "\(daysOnGoal) days on goal this week. Anchor a glass to a meal and you'll steady out."
         case 4...6: base = "\(daysOnGoal) of 7 days on goal — gentle, consistent progress."
