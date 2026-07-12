@@ -1,9 +1,14 @@
 import Foundation
 import GenesyxCore
 
-/// Partner linking. Local-first in-memory mock (v1); mirrors to a `PartnerBackend` and refreshes
-/// from it when provided. `sendInvite` generates a 16-char code locally for immediate UI feedback.
-/// Mirrors the Android `PartnerRepository`.
+/// Partner linking. Unlike the health repositories, this one is NOT local-first: a partner link is
+/// an agreement between two accounts, so only the server can say it happened. Every method awaits
+/// the backend and throws on failure — nothing shows as invited, or as linked, until the database
+/// says so.
+///
+/// The previous version invented an invite code on the device and appended it optimistically. The
+/// server generated a *different* code, so the link she shared redeemed nothing; and an accept that
+/// failed still displayed a partner.
 @MainActor
 final class PartnerRepository: ObservableObject {
 
@@ -16,25 +21,35 @@ final class PartnerRepository: ObservableObject {
         self.backend = backend
     }
 
-    func sendInvite(email: String) {
-        let code = String(UUID().uuidString.replacingOccurrences(of: "-", with: "").prefix(16))
-        invites.append(PartnerInvite(id: UUID().uuidString, email: email, code: code))
-        if let backend { Task { try? await backend.sendInvite(email: email); await refresh() } }
+    /// Creates the invite and returns it carrying the code the DATABASE issued — that code is what
+    /// the share link redeems, so it must never be guessed on the device.
+    @discardableResult
+    func sendInvite(email: String) async throws -> PartnerInvite {
+        guard let backend else { throw RemoteError.notConfigured }
+        let invite = try await backend.sendInvite(email: email)
+        await refresh()
+        return invite
     }
 
-    func revoke(id: String) {
-        invites = invites.map { $0.id == id ? PartnerInvite(id: $0.id, email: $0.email, code: $0.code, status: .revoked) : $0 }
-        if let backend { Task { try? await backend.revoke(id: id); await refresh() } }
+    func revoke(id: String) async throws {
+        guard let backend else { throw RemoteError.notConfigured }
+        try await backend.revoke(id: id)
+        await refresh()
     }
 
-    func accept(code: String) {
-        partner = Partner(name: "Your partner")
-        if let backend { Task { try? await backend.accept(code: code); await refresh() } }
+    /// Redeems an invite code. The server checks the invite is still pending and was addressed to
+    /// *this* account's email, so a link forwarded to the wrong person is refused — and that refusal
+    /// arrives here as a thrown error rather than a fake success.
+    func accept(code: String) async throws {
+        guard let backend else { throw RemoteError.notConfigured }
+        try await backend.accept(code: code)
+        await refresh()
     }
 
-    func unlink() {
-        partner = nil
-        if let backend { Task { try? await backend.unlink(); await refresh() } }
+    func unlink() async throws {
+        guard let backend else { throw RemoteError.notConfigured }
+        try await backend.unlink()
+        await refresh()
     }
 
     /// Pull invites + linked partner from the remote (no-op when local-only).
@@ -42,5 +57,11 @@ final class PartnerRepository: ObservableObject {
         guard let backend else { return }
         if let remote = try? await backend.listInvites() { invites = remote }
         partner = try? await backend.fetchPartner()
+    }
+
+    /// Cleared on sign-out — the next account must not inherit a partner or a pending invite.
+    func clearLocalState() {
+        invites = []
+        partner = nil
     }
 }

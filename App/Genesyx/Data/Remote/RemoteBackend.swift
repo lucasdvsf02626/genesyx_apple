@@ -82,7 +82,9 @@ struct ProfilePrefs: Equatable {
 protocol PartnerBackend {
     func listInvites() async throws -> [PartnerInvite]
     func fetchPartner() async throws -> Partner?
-    func sendInvite(email: String) async throws
+    /// Returns the invite the SERVER created. The code must come back from the database — inventing
+    /// one on the device would hand her a link that redeems nothing.
+    func sendInvite(email: String) async throws -> PartnerInvite
     func revoke(id: String) async throws
     func accept(code: String) async throws
     func unlink() async throws

@@ -23,7 +23,12 @@ final class AuthPartnerBackendTests: XCTestCase {
         private(set) var sent = 0
         func listInvites() async throws -> [PartnerInvite] { invitesList }
         func fetchPartner() async throws -> Partner? { partnerVal }
-        func sendInvite(email: String) async throws { sent += 1; invitesList = [PartnerInvite(id: "i1", email: email, code: "CODE1234XXXX")] }
+        func sendInvite(email: String) async throws -> PartnerInvite {
+            sent += 1
+            let invite = PartnerInvite(id: "i1", email: email, code: "CODE1234XXXX")
+            invitesList = [invite]
+            return invite
+        }
         func revoke(id: String) async throws {}
         func accept(code: String) async throws { partnerVal = Partner(name: "Remote Partner") }
         func unlink() async throws { partnerVal = nil }
@@ -54,10 +59,16 @@ final class AuthPartnerBackendTests: XCTestCase {
         XCTAssertEqual(repo.partner?.name, "Remote Partner")
     }
 
-    func testNilBackendPartnerIsLocalMock() {
+    /// With no backend there is no server to agree to a link, so an invite cannot be faked into
+    /// existence. It throws rather than showing her an invite that redeems nothing.
+    func testWithNoBackendAnInviteCannotBeCreated() async {
         let repo = PartnerRepository(backend: nil)
-        repo.sendInvite(email: "local@x.com")
-        XCTAssertEqual(repo.invites.count, 1)
-        XCTAssertEqual(repo.invites.first?.email, "local@x.com")
+
+        do {
+            _ = try await repo.sendInvite(email: "local@x.com")
+            XCTFail("no backend, no invite")
+        } catch {}
+
+        XCTAssertTrue(repo.invites.isEmpty)
     }
 }

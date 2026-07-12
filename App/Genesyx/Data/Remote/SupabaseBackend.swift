@@ -160,11 +160,16 @@ private struct SupabasePartner: PartnerBackend {
         return p.first.map { Partner(name: $0.displayName ?? "Partner") }
     }
 
-    func sendInvite(email: String) async throws {
+    /// Returns the row the database actually stored, so the link she shares is the link that works.
+    func sendInvite(email: String) async throws -> PartnerInvite {
         let uid = try requireUID(auth)
         let code = String(UUID().uuidString.replacingOccurrences(of: "-", with: "").prefix(16))
-        try await client.from("partner_invites")
-            .insert(["inviter_id": uid, "invitee_email": email, "code": code, "status": "pending"]).execute()
+        let rows: [PartnerInviteRow] = try await client.from("partner_invites")
+            .insert(["inviter_id": uid, "invitee_email": email, "code": code, "status": "pending"])
+            .select()
+            .execute().value
+        guard let invite = rows.first?.domain else { throw RemoteError.notConfigured }
+        return invite
     }
 
     func revoke(id: String) async throws {

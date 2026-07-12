@@ -78,6 +78,8 @@ final class AppContainer: ObservableObject {
         // read-article list must not follow her out of the app.
         prefs.clearNotificationState()
         LearnReadLog.clear()
+        // Nor may the next account inherit her partner link or her pending invites.
+        partner.clearLocalState()
     }
 
     /// Production init — standard on-device store + resolved backend.

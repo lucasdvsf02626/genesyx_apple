@@ -13,7 +13,27 @@ struct InviteView: View {
     @EnvironmentObject private var session: SessionRepository
     @EnvironmentObject private var partner: PartnerRepository
 
+    @State private var accepting = false
+    @State private var error: String?
+
     private var valid: Bool { code.count >= 8 }
+
+    /// The server refuses an invite that isn't hers — wrong email, already used, or revoked. That
+    /// refusal has to be shown, not swallowed: the old code linked her optimistically and she would
+    /// have believed a link that never happened.
+    private func acceptInvite() {
+        accepting = true
+        error = nil
+        Task {
+            do {
+                try await partner.accept(code: code)
+                onAccepted()
+            } catch {
+                self.error = "This invite couldn't be accepted. It may have been sent to a different email address, already used, or withdrawn."
+            }
+            accepting = false
+        }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -43,8 +63,15 @@ struct InviteView: View {
                 Spacer().frame(height: 12)
                 Text("Accept to link your account so you can share your fertility-prep journey together.")
                     .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground).multilineTextAlignment(.center)
+                if let error {
+                    Spacer().frame(height: 12)
+                    Text(error)
+                        .font(.gxBodySmall).foregroundStyle(GenesyxColor.destructive)
+                        .multilineTextAlignment(.center)
+                }
                 Spacer().frame(height: 24)
-                GxPrimaryButton(title: "Accept invite") { partner.accept(code: code); onAccepted() }
+                GxPrimaryButton(title: accepting ? "Accepting…" : "Accept invite",
+                                enabled: !accepting) { acceptInvite() }
                 GxGhostButton(title: "Not now", action: onBack)
             }
         }

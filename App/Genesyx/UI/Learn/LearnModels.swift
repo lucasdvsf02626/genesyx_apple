@@ -5,7 +5,7 @@ import SwiftUI
 enum FeatureFlags {
     static let phTracking = true
     static let adminClients = false
-    static let partnerInvites = false
+    static let partnerInvites = true
     static let pushNotifications = true
 }
 

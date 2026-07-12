@@ -315,6 +315,9 @@ private struct PartnerSectionView: View {
 
     @State private var email = ""
     @State private var err: String?
+    @State private var sending = false
+    /// The invite just created, carrying the code the database issued — this is what she shares.
+    @State private var justCreated: PartnerInvite?
 
     private var pending: [PartnerInvite] { partner.invites.filter { $0.status == .pending } }
 
@@ -359,7 +362,13 @@ private struct PartnerSectionView: View {
                 Text("Linked partner").font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
             }
             Spacer()
-            Button("Remove") { partner.unlink() }.foregroundStyle(GenesyxColor.destructive)
+            Button("Remove") {
+                Task {
+                    do { try await partner.unlink() }
+                    catch { err = "Couldn't remove your partner. Please try again." }
+                }
+            }
+            .foregroundStyle(GenesyxColor.destructive)
         }
     }
 
@@ -379,30 +388,65 @@ private struct PartnerSectionView: View {
                 .onChange(of: email) { _ in err = nil }
             if let err { Text(err).font(.gxBodySmall).foregroundStyle(GenesyxColor.destructive) }
             Button {
-                if EmailValidator.isValid(email) { partner.sendInvite(email: email.trimmingCharacters(in: .whitespaces)); email = "" }
-                else { err = "Enter a valid email" }
+                createInvite()
             } label: {
                 HStack(spacing: 8) {
-                    Image(systemName: "envelope")
-                    Text("Send invite").fontWeight(.semibold)
+                    if sending { ProgressView().controlSize(.small) } else { Image(systemName: "envelope") }
+                    Text(sending ? "Creating invite…" : "Create invite").fontWeight(.semibold)
                 }
                 .foregroundStyle(GenesyxColor.primary).frame(maxWidth: .infinity)
             }
             .buttonStyle(.plain)
+            .disabled(sending)
 
             if !pending.isEmpty {
                 divider
                 Eyebrow("Pending invites", color: GenesyxColor.mutedForeground)
-                ForEach(pending) { inv in
-                    HStack {
-                        Text(inv.email).font(.gxBodySmall).foregroundStyle(GenesyxColor.foreground)
+                Text("An invite only works for the address it was sent to — she has to sign in with that email to accept.")
+                    .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+                ForEach(pending) { invite in
+                    HStack(spacing: 12) {
+                        Text(invite.email).font(.gxBodySmall).foregroundStyle(GenesyxColor.foreground)
                         Spacer()
+                        // The step that was missing: creating a row invited nobody. This is how the
+                        // link actually reaches her partner.
+                        ShareLink(item: DeepLink.inviteShareText(code: invite.code, from: session.displayName)) {
+                            Image(systemName: "square.and.arrow.up").font(.system(size: 14))
+                                .foregroundStyle(GenesyxColor.primary)
+                        }
                         Image(systemName: "xmark").font(.system(size: 13)).foregroundStyle(GenesyxColor.destructive)
-                            .onTapGesture { partner.revoke(id: inv.id) }
+                            .onTapGesture { revoke(invite) }
                     }
                     .padding(.top, 8)
                 }
             }
+        }
+        // Straight into the share sheet once the database has issued the code — the invite is
+        // useless until it reaches her.
+        .sheet(item: $justCreated) { invite in
+            InviteShareSheet(invite: invite, senderName: session.displayName)
+        }
+    }
+
+    private func createInvite() {
+        let address = email.trimmingCharacters(in: .whitespaces)
+        guard EmailValidator.isValid(address) else { err = "Enter a valid email"; return }
+        sending = true
+        Task {
+            do {
+                justCreated = try await partner.sendInvite(email: address)
+                email = ""
+            } catch {
+                err = "Couldn't create the invite. Check your connection and try again."
+            }
+            sending = false
+        }
+    }
+
+    private func revoke(_ invite: PartnerInvite) {
+        Task {
+            do { try await partner.revoke(id: invite.id) }
+            catch { err = "Couldn't revoke that invite. Please try again." }
         }
     }
 
