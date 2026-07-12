@@ -173,6 +173,15 @@ private struct SupabasePartner: PartnerBackend {
         return invite
     }
 
+    /// Asks the server to email the invite. The function reports `sent: false` when the mailer
+    /// isn't configured (or the send failed) rather than erroring, because the invite itself is
+    /// still valid and still shareable — a missing API key must not break invites.
+    func emailInvite(code: String) async throws -> Bool {
+        let response: EmailInviteResponse = try await client.functions.invoke(
+            "send_partner_invite", options: .init(body: ["code": code]))
+        return response.sent
+    }
+
     func revoke(id: String) async throws {
         _ = try requireUID(auth)
         try await client.from("partner_invites").update(["status": "revoked"]).eq("id", value: id).execute()

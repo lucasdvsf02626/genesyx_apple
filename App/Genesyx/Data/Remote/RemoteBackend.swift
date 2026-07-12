@@ -88,9 +88,17 @@ protocol PartnerBackend {
     /// Returns the invite the SERVER created. The code must come back from the database — inventing
     /// one on the device would hand her a link that redeems nothing.
     func sendInvite(email: String) async throws -> PartnerInvite
+    /// Emails the invite to the address it was addressed to. Returns whether the mail actually
+    /// went out — the mailer may not be configured, and that must not fail the invite.
+    func emailInvite(code: String) async throws -> Bool
     func revoke(id: String) async throws
     func accept(code: String) async throws
     func unlink() async throws
+}
+
+extension PartnerBackend {
+    /// Local/mock backends don't send mail. Defaulted so no existing conformer has to change.
+    func emailInvite(code: String) async throws -> Bool { false }
 }
 
 /// Aggregate entry point the app resolves at startup.

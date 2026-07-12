@@ -155,6 +155,14 @@ struct PartnerInviteRow: Codable {
     }
 }
 
+/// Reply from the `send_partner_invite` edge function. `sent` is false when the mailer isn't
+/// configured or the send failed — the invite is still valid, so this is reported, not thrown.
+struct EmailInviteResponse: Codable {
+    var ok: Bool
+    var sent: Bool
+    var reason: String?
+}
+
 struct ProfileRow: Codable {
     var id: String
     var displayName: String?

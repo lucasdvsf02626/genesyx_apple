@@ -441,7 +441,8 @@ private struct PartnerSectionView: View {
         // Straight into the share sheet once the database has issued the code — the invite is
         // useless until it reaches her.
         .sheet(item: $justCreated) { invite in
-            InviteShareSheet(invite: invite, senderName: session.displayName)
+            InviteShareSheet(invite: invite, senderName: session.displayName,
+                             emailed: partner.lastInviteEmailed)
         }
     }
 
