@@ -47,6 +47,14 @@ final class PreferencesRepository: ObservableObject {
         celebratedMilestones.subtract(flagKeys)
     }
 
+    /// Wipe the notification state derived from the signed-out user's data. Her milestone flags are
+    /// as personal as a log — leaving them behind would mean the next user on this device found her
+    /// celebrations already spent. Theme/focus/push preferences belong to the device, so they stay.
+    func clearNotificationState() {
+        celebratedMilestones = []
+        store.remove(forKey: celebratedKey)
+    }
+
     init(store: LocalStore, backend: ProfileBackend? = nil) {
         self.store = store
         self.backend = backend

@@ -74,6 +74,10 @@ final class AppContainer: ObservableObject {
         cycle.clearLocalState()
         ph.clearLocalState()
         dailyLog.clearLocalState()
+        // Notification state is derived from her data, so it is her data: milestone flags and the
+        // read-article list must not follow her out of the app.
+        prefs.clearNotificationState()
+        LearnReadLog.clear()
     }
 
     /// Production init — standard on-device store + resolved backend.

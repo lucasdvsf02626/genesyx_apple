@@ -14,4 +14,10 @@ enum LearnReadLog {
         guard slugs.insert(slug).inserted else { return }
         UserDefaults.standard.set(Array(slugs), forKey: key)
     }
+
+    /// Cleared on sign-out: the next user on this device has not read anything yet, and a Learn
+    /// nudge that skips articles she never opened would be quietly wrong.
+    static func clear() {
+        UserDefaults.standard.removeObject(forKey: key)
+    }
 }

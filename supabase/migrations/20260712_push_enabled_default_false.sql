@@ -1,0 +1,32 @@
+-- Genesyx — align profiles.push_enabled's default with what "on" actually means.
+--
+-- NOT APPLIED. Written for review; run it yourself when you're happy with it.
+--
+-- WHY
+-- `push_enabled` currently defaults to TRUE server-side. That default is what the client-side bug
+-- fixed in build 11 looked like from the other end: a value of "true" claimed she wanted reminders
+-- before she had ever been asked, and before iOS had granted permission. The app no longer trusts
+-- it (NotificationService.isOn requires her preference AND system authorization, so a pulled
+-- profile can't switch reminders on behind a permission that doesn't exist) — which makes this
+-- migration OPTIONAL and purely a matter of the column meaning what it says.
+--
+-- RISK: low, but not zero. Existing rows are untouched; only the default for NEW rows changes.
+-- If any other client (Android, web) reads push_enabled and treats a missing/false value as
+-- "don't send", a new user would default to no reminders there until she opts in. That is the
+-- correct behaviour, but confirm those clients agree before running this.
+--
+-- SAFE TO RE-RUN.
+
+alter table public.profiles alter column push_enabled set default false;
+
+-- Verify:
+--   select column_name, column_default
+--     from information_schema.columns
+--    where table_name = 'profiles' and column_name = 'push_enabled';
+--   -- expect: false
+--
+-- Existing rows are NOT rewritten. If you also want to reset everyone who has never explicitly
+-- opted in, that is a separate decision and a separate statement — think before you run it, as it
+-- would silently switch reminders off for users who did opt in on a device but whose preference
+-- was never pushed:
+--   -- update public.profiles set push_enabled = false;   -- NOT recommended without more thought

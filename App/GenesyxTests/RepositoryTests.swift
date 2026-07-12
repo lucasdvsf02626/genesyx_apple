@@ -282,6 +282,27 @@ final class RepositoryTests: XCTestCase {
         XCTAssertFalse(repo.pushEnabled)
     }
 
+    /// Sign-out must also wipe the notification state derived from her data. Milestone flags and
+    /// the read-article list are as personal as a log: leaving them behind means the next user on
+    /// the device silently inherits them — her celebrations already "spent", her Learn nudges
+    /// skipping articles she never read.
+    func testSignOutClearsNotificationState() {
+        let store = makeStore()
+        let container = AppContainer(store: store, backend: nil)
+        container.prefs.celebrate(["milestone_7_sent", "milestone_w1_sent"])
+        LearnReadLog.markRead("first-week")
+        XCTAssertFalse(container.prefs.celebratedMilestones.isEmpty)
+
+        container.session.signOut()
+
+        XCTAssertTrue(container.prefs.celebratedMilestones.isEmpty,
+                      "the next user must be able to earn her own milestones")
+        XCTAssertFalse(LearnReadLog.readSlugs.contains("first-week"),
+                       "the next user has not read the previous user's articles")
+        XCTAssertTrue(PreferencesRepository(store: store).celebratedMilestones.isEmpty,
+                      "and it must not come back from the store on next launch")
+    }
+
     /// Account deletion (success path) must wipe the same on-device health data.
     func testDeleteAccountClearsLocalHealthData() async throws {
         let store = makeStore()
