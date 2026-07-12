@@ -22,6 +22,7 @@
 		2784F238C500EEF89F459F93 /* HydrationInsightTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B18E3F542DC87A9DB38AE90F /* HydrationInsightTests.swift */; };
 		2A61DF86DC8A79DAB133FEAF /* RepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FD8DC508575F00BB7566E22 /* RepositoryTests.swift */; };
 		2CFBB75151ED772EF42BE762 /* AppContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A724E422A810E5B8921F4A15 /* AppContainer.swift */; };
+		369ADB44A682ACC75AFF81C2 /* LearnReadLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E3D2B9C5458CBBD4620E47E /* LearnReadLog.swift */; };
 		36C87A06EB5CFFF312367D11 /* InviteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E8224E3C264A5AAABD3B6F4 /* InviteView.swift */; };
 		3924E9760802BE0291932FD9 /* PartnerRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CEF9376EE55F833D33CFEA5 /* PartnerRepository.swift */; };
 		3B236BD816ADD547436DCF4A /* NutritionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F21E5D92371409ED4064F9DA /* NutritionView.swift */; };
@@ -127,6 +128,7 @@
 		7D0BEA36D2FE560E98C71D10 /* NotificationRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationRouter.swift; sourceTree = "<group>"; };
 		7F8902F736BE65A51377ABF0 /* QuizContentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuizContentTests.swift; sourceTree = "<group>"; };
 		7FAEDB5BABAF4DB17A1EA885 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		8E3D2B9C5458CBBD4620E47E /* LearnReadLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearnReadLog.swift; sourceTree = "<group>"; };
 		8E8224E3C264A5AAABD3B6F4 /* InviteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InviteView.swift; sourceTree = "<group>"; };
 		8FD8DC508575F00BB7566E22 /* RepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepositoryTests.swift; sourceTree = "<group>"; };
 		98022BBAD2E97CCAD9CBDF20 /* ErrorStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorStateView.swift; sourceTree = "<group>"; };
@@ -337,6 +339,7 @@
 		9105A54F385E310D3E14E971 /* Notifications */ = {
 			isa = PBXGroup;
 			children = (
+				8E3D2B9C5458CBBD4620E47E /* LearnReadLog.swift */,
 				F6DE996E8CAA936441DF387E /* NotificationContent.swift */,
 				7D0BEA36D2FE560E98C71D10 /* NotificationRouter.swift */,
 				25158C5D4C95C0D86A2FFC22 /* NotificationService.swift */,
@@ -600,6 +603,7 @@
 				36C87A06EB5CFFF312367D11 /* InviteView.swift in Sources */,
 				651A078688B74ECA03A31657 /* LearnContent.swift in Sources */,
 				C4A444E7B1D33B58A8A1DAB1 /* LearnModels.swift in Sources */,
+				369ADB44A682ACC75AFF81C2 /* LearnReadLog.swift in Sources */,
 				009BA7CB261C91DBBEC1D8C5 /* LearnViews.swift in Sources */,
 				E6031BE67078AE4BEF7ED0D1 /* LocalStore.swift in Sources */,
 				7E4CD1BF46B1F859F7A9E624 /* LogView.swift in Sources */,
@@ -697,7 +701,7 @@
 				CODE_SIGN_ENTITLEMENTS = App/Genesyx/Genesyx.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 9;
+				CURRENT_PROJECT_VERSION = 10;
 				DEVELOPMENT_TEAM = M5L3MM75SG;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				INFOPLIST_FILE = App/Genesyx/Info.plist;
@@ -723,7 +727,7 @@
 				CODE_SIGN_ENTITLEMENTS = App/Genesyx/Genesyx.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 9;
+				CURRENT_PROJECT_VERSION = 10;
 				DEVELOPMENT_TEAM = M5L3MM75SG;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				INFOPLIST_FILE = App/Genesyx/Info.plist;

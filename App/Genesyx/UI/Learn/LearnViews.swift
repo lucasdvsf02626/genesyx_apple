@@ -288,7 +288,8 @@ struct ArticleDetailView: View {
 
     var body: some View {
         if let article = LearnLibrary.articleBySlug(slug) {
-            content(article)
+            // Remembered so a Learn nudge never offers her something she has already read.
+            content(article).onAppear { LearnReadLog.markRead(slug) }
         } else {
             unavailable
         }

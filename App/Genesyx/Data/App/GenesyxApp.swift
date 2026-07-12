@@ -20,7 +20,7 @@ struct GenesyxApp: App {
         #endif
         _container = StateObject(wrappedValue: resolved)
         _notifications = StateObject(wrappedValue: NotificationService(
-            prefs: resolved.prefs, dailyLog: resolved.dailyLog, cycle: resolved.cycle, ph: resolved.ph))
+            prefs: resolved.prefs, dailyLog: resolved.dailyLog, ph: resolved.ph, store: resolved.store))
     }
 
     var body: some Scene {
