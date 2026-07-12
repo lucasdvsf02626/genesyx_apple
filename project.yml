@@ -94,9 +94,19 @@ targets:
         # Supabase (publishable/anon key is public — safe to ship). project epltxklawpcxxbaleswg.
         SUPABASE_URL: "https://epltxklawpcxxbaleswg.supabase.co"
         SUPABASE_ANON_KEY: "sb_publishable_eR7nEFBHD_4ATbjEeRbicA_Z3Qj_Elb"
-        # SF MEDIA & PR LTD — enables automatic signing for archive/upload.
+        # SF MEDIA & PR LTD.
         DEVELOPMENT_TEAM: M5L3MM75SG
         CODE_SIGN_STYLE: Automatic
+      configs:
+        # Archiving signs MANUALLY with the App Store distribution profile. Automatic signing tries
+        # to mint an iOS *Development* profile first and Apple refuses ("your team has no devices"),
+        # which is what broke the build-9 archive. Setting it here rather than on the xcodebuild
+        # command line is deliberate: a command-line setting leaks into every SPM package target
+        # (GoogleSignIn, AppAuth, …), and those don't support provisioning profiles at all.
+        Release:
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_IDENTITY: "Apple Distribution"
+          PROVISIONING_PROFILE_SPECIFIER: "Genesyx App Store"
 
   GenesyxAppTests:
     type: bundle.unit-test

@@ -532,7 +532,6 @@
 				TargetAttributes = {
 					144114A9DE8B8CC8CA5003BF = {
 						DevelopmentTeam = M5L3MM75SG;
-						ProvisioningStyle = Automatic;
 					};
 					D9704A8E449080CC0757F7F7 = {
 						TestTargetID = 144114A9DE8B8CC8CA5003BF;
@@ -722,8 +721,8 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = App/Genesyx/Genesyx.entitlements;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_IDENTITY = "Apple Distribution";
+				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 9;
 				DEVELOPMENT_TEAM = M5L3MM75SG;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -734,6 +733,7 @@
 				);
 				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.genesyx.app;
+				PROVISIONING_PROFILE_SPECIFIER = "Genesyx App Store";
 				SDKROOT = iphoneos;
 				SUPABASE_ANON_KEY = sb_publishable_eR7nEFBHD_4ATbjEeRbicA_Z3Qj_Elb;
 				SUPABASE_URL = "https://epltxklawpcxxbaleswg.supabase.co";
