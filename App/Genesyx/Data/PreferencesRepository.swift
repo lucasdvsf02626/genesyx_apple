@@ -51,7 +51,11 @@ final class PreferencesRepository: ObservableObject {
         self.store = store
         self.backend = backend
         self.themeMode = store.string(forKey: themeKey).flatMap(ThemeMode.init(rawValue:)) ?? .system
-        self.pushEnabled = store.bool(forKey: pushKey, default: true)
+        // Defaults to FALSE. "On" must mean she asked for reminders — defaulting it true made the
+        // Profile toggle read as on before iOS had ever been asked for permission, so the
+        // pre-prompt never appeared, permission was never requested, and nothing was ever
+        // scheduled. The toggle said yes and the app sent nothing.
+        self.pushEnabled = store.bool(forKey: pushKey, default: false)
         self.focusMode = store.string(forKey: focusKey).flatMap(FocusMode.init(rawValue:)) ?? .prep
         self.pendingPush = store.bool(forKey: pendingKey, default: false)
         self.celebratedMilestones = Set(store.load([String].self, forKey: celebratedKey) ?? [])

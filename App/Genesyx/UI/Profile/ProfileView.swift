@@ -160,7 +160,7 @@ struct ProfileView: View {
             groupLabel("Notifications")
             cardGroup {
                 Toggle("Weekly reminders", isOn: Binding(
-                    get: { prefs.pushEnabled },
+                    get: { notifications.isOn },           // she asked for them AND iOS agreed
                     set: { on in
                         if on && notifications.authorizationStatus == .notDetermined {
                             showReminderPrompt = true      // explain first, then ask

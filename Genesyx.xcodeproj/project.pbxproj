@@ -30,6 +30,7 @@
 		3C4025BDDBBFF7E7C4EB068D /* NotificationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A374BA412A71C4681304F6B /* NotificationTests.swift */; };
 		3C786426F8C9E9FF5E55F9F2 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC4D301E002F9F92D74DCA2E /* MainTabView.swift */; };
 		3D63A628C151330C2E790EF8 /* PersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 303189AF2EDB7CEDB86E0060 /* PersistenceTests.swift */; };
+		57380349F4D6348FC2B14FEA /* NotificationFlowUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A792C435055372123D5BEC67 /* NotificationFlowUITests.swift */; };
 		57841B3DEE07C928CEF38FBC /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29302184F2B6D0C0053D36D1 /* Theme.swift */; };
 		5D61FD77753CAD3C6DC9F99A /* TrackView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8235770B012CBBA13E031E3 /* TrackView.swift */; };
 		5F63C8C182860F732EFAD1B4 /* LearnContentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3396EA1311B91F430A9A56FC /* LearnContentTests.swift */; };
@@ -135,6 +136,7 @@
 		9C3ADEDF6CA1AE1E9D790580 /* Genesyx.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Genesyx.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D2256A8461234A12EC51385 /* GenesyxColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenesyxColors.swift; sourceTree = "<group>"; };
 		A724E422A810E5B8921F4A15 /* AppContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppContainer.swift; sourceTree = "<group>"; };
+		A792C435055372123D5BEC67 /* NotificationFlowUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationFlowUITests.swift; sourceTree = "<group>"; };
 		AE0BDF46FCE64B4692A96017 /* LearnViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearnViews.swift; sourceTree = "<group>"; };
 		AEB6BAF8FC459A7A15C72AB8 /* BackendSwapTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendSwapTests.swift; sourceTree = "<group>"; };
 		B109D7AA3E1A1E26FE200791 /* GenesyxUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = GenesyxUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -186,6 +188,7 @@
 			isa = PBXGroup;
 			children = (
 				FD452495CEE851EB8D542EDD /* GenesyxUITests.swift */,
+				A792C435055372123D5BEC67 /* NotificationFlowUITests.swift */,
 			);
 			path = GenesyxUITests;
 			sourceTree = "<group>";
@@ -657,6 +660,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				7DEE045EA130EDC0364688A0 /* GenesyxUITests.swift in Sources */,
+				57380349F4D6348FC2B14FEA /* NotificationFlowUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -701,7 +705,7 @@
 				CODE_SIGN_ENTITLEMENTS = App/Genesyx/Genesyx.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				DEVELOPMENT_TEAM = M5L3MM75SG;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				INFOPLIST_FILE = App/Genesyx/Info.plist;
@@ -727,7 +731,7 @@
 				CODE_SIGN_ENTITLEMENTS = App/Genesyx/Genesyx.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				DEVELOPMENT_TEAM = M5L3MM75SG;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				INFOPLIST_FILE = App/Genesyx/Info.plist;

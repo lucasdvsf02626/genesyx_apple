@@ -48,6 +48,12 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
             .store(in: &cancellables)
     }
 
+    /// What the Profile toggle shows. Reminders are on only when she asked for them AND iOS agreed
+    /// — anything else would be the switch claiming to send things the app cannot send. In
+    /// particular, `profiles.push_enabled` defaults to true server-side, so a pulled profile must
+    /// not be able to flip this on behind a permission she never granted.
+    var isOn: Bool { prefs.pushEnabled && authorizationStatus == .authorized }
+
     /// True when she denied at the system level — Profile offers a link into Settings.
     var isSystemDenied: Bool { authorizationStatus == .denied }
 
@@ -103,7 +109,29 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
             schedule(hydration, restDays: plan.hydrationRestDays)
         }
         fireDueMilestones()
+        dumpScheduleForDebugging()
     }
+
+    #if DEBUG
+    /// Prints what is actually queued with the system, so a real run can be checked against what
+    /// the planner intended. Debug-only — this is a diagnostic, not a feature.
+    private func dumpScheduleForDebugging() {
+        Task {
+            let pending = await center.pendingNotificationRequests()
+            let formatter = DateFormatter()
+            formatter.dateFormat = "EEE d MMM HH:mm"
+            NSLog("📬 GENESYX SCHEDULE — \(pending.count) queued")
+            for request in pending.sorted(by: { $0.identifier < $1.identifier }) {
+                let when = (request.trigger as? UNCalendarNotificationTrigger)?.nextTriggerDate()
+                    .map(formatter.string(from:)) ?? "—"
+                NSLog("📬   [\(when)] \(request.identifier)")
+                NSLog("📬      \(request.content.title) — \(request.content.body)")
+            }
+        }
+    }
+    #else
+    private func dumpScheduleForDebugging() {}
+    #endif
 
     /// The whole of what the planner knows about her.
     private func snapshot() -> NotificationSnapshot {
