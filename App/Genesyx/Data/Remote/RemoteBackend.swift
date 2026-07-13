@@ -38,6 +38,8 @@ protocol AuthBackend {
     func signInWithIdToken(provider: SocialProvider, idToken: String, accessToken: String?, nonce: String?) async throws
     /// Emails a password-reset link to `email`.
     func resetPassword(email: String) async throws
+    /// Re-sends the sign-up confirmation email to `email` (for an account created but not yet confirmed).
+    func resendConfirmation(email: String) async throws
 }
 
 extension AuthBackend {
@@ -46,6 +48,7 @@ extension AuthBackend {
     func deleteAccount() async throws {}
     func signInWithIdToken(provider: SocialProvider, idToken: String, accessToken: String?, nonce: String?) async throws {}
     func resetPassword(email: String) async throws {}
+    func resendConfirmation(email: String) async throws {}
 }
 
 protocol CycleBackend {

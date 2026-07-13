@@ -28,6 +28,11 @@ struct AuthView: View {
 
     @State private var submitting = false
 
+    /// Set when a sign-up succeeds but its session is withheld pending email confirmation, so we can
+    /// offer to re-send the link without making her retype anything.
+    @State private var confirmPending = false
+    @State private var resendNotice: String?
+
     private func submit() {
         if !EmailValidator.isValid(email) { error = "Enter a valid email"; return }
         if password.count < 8 { error = "Password must be at least 8 characters"; return }
@@ -44,10 +49,23 @@ struct AuthView: View {
                 onSignedIn?(); dismiss()
             } catch RemoteError.emailConfirmationRequired {
                 self.error = "Almost there — check your inbox and confirm your email, then sign in."
+                self.confirmPending = true
             } catch {
                 self.error = "Could not sign in. Please check your details and try again."
             }
             submitting = false
+        }
+    }
+
+    private func resendConfirmation() {
+        resendNotice = nil
+        Task {
+            do {
+                try await session.resendConfirmation(email: email.trimmingCharacters(in: .whitespaces))
+                resendNotice = "Sent — check your inbox for the confirmation link."
+            } catch {
+                resendNotice = "Couldn't resend just now. Please try again in a moment."
+            }
         }
     }
 
@@ -173,6 +191,16 @@ struct AuthView: View {
                         .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 8)
                 }
 
+                if confirmPending {
+                    Button("Resend confirmation email", action: resendConfirmation)
+                        .font(.gxBodySmall.weight(.semibold)).foregroundStyle(GenesyxColor.primary)
+                        .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 8)
+                    if let resendNotice {
+                        Text(resendNotice).font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+                            .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 4)
+                    }
+                }
+
                 Spacer().frame(height: 20)
                 Button(action: submit) {
                     Text(submitting ? "Please wait…" : (signupMode ? "Create account" : "Sign in"))
@@ -209,7 +237,7 @@ struct AuthView: View {
                         .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
                     Text(signupMode ? "Sign in" : "Create account")
                         .font(.gxBodySmall.weight(.semibold)).foregroundStyle(GenesyxColor.primary)
-                        .onTapGesture { signupMode.toggle(); error = nil }
+                        .onTapGesture { signupMode.toggle(); error = nil; confirmPending = false; resendNotice = nil }
                 }
                 GxGhostButton(title: "Back to app") { dismiss() }
             }

@@ -41,6 +41,7 @@ private struct SupabaseAuth: AuthBackend {
         )
     }
     func resetPassword(email: String) async throws { try await client.auth.resetPasswordForEmail(email) }
+    func resendConfirmation(email: String) async throws { try await client.auth.resend(email: email, type: .signup) }
 }
 
 private func requireUID(_ auth: AuthBackend) throws -> String {
