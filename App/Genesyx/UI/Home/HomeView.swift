@@ -177,7 +177,7 @@ struct HomeView: View {
                 if streak > 0 {
                     HStack(spacing: 4) {
                         Image(systemName: "flame.fill").font(.system(size: 11))
-                        Text("\(streak)-day streak").font(.gxEyebrow)
+                        Text("\(streak)-day log streak").font(.gxEyebrow)
                     }
                     .foregroundStyle(GenesyxColor.electricPink)
                 }

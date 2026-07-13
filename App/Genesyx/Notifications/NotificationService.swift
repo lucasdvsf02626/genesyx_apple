@@ -46,6 +46,13 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
             .dropFirst()
             .sink { [weak self] _ in self?.replan() }
             .store(in: &cancellables)
+
+        // Moving the reminder time changes when tonight's check-in should fire — re-plan so the
+        // scheduled request follows her choice without her having to toggle reminders off and on.
+        prefs.$reminderHour
+            .dropFirst()
+            .sink { [weak self] _ in self?.replan() }
+            .store(in: &cancellables)
     }
 
     /// What the Profile toggle shows. Reminders are on only when she asked for them AND iOS agreed
@@ -137,6 +144,7 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
     private func snapshot() -> NotificationSnapshot {
         let today = CalendarDate.today()
         let phDays = ph.readings.map { CalendarDate.today(now: $0.recordedAt) }
+        let loggedToday = dailyLog.log(on: today).isMeaningfulLog || phDays.contains(today)
 
         return NotificationSnapshot(
             streak: StreakEngine.compute(
@@ -149,7 +157,11 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
             daysSinceLastLog: lastActivityDay(phDays: phDays).map { today.dayNumber - $0.dayNumber },
             topSymptom: topSymptom(),
             learnCandidates: learnCandidates(),
-            daysSinceSent: daysSinceSent()
+            daysSinceSent: daysSinceSent(),
+            hasMeaningfulLogToday: loggedToday,
+            waterTodayMl: dailyLog.waterMl(on: today),
+            waterGoalMl: TrackingEngine.defaultWaterGoalMl,
+            reminderHour: prefs.reminderHour
         )
     }
 
@@ -191,10 +203,12 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
         if let weekday = planned.weekday {
             fire = Self.nextOccurrence(isoWeekday: weekday, hour: planned.hour, now: Date())
         } else {
+            // Whether the day is "done" is decided by the planner (it returns nil when there's
+            // nothing to say), so the fire time only needs today-at-hour, or tomorrow if it's past.
             fire = Self.nextHydrationFire(
                 now: Date(),
                 hour: planned.hour,
-                loggedToday: dailyLog.waterMl(on: .today()) > 0,
+                loggedToday: false,
                 restDays: restDays
             )
         }
@@ -334,14 +348,17 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
 
     // MARK: - Delegate
 
-    /// She's in the app. Show the banner — except a hydration nudge she has already answered by
-    /// logging water since it was scheduled.
+    /// She's in the app. Show the banner — except the evening check-in on a day she's already
+    /// answered: a meaningful log is in AND water has reached goal, so it has nothing left to say.
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
                                             willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
         let identifier = notification.request.identifier
         return await MainActor.run {
-            if identifier == NotificationKind.dailyHydration.rawValue, dailyLog.waterMl(on: .today()) > 0 {
-                return []
+            if identifier == NotificationKind.dailyHydration.rawValue {
+                let today = CalendarDate.today()
+                let dayComplete = dailyLog.log(on: today).isMeaningfulLog
+                    && dailyLog.waterMl(on: today) >= TrackingEngine.defaultWaterGoalMl
+                if dayComplete { return [] }
             }
             return [.banner, .sound]
         }

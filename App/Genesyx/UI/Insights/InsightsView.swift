@@ -13,14 +13,15 @@ struct InsightsView: View {
 
     private static let waterGoalMl = 2400
 
-    /// Real water for the last 7 days (oldest → newest) with narrow weekday-initial labels.
-    private var last7Days: [(label: String, ml: Int)] {
-        let today = CalendarDate.today()
-        let formatter = DateFormatter()
-        formatter.dateFormat = "EEEEE"   // single-letter weekday
-        return (0..<7).reversed().map { back in
-            let day = today.minusDays(back)
-            return (formatter.string(from: day.toDate()), dailyLog.waterMl(on: day))
+    /// Real water for the current ISO week (Monday → Sunday) with narrow weekday-initial labels.
+    /// This is the canonical calendar week (`CalendarDate.startOfWeek`) — the same week the
+    /// "Days on goal" tile and the Consistency card use — not a rolling 7-day window, so the
+    /// "This week" label is honest. Days later in the week that aren't here yet read 0ml.
+    private var currentWeek: [(label: String, ml: Int)] {
+        let monday = CalendarDate.today().startOfWeek
+        let letters = ["M", "T", "W", "T", "F", "S", "S"]   // Monday-first ISO week
+        return (0..<7).map { i in
+            (letters[i], dailyLog.waterMl(on: monday.addingDays(i)))
         }
     }
 
@@ -38,11 +39,12 @@ struct InsightsView: View {
         ConsistencyCard(model: ConsistencyInsightLogic.model(from: streakState))
     }
 
-    /// Week-over-week hydration delta — only shown when BOTH weeks have logged days (§8).
+    /// Week-over-week hydration delta — current ISO week vs the previous ISO week, so it lines up
+    /// with the Mon–Sun chart above. Only shown when BOTH weeks have logged days (§8).
     private var hydrationDeltaLine: String? {
-        let today = CalendarDate.today()
-        let thisWeek = (0..<7).map { dailyLog.waterMl(on: today.minusDays($0)) }.filter { $0 > 0 }
-        let lastWeek = (7..<14).map { dailyLog.waterMl(on: today.minusDays($0)) }.filter { $0 > 0 }
+        let monday = CalendarDate.today().startOfWeek
+        let thisWeek = (0..<7).map { dailyLog.waterMl(on: monday.addingDays($0)) }.filter { $0 > 0 }
+        let lastWeek = (0..<7).map { dailyLog.waterMl(on: monday.addingDays($0 - 7)) }.filter { $0 > 0 }
         return HydrationDeltaLogic.weekOverWeekLine(thisWeekMl: thisWeek, lastWeekMl: lastWeek)
     }
 
@@ -61,10 +63,9 @@ struct InsightsView: View {
     }
 
     private var hydrationInsightsCard: some View {
-        let week = last7Days
-        // Use the same streak the Consistency card shows (StreakEngine, with morning grace).
-        // `dailyLog.streak()` has no grace, so before she logged today the two cards on this very
-        // screen disagreed about the same number.
+        let week = currentWeek
+        // Same grace'd streak the Consistency card shows, and the same Mon–Sun week the "Days on
+        // goal" tile counts over — one week definition across the whole Insights screen.
         let insights = HydrationInsightLogic.compute(
             dailyMl: week.map(\.ml), goalMl: Self.waterGoalMl, streak: streakState.dailyHydration)
         return HydrationInsightsCard(
@@ -642,6 +643,7 @@ struct LogHistoryView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
+                    WeeklySummaryView()
                     if entries.isEmpty {
                         emptyState
                     } else {

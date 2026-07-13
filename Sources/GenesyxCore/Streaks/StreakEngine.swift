@@ -68,9 +68,9 @@ public struct StreakState: Equatable {
     /// when today has no water YET (morning grace: the streak isn't zeroed at 8am
     /// before she's had a chance to log; a genuinely missed day still breaks it).
     public let dailyHydration: Int
-    /// Consecutive COMPLETE weeks (≥5 of 7 days with any activity, Mon–Sun),
-    /// ending with the current week (if already complete) or the previous week
-    /// (a current week still in progress never breaks the streak).
+    /// Consecutive COMPLETE weeks (≥4 of 7 days with any activity, Mon–Sun, per the canonical
+    /// `TrackingEngine` rule), ending with the current week (if already complete) or the previous
+    /// week (a current week still in progress never breaks the streak).
     public let weeklyStreak: Int
     /// Days with any activity in the current Mon–Sun week (0–7).
     public let daysLoggedThisWeek: Int
@@ -115,13 +115,21 @@ public enum StreakEngine {
         today: CalendarDate,
         celebrated: Set<String>
     ) -> StreakState {
+        // Canonical metrics come from the single cross-platform engine (`TrackingEngine`); this
+        // type adds only the milestone + week-dot bookkeeping the UI needs on top of them.
         let hydrationDays = Set(logsByDate.filter { $0.value.waterMl > 0 }.keys)
         let activityDays = Set(logsByDate.filter { $0.value.hasAnyEntry }.keys)
             .union(phByDate) // pH-only days count toward weekly consistency (§3)
 
-        let daily = dailyStreak(hydrationDays: hydrationDays, today: today)
-        let best = bestStreak(hydrationDays: hydrationDays)
-        let (weekly, thisWeekCount, dots) = weeklyStreak(activityDays: activityDays, today: today)
+        let daily = TrackingEngine.streak(days: hydrationDays, today: today)
+        let best = TrackingEngine.bestStreak(days: hydrationDays)
+        let weekly = TrackingEngine.weeklyStreak(
+            days: activityDays, today: today, minDays: TrackingEngine.defaultWeeklyMinDays)
+
+        // Current-week dots (Monday-first) and count for the Consistency card's 7-dot row.
+        let currentMonday = today.startOfWeek
+        let dots = (0..<7).map { activityDays.contains(currentMonday.addingDays($0)) }
+        let thisWeekCount = dots.filter { $0 }.count
 
         let current: [Milestone: Int] = [
             .day7: daily, .day14: daily, .week1: weekly, .week4: weekly,
@@ -148,70 +156,4 @@ public enum StreakEngine {
         )
     }
 
-    // MARK: internals (static + deterministic)
-
-    /// Consecutive hydration days ending today, or ending yesterday when today is
-    /// still unlogged (morning grace). A fully missed day breaks the run.
-    static func dailyStreak(hydrationDays: Set<CalendarDate>, today: CalendarDate) -> Int {
-        let anchor: CalendarDate
-        if hydrationDays.contains(today) {
-            anchor = today
-        } else if hydrationDays.contains(today.addingDays(-1)) {
-            anchor = today.addingDays(-1)
-        } else {
-            return 0
-        }
-        var streak = 0
-        var cursor = anchor
-        while hydrationDays.contains(cursor) {
-            streak += 1
-            cursor = cursor.addingDays(-1)
-        }
-        return streak
-    }
-
-    /// Longest run of consecutive hydration days anywhere in history.
-    static func bestStreak(hydrationDays: Set<CalendarDate>) -> Int {
-        var best = 0
-        for day in hydrationDays where !hydrationDays.contains(day.addingDays(-1)) {
-            var length = 0
-            var cursor = day
-            while hydrationDays.contains(cursor) {
-                length += 1
-                cursor = cursor.addingDays(1)
-            }
-            best = max(best, length)
-        }
-        return best
-    }
-
-    static let completeWeekThreshold = 5 // of 7 days — perfection not required (§3)
-
-    /// Returns (weeklyStreak, daysLoggedThisWeek, weekDots Monday-first).
-    static func weeklyStreak(
-        activityDays: Set<CalendarDate>,
-        today: CalendarDate
-    ) -> (streak: Int, thisWeek: Int, dots: [Bool]) {
-        func daysActive(inWeekStarting monday: CalendarDate) -> Int {
-            (0..<7).filter { activityDays.contains(monday.addingDays($0)) }.count
-        }
-
-        let currentMonday = today.startOfWeek
-        let dots = (0..<7).map { activityDays.contains(currentMonday.addingDays($0)) }
-        let thisWeekCount = dots.filter { $0 }.count
-
-        // Streak ends with the current week when it's already complete; otherwise
-        // the in-progress week is pending (never a break) and counting starts at
-        // the previous week.
-        var cursor = thisWeekCount >= completeWeekThreshold
-            ? currentMonday
-            : currentMonday.addingDays(-7)
-
-        var streak = 0
-        while daysActive(inWeekStarting: cursor) >= completeWeekThreshold {
-            streak += 1
-            cursor = cursor.addingDays(-7)
-        }
-        return (streak, thisWeekCount, dots)
-    }
 }

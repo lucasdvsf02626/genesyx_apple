@@ -14,11 +14,16 @@ final class PreferencesRepository: ObservableObject {
     @Published var pushEnabled: Bool { didSet { store.setBool(pushEnabled, forKey: pushKey); pushPrefs() } }
     @Published var focusMode: FocusMode { didSet { store.setString(focusMode.rawValue, forKey: focusKey); pushPrefs() } }
 
+    /// Hour (0–23) of the daily evening check-in reminder. Device-local — a reminder time belongs to
+    /// the phone in her hand, not her synced profile. Defaults to 19:00.
+    @Published var reminderHour: Int { didSet { store.setInt(reminderHour, forKey: reminderHourKey) } }
+
     private let store: LocalStore
     private let backend: ProfileBackend?
     private let themeKey = "theme_mode"
     private let pushKey = "push_enabled"
     private let focusKey = "focus_mode"
+    private let reminderHourKey = "reminder_hour"
     private let pendingKey = "profile_pending"
 
     /// Set while applying a pulled profile, so writing those values doesn't bounce them straight
@@ -65,6 +70,7 @@ final class PreferencesRepository: ObservableObject {
         // scheduled. The toggle said yes and the app sent nothing.
         self.pushEnabled = store.bool(forKey: pushKey, default: false)
         self.focusMode = store.string(forKey: focusKey).flatMap(FocusMode.init(rawValue:)) ?? .prep
+        self.reminderHour = store.int(forKey: reminderHourKey, default: 19)
         self.pendingPush = store.bool(forKey: pendingKey, default: false)
         self.celebratedMilestones = Set(store.load([String].self, forKey: celebratedKey) ?? [])
     }

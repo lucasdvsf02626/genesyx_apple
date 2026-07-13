@@ -20,7 +20,7 @@ struct NutritionView: View {
 
     private var phase: Phase? { cycle.settings.map { CycleEngine.cyclePhase(settings: $0, target: today).phase } }
 
-    /// Consecutive complete weeks (≥5 of 7 days), for the de-pressured "steady weeks" line.
+    /// Consecutive complete weeks (≥4 of 7 days), for the de-pressured "steady weeks" line.
     /// pH days count toward weekly consistency, so pH readings feed the engine here too.
     private var weeklyStreak: Int {
         StreakEngine.compute(
@@ -322,7 +322,7 @@ enum HydrationCoach {
         }
     }
 
-    /// Weekly-consistency line — only surfaced when there's at least one complete week (≥5 of 7
+    /// Weekly-consistency line — only surfaced when there's at least one complete week (≥4 of 7
     /// days). De-pressured: celebrates steadiness, never demands perfection.
     static func weeklyStreakLabel(_ weeks: Int) -> String {
         weeks == 1
@@ -330,12 +330,14 @@ enum HydrationCoach {
             : "\(weeks) steady weeks — consistency is doing its quiet work."
     }
 
-    /// Always-visible daily-streak pill copy — de-pressured, encouraging even at zero.
+    /// Always-visible hydration-log-streak pill copy — de-pressured, encouraging even at zero.
+    /// Named a "log streak" (water logged) so it never reads as a goal streak and can't contradict
+    /// the "Days on goal X/7" tile.
     static func streakLabel(_ streak: Int) -> String {
         switch streak {
-        case 0:  return "Daily streak — start today"
+        case 0:  return "Log streak — start today"
         case 1:  return "Day 1 — great start"
-        default: return "\(streak)-day daily streak"
+        default: return "\(streak)-day log streak"
         }
     }
 

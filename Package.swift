@@ -15,6 +15,10 @@ let package = Package(
     ],
     targets: [
         .target(name: "GenesyxCore"),
-        .testTarget(name: "GenesyxCoreTests", dependencies: ["GenesyxCore"]),
+        .testTarget(
+            name: "GenesyxCoreTests",
+            dependencies: ["GenesyxCore"],
+            resources: [.process("Resources/tracking_test_vectors.json")]
+        ),
     ]
 )

@@ -72,13 +72,20 @@ final class StreakEngineTests: XCTestCase {
         XCTAssertEqual(s.dailyHydration, 1)
     }
 
-    // MARK: weekly streak — 5-of-7 boundary
+    // MARK: weekly streak — canonical 4-of-7 boundary (TrackingEngine.defaultWeeklyMinDays)
 
-    func testFourOfSevenDaysIsNotACompleteWeek() {
+    func testThreeOfSevenDaysIsNotACompleteWeek() {
+        var logs: [CalendarDate: FakeLog] = [:]
+        let lastMonday = monday.addingDays(-7)
+        for i in 0..<3 { logs[lastMonday.addingDays(i)] = .moodOnly() }
+        XCTAssertEqual(compute(logs: logs, today: monday).weeklyStreak, 0)
+    }
+
+    func testFourOfSevenDaysIsACompleteWeek() {
         var logs: [CalendarDate: FakeLog] = [:]
         let lastMonday = monday.addingDays(-7)
         for i in 0..<4 { logs[lastMonday.addingDays(i)] = .moodOnly() }
-        XCTAssertEqual(compute(logs: logs, today: monday).weeklyStreak, 0)
+        XCTAssertEqual(compute(logs: logs, today: monday).weeklyStreak, 1)
     }
 
     func testFiveOfSevenDaysIsACompleteWeek() {

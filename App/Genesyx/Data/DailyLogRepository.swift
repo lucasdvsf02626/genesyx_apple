@@ -64,15 +64,11 @@ final class DailyLogRepository: ObservableObject {
         upsert(entry, on: date)
     }
 
-    /// Consecutive days back from `today` (inclusive) that have water logged.
+    /// Consecutive days with water logged, ending today — or ending yesterday when today has no
+    /// water yet (morning grace). Drives the hydration flame. Uses the canonical `TrackingEngine`
+    /// rule so this number matches the one the Insights Consistency card shows.
     func streak(today: CalendarDate = .today()) -> Int {
-        var streak = 0
-        var day = today
-        while (logByDate[day]?.waterMl ?? 0) > 0 {
-            streak += 1
-            day = day.minusDays(1)
-        }
-        return streak
+        TrackingEngine.streak(days: TrackingEngine.hydrationDays(logByDate), today: today)
     }
 
     /// Push the days the server is owed, then pull the rest of her history. A day still owed is

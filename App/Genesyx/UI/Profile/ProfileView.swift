@@ -189,6 +189,23 @@ struct ProfileView: View {
                 .tint(GenesyxColor.primary)
                 .foregroundStyle(GenesyxColor.foreground)
                 .padding(.horizontal, 14).padding(.vertical, 8)
+
+                if notifications.isOn {
+                    divider
+                    HStack {
+                        Text("Reminder time").font(.system(size: 14.5)).foregroundStyle(GenesyxColor.foreground)
+                        Spacer()
+                        Picker("", selection: Binding(
+                            get: { prefs.reminderHour },
+                            set: { prefs.reminderHour = $0 }
+                        )) {
+                            ForEach(0..<24, id: \.self) { h in Text(Self.hourLabel(h)).tag(h) }
+                        }
+                        .labelsHidden()
+                        .tint(GenesyxColor.primary)
+                    }
+                    .padding(.horizontal, 14).padding(.vertical, 8)
+                }
             }
             if notifications.isSystemDenied && prefs.pushEnabled {
                 Button {
@@ -207,7 +224,7 @@ struct ProfileView: View {
     private var reminderPromptSheet: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Gentle reminders").font(.gxCardHeading).foregroundStyle(GenesyxColor.foreground)
-            Text("A nudge on mornings you haven't logged water, a weekly pH reminder, your phase for the week, a nutrition check-in, and a Sunday read. Nothing in the evenings, and never a word about a streak you've missed.")
+            Text("An evening check-in on days you haven't logged, a weekly pH reminder, your phase for the week, a nutrition check-in, and a Sunday read. Just one a day at most, and never a word about a streak you've missed.")
                 .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
             Text("You can turn these off any time.")
                 .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
@@ -291,6 +308,14 @@ struct ProfileView: View {
 
     private func groupLabel(_ text: String) -> some View {
         Eyebrow(text, color: GenesyxColor.mutedForeground).padding(.leading, 4)
+    }
+
+    /// Localised time-of-day label for the reminder-hour picker (respects 12/24-hour formatting).
+    private static func hourLabel(_ hour: Int) -> String {
+        var components = DateComponents(); components.hour = hour; components.minute = 0
+        let date = Calendar.current.date(from: components) ?? Date()
+        let formatter = DateFormatter(); formatter.timeStyle = .short
+        return formatter.string(from: date)
     }
 
     private func cardGroup<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {

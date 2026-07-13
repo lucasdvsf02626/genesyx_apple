@@ -46,6 +46,13 @@ public struct NotificationSnapshot {
     public let learnCandidates: [LearnCandidate]
     /// Days since each slot last fired. Absent = never fired.
     public let daysSinceSent: [NotificationSlot: Int]
+    /// Whether today already has a meaningful log (drives the evening check-in's first branch).
+    public let hasMeaningfulLogToday: Bool
+    /// Water logged so far today, and the goal — the evening nudge's second branch compares these.
+    public let waterTodayMl: Int
+    public let waterGoalMl: Int
+    /// Hour (0–23) she's chosen for the daily evening check-in.
+    public let reminderHour: Int
 
     public init(
         streak: StreakState,
@@ -54,7 +61,11 @@ public struct NotificationSnapshot {
         daysSinceLastLog: Int?,
         topSymptom: (name: String, count: Int)?,
         learnCandidates: [LearnCandidate],
-        daysSinceSent: [NotificationSlot: Int]
+        daysSinceSent: [NotificationSlot: Int],
+        hasMeaningfulLogToday: Bool = false,
+        waterTodayMl: Int = 0,
+        waterGoalMl: Int = TrackingEngine.defaultWaterGoalMl,
+        reminderHour: Int = NotificationPlanner.hydrationHour
     ) {
         self.streak = streak
         self.daysSinceLastPh = daysSinceLastPh
@@ -63,6 +74,10 @@ public struct NotificationSnapshot {
         self.topSymptom = topSymptom
         self.learnCandidates = learnCandidates
         self.daysSinceSent = daysSinceSent
+        self.hasMeaningfulLogToday = hasMeaningfulLogToday
+        self.waterTodayMl = waterTodayMl
+        self.waterGoalMl = waterGoalMl
+        self.reminderHour = reminderHour
     }
 }
 
@@ -148,40 +163,33 @@ public enum NotificationPlanner {
             .compactMap { $0 }
             .prefix(weeklyBudget)
 
-        return NotificationPlan(notifications: [hydration(snapshot)] + weekly)
+        let evening = hydration(snapshot).map { [$0] } ?? []
+        return NotificationPlan(notifications: evening + Array(weekly))
     }
 
-    // MARK: Hydration — every morning she hasn't started, in the words her streak has earned
+    // MARK: Evening check-in — one nudge at the hour she chose, in present-tense, guilt-free words
 
-    static func hydration(_ snapshot: NotificationSnapshot) -> PlannedNotification {
-        let streak = snapshot.streak.dailyHydration
-        let best = snapshot.streak.bestDailyStreak
-
-        let title: String
-        let body: String
-        switch streak {
-        case 0 where best == 0:
-            title = "A glass to start"
-            body = "Nothing logged yet today — one tap on the coach and you're going."
-        case 0:
-            // She had a run and it ended. Invariant 3: we do not mention that. Today is the offer.
-            title = "A fresh one"
-            body = "Today's an easy one to log. One glass is a start."
-        case 1...2:
-            title = "Day \(streak)"
-            body = "Small things, repeated. Today's glass keeps it going."
-        case 6:
-            title = "Six days"
-            body = "One more makes a full week."
-        case 13:
-            title = "Thirteen days"
-            body = "One more and you're at a fortnight."
-        default:
-            title = "\(streak) days running"
-            body = "Today's glass keeps it going."
+    /// The daily evening reminder (mirrors the Android reminder). Two branches, both inviting and
+    /// present-tense — never a word about a streak or a day she lost (invariant 3):
+    ///   • nothing meaningful logged today → a warm invitation to log
+    ///   • logged, but water short of goal → a gentle nudge toward one more glass
+    ///   • the day's already complete       → nothing at all (invariant 1)
+    static func hydration(_ snapshot: NotificationSnapshot) -> PlannedNotification? {
+        if !snapshot.hasMeaningfulLogToday {
+            return PlannedNotification(
+                slot: .hydration,
+                title: "A quick log tonight?",
+                body: "A moment to note how today went — it's how the picture builds.",
+                target: .home, weekday: nil, hour: snapshot.reminderHour)
         }
-        return PlannedNotification(slot: .hydration, title: title, body: body,
-                                   target: .nutrition, weekday: nil, hour: hydrationHour)
+        if snapshot.waterTodayMl < snapshot.waterGoalMl {
+            return PlannedNotification(
+                slot: .hydration,
+                title: "One more glass?",
+                body: "A little water before the day winds down.",
+                target: .nutrition, weekday: nil, hour: snapshot.reminderHour)
+        }
+        return nil   // logged, and hydration's already there — nothing left to say
     }
 
     // MARK: pH — only when a reading is actually due
@@ -219,7 +227,7 @@ public enum NotificationPlanner {
         let title: String
         let body: String
 
-        if streak.daysLoggedThisWeek >= StreakEngine.completeWeekThreshold {
+        if streak.daysLoggedThisWeek >= TrackingEngine.defaultWeeklyMinDays {
             title = "A steady week"
             body = "You've logged \(streak.daysLoggedThisWeek) of 7 days. That's what consistency looks like — see what it's showing."
         } else if snapshot.phReadingsLast30Days >= phTrendReadyCount {
@@ -307,20 +315,25 @@ public enum NotificationPlanner {
             LearnCandidate(slug: "b", title: "Hydration and your cycle", readingTime: "3 min read", tags: ["hydration"], read: false),
         ]
         func snapshot(daily: Int, best: Int, weekDays: Int, weekly: Int,
-                      ph: Int?, phCount: Int, log: Int?, symptom: (String, Int)?) -> NotificationSnapshot {
+                      ph: Int?, phCount: Int, log: Int?, symptom: (String, Int)?,
+                      loggedToday: Bool = false, waterToday: Int = 0) -> NotificationSnapshot {
             NotificationSnapshot(
                 streak: StreakState(dailyHydration: daily, weeklyStreak: weekly,
                                     daysLoggedThisWeek: weekDays, bestDailyStreak: best,
                                     milestones: [], lapsedCelebrations: [], weekDots: []),
                 daysSinceLastPh: ph, phReadingsLast30Days: phCount, daysSinceLastLog: log,
                 topSymptom: symptom.map { (name: $0.0, count: $0.1) },
-                learnCandidates: library, daysSinceSent: [:])
+                learnCandidates: library, daysSinceSent: [:],
+                hasMeaningfulLogToday: loggedToday, waterTodayMl: waterToday)
         }
 
         let states = [
+            // Evening branch A — nothing logged today.
             snapshot(daily: 0, best: 0, weekDays: 0, weekly: 0, ph: nil, phCount: 0, log: nil, symptom: nil),
             snapshot(daily: 0, best: 9, weekDays: 2, weekly: 1, ph: 30, phCount: 1, log: 4, symptom: ("Fatigue", 5)),
-            snapshot(daily: 1, best: 1, weekDays: 1, weekly: 0, ph: 8, phCount: 2, log: 0, symptom: nil),
+            // Evening branch B — logged, but water short of goal.
+            snapshot(daily: 1, best: 1, weekDays: 1, weekly: 0, ph: 8, phCount: 2, log: 0, symptom: nil,
+                     loggedToday: true, waterToday: 500),
             snapshot(daily: 6, best: 6, weekDays: 5, weekly: 1, ph: 9, phCount: 6, log: 0, symptom: ("Cramps", 3)),
             snapshot(daily: 13, best: 13, weekDays: 6, weekly: 2, ph: 2, phCount: 6, log: 0, symptom: nil),
             snapshot(daily: 22, best: 22, weekDays: 7, weekly: 4, ph: 1, phCount: 9, log: 0, symptom: nil),

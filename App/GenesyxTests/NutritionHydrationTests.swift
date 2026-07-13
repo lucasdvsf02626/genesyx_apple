@@ -44,10 +44,10 @@ final class NutritionHydrationTests: XCTestCase {
     }
 
     func testStreakLabelIsAlwaysMotivating() {
-        XCTAssertEqual(HydrationCoach.streakLabel(0), "Daily streak — start today")
+        XCTAssertEqual(HydrationCoach.streakLabel(0), "Log streak — start today")
         XCTAssertEqual(HydrationCoach.streakLabel(1), "Day 1 — great start")
-        XCTAssertEqual(HydrationCoach.streakLabel(2), "2-day daily streak")
-        XCTAssertEqual(HydrationCoach.streakLabel(9), "9-day daily streak")
+        XCTAssertEqual(HydrationCoach.streakLabel(2), "2-day log streak")
+        XCTAssertEqual(HydrationCoach.streakLabel(9), "9-day log streak")
     }
 
     func testContextLineByPhase() {
