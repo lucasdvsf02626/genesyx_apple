@@ -2,7 +2,7 @@ import SwiftUI
 import GenesyxCore
 
 /// Insights — every card is computed from the user's real logged data: urine pH, hydration,
-/// nutrition consistency, cycle regularity, symptom patterns, and predicted ovulation. No
+/// nutrition consistency, sleep, cycle regularity, symptom patterns, and predicted ovulation. No
 /// mock/hardcoded/sine values. (The Android "Nutrition consistency" card was a mock; the iOS one
 /// is honest — it counts the supplements she actually logged each day this week.)
 struct InsightsView: View {
@@ -87,6 +87,19 @@ struct InsightsView: View {
             labels: ["M", "T", "W", "T", "F", "S", "S"])
     }
 
+    /// Real sleep minutes per day for the current ISO week (Monday → Sunday) — same week definition
+    /// as the Hydration and Nutrition cards. A night not logged reads 0 and draws no bar.
+    private var currentWeekSleep: [Int] {
+        let monday = CalendarDate.today().startOfWeek
+        return (0..<7).map { dailyLog.log(on: monday.addingDays($0)).sleepMinutes ?? 0 }
+    }
+
+    private var sleepCard: some View {
+        SleepCard(
+            insights: SleepInsightLogic.compute(dailyMinutes: currentWeekSleep),
+            labels: ["M", "T", "W", "T", "F", "S", "S"])
+    }
+
     private var cycleRegularityCard: some View {
         CycleRegularityCard(insights: CycleRegularityLogic.compute(settings: cycle.settings))
     }
@@ -124,6 +137,7 @@ struct InsightsView: View {
                     PhInsightsCard(ph: insights, countLine: phCountLine, hasTrend: ph.readings.count >= 2)
                     hydrationInsightsCard
                     nutritionConsistencyCard
+                    sleepCard
                     cycleRegularityCard
                     symptomPatternsCard
                     ovulationCard
@@ -472,6 +486,71 @@ private struct NutritionConsistencyCard: View {
                               : AnyShapeStyle(GenesyxColor.muted))
                         .frame(height: count > 0
                                ? max(barHeight * CGFloat(min(Double(count) / Double(NutritionConsistencyLogic.planSize), 1)), 2)
+                               : 2)
+                    Text(index < labels.count ? labels[index] : "")
+                        .font(.system(size: 10)).foregroundStyle(GenesyxColor.mutedForeground)
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .frame(height: barHeight + 18)
+    }
+
+    private func tile(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Eyebrow(label, color: GenesyxColor.mutedForeground)
+            Text(value).font(.gxCardHeading).foregroundStyle(GenesyxColor.foreground)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(GenesyxColor.muted.opacity(0.4))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+}
+
+/// Weekly sleep duration — hours logged each night this ISO week. Honest data (from
+/// `daily_logs.sleepMinutes`), no goal line (sleep has no pass/fail target), guilt-free copy.
+private struct SleepCard: View {
+    let insights: SleepInsights
+    let labels: [String]
+    private let barHeight: CGFloat = 112
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .bottom) {
+                Text("Sleep").font(.gxCardHeading).foregroundStyle(GenesyxColor.foreground)
+                Spacer()
+                Text("This week").font(.gxBodySmall.weight(.medium)).foregroundStyle(GenesyxColor.electricBlue)
+            }
+            chart.padding(.top, 18)
+            HStack(spacing: 12) {
+                tile("Nightly average", insights.averageMinutes > 0 ? SleepInsightLogic.durationLabel(insights.averageMinutes) : "—")
+                tile("Nights logged", "\(insights.nightsLogged) / 7")
+            }
+            .padding(.top, 16)
+            Text(insights.insight)
+                .font(.gxBodySmall).foregroundStyle(GenesyxColor.foreground.opacity(0.8))
+                .fixedSize(horizontal: false, vertical: true).padding(.top, 14)
+        }
+        .padding(20)
+        .background(GenesyxColor.card)
+        .clipShape(RoundedRectangle(cornerRadius: 24))
+    }
+
+    private var chart: some View {
+        HStack(alignment: .bottom, spacing: 8) {
+            ForEach(Array(insights.dailyMinutes.enumerated()), id: \.offset) { index, minutes in
+                VStack(spacing: 6) {
+                    Spacer(minLength: 0)
+                    // Nothing logged → a flat grey track, not a stub. Height is minutes against a soft
+                    // 10h ceiling (not a goal — sleep has no pass/fail target).
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(minutes > 0
+                              ? AnyShapeStyle(LinearGradient(colors: [GenesyxColor.primary, GenesyxColor.babyLavender],
+                                                             startPoint: .top, endPoint: .bottom))
+                              : AnyShapeStyle(GenesyxColor.muted))
+                        .frame(height: minutes > 0
+                               ? max(barHeight * CGFloat(min(Double(minutes) / Double(SleepInsightLogic.chartCeilingMinutes), 1)), 2)
                                : 2)
                     Text(index < labels.count ? labels[index] : "")
                         .font(.system(size: 10)).foregroundStyle(GenesyxColor.mutedForeground)
