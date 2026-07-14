@@ -29,6 +29,13 @@ final class NutritionConsistencyLogicTests: XCTestCase {
         XCTAssertTrue(m.insight.contains("gentle rhythm"))
     }
 
+    func testSingularDayReads() {
+        let m = NutritionConsistencyLogic.compute(dailyCounts: [2, 0, 0, 0, 0, 0, 0])
+        XCTAssertEqual(m.daysLogged, 1)
+        XCTAssertTrue(m.insight.contains("1 day with supplements"))
+        XCTAssertFalse(m.insight.contains("1 days"))
+    }
+
     func testSteadyConsistencyCopyForMostDays() {
         let m = NutritionConsistencyLogic.compute(dailyCounts: [1, 1, 1, 1, 1, 0, 0])
         XCTAssertEqual(m.daysLogged, 5)

@@ -45,7 +45,8 @@ public enum NutritionConsistencyLogic {
         case 0:
             return "You've started noting your supplements — small, steady habits build from here."
         case 1...3:
-            return "\(daysLogged) days with supplements this week — a gentle rhythm is forming."
+            let dayWord = daysLogged == 1 ? "day" : "days"
+            return "\(daysLogged) \(dayWord) with supplements this week — a gentle rhythm is forming."
         case 4...6:
             return "\(daysLogged) of 7 days with supplements — lovely, steady consistency."
         default:
