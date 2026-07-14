@@ -2,9 +2,9 @@ import SwiftUI
 import GenesyxCore
 
 /// Insights — every card is computed from the user's real logged data: urine pH, hydration,
-/// cycle regularity, symptom patterns, and predicted ovulation. No mock/hardcoded/sine values.
-/// (The old Android "Nutrition consistency" mock card is intentionally dropped — the Hydration
-/// card is the honest weekly-water view.)
+/// nutrition consistency, cycle regularity, symptom patterns, and predicted ovulation. No
+/// mock/hardcoded/sine values. (The Android "Nutrition consistency" card was a mock; the iOS one
+/// is honest — it counts the supplements she actually logged each day this week.)
 struct InsightsView: View {
 
     @EnvironmentObject private var ph: PhRepository
@@ -74,6 +74,19 @@ struct InsightsView: View {
             deltaLine: hydrationDeltaLine)
     }
 
+    /// Real supplements logged per day for the current ISO week (Monday → Sunday) — the same week
+    /// definition the Hydration and Consistency cards use. Days not yet reached this week read 0.
+    private var currentWeekSupplements: [Int] {
+        let monday = CalendarDate.today().startOfWeek
+        return (0..<7).map { dailyLog.log(on: monday.addingDays($0)).supplements.count }
+    }
+
+    private var nutritionConsistencyCard: some View {
+        NutritionConsistencyCard(
+            insights: NutritionConsistencyLogic.compute(dailyCounts: currentWeekSupplements),
+            labels: ["M", "T", "W", "T", "F", "S", "S"])
+    }
+
     private var cycleRegularityCard: some View {
         CycleRegularityCard(insights: CycleRegularityLogic.compute(settings: cycle.settings))
     }
@@ -110,6 +123,7 @@ struct InsightsView: View {
                     consistencyCard
                     PhInsightsCard(ph: insights, countLine: phCountLine, hasTrend: ph.readings.count >= 2)
                     hydrationInsightsCard
+                    nutritionConsistencyCard
                     cycleRegularityCard
                     symptomPatternsCard
                     ovulationCard
@@ -401,6 +415,71 @@ private struct HydrationInsightsCard: View {
                     .foregroundStyle(GenesyxColor.mutedForeground).fixedSize()
             }
         }
+    }
+
+    private func tile(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Eyebrow(label, color: GenesyxColor.mutedForeground)
+            Text(value).font(.gxCardHeading).foregroundStyle(GenesyxColor.foreground)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(GenesyxColor.muted.opacity(0.4))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+}
+
+/// Weekly supplement adherence — how many plan supplements she logged each day this ISO week.
+/// Honest data (from `daily_logs.supplements`), guilt-free copy, same Mon–Sun week as Hydration.
+private struct NutritionConsistencyCard: View {
+    let insights: NutritionConsistencyInsights
+    let labels: [String]
+    private let barHeight: CGFloat = 112
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .bottom) {
+                Text("Nutrition consistency").font(.gxCardHeading).foregroundStyle(GenesyxColor.foreground)
+                Spacer()
+                Text("This week").font(.gxBodySmall.weight(.medium)).foregroundStyle(GenesyxColor.electricBlue)
+            }
+            chart.padding(.top, 18)
+            HStack(spacing: 12) {
+                tile("Days logged", "\(insights.daysLogged) / 7")
+                tile("Supplements taken", "\(insights.totalTaken)")
+            }
+            .padding(.top, 16)
+            Text(insights.insight)
+                .font(.gxBodySmall).foregroundStyle(GenesyxColor.foreground.opacity(0.8))
+                .fixedSize(horizontal: false, vertical: true).padding(.top, 14)
+        }
+        .padding(20)
+        .background(GenesyxColor.card)
+        .clipShape(RoundedRectangle(cornerRadius: 24))
+    }
+
+    private var chart: some View {
+        HStack(alignment: .bottom, spacing: 8) {
+            ForEach(Array(insights.dailyCounts.enumerated()), id: \.offset) { index, count in
+                VStack(spacing: 6) {
+                    Spacer(minLength: 0)
+                    // A day with nothing logged gets a flat grey track, not a green stub — height is
+                    // the fraction of her plan (out of planSize) she logged that day.
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(count > 0
+                              ? AnyShapeStyle(LinearGradient(colors: [GenesyxColor.electricBlue, GenesyxColor.powderBlue],
+                                                             startPoint: .top, endPoint: .bottom))
+                              : AnyShapeStyle(GenesyxColor.muted))
+                        .frame(height: count > 0
+                               ? max(barHeight * CGFloat(min(Double(count) / Double(NutritionConsistencyLogic.planSize), 1)), 2)
+                               : 2)
+                    Text(index < labels.count ? labels[index] : "")
+                        .font(.system(size: 10)).foregroundStyle(GenesyxColor.mutedForeground)
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .frame(height: barHeight + 18)
     }
 
     private func tile(_ label: String, _ value: String) -> some View {
