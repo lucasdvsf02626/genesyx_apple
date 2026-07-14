@@ -211,7 +211,7 @@ struct LogView: View {
         VStack(spacing: 12) {
             HStack(spacing: 12) {
                 miniCard("bed.double.fill", "Sleep", sleepValue, GenesyxColor.primary) { sleepOpen = true }
-                miniCard("drop.fill", "Water", waterMl > 0 ? String(format: "%.1fL", Double(waterMl) / 1000) : "—", GenesyxColor.electricBlue) { waterOpen = true }
+                miniCard("drop.fill", "Water", String(format: "%.1fL", Double(waterMl) / 1000), GenesyxColor.electricBlue) { waterOpen = true }
             }
             HStack(spacing: 12) {
                 miniCard("pills.fill", "Supplements", "\(selectedSupplements.count) of \(Self.supplements.count)", GenesyxColor.primary) { suppOpen = true }

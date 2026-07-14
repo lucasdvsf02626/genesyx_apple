@@ -1,4 +1,6 @@
 {
+  "contractVersion": 2,
+  "changelog": "v2: weekly minDays 5→4; sleep meaningful when != null; today-grace on both streaks; empty states = 0; never-guilt reminder copy",
   "_comment": "Cross-platform tracking contract. This file is mirrored byte-for-byte in the Android repo; both platforms' TrackingEngine must satisfy every case. Per day: waterMl (logged water), meaningful (log has any meaningful field, EXCLUDING pH), ph (a pH reading exists that date). Defaults: goalMl 2400, weeklyMinDays 4.",
   "cases": [
     {
