@@ -2,9 +2,9 @@ import SwiftUI
 import GenesyxCore
 
 /// Insights — every card is computed from the user's real logged data: urine pH, hydration,
-/// cycle regularity, symptom patterns, and predicted ovulation. No mock/hardcoded/sine values.
-/// (The old Android "Nutrition consistency" mock card is intentionally dropped — the Hydration
-/// card is the honest weekly-water view.)
+/// nutrition consistency, sleep, cycle regularity, symptom patterns, and predicted ovulation. No
+/// mock/hardcoded/sine values. (The Android "Nutrition consistency" card was a mock; the iOS one
+/// is honest — it counts the supplements she actually logged each day this week.)
 struct InsightsView: View {
 
     @EnvironmentObject private var ph: PhRepository
@@ -13,14 +13,15 @@ struct InsightsView: View {
 
     private static let waterGoalMl = 2400
 
-    /// Real water for the last 7 days (oldest → newest) with narrow weekday-initial labels.
-    private var last7Days: [(label: String, ml: Int)] {
-        let today = CalendarDate.today()
-        let formatter = DateFormatter()
-        formatter.dateFormat = "EEEEE"   // single-letter weekday
-        return (0..<7).reversed().map { back in
-            let day = today.minusDays(back)
-            return (formatter.string(from: day.toDate()), dailyLog.waterMl(on: day))
+    /// Real water for the current ISO week (Monday → Sunday) with narrow weekday-initial labels.
+    /// This is the canonical calendar week (`CalendarDate.startOfWeek`) — the same week the
+    /// "Days on goal" tile and the Consistency card use — not a rolling 7-day window, so the
+    /// "This week" label is honest. Days later in the week that aren't here yet read 0ml.
+    private var currentWeek: [(label: String, ml: Int)] {
+        let monday = CalendarDate.today().startOfWeek
+        let letters = ["M", "T", "W", "T", "F", "S", "S"]   // Monday-first ISO week
+        return (0..<7).map { i in
+            (letters[i], dailyLog.waterMl(on: monday.addingDays(i)))
         }
     }
 
@@ -38,11 +39,12 @@ struct InsightsView: View {
         ConsistencyCard(model: ConsistencyInsightLogic.model(from: streakState))
     }
 
-    /// Week-over-week hydration delta — only shown when BOTH weeks have logged days (§8).
+    /// Week-over-week hydration delta — current ISO week vs the previous ISO week, so it lines up
+    /// with the Mon–Sun chart above. Only shown when BOTH weeks have logged days (§8).
     private var hydrationDeltaLine: String? {
-        let today = CalendarDate.today()
-        let thisWeek = (0..<7).map { dailyLog.waterMl(on: today.minusDays($0)) }.filter { $0 > 0 }
-        let lastWeek = (7..<14).map { dailyLog.waterMl(on: today.minusDays($0)) }.filter { $0 > 0 }
+        let monday = CalendarDate.today().startOfWeek
+        let thisWeek = (0..<7).map { dailyLog.waterMl(on: monday.addingDays($0)) }.filter { $0 > 0 }
+        let lastWeek = (0..<7).map { dailyLog.waterMl(on: monday.addingDays($0 - 7)) }.filter { $0 > 0 }
         return HydrationDeltaLogic.weekOverWeekLine(thisWeekMl: thisWeek, lastWeekMl: lastWeek)
     }
 
@@ -61,13 +63,41 @@ struct InsightsView: View {
     }
 
     private var hydrationInsightsCard: some View {
-        let week = last7Days
+        let week = currentWeek
+        // Same grace'd streak the Consistency card shows, and the same Mon–Sun week the "Days on
+        // goal" tile counts over — one week definition across the whole Insights screen.
         let insights = HydrationInsightLogic.compute(
-            dailyMl: week.map(\.ml), goalMl: Self.waterGoalMl, streak: dailyLog.streak())
+            dailyMl: week.map(\.ml), goalMl: Self.waterGoalMl, streak: streakState.dailyHydration)
         return HydrationInsightsCard(
             insights: insights, labels: week.map(\.label),
             goalMl: Self.waterGoalMl, hasPh: !ph.readings.isEmpty,
             deltaLine: hydrationDeltaLine)
+    }
+
+    /// Real supplements logged per day for the current ISO week (Monday → Sunday) — the same week
+    /// definition the Hydration and Consistency cards use. Days not yet reached this week read 0.
+    private var currentWeekSupplements: [Int] {
+        let monday = CalendarDate.today().startOfWeek
+        return (0..<7).map { dailyLog.log(on: monday.addingDays($0)).supplements.count }
+    }
+
+    private var nutritionConsistencyCard: some View {
+        NutritionConsistencyCard(
+            insights: NutritionConsistencyLogic.compute(dailyCounts: currentWeekSupplements),
+            labels: ["M", "T", "W", "T", "F", "S", "S"])
+    }
+
+    /// Real sleep minutes per day for the current ISO week (Monday → Sunday) — same week definition
+    /// as the Hydration and Nutrition cards. A night not logged reads 0 and draws no bar.
+    private var currentWeekSleep: [Int] {
+        let monday = CalendarDate.today().startOfWeek
+        return (0..<7).map { dailyLog.log(on: monday.addingDays($0)).sleepMinutes ?? 0 }
+    }
+
+    private var sleepCard: some View {
+        SleepCard(
+            insights: SleepInsightLogic.compute(dailyMinutes: currentWeekSleep),
+            labels: ["M", "T", "W", "T", "F", "S", "S"])
     }
 
     private var cycleRegularityCard: some View {
@@ -104,8 +134,10 @@ struct InsightsView: View {
                     header
                     logHistoryLink
                     consistencyCard
-                    PhInsightsCard(ph: insights, countLine: phCountLine)
+                    PhInsightsCard(ph: insights, countLine: phCountLine, hasTrend: ph.readings.count >= 2)
                     hydrationInsightsCard
+                    nutritionConsistencyCard
+                    sleepCard
                     cycleRegularityCard
                     symptomPatternsCard
                     ovulationCard
@@ -225,6 +257,8 @@ private struct ConsistencyCard: View {
 private struct PhInsightsCard: View {
     let ph: PhInsights
     let countLine: String
+    /// False with a single reading — there is no previous value to compare against.
+    let hasTrend: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -242,23 +276,26 @@ private struct PhInsightsCard: View {
                 Text("No pH readings yet. Log your first one on Track or Nutrition.")
                     .font(.gxBody).foregroundStyle(GenesyxColor.mutedForeground).padding(.top, 12)
             } else {
-                let status = ph.currentStatus ?? .optimal
-                let color = Theme.color(for: status)
-                HStack(alignment: .center) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Eyebrow("Current", color: GenesyxColor.mutedForeground)
-                        HStack(spacing: 8) {
-                            Text(String(format: "%.1f", ph.currentValue ?? 0))
-                                .font(.system(size: 30, weight: .semibold)).foregroundStyle(color)
-                            Text(status.label.uppercased()).font(.system(size: 10.5, weight: .semibold))
-                                .foregroundStyle(color).padding(.horizontal, 10).padding(.vertical, 3)
-                                .background(color.opacity(0.18)).clipShape(Capsule())
+                // Never invent a reading: a missing value/status renders nothing rather than
+                // falling back to "0.0 / OPTIMAL", which would be a clinical claim we never measured.
+                if let value = ph.currentValue, let status = ph.currentStatus {
+                    let color = Theme.color(for: status)
+                    HStack(alignment: .center) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Eyebrow("Current", color: GenesyxColor.mutedForeground)
+                            HStack(spacing: 8) {
+                                Text(String(format: "%.1f", value))
+                                    .font(.system(size: 30, weight: .semibold)).foregroundStyle(color)
+                                Text(status.label.uppercased()).font(.system(size: 10.5, weight: .semibold))
+                                    .foregroundStyle(color).padding(.horizontal, 10).padding(.vertical, 3)
+                                    .background(color.opacity(0.18)).clipShape(Capsule())
+                            }
                         }
+                        Spacer()
+                        trendBadge
                     }
-                    Spacer()
-                    trendBadge
+                    .padding(.top, 14)
                 }
-                .padding(.top, 14)
                 HStack(spacing: 12) {
                     avgTile("7-day avg", ph.avg7)
                     avgTile("30-day avg", ph.avg30)
@@ -269,6 +306,11 @@ private struct PhInsightsCard: View {
                     Text(ph.recommendation).font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground).padding(.top, 6)
                 }
                 Text(countLine).font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground.opacity(0.9)).padding(.top, 6)
+                Text("Urine pH typically ranges from about 4.5 to 8 and varies with diet and hydration. Readings are for general wellness tracking, not for diagnosing or monitoring any medical condition.")
+                    .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+                    .fixedSize(horizontal: false, vertical: true).padding(.top, 6)
+                    .accessibilityIdentifier("phCaveat")
+                CitationLink("statpearls-urinalysis").padding(.top, 4)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -277,16 +319,22 @@ private struct PhInsightsCard: View {
         .clipShape(RoundedRectangle(cornerRadius: 24))
     }
 
-    private var trendBadge: some View {
-        let symbol: String
-        switch ph.trend {
-        case .up: symbol = "arrow.up"
-        case .down: symbol = "arrow.down"
-        case .flat: symbol = "arrow.right"
+    /// A trend needs two readings. With one, `PhInsightLogic` reports `.flat` — showing that as
+    /// "→ vs previous" would compare against a reading that doesn't exist, so we show nothing.
+    @ViewBuilder private var trendBadge: some View {
+        if hasTrend {
+            HStack(spacing: 4) {
+                Image(systemName: trendSymbol).font(.system(size: 14)).foregroundStyle(GenesyxColor.mutedForeground)
+                Text("vs previous").font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+            }
         }
-        return HStack(spacing: 4) {
-            Image(systemName: symbol).font(.system(size: 14)).foregroundStyle(GenesyxColor.mutedForeground)
-            Text("vs previous").font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+    }
+
+    private var trendSymbol: String {
+        switch ph.trend {
+        case .up: return "arrow.up"
+        case .down: return "arrow.down"
+        case .flat: return "arrow.right"
         }
     }
 
@@ -350,6 +398,7 @@ private struct HydrationInsightsCard: View {
                 Text("Steady hydration makes your pH readings more comparable — concentrated urine reads more acidic.")
                     .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
                     .fixedSize(horizontal: false, vertical: true).padding(.top, 6)
+                CitationLink("statpearls-urinalysis").padding(.top, 4)
             }
         }
         .padding(20)
@@ -363,10 +412,14 @@ private struct HydrationInsightsCard: View {
                 ForEach(Array(insights.dailyMl.enumerated()), id: \.offset) { index, ml in
                     VStack(spacing: 6) {
                         Spacer(minLength: 0)
+                        // A day with nothing logged gets a flat grey track, not a blue stub — the old
+                        // 2pt floor on the gradient drew "you drank a little" for days she never logged.
                         RoundedRectangle(cornerRadius: 8)
-                            .fill(LinearGradient(colors: [GenesyxColor.electricBlue, GenesyxColor.powderBlue],
-                                                 startPoint: .top, endPoint: .bottom))
-                            .frame(height: max(barHeight * CGFloat(min(Double(ml) / Double(goalMl), 1)), 2))
+                            .fill(ml > 0
+                                  ? AnyShapeStyle(LinearGradient(colors: [GenesyxColor.electricBlue, GenesyxColor.powderBlue],
+                                                                 startPoint: .top, endPoint: .bottom))
+                                  : AnyShapeStyle(GenesyxColor.muted))
+                            .frame(height: ml > 0 ? max(barHeight * CGFloat(min(Double(ml) / Double(goalMl), 1)), 2) : 2)
                         Text(index < labels.count ? labels[index] : "")
                             .font(.system(size: 10)).foregroundStyle(GenesyxColor.mutedForeground)
                     }
@@ -378,9 +431,140 @@ private struct HydrationInsightsCard: View {
             HStack(spacing: 6) {
                 DashedLine().stroke(style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
                     .foregroundStyle(GenesyxColor.mutedForeground.opacity(0.6)).frame(height: 1)
-                Text("2.4L goal").font(.system(size: 9)).foregroundStyle(GenesyxColor.mutedForeground).fixedSize()
+                Text(String(format: "%.1fL goal", Double(goalMl) / 1000)).font(.system(size: 9))
+                    .foregroundStyle(GenesyxColor.mutedForeground).fixedSize()
             }
         }
+    }
+
+    private func tile(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Eyebrow(label, color: GenesyxColor.mutedForeground)
+            Text(value).font(.gxCardHeading).foregroundStyle(GenesyxColor.foreground)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(GenesyxColor.muted.opacity(0.4))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+}
+
+/// Weekly supplement adherence — how many plan supplements she logged each day this ISO week.
+/// Honest data (from `daily_logs.supplements`), guilt-free copy, same Mon–Sun week as Hydration.
+private struct NutritionConsistencyCard: View {
+    let insights: NutritionConsistencyInsights
+    let labels: [String]
+    private let barHeight: CGFloat = 112
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .bottom) {
+                Text("Nutrition consistency").font(.gxCardHeading).foregroundStyle(GenesyxColor.foreground)
+                Spacer()
+                Text("This week").font(.gxBodySmall.weight(.medium)).foregroundStyle(GenesyxColor.electricBlue)
+            }
+            chart.padding(.top, 18)
+            HStack(spacing: 12) {
+                tile("Days logged", "\(insights.daysLogged) / 7")
+                tile("Supplements taken", "\(insights.totalTaken)")
+            }
+            .padding(.top, 16)
+            Text(insights.insight)
+                .font(.gxBodySmall).foregroundStyle(GenesyxColor.foreground.opacity(0.8))
+                .fixedSize(horizontal: false, vertical: true).padding(.top, 14)
+        }
+        .padding(20)
+        .background(GenesyxColor.card)
+        .clipShape(RoundedRectangle(cornerRadius: 24))
+    }
+
+    private var chart: some View {
+        HStack(alignment: .bottom, spacing: 8) {
+            ForEach(Array(insights.dailyCounts.enumerated()), id: \.offset) { index, count in
+                VStack(spacing: 6) {
+                    Spacer(minLength: 0)
+                    // A day with nothing logged gets a flat grey track, not a green stub — height is
+                    // the fraction of her plan (out of planSize) she logged that day.
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(count > 0
+                              ? AnyShapeStyle(LinearGradient(colors: [GenesyxColor.electricBlue, GenesyxColor.powderBlue],
+                                                             startPoint: .top, endPoint: .bottom))
+                              : AnyShapeStyle(GenesyxColor.muted))
+                        .frame(height: count > 0
+                               ? max(barHeight * CGFloat(min(Double(count) / Double(NutritionConsistencyLogic.planSize), 1)), 2)
+                               : 2)
+                    Text(index < labels.count ? labels[index] : "")
+                        .font(.system(size: 10)).foregroundStyle(GenesyxColor.mutedForeground)
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .frame(height: barHeight + 18)
+    }
+
+    private func tile(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Eyebrow(label, color: GenesyxColor.mutedForeground)
+            Text(value).font(.gxCardHeading).foregroundStyle(GenesyxColor.foreground)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(GenesyxColor.muted.opacity(0.4))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+}
+
+/// Weekly sleep duration — hours logged each night this ISO week. Honest data (from
+/// `daily_logs.sleepMinutes`), no goal line (sleep has no pass/fail target), guilt-free copy.
+private struct SleepCard: View {
+    let insights: SleepInsights
+    let labels: [String]
+    private let barHeight: CGFloat = 112
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .bottom) {
+                Text("Sleep").font(.gxCardHeading).foregroundStyle(GenesyxColor.foreground)
+                Spacer()
+                Text("This week").font(.gxBodySmall.weight(.medium)).foregroundStyle(GenesyxColor.electricBlue)
+            }
+            chart.padding(.top, 18)
+            HStack(spacing: 12) {
+                tile("Nightly average", insights.averageMinutes > 0 ? SleepInsightLogic.durationLabel(insights.averageMinutes) : "—")
+                tile("Nights logged", "\(insights.nightsLogged) / 7")
+            }
+            .padding(.top, 16)
+            Text(insights.insight)
+                .font(.gxBodySmall).foregroundStyle(GenesyxColor.foreground.opacity(0.8))
+                .fixedSize(horizontal: false, vertical: true).padding(.top, 14)
+        }
+        .padding(20)
+        .background(GenesyxColor.card)
+        .clipShape(RoundedRectangle(cornerRadius: 24))
+    }
+
+    private var chart: some View {
+        HStack(alignment: .bottom, spacing: 8) {
+            ForEach(Array(insights.dailyMinutes.enumerated()), id: \.offset) { index, minutes in
+                VStack(spacing: 6) {
+                    Spacer(minLength: 0)
+                    // Nothing logged → a flat grey track, not a stub. Height is minutes against a soft
+                    // 10h ceiling (not a goal — sleep has no pass/fail target).
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(minutes > 0
+                              ? AnyShapeStyle(LinearGradient(colors: [GenesyxColor.primary, GenesyxColor.babyLavender],
+                                                             startPoint: .top, endPoint: .bottom))
+                              : AnyShapeStyle(GenesyxColor.muted))
+                        .frame(height: minutes > 0
+                               ? max(barHeight * CGFloat(min(Double(minutes) / Double(SleepInsightLogic.chartCeilingMinutes), 1)), 2)
+                               : 2)
+                    Text(index < labels.count ? labels[index] : "")
+                        .font(.system(size: 10)).foregroundStyle(GenesyxColor.mutedForeground)
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .frame(height: barHeight + 18)
     }
 
     private func tile(_ label: String, _ value: String) -> some View {
@@ -623,6 +807,7 @@ struct LogHistoryView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
+                    WeeklySummaryView()
                     if entries.isEmpty {
                         emptyState
                     } else {

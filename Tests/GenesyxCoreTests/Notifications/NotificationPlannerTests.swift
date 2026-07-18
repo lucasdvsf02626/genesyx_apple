@@ -14,7 +14,9 @@ final class NotificationPlannerTests: XCTestCase {
                           daysSinceLastLog: Int? = 0,
                           topSymptom: (String, Int)? = nil,
                           learn: [LearnCandidate]? = nil,
-                          sent: [NotificationSlot: Int] = [:]) -> NotificationSnapshot {
+                          sent: [NotificationSlot: Int] = [:],
+                          loggedToday: Bool = false, waterToday: Int = 0,
+                          reminderHour: Int = 19) -> NotificationSnapshot {
         NotificationSnapshot(
             streak: StreakState(dailyHydration: daily, weeklyStreak: weekly,
                                 daysLoggedThisWeek: weekDays, bestDailyStreak: best,
@@ -24,7 +26,9 @@ final class NotificationPlannerTests: XCTestCase {
             daysSinceLastLog: daysSinceLastLog,
             topSymptom: topSymptom.map { (name: $0.0, count: $0.1) },
             learnCandidates: learn ?? library,
-            daysSinceSent: sent)
+            daysSinceSent: sent,
+            hasMeaningfulLogToday: loggedToday, waterTodayMl: waterToday,
+            reminderHour: reminderHour)
     }
 
     private func plan(_ s: NotificationSnapshot) -> NotificationPlan { NotificationPlanner.plan(s) }
@@ -114,12 +118,26 @@ final class NotificationPlannerTests: XCTestCase {
         XCTAssertTrue(p.notifications.isEmpty, "she was already reached out to — now leave her alone")
     }
 
-    // MARK: - The copy is actually hers
+    // MARK: - The evening check-in: two branches, both guilt-free
 
-    func testHydrationCopyIsEarnedByTheStreak() {
-        XCTAssertTrue(plan(snapshot(daily: 6, best: 6)).hydration!.body.contains("full week"))
-        XCTAssertTrue(plan(snapshot(daily: 9, best: 9)).hydration!.title.contains("9 days"))
-        XCTAssertTrue(plan(snapshot(daily: 0, best: 0)).hydration!.title.contains("A glass to start"))
+    /// Nothing logged today → a warm invitation to log, landing on Home.
+    func testEveningCheckInInvitesALogWhenNothingIsLogged() {
+        let h = plan(snapshot(daysSinceLastLog: 5, loggedToday: false)).hydration
+        XCTAssertEqual(h?.title, "A quick log tonight?")
+        XCTAssertEqual(h?.target, .home)
+        XCTAssertEqual(h?.hour, 19, "it fires at the hour she chose")
+    }
+
+    /// Logged today, but water short of goal → a gentle glass-of-water nudge, landing on Nutrition.
+    func testEveningCheckInNudgesWaterWhenLoggedButShortOfGoal() {
+        let h = plan(snapshot(loggedToday: true, waterToday: 500)).hydration
+        XCTAssertEqual(h?.title, "One more glass?")
+        XCTAssertEqual(h?.target, .nutrition)
+    }
+
+    /// Logged and hydrated → nothing at all (invariant 1: no filler).
+    func testEveningCheckInSaysNothingWhenTheDayIsComplete() {
+        XCTAssertNil(plan(snapshot(loggedToday: true, waterToday: 2400)).hydration)
     }
 
     func testPhCopyNamesHowLongItHasActuallyBeen() {

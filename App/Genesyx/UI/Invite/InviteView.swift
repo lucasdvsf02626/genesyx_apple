@@ -61,7 +61,7 @@ struct InviteView: View {
                 Spacer().frame(height: 16)
                 Text("Partner invite").font(.gxTitle).foregroundStyle(GenesyxColor.foreground)
                 Spacer().frame(height: 12)
-                Text("Accept to link your account so you can share your fertility-prep journey together.")
+                Text("Accept to link your accounts. You'll each see that you're connected — your logs, readings and notes stay private to you.")
                     .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground).multilineTextAlignment(.center)
                 if let error {
                     Spacer().frame(height: 12)

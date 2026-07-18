@@ -28,6 +28,11 @@ struct AuthView: View {
 
     @State private var submitting = false
 
+    /// Set when a sign-up succeeds but its session is withheld pending email confirmation, so we can
+    /// offer to re-send the link without making her retype anything.
+    @State private var confirmPending = false
+    @State private var resendNotice: String?
+
     private func submit() {
         if !EmailValidator.isValid(email) { error = "Enter a valid email"; return }
         if password.count < 8 { error = "Password must be at least 8 characters"; return }
@@ -44,10 +49,23 @@ struct AuthView: View {
                 onSignedIn?(); dismiss()
             } catch RemoteError.emailConfirmationRequired {
                 self.error = "Almost there — check your inbox and confirm your email, then sign in."
+                self.confirmPending = true
             } catch {
                 self.error = "Could not sign in. Please check your details and try again."
             }
             submitting = false
+        }
+    }
+
+    private func resendConfirmation() {
+        resendNotice = nil
+        Task {
+            do {
+                try await session.resendConfirmation(email: email.trimmingCharacters(in: .whitespaces))
+                resendNotice = "Sent — check your inbox for the confirmation link."
+            } catch {
+                resendNotice = "Couldn't resend just now. Please try again in a moment."
+            }
         }
     }
 
@@ -79,12 +97,13 @@ struct AuthView: View {
                     onSignedIn?(); dismiss()
                 } catch {
                     print("[AppleSignIn] Supabase exchange FAILED: \(error)")
-                    self.error = "Apple exchange failed: \(error.localizedDescription)"
+                    self.error = "Couldn't complete Apple sign-in. Please try again."
                 }
             }
         case .failure(let err):
             print("[AppleSignIn] SDK failed: \(err)")
-            error = "Apple sign-in cancelled/failed: \(err.localizedDescription)"
+            if (err as? ASAuthorizationError)?.code == .canceled { return }   // she backed out — not an error
+            error = "Couldn't complete Apple sign-in. Please try again."
         }
     }
 
@@ -99,7 +118,7 @@ struct AuthView: View {
                 let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: root)
                 print("[GoogleSignIn] SDK sign-in OK. email=\(result.user.profile?.email ?? "nil") hasIDToken=\(result.user.idToken != nil)")
                 guard let idToken = result.user.idToken?.tokenString else {
-                    error = "Google: no ID token returned."; return
+                    error = "Couldn't complete Google sign-in. Please try again."; return
                 }
                 do {
                     try await session.signInWithSocial(
@@ -109,13 +128,14 @@ struct AuthView: View {
                     )
                 } catch {
                     print("[GoogleSignIn] Supabase exchange FAILED: \(error)")
-                    self.error = "Supabase exchange failed: \(error.localizedDescription)"
+                    self.error = "Couldn't complete Google sign-in. Please try again."
                     return
                 }
                 onSignedIn?(); dismiss()
             } catch {
                 print("[GoogleSignIn] SDK sign-in FAILED: \(error)")
-                self.error = "Google SDK failed: \(error.localizedDescription)"
+                if (error as NSError).code == -5 { return }   // GIDSignInError.canceled — she backed out
+                self.error = "Couldn't complete Google sign-in. Please try again."
             }
         }
     }
@@ -171,6 +191,16 @@ struct AuthView: View {
                         .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 8)
                 }
 
+                if confirmPending {
+                    Button("Resend confirmation email", action: resendConfirmation)
+                        .font(.gxBodySmall.weight(.semibold)).foregroundStyle(GenesyxColor.primary)
+                        .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 8)
+                    if let resendNotice {
+                        Text(resendNotice).font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+                            .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 4)
+                    }
+                }
+
                 Spacer().frame(height: 20)
                 Button(action: submit) {
                     Text(submitting ? "Please wait…" : (signupMode ? "Create account" : "Sign in"))
@@ -207,7 +237,7 @@ struct AuthView: View {
                         .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
                     Text(signupMode ? "Sign in" : "Create account")
                         .font(.gxBodySmall.weight(.semibold)).foregroundStyle(GenesyxColor.primary)
-                        .onTapGesture { signupMode.toggle(); error = nil }
+                        .onTapGesture { signupMode.toggle(); error = nil; confirmPending = false; resendNotice = nil }
                 }
                 GxGhostButton(title: "Back to app") { dismiss() }
             }

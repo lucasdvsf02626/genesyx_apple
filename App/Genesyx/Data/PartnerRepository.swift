@@ -21,12 +21,21 @@ final class PartnerRepository: ObservableObject {
         self.backend = backend
     }
 
+    /// True when the last invite created was actually emailed to its recipient. False means the
+    /// mailer isn't configured (or the send failed) and the share sheet is the only delivery.
+    @Published private(set) var lastInviteEmailed = false
+
     /// Creates the invite and returns it carrying the code the DATABASE issued — that code is what
     /// the share link redeems, so it must never be guessed on the device.
+    ///
+    /// Then asks the server to email it. A failure there is deliberately NOT fatal: the invite is
+    /// real and shareable either way, and throwing would destroy a perfectly good invite over a
+    /// mail problem. What we must not do is *claim* it was emailed when it wasn't — hence the flag.
     @discardableResult
     func sendInvite(email: String) async throws -> PartnerInvite {
         guard let backend else { throw RemoteError.notConfigured }
         let invite = try await backend.sendInvite(email: email)
+        lastInviteEmailed = (try? await backend.emailInvite(code: invite.code)) ?? false
         await refresh()
         return invite
     }

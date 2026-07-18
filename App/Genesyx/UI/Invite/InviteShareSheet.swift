@@ -10,6 +10,8 @@ struct InviteShareSheet: View {
 
     let invite: PartnerInvite
     let senderName: String?
+    /// Whether the server actually emailed this invite. Never claim it did when it didn't.
+    var emailed: Bool = false
 
     @Environment(\.dismiss) private var dismiss
 
@@ -20,11 +22,15 @@ struct InviteShareSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 10) {
-                Image(systemName: "heart.fill").font(.system(size: 20)).foregroundStyle(GenesyxColor.primary)
-                Text("Invite ready").font(.gxCardHeading).foregroundStyle(GenesyxColor.foreground)
+                Image(systemName: emailed ? "paperplane.fill" : "heart.fill")
+                    .font(.system(size: 20)).foregroundStyle(GenesyxColor.primary)
+                Text(emailed ? "Invite sent" : "Invite ready")
+                    .font(.gxCardHeading).foregroundStyle(GenesyxColor.foreground)
             }
 
-            Text("Send this to \(invite.email). They'll need to install Genesyx and sign in with that email address — the invite only works for them.")
+            Text(emailed
+                 ? "We've emailed the invite to \(invite.email). They'll need to install Genesyx and sign in with that email address — the invite only works for them. You can send it again below if it doesn't arrive."
+                 : "Send this to \(invite.email). They'll need to install Genesyx and sign in with that email address — the invite only works for them.")
                 .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
 
             Text(DeepLink.inviteURL(code: invite.code)?.absoluteString ?? invite.code)

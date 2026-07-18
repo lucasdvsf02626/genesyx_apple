@@ -20,7 +20,7 @@ struct NutritionView: View {
 
     private var phase: Phase? { cycle.settings.map { CycleEngine.cyclePhase(settings: $0, target: today).phase } }
 
-    /// Consecutive complete weeks (≥5 of 7 days), for the de-pressured "steady weeks" line.
+    /// Consecutive complete weeks (≥4 of 7 days), for the de-pressured "steady weeks" line.
     /// pH days count toward weekly consistency, so pH readings feed the engine here too.
     private var weeklyStreak: Int {
         StreakEngine.compute(
@@ -71,27 +71,28 @@ struct NutritionView: View {
 
     // MARK: Hydration
 
-    /// Hydration Coach — live, time-of-day-aware coaching over today's water.
+    /// Hydration Coach — synced from Track's repository-backed log.
     private var hydrationCard: some View {
         let waterMl = dailyLog.waterMl(on: today)
         let remaining = max(waterGoalMl - waterMl, 0)
         let hour = Calendar.current.component(.hour, from: Date())
         let pct = Double(waterMl) / Double(waterGoalMl)
         let streak = dailyLog.streak()
+        let insights = HydrationInsightLogic.lastSevenDays(
+            logByDate: dailyLog.logByDate, goalMl: waterGoalMl, streak: streak, today: today)
         return VStack(alignment: .leading, spacing: 14) {
-            // Eyebrow + (de-pressured) streak
             HStack {
                 Eyebrow("Hydration", color: GenesyxColor.mutedForeground)
                 Spacer()
-                HStack(spacing: 4) {
-                    Image(systemName: streak > 0 ? "flame.fill" : "flame")
-                        .font(.system(size: 11))
-                        .foregroundStyle(streak > 0 ? GenesyxColor.electricPink : GenesyxColor.mutedForeground)
-                    Text(HydrationCoach.streakLabel(streak))
-                        .font(.system(size: 11.5, weight: .medium)).foregroundStyle(GenesyxColor.mutedForeground)
+                Button { openHydrationDetail() } label: {
+                    HStack(spacing: 4) {
+                        Text("Track").font(.gxBodySmall.weight(.semibold))
+                        Image(systemName: "chevron.right").font(.system(size: 11, weight: .semibold))
+                    }
+                    .foregroundStyle(GenesyxColor.primary)
                 }
+                .buttonStyle(.plain)
             }
-            // Big number + steppers
             HStack(alignment: .bottom) {
                 HStack(alignment: .bottom, spacing: 4) {
                     Text(String(format: "%.1f", Double(waterMl) / 1000))
@@ -100,22 +101,23 @@ struct NutritionView: View {
                         .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground).padding(.bottom, 4)
                 }
                 Spacer()
-                HStack(spacing: 8) {
-                    waterButton("minus", bg: GenesyxColor.muted, fg: GenesyxColor.foreground) { dailyLog.adjustWater(-200) }
-                    waterButton("plus", bg: GenesyxColor.primary, fg: .white) { dailyLog.adjustWater(200) }
-                }
+                Text(HydrationCoach.streakLabel(streak))
+                    .font(.system(size: 11.5, weight: .medium))
+                    .foregroundStyle(GenesyxColor.mutedForeground)
+                    .multilineTextAlignment(.trailing)
             }
             ProgressView(value: min(pct, 1))
                 .tint(GenesyxColor.foreground)
-            // Coach line — names the part of the day + the action
             Text(HydrationCoach.coachLine(hour: hour, pct: pct))
                 .font(.gxBody.weight(.semibold)).foregroundStyle(GenesyxColor.foreground)
                 .fixedSize(horizontal: false, vertical: true)
-            // Context line — phase-aware, behavioural only
             Text(HydrationCoach.contextLine(phase: phase))
                 .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
                 .fixedSize(horizontal: false, vertical: true)
-            // Weekly consistency — only once there's a complete week to celebrate
+            CitationLink("armstrong-2012")
+            Text(insights.insight)
+                .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+                .fixedSize(horizontal: false, vertical: true)
             if weeklyStreak >= 1 {
                 HStack(spacing: 6) {
                     Image(systemName: "checkmark.seal.fill")
@@ -130,7 +132,10 @@ struct NutritionView: View {
                 Text(remaining > 0 ? "\(remaining)ml to go" : "Target reached — nice work")
                     .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
             }
-            // Collapsible "Why hydration?" explainer
+            Text("Daily target based on general adequate-intake guidance for women (from all food and drink).")
+                .font(.caption2).foregroundStyle(GenesyxColor.mutedForeground)
+                .fixedSize(horizontal: false, vertical: true)
+            CitationLink("efsa-water")
             Rectangle().fill(GenesyxColor.border.opacity(0.6)).frame(height: 1)
             Button { withAnimation(.easeInOut(duration: 0.2)) { whyExpanded.toggle() } } label: {
                 HStack {
@@ -139,25 +144,32 @@ struct NutritionView: View {
                     Image(systemName: "chevron.down").font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(GenesyxColor.mutedForeground).rotationEffect(.degrees(whyExpanded ? 180 : 0))
                 }
+                // Full-width hit area so a tap anywhere on the row expands the section, rather than
+                // falling through the Spacer gap to the card's tap-to-open-Track gesture.
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             if whyExpanded {
                 Text(HydrationCoach.whyText)
                     .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground.opacity(0.9))
                     .fixedSize(horizontal: false, vertical: true)
+                SourcesFooter(sourceIDs: ["armstrong-2012", "statpearls-urinalysis", "valtin-2002", "nhs-water"])
             }
         }
         .padding(20)
         .background(GenesyxColor.card)
         .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+        // Tap-to-open-Track lives on the whole card (outer), not the background sublayer, so the
+        // inner "Why hydration?" and "Track" buttons win their taps instead of losing to it.
+        .contentShape(Rectangle())
+        .onTapGesture { openHydrationDetail() }
+        .accessibilityElement(children: .contain)
+        .accessibilityHint("Opens hydration in Track")
     }
 
-    private func waterButton(_ symbol: String, bg: Color, fg: Color, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: symbol).font(.system(size: 16, weight: .semibold)).foregroundStyle(fg)
-                .frame(width: 36, height: 36).background(bg).clipShape(Circle())
-        }
-        .buttonStyle(.plain)
+    private func openHydrationDetail() {
+        router.pendingHydration = true
+        router.selection = 1
     }
 
     // MARK: Focus foods
@@ -202,6 +214,13 @@ struct NutritionView: View {
 
     // MARK: Supplement plan
 
+    /// Honest count of today's logged supplements (from the daily log), never a fixed placeholder.
+    private var supplementsTakenLabel: String {
+        let taken = dailyLog.log(on: today).supplements.count
+        let total = NutritionContent.supplementPlan.count
+        return taken > 0 ? "\(taken) of \(total) taken today" : "None logged yet today"
+    }
+
     private var supplementPlanCard: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .top, spacing: 16) {
@@ -216,7 +235,7 @@ struct NutritionView: View {
                         ForEach(Array(NutritionContent.supplementPlan.enumerated()), id: \.element.initial) { i, s in
                             SupplementAvatar(initial: s.initial, index: i)
                         }
-                        Text("3 of 4 taken today").font(.gxBodySmall)
+                        Text(supplementsTakenLabel).font(.gxBodySmall)
                             .foregroundStyle(GenesyxColor.mutedForeground).padding(.leading, 14)
                     }
                     .padding(.top, 6)
@@ -261,95 +280,6 @@ struct NutritionView: View {
     }
 }
 
-/// Pure copy + time-of-day logic for the Hydration Coach — kept separate so it's unit-testable
-/// and its strings can be scanned by the content-safety test. Behavioural, never medical.
-enum HydrationCoach {
-
-    enum DayPart: Equatable {
-        case morning, midday, afternoon, evening, night
-        static func at(hour: Int) -> DayPart {
-            switch hour {
-            case 5...11:  return .morning
-            case 12...15: return .midday
-            case 16...19: return .afternoon
-            case 20...22: return .evening
-            default:      return .night      // 23, 0–4
-            }
-        }
-    }
-
-    /// First two words always name the part of the day. Column chosen by `pct` (scales to the goal).
-    static func coachLine(hour: Int, pct: Double) -> String {
-        let under = pct < 1.0
-        switch DayPart.at(hour: hour) {
-        case .morning:
-            return under
-                ? "Morning — start with a glass now. Anchor it to breakfast so you don't have to remember later."
-                : "Great start — you're already hydrated this morning."
-        case .midday:
-            return under
-                ? "Midday — a glass with lunch keeps you steady through the afternoon dip."
-                : "Steady through lunch — nice."
-        case .afternoon:
-            return under
-                ? "Afternoon — one glass with your desk break. This is where most days slip."
-                : "You've kept it steady through the afternoon."
-        case .evening:
-            return under
-                ? "Evening — small sips only. Don't front-load before bed."
-                : "Target hit — ease off the water before bed."
-        case .night:
-            return under
-                ? "Late night — a small sip if you're thirsty, nothing more."
-                : "You're hydrated for the day."
-        }
-    }
-
-    static func contextLine(phase: Phase?) -> String {
-        guard let phase else { return "Log your cycle to get phase-aware hydration guidance." }
-        switch phase {
-        case .period:     return "Iron-rich foods and steady water help during your period."
-        case .follicular: return "You likely have energy this week — keep water steady to match."
-        case .ovulatory:  return "Nothing special required — keep drinking."
-        case .luteal:     return "Smaller, regular meals and water can ease energy dips."
-        }
-    }
-
-    /// Weekly-consistency line — only surfaced when there's at least one complete week (≥5 of 7
-    /// days). De-pressured: celebrates steadiness, never demands perfection.
-    static func weeklyStreakLabel(_ weeks: Int) -> String {
-        weeks == 1
-            ? "1 steady week — consistency is doing its quiet work."
-            : "\(weeks) steady weeks — consistency is doing its quiet work."
-    }
-
-    /// Always-visible daily-streak pill copy — de-pressured, encouraging even at zero.
-    static func streakLabel(_ streak: Int) -> String {
-        switch streak {
-        case 0:  return "Daily streak — start today"
-        case 1:  return "Day 1 — great start"
-        default: return "\(streak)-day daily streak"
-        }
-    }
-
-    static let whyText = "Steady hydration supports your energy and mood, and it makes your pH readings more consistent — concentrated urine reads more acidic, well-hydrated reads closer to neutral. The old 'eight glasses a day' rule came from a 1945 recommendation whose next sentence got lost: most of that water already comes from food. Thirst is a reasonable guide. Anchor a glass to meals and routines, and you won't have to think about it."
-
-    /// Every user-facing string, for the content-safety scan.
-    static var allStrings: [String] {
-        var out: [String] = []
-        for hour in [7, 13, 17, 21, 2] {
-            out.append(coachLine(hour: hour, pct: 0.2))
-            out.append(coachLine(hour: hour, pct: 1.0))
-        }
-        for phase in Phase.allCases { out.append(contextLine(phase: phase)) }
-        out.append(contextLine(phase: nil))
-        for streak in [0, 1, 3] { out.append(streakLabel(streak)) }
-        for weeks in [1, 4] { out.append(weeklyStreakLabel(weeks)) }
-        out.append(whyText)
-        return out
-    }
-}
-
 /// Circular F/O/D/Z avatar (tint cycles lavender / blue / lavender / pink).
 struct SupplementAvatar: View {
     let initial: String
@@ -389,4 +319,3 @@ private struct SupplementPlanSheet: View {
         }
     }
 }
-

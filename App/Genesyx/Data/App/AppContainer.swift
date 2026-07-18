@@ -65,6 +65,10 @@ final class AppContainer: ObservableObject {
         await cycle.drainPending()
         await dailyLog.drainPending()
         await ph.drainPending()
+        // A partner accepting an invite is a change made on *another* device, so there is nothing
+        // owed to push — only something to pull. Without this the inviter had to fully relaunch
+        // the app before her partner ever showed up as linked.
+        await partner.refresh()
     }
 
     /// Wipe on-device health data (cycle settings, pH readings, daily logs) from memory and the
@@ -111,7 +115,8 @@ final class AppContainer: ObservableObject {
         container.ph.create(PhReading(phValue: 6.3, recordedAt: Date().addingTimeInterval(-5 * 86_400)))
         container.ph.create(PhReading(phValue: 6.7, recordedAt: Date().addingTimeInterval(-2 * 86_400)))
         container.ph.create(PhReading(phValue: 6.9, recordedAt: Date()))
-        container.session.signIn(email: "lucas@example.com", name: "Lucas")
+        // Public screenshots must never expose a real person's account details.
+        container.session.signIn(email: "maya@example.com", name: "Maya")
         UserDefaults.standard.set(true, forKey: "genesyx.onboardingComplete")
         return container
     }

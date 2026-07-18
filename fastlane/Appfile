@@ -1,0 +1,5 @@
+app_identifier("com.genesyx.app")
+# Team is resolved from the App Store Connect API key at runtime.
+# If you use Apple-ID auth instead, uncomment and set:
+# apple_id("you@example.com")
+# itc_team_id("YOUR_ASC_TEAM_ID")

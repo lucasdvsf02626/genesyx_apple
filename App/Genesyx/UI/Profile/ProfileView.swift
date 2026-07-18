@@ -5,6 +5,9 @@ import GenesyxCore
 /// Ported from the Android `ProfileScreen` + `ProfileViewModel`.
 struct ProfileView: View {
 
+    private static let privacyPolicyURL = URL(string: "https://genesyx.co.uk/policies/privacy-policy")!
+    private static let supportURL = URL(string: "https://genesyx.co.uk")!
+
     @EnvironmentObject private var session: SessionRepository
     @EnvironmentObject private var prefs: PreferencesRepository
     @EnvironmentObject private var partner: PartnerRepository
@@ -14,6 +17,8 @@ struct ProfileView: View {
     @State private var detail: String?
     @State private var deleteOpen = false
     @State private var deleteError: String?
+    @State private var resetConfirm = false
+    @State private var resetResult: String?
     @State private var showAuth = false
     @State private var showPregnancy = false
     @State private var showReminderPrompt = false
@@ -75,6 +80,22 @@ struct ProfileView: View {
         } message: {
             Text(deleteError ?? "")
         }
+        .alert("Change password", isPresented: $resetConfirm) {
+            Button("Send reset link") {
+                Task {
+                    do { try await session.resetPassword(); resetResult = "Check your inbox — we've emailed you a link to reset your password." }
+                    catch { resetResult = "We couldn't send the reset email. Please try again." }
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("We'll email a password-reset link to \(session.email ?? "your account").")
+        }
+        .alert("Password reset", isPresented: Binding(get: { resetResult != nil }, set: { if !$0 { resetResult = nil } })) {
+            Button("OK") { resetResult = nil }
+        } message: {
+            Text(resetResult ?? "")
+        }
     }
 
     // MARK: User card
@@ -91,11 +112,6 @@ struct ProfileView: View {
                 Text(session.email ?? "Sign in to sync your data").font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
             }
             Spacer()
-            if session.isSignedIn {
-                Text("PREMIUM").font(.system(size: 10.5, weight: .semibold)).foregroundStyle(GenesyxColor.primary)
-                    .padding(.horizontal, 10).padding(.vertical, 4)
-                    .background(GenesyxColor.primary.opacity(0.10)).clipShape(Capsule())
-            }
         }
         .padding(20).background(GenesyxColor.card).clipShape(RoundedRectangle(cornerRadius: 24))
     }
@@ -109,8 +125,7 @@ struct ProfileView: View {
                 focusSeg("Fertility Prep", selected: prefs.focusMode == .prep) { prefs.focusMode = .prep }
                 focusSeg("Pregnancy", selected: prefs.focusMode == .pregnancy) {
                     prefs.focusMode = .pregnancy
-                    // v1: Pregnancy preview entry hidden (destination intact, unreachable). Restore by uncommenting.
-                    // showPregnancy = true
+                    showPregnancy = true   // opens the "coming soon" teaser (no functional pregnancy mode in v1)
                 }
             }
             .padding(4).background(GenesyxColor.muted).clipShape(RoundedRectangle(cornerRadius: 16))
@@ -134,7 +149,7 @@ struct ProfileView: View {
             cardGroup {
                 rowItem("Edit name") { session.isSignedIn ? (nameOpen = true) : (showAuth = true) }
                 divider
-                rowItem("Change password") { session.isSignedIn ? (detail = "Personal Details") : (showAuth = true) }
+                rowItem("Change password") { session.isSignedIn ? (resetConfirm = true) : (showAuth = true) }
             }
         }
     }
@@ -172,6 +187,23 @@ struct ProfileView: View {
                 .tint(GenesyxColor.primary)
                 .foregroundStyle(GenesyxColor.foreground)
                 .padding(.horizontal, 14).padding(.vertical, 8)
+
+                if notifications.isOn {
+                    divider
+                    HStack {
+                        Text("Reminder time").font(.system(size: 14.5)).foregroundStyle(GenesyxColor.foreground)
+                        Spacer()
+                        Picker("", selection: Binding(
+                            get: { prefs.reminderHour },
+                            set: { prefs.reminderHour = $0 }
+                        )) {
+                            ForEach(0..<24, id: \.self) { h in Text(Self.hourLabel(h)).tag(h) }
+                        }
+                        .labelsHidden()
+                        .tint(GenesyxColor.primary)
+                    }
+                    .padding(.horizontal, 14).padding(.vertical, 8)
+                }
             }
             if notifications.isSystemDenied && prefs.pushEnabled {
                 Button {
@@ -190,7 +222,7 @@ struct ProfileView: View {
     private var reminderPromptSheet: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Gentle reminders").font(.gxCardHeading).foregroundStyle(GenesyxColor.foreground)
-            Text("A nudge on mornings you haven't logged water, a weekly pH reminder, your phase for the week, a nutrition check-in, and a Sunday read. Nothing in the evenings, and never a word about a streak you've missed.")
+            Text("An evening check-in on days you haven't logged, a weekly pH reminder, your phase for the week, a nutrition check-in, and a Sunday read. Just one a day at most, and never a word about a streak you've missed.")
                 .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
             Text("You can turn these off any time.")
                 .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
@@ -237,9 +269,13 @@ struct ProfileView: View {
             cardGroup {
                 rowItem("Privacy & Data") { detail = "Privacy & Data" }
                 divider
-                rowItem("Help & Support") { detail = "Help & Support" }
+                linkItem("Privacy Policy", destination: Self.privacyPolicyURL)
+                divider
+                linkItem("Help & Support", destination: Self.supportURL)
                 divider
                 rowItem("Medical Disclaimer") { detail = "Medical Disclaimer" }
+                divider
+                navRow("Medical Sources & Disclaimer") { MedicalSourcesView() }
             }
         }
     }
@@ -276,6 +312,14 @@ struct ProfileView: View {
         Eyebrow(text, color: GenesyxColor.mutedForeground).padding(.leading, 4)
     }
 
+    /// Localised time-of-day label for the reminder-hour picker (respects 12/24-hour formatting).
+    private static func hourLabel(_ hour: Int) -> String {
+        var components = DateComponents(); components.hour = hour; components.minute = 0
+        let date = Calendar.current.date(from: components) ?? Date()
+        let formatter = DateFormatter(); formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+
     private func cardGroup<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
         VStack(spacing: 0) { content() }
             .background(GenesyxColor.card).clipShape(RoundedRectangle(cornerRadius: 16))
@@ -291,6 +335,34 @@ struct ProfileView: View {
             .padding(.horizontal, 16).frame(minHeight: 52)
         }
         .buttonStyle(.plain)
+    }
+
+    private func navRow<Destination: View>(_ label: String, @ViewBuilder destination: @escaping () -> Destination) -> some View {
+        NavigationLink(destination: destination) {
+            HStack {
+                Text(label).font(.system(size: 14.5)).foregroundStyle(GenesyxColor.foreground)
+                Spacer()
+                Image(systemName: "chevron.right").font(.system(size: 14)).foregroundStyle(GenesyxColor.mutedForeground)
+            }
+            .padding(.horizontal, 16).frame(minHeight: 52)
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(label)
+    }
+
+    private func linkItem(_ label: String, destination: URL) -> some View {
+        Link(destination: destination) {
+            HStack {
+                Text(label).font(.system(size: 14.5)).foregroundStyle(GenesyxColor.foreground)
+                Spacer()
+                Image(systemName: "arrow.up.right")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(GenesyxColor.mutedForeground)
+            }
+            .padding(.horizontal, 16).frame(minHeight: 52)
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(label)
     }
 
     private func switchRow(_ label: String, isOn: Binding<Bool>) -> some View {
@@ -378,7 +450,7 @@ private struct PartnerSectionView: View {
                 Image(systemName: "heart.fill").font(.system(size: 14)).foregroundStyle(GenesyxColor.primary)
                 Text("Add your partner").font(.gxCardHeadingSmall).foregroundStyle(GenesyxColor.foreground)
             }
-            Text("Send an invite — when they accept, you'll be linked and can share your journey.")
+            Text("Send an invite — when they accept, your accounts are linked. Your logs and readings stay private to you.")
                 .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
             TextField("partner@example.com", text: $email)
                 .textInputAutocapitalization(.never).keyboardType(.emailAddress).autocorrectionDisabled()
@@ -424,7 +496,8 @@ private struct PartnerSectionView: View {
         // Straight into the share sheet once the database has issued the code — the invite is
         // useless until it reaches her.
         .sheet(item: $justCreated) { invite in
-            InviteShareSheet(invite: invite, senderName: session.displayName)
+            InviteShareSheet(invite: invite, senderName: session.displayName,
+                             emailed: partner.lastInviteEmailed)
         }
     }
 

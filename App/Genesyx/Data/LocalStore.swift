@@ -34,4 +34,8 @@ final class LocalStore {
         defaults.object(forKey: key(k)) == nil ? fallback : defaults.bool(forKey: key(k))
     }
     func setBool(_ value: Bool, forKey k: String) { defaults.set(value, forKey: key(k)) }
+    func int(forKey k: String, default fallback: Int) -> Int {
+        defaults.object(forKey: key(k)) == nil ? fallback : defaults.integer(forKey: key(k))
+    }
+    func setInt(_ value: Int, forKey k: String) { defaults.set(value, forKey: key(k)) }
 }

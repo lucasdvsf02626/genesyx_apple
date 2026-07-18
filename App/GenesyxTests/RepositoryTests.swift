@@ -29,6 +29,104 @@ final class RepositoryTests: XCTestCase {
         XCTAssertEqual(repo.waterMl(on: .today()), 0)
     }
 
+    func testHydrationPersistsAcrossRepositoryReload() {
+        let store = makeStore()
+        let today = CalendarDate.today()
+
+        DailyLogRepository(store: store).setWater(1_750, on: today)
+
+        XCTAssertEqual(DailyLogRepository(store: store).waterMl(on: today), 1_750)
+    }
+
+    func testSleepPersistsAcrossRepositoryReload() {
+        let store = makeStore()
+        let today = CalendarDate.today()
+
+        DailyLogRepository(store: store).setSleep(455, on: today)
+
+        XCTAssertEqual(DailyLogRepository(store: store).log(on: today).sleepMinutes, 455)
+    }
+
+    func testSleepEditUsesDailyLogWritePathAndCanClear() {
+        let repo = DailyLogRepository(store: makeStore())
+        let today = CalendarDate.today()
+
+        repo.setSleep(900, on: today)
+        XCTAssertEqual(repo.log(on: today).sleepMinutes, 720)
+
+        repo.setSleep(0, on: today)
+        XCTAssertNil(repo.log(on: today).sleepMinutes)
+
+        repo.setSleep(455, on: today)
+        repo.setSleep(nil, on: today)
+        XCTAssertNil(repo.log(on: today).sleepMinutes)
+    }
+
+    func testDailyLogHydrationSyncState() async {
+        let today = CalendarDate.today()
+        let localOnly = DailyLogRepository(store: makeStore())
+        localOnly.setWater(500, on: today)
+        XCTAssertEqual(localOnly.syncState(on: today), .saved)
+
+        let backend = FakeDailyLogBackend()
+        backend.online = false
+        let synced = DailyLogRepository(store: makeStore(), backend: backend)
+        synced.setWater(500, on: today)
+        XCTAssertEqual(synced.syncState(on: today), .willSyncWhenOnline)
+
+        backend.online = true
+        await synced.refresh()
+        XCTAssertEqual(synced.syncState(on: today), .synced)
+    }
+
+    func testHydrationIsIncludedInOutboundDailyLogSyncPayload() async {
+        let backend = FakeDailyLogBackend()
+        let today = CalendarDate.today()
+        let repo = DailyLogRepository(store: makeStore(), backend: backend)
+        let log = DailyLog(
+            mood: .good,
+            energy: .normal,
+            symptoms: ["Fatigue"],
+            sleepMinutes: 420,
+            supplements: ["Vitamin D"],
+            notes: "steady day",
+            waterMl: 1_650
+        )
+
+        repo.upsert(log, on: today)
+        await repo.drainPending()
+
+        XCTAssertEqual(backend.remote[today]?.waterMl, 1_650)
+        XCTAssertEqual(backend.remote[today]?.mood, .good)
+        XCTAssertEqual(backend.remote[today]?.energy, .normal)
+        XCTAssertEqual(backend.remote[today]?.sleepMinutes, 420)
+        XCTAssertEqual(backend.remote[today]?.supplements, ["Vitamin D"])
+        XCTAssertEqual(repo.syncState(on: today), .synced)
+    }
+
+    func testSleepIsIncludedInOutboundDailyLogSyncPayload() async {
+        let backend = FakeDailyLogBackend()
+        let today = CalendarDate.today()
+        let repo = DailyLogRepository(store: makeStore(), backend: backend)
+
+        repo.setSleep(430, on: today)
+        await repo.drainPending()
+
+        XCTAssertEqual(backend.remote[today]?.sleepMinutes, 430)
+        XCTAssertEqual(repo.syncState(on: today), .synced)
+    }
+
+    func testHydrationRestoresFromBackendDailyLogList() async {
+        let backend = FakeDailyLogBackend()
+        let today = CalendarDate.today()
+        backend.remote[today] = DailyLog(waterMl: 2_250)
+        let repo = DailyLogRepository(store: makeStore(), backend: backend)
+
+        await repo.refresh()
+
+        XCTAssertEqual(repo.waterMl(on: today), 2_250)
+    }
+
     func testStreakCountsConsecutiveDaysWithWater() {
         let repo = DailyLogRepository(store: makeStore())
         let today = CalendarDate.today()

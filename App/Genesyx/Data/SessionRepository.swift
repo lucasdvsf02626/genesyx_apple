@@ -94,6 +94,21 @@ final class SessionRepository: ObservableObject {
         onClearLocalState?()
     }
 
+    /// Emails a password-reset link to the signed-in account. Throws if there's no backend or no
+    /// known email, so the UI can tell her instead of silently doing nothing.
+    func resetPassword() async throws {
+        guard let auth, let email, !email.isEmpty else { throw RemoteError.notConfigured }
+        try await auth.resetPassword(email: email)
+    }
+
+    /// Re-sends the sign-up confirmation email. Used right after a sign-up whose session was
+    /// withheld pending confirmation — she isn't signed in yet, so the address is passed in rather
+    /// than read from `email`. Throws if there's no backend, so the UI can say so.
+    func resendConfirmation(email: String) async throws {
+        guard let auth, !email.isEmpty else { throw RemoteError.notConfigured }
+        try await auth.resendConfirmation(email: email)
+    }
+
     /// Permanently deletes the account via the backend, then clears local session state.
     /// With no backend (local-only), this just signs the user out. Throws if the remote
     /// deletion fails, so the UI can surface the error and leave the account intact.

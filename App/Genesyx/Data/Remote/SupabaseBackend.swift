@@ -40,6 +40,8 @@ private struct SupabaseAuth: AuthBackend {
             credentials: .init(provider: supaProvider, idToken: idToken, accessToken: accessToken, nonce: nonce)
         )
     }
+    func resetPassword(email: String) async throws { try await client.auth.resetPasswordForEmail(email) }
+    func resendConfirmation(email: String) async throws { try await client.auth.resend(email: email, type: .signup) }
 }
 
 private func requireUID(_ auth: AuthBackend) throws -> String {
@@ -170,6 +172,15 @@ private struct SupabasePartner: PartnerBackend {
             .execute().value
         guard let invite = rows.first?.domain else { throw RemoteError.notConfigured }
         return invite
+    }
+
+    /// Asks the server to email the invite. The function reports `sent: false` when the mailer
+    /// isn't configured (or the send failed) rather than erroring, because the invite itself is
+    /// still valid and still shareable — a missing API key must not break invites.
+    func emailInvite(code: String) async throws -> Bool {
+        let response: EmailInviteResponse = try await client.functions.invoke(
+            "send_partner_invite", options: .init(body: ["code": code]))
+        return response.sent
     }
 
     func revoke(id: String) async throws {

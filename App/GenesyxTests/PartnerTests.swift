@@ -25,6 +25,45 @@ final class PartnerTests: XCTestCase {
         XCTAssertEqual(repo.invites.first?.code, "SERVER-CODE-0001")
     }
 
+    /// Creating a row invited nobody: no email was ever sent, and the address she typed was only
+    /// ever used as a server-side check at accept time. The invite must now actually be mailed to
+    /// the code the database issued.
+    func testCreatingAnInviteEmailsIt() async throws {
+        let backend = FakePartnerBackend()
+        backend.serverCode = "SERVER-CODE-0002"
+        let repo = PartnerRepository(backend: backend)
+
+        _ = try await repo.sendInvite(email: "partner@example.com")
+
+        XCTAssertEqual(backend.emailedCodes, ["SERVER-CODE-0002"], "the invite must be emailed")
+        XCTAssertTrue(repo.lastInviteEmailed, "and we may say so")
+    }
+
+    /// The mailer may not be configured. That must NOT destroy a perfectly good invite — she can
+    /// still share the link by hand — but we must not claim we emailed it either.
+    func testAnUnsentEmailStillLeavesAUsableInvite() async throws {
+        let backend = FakePartnerBackend()
+        backend.emailSends = false            // e.g. RESEND_API_KEY not set
+        let repo = PartnerRepository(backend: backend)
+
+        let invite = try await repo.sendInvite(email: "partner@example.com")
+
+        XCTAssertEqual(repo.invites.first?.code, invite.code, "the invite still exists")
+        XCTAssertFalse(repo.lastInviteEmailed, "never claim an email we didn't send")
+    }
+
+    /// Same, but the mail call blows up outright: still not fatal to the invite.
+    func testAFailingMailerDoesNotFailTheInvite() async throws {
+        let backend = FakePartnerBackend()
+        backend.emailThrows = true
+        let repo = PartnerRepository(backend: backend)
+
+        let invite = try await repo.sendInvite(email: "partner@example.com")
+
+        XCTAssertEqual(repo.invites.first?.code, invite.code, "a mail failure must not lose the invite")
+        XCTAssertFalse(repo.lastInviteEmailed)
+    }
+
     /// A failed invite must not appear to have been sent.
     func testAFailedInviteIsNotShownAsPending() async {
         let backend = FakePartnerBackend()
@@ -114,9 +153,19 @@ private final class FakePartnerBackend: PartnerBackend {
     var online = true
     var acceptSucceeds = true
     var serverCode = "server-issued-code"
+    /// Mail outcomes: sent, silently not-configured, or an outright failure.
+    var emailSends = true
+    var emailThrows = false
+    private(set) var emailedCodes: [String] = []
 
     private var stored: [PartnerInvite] = []
     private var linked: Partner?
+
+    func emailInvite(code: String) async throws -> Bool {
+        if emailThrows { throw RemoteError.notConfigured }
+        emailedCodes.append(code)
+        return emailSends
+    }
 
     func listInvites() async throws -> [PartnerInvite] {
         guard online else { throw RemoteError.notConfigured }

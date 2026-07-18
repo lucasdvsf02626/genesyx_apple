@@ -1,0 +1,75 @@
+default_platform(:ios)
+
+# Genesyx App Store release lanes.
+#
+# Credentials (set as env vars, never commit the .p8):
+#   ASC_KEY_ID     — App Store Connect API Key ID
+#   ASC_ISSUER_ID  — App Store Connect Issuer ID
+#   ASC_KEY_PATH   — absolute path to AuthKey_XXXX.p8
+#
+# Usage:
+#   bundle exec fastlane build     # archive + export .ipa, NO upload
+#   bundle exec fastlane release   # build then upload to ASC (does NOT submit for review)
+
+platform :ios do
+  PROJECT = "Genesyx.xcodeproj"
+  SCHEME  = "Genesyx"
+
+  desc "Archive + export an App Store .ipa locally (no upload)"
+  lane :build do
+    build_app(
+      project: PROJECT,
+      scheme: SCHEME,
+      configuration: "Release",
+      export_method: "app-store",
+      output_directory: "build",
+      output_name: "Genesyx.ipa",
+      # gym writes its own bundle-id-scoped export options, so SPM targets
+      # never receive a provisioning profile. -allowProvisioningUpdates lets
+      # the API key mint the distribution profile headlessly.
+      xcargs: "-allowProvisioningUpdates",
+      export_options: {
+        signingStyle: "automatic",
+        teamID: "M5L3MM75SG",
+        uploadSymbols: true,
+        manageAppVersionAndBuildNumber: false
+      }
+    )
+  end
+
+  desc "Build then upload to App Store Connect (uploads binary; does NOT submit)"
+  lane :release do
+    api_key = app_store_connect_api_key(
+      key_id: ENV.fetch("ASC_KEY_ID"),
+      issuer_id: ENV.fetch("ASC_ISSUER_ID"),
+      key_filepath: ENV.fetch("ASC_KEY_PATH"),
+      in_house: false
+    )
+
+    build_app(
+      project: PROJECT,
+      scheme: SCHEME,
+      configuration: "Release",
+      export_method: "app-store",
+      output_directory: "build",
+      output_name: "Genesyx.ipa",
+      xcargs: "-allowProvisioningUpdates",
+      export_options: {
+        signingStyle: "automatic",
+        teamID: "M5L3MM75SG",
+        uploadSymbols: true,
+        manageAppVersionAndBuildNumber: false
+      }
+    )
+
+    upload_to_app_store(
+      api_key: api_key,
+      skip_screenshots: true,
+      skip_metadata: true,
+      skip_app_version_update: true,
+      submit_for_review: false,   # keep review submission a deliberate manual step
+      precheck_include_in_app_purchases: false,
+      force: true
+    )
+  end
+end

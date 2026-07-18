@@ -1,0 +1,121 @@
+{
+  "contractVersion": 2,
+  "changelog": "v2: weekly minDays 5→4; sleep meaningful when != null; today-grace on both streaks; empty states = 0; never-guilt reminder copy",
+  "_comment": "Cross-platform tracking contract. This file is mirrored byte-for-byte in the Android repo; both platforms' TrackingEngine must satisfy every case. Per day: waterMl (logged water), meaningful (log has any meaningful field, EXCLUDING pH), ph (a pH reading exists that date). Defaults: goalMl 2400, weeklyMinDays 4.",
+  "cases": [
+    {
+      "name": "empty history",
+      "today": "2026-07-13",
+      "days": [],
+      "expect": { "dailyLogStreak": 0, "hydrationLogStreak": 0, "daysOnGoal": 0, "weeklyStreak": 0, "bestDailyStreak": 0 }
+    },
+    {
+      "name": "single log today",
+      "today": "2026-07-13",
+      "days": [
+        { "date": "2026-07-13", "waterMl": 2500, "meaningful": true, "ph": false }
+      ],
+      "expect": { "dailyLogStreak": 1, "hydrationLogStreak": 1, "daysOnGoal": 1, "weeklyStreak": 0, "bestDailyStreak": 1 }
+    },
+    {
+      "name": "single log yesterday (grace holds, but different ISO week for days-on-goal)",
+      "today": "2026-07-13",
+      "days": [
+        { "date": "2026-07-12", "waterMl": 2500, "meaningful": true, "ph": false }
+      ],
+      "expect": { "dailyLogStreak": 1, "hydrationLogStreak": 1, "daysOnGoal": 0, "weeklyStreak": 0, "bestDailyStreak": 1 }
+    },
+    {
+      "name": "today unlogged after 5-day run (grace keeps it at 5)",
+      "today": "2026-07-13",
+      "days": [
+        { "date": "2026-07-08", "waterMl": 2500, "meaningful": true, "ph": false },
+        { "date": "2026-07-09", "waterMl": 2500, "meaningful": true, "ph": false },
+        { "date": "2026-07-10", "waterMl": 2500, "meaningful": true, "ph": false },
+        { "date": "2026-07-11", "waterMl": 2500, "meaningful": true, "ph": false },
+        { "date": "2026-07-12", "waterMl": 2500, "meaningful": true, "ph": false }
+      ],
+      "expect": { "dailyLogStreak": 5, "hydrationLogStreak": 5, "daysOnGoal": 0, "weeklyStreak": 1, "bestDailyStreak": 5 }
+    },
+    {
+      "name": "one-day gap breaks the current streak",
+      "today": "2026-07-13",
+      "days": [
+        { "date": "2026-07-09", "waterMl": 2500, "meaningful": true, "ph": false },
+        { "date": "2026-07-10", "waterMl": 2500, "meaningful": true, "ph": false },
+        { "date": "2026-07-12", "waterMl": 2500, "meaningful": true, "ph": false },
+        { "date": "2026-07-13", "waterMl": 2500, "meaningful": true, "ph": false }
+      ],
+      "expect": { "dailyLogStreak": 2, "hydrationLogStreak": 2, "daysOnGoal": 1, "weeklyStreak": 0, "bestDailyStreak": 2 }
+    },
+    {
+      "name": "backfilled day joins two runs into one 5-day run",
+      "today": "2026-07-13",
+      "days": [
+        { "date": "2026-07-09", "waterMl": 2500, "meaningful": true, "ph": false },
+        { "date": "2026-07-10", "waterMl": 2500, "meaningful": true, "ph": false },
+        { "date": "2026-07-11", "waterMl": 2500, "meaningful": true, "ph": false },
+        { "date": "2026-07-12", "waterMl": 2500, "meaningful": true, "ph": false },
+        { "date": "2026-07-13", "waterMl": 2500, "meaningful": true, "ph": false }
+      ],
+      "expect": { "dailyLogStreak": 5, "hydrationLogStreak": 5, "daysOnGoal": 1, "weeklyStreak": 1, "bestDailyStreak": 5 }
+    },
+    {
+      "name": "water-only vs meaningful-log divergence (mood-only + pH-only days count for log streak, not hydration)",
+      "today": "2026-07-13",
+      "days": [
+        { "date": "2026-07-11", "waterMl": 2500, "meaningful": true, "ph": false },
+        { "date": "2026-07-12", "waterMl": 0, "meaningful": false, "ph": true },
+        { "date": "2026-07-13", "waterMl": 0, "meaningful": true, "ph": false }
+      ],
+      "expect": { "dailyLogStreak": 3, "hydrationLogStreak": 0, "daysOnGoal": 0, "weeklyStreak": 0, "bestDailyStreak": 1 }
+    },
+    {
+      "name": "goal-met vs merely-logged (days-on-goal counts only water >= goal)",
+      "today": "2026-07-10",
+      "days": [
+        { "date": "2026-07-06", "waterMl": 2500, "meaningful": true, "ph": false },
+        { "date": "2026-07-07", "waterMl": 1000, "meaningful": true, "ph": false },
+        { "date": "2026-07-08", "waterMl": 2400, "meaningful": true, "ph": false },
+        { "date": "2026-07-09", "waterMl": 0, "meaningful": true, "ph": false },
+        { "date": "2026-07-10", "waterMl": 3000, "meaningful": true, "ph": false }
+      ],
+      "expect": { "dailyLogStreak": 5, "hydrationLogStreak": 1, "daysOnGoal": 3, "weeklyStreak": 1, "bestDailyStreak": 3 }
+    },
+    {
+      "name": "Sunday to Monday ISO-week boundary (consecutive days land in different weeks)",
+      "today": "2026-07-13",
+      "days": [
+        { "date": "2026-07-12", "waterMl": 2500, "meaningful": true, "ph": false },
+        { "date": "2026-07-13", "waterMl": 2500, "meaningful": true, "ph": false }
+      ],
+      "expect": { "dailyLogStreak": 2, "hydrationLogStreak": 2, "daysOnGoal": 1, "weeklyStreak": 0, "bestDailyStreak": 2 }
+    },
+    {
+      "name": "incomplete current week leaves weeklyStreak intact (two completed weeks + 1 logged day this week)",
+      "today": "2026-07-13",
+      "days": [
+        { "date": "2026-06-29", "waterMl": 0, "meaningful": true, "ph": false },
+        { "date": "2026-06-30", "waterMl": 0, "meaningful": true, "ph": false },
+        { "date": "2026-07-01", "waterMl": 0, "meaningful": true, "ph": false },
+        { "date": "2026-07-02", "waterMl": 0, "meaningful": true, "ph": false },
+        { "date": "2026-07-06", "waterMl": 0, "meaningful": true, "ph": false },
+        { "date": "2026-07-07", "waterMl": 0, "meaningful": true, "ph": false },
+        { "date": "2026-07-08", "waterMl": 0, "meaningful": true, "ph": false },
+        { "date": "2026-07-09", "waterMl": 0, "meaningful": true, "ph": false },
+        { "date": "2026-07-13", "waterMl": 0, "meaningful": true, "ph": false }
+      ],
+      "expect": { "dailyLogStreak": 1, "hydrationLogStreak": 0, "daysOnGoal": 0, "weeklyStreak": 2, "bestDailyStreak": 0 }
+    },
+    {
+      "name": "timezone-shift determinism (a 3-day run across the week boundary counts exactly 3)",
+      "today": "2026-07-13",
+      "days": [
+        { "date": "2026-07-11", "waterMl": 2500, "meaningful": true, "ph": false },
+        { "date": "2026-07-12", "waterMl": 2500, "meaningful": true, "ph": false },
+        { "date": "2026-07-13", "waterMl": 2500, "meaningful": true, "ph": false }
+      ],
+      "expect": { "dailyLogStreak": 3, "hydrationLogStreak": 3, "daysOnGoal": 1, "weeklyStreak": 0, "bestDailyStreak": 3 }
+    }
+  ]
+}

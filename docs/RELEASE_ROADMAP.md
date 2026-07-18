@@ -26,7 +26,7 @@
 
 - 🟡 **1.1 Cycle engine ported + tested** — `GenesyxCore`, `CycleEngineTests` (run `swift test`). *Code complete; verify on Mac.*
 - 🟡 **1.2 Rest of domain layer ported** — pH logic (`PhStatus`, `PhInsightLogic`), content (cycle/nutrition/quiz), models (`DailyLog`, `PhReading`, `Account`), all with tests (`PhInsightLogicTests`, `ContentTests`). *Code complete; verify on Mac.*
-- 🟡 **1.3 Theme** — adaptive light/dark colors + type scale done; ⬜ Outfit/Inter `.ttf` still to bundle (`UIAppFonts`).
+- ✅ **1.3 Theme** — adaptive light/dark colors + shipping system-font type scale complete.
 - 🟡 **1.4 Local persistence** (`LocalStore`) + all six repositories done (mirror Android DataStore). *Verify on Mac.*
 - 🟡 **1.5 Navigation shell** done (DI container, RootView, MainTabView, minimal onboarding, working Home). ⬜ remaining 13 screens per `ARCHITECTURE.md` build order.
 - 🟡 **1.x Reproducible Xcode project** — `project.yml` (XcodeGen) added; `xcodegen generate` builds it.

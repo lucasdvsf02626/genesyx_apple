@@ -63,15 +63,6 @@ targets:
         ITSAppUsesNonExemptEncryption: false
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
-        # Bundled fonts (drop the .ttf files into App/Genesyx/Resources/Fonts/, then
-        # switch Typography.swift from .system to .custom). Missing files fall back to system.
-        UIAppFonts:
-          - Outfit-Regular.ttf
-          - Outfit-Medium.ttf
-          - Outfit-SemiBold.ttf
-          - Inter-Regular.ttf
-          - Inter-Medium.ttf
-          - Inter-SemiBold.ttf
         # Deep link for partner invites (genesyx://invite/{code})
         GIDClientID: 413702980668-tfah1knspa8ip82p51c3i3veuh3ljul4.apps.googleusercontent.com
         CFBundleURLTypes:
@@ -85,7 +76,11 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.genesyx.app
         MARKETING_VERSION: "1.1.0"
-        CURRENT_PROJECT_VERSION: "11"
+        # Build number MUST exceed the highest build already in App Store Connect / TestFlight.
+        # Confirm the real highest before archiving (see release runbook). Left at 12 pending
+        # Lucas's confirmation — docs/PROJECT_STATUS.md records builds 10 & 11 as already uploaded,
+        # so the "default 9" fallback would be rejected by ASC.
+        CURRENT_PROJECT_VERSION: "12"
         SWIFT_VERSION: "5.9"
         TARGETED_DEVICE_FAMILY: "1" # iPhone
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon

@@ -68,6 +68,12 @@ private struct PhTrackerCard: View {
                 .buttonStyle(.plain)
             }
 
+            Text("Urine pH typically ranges from about 4.5 to 8 and varies with diet and hydration. Readings are for general wellness tracking, not for diagnosing or monitoring any medical condition.")
+                .font(.caption2).foregroundStyle(GenesyxColor.mutedForeground)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("phCaveat")
+            CitationLink("statpearls-urinalysis")
+
             if let latest = readings.last {
                 latestPanel(latest)
                 rangeSelector

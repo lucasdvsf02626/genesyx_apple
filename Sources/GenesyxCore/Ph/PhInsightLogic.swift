@@ -76,18 +76,18 @@ public enum PhInsightLogic {
         }
 
         var insight = "Log a few more readings and we'll share gentle observations."
-        var recommendation = ""
+        // Dietary recommendations were removed for App Store 1.4.1 (health advice needs a cited
+        // source shown beside it). The descriptive trend line stays; the pH card carries the
+        // range caveat + citation. Sourced recommendations return in 1.2.0.
+        let recommendation = ""
         if last7.count >= 2, let avg7 {
             switch PhStatus.classify(avg7) {
             case .acidic:
-                insight = "Your pH has been trending acidic this week."
-                recommendation = "Try more leafy greens, citrus, and steady hydration to gently shift toward optimal."
+                insight = "Your pH readings have averaged on the acidic side this week."
             case .alkaline:
-                insight = "Your pH has been trending alkaline this week."
-                recommendation = "Balance with whole grains, lean protein, and reduce excess mineral water."
+                insight = "Your pH readings have averaged on the alkaline side this week."
             case .optimal:
-                insight = "Your pH is sitting comfortably in the optimal range — lovely work."
-                recommendation = "Keep your current hydration and meal rhythm; consistency is the goal."
+                insight = "Your pH readings have been sitting in the optimal range this week."
             }
         }
 

@@ -1,0 +1,5 @@
+2026-07-12 01:51:26.934 xcodebuild[51118:371654] [MT] IDEDistribution: -[IDEDistributionLogging _createLoggingBundleAtPath:]: Created bundle at path "/var/folders/ql/xph248657q37nx4n3qwdg4240000gn/T/Genesyx_2026-07-12_01-51-26.933.xcdistributionlogs".
+2026-07-12 01:51:26.981 xcodebuild[51118:371654] [MT] IDEDistribution: Command line name "app-store" is deprecated. Use "app-store-connect" instead.
+Exported Genesyx to: /Users/lucasvalenca_sf/genesxy_apple.V1.02/build/Export
+** EXPORT SUCCEEDED **
+

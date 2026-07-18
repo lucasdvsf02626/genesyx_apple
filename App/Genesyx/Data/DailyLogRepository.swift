@@ -1,6 +1,20 @@
 import Foundation
 import GenesyxCore
 
+enum DailyLogSyncState: Equatable {
+    case saved
+    case synced
+    case willSyncWhenOnline
+
+    var label: String {
+        switch self {
+        case .saved: return "Saved"
+        case .synced: return "Synced"
+        case .willSyncWhenOnline: return "Will sync when online"
+        }
+    }
+}
+
 /// Daily logs (mood/energy/symptoms/sleep/supplements/notes/water), date-keyed and persisted
 /// on-device. Mirrors the Android `DailyLogRepository`.
 ///
@@ -43,6 +57,11 @@ final class DailyLogRepository: ObservableObject {
 
     func waterMl(on date: CalendarDate) -> Int { log(on: date).waterMl }
 
+    func syncState(on date: CalendarDate) -> DailyLogSyncState {
+        guard backend != nil else { return .saved }
+        return pendingDates.contains(date) ? .willSyncWhenOnline : .synced
+    }
+
     func upsert(_ log: DailyLog, on date: CalendarDate) {
         logByDate[date] = log
         persist()
@@ -64,15 +83,18 @@ final class DailyLogRepository: ObservableObject {
         upsert(entry, on: date)
     }
 
-    /// Consecutive days back from `today` (inclusive) that have water logged.
+    /// Set a day's sleep duration. `nil` or a non-positive value clears the value; otherwise clamp to 12h.
+    func setSleep(_ minutes: Int?, on date: CalendarDate = .today()) {
+        var entry = log(on: date)
+        entry.sleepMinutes = minutes.flatMap { $0 > 0 ? min($0, 12 * 60) : nil }
+        upsert(entry, on: date)
+    }
+
+    /// Consecutive days with water logged, ending today — or ending yesterday when today has no
+    /// water yet (morning grace). Drives the hydration flame. Uses the canonical `TrackingEngine`
+    /// rule so this number matches the one the Insights Consistency card shows.
     func streak(today: CalendarDate = .today()) -> Int {
-        var streak = 0
-        var day = today
-        while (logByDate[day]?.waterMl ?? 0) > 0 {
-            streak += 1
-            day = day.minusDays(1)
-        }
-        return streak
+        TrackingEngine.streak(days: TrackingEngine.hydrationDays(logByDate), today: today)
     }
 
     /// Push the days the server is owed, then pull the rest of her history. A day still owed is

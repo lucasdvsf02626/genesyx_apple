@@ -36,6 +36,10 @@ protocol AuthBackend {
     func deleteAccount() async throws
     /// Exchanges a provider ID token (Google/Apple) for a Supabase session.
     func signInWithIdToken(provider: SocialProvider, idToken: String, accessToken: String?, nonce: String?) async throws
+    /// Emails a password-reset link to `email`.
+    func resetPassword(email: String) async throws
+    /// Re-sends the sign-up confirmation email to `email` (for an account created but not yet confirmed).
+    func resendConfirmation(email: String) async throws
 }
 
 extension AuthBackend {
@@ -43,6 +47,8 @@ extension AuthBackend {
     // backend overrides them.
     func deleteAccount() async throws {}
     func signInWithIdToken(provider: SocialProvider, idToken: String, accessToken: String?, nonce: String?) async throws {}
+    func resetPassword(email: String) async throws {}
+    func resendConfirmation(email: String) async throws {}
 }
 
 protocol CycleBackend {
@@ -85,9 +91,17 @@ protocol PartnerBackend {
     /// Returns the invite the SERVER created. The code must come back from the database — inventing
     /// one on the device would hand her a link that redeems nothing.
     func sendInvite(email: String) async throws -> PartnerInvite
+    /// Emails the invite to the address it was addressed to. Returns whether the mail actually
+    /// went out — the mailer may not be configured, and that must not fail the invite.
+    func emailInvite(code: String) async throws -> Bool
     func revoke(id: String) async throws
     func accept(code: String) async throws
     func unlink() async throws
+}
+
+extension PartnerBackend {
+    /// Local/mock backends don't send mail. Defaulted so no existing conformer has to change.
+    func emailInvite(code: String) async throws -> Bool { false }
 }
 
 /// Aggregate entry point the app resolves at startup.
