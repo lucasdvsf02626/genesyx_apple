@@ -1,6 +1,20 @@
 import Foundation
 import GenesyxCore
 
+enum DailyLogSyncState: Equatable {
+    case saved
+    case synced
+    case willSyncWhenOnline
+
+    var label: String {
+        switch self {
+        case .saved: return "Saved"
+        case .synced: return "Synced"
+        case .willSyncWhenOnline: return "Will sync when online"
+        }
+    }
+}
+
 /// Daily logs (mood/energy/symptoms/sleep/supplements/notes/water), date-keyed and persisted
 /// on-device. Mirrors the Android `DailyLogRepository`.
 ///
@@ -43,6 +57,11 @@ final class DailyLogRepository: ObservableObject {
 
     func waterMl(on date: CalendarDate) -> Int { log(on: date).waterMl }
 
+    func syncState(on date: CalendarDate) -> DailyLogSyncState {
+        guard backend != nil else { return .saved }
+        return pendingDates.contains(date) ? .willSyncWhenOnline : .synced
+    }
+
     func upsert(_ log: DailyLog, on date: CalendarDate) {
         logByDate[date] = log
         persist()
@@ -61,6 +80,13 @@ final class DailyLogRepository: ObservableObject {
     func setWater(_ ml: Int, on date: CalendarDate = .today()) {
         var entry = log(on: date)
         entry.waterMl = min(max(ml, 0), 10_000)
+        upsert(entry, on: date)
+    }
+
+    /// Set a day's sleep duration. `nil` or a non-positive value clears the value; otherwise clamp to 12h.
+    func setSleep(_ minutes: Int?, on date: CalendarDate = .today()) {
+        var entry = log(on: date)
+        entry.sleepMinutes = minutes.flatMap { $0 > 0 ? min($0, 12 * 60) : nil }
         upsert(entry, on: date)
     }
 

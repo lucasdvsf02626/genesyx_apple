@@ -10,4 +10,4 @@ The catalog + `Contents.json` are already wired (`ASSETCATALOG_COMPILER_APPICON_
 (light `#4D4DAA`, dark `#9B7BD8`) and used as the app's global tint.
 
 ## Fonts
-See `Fonts/README.md` — drop the Outfit + Inter `.ttf` files in `Fonts/`.
+The shipping app uses Apple's system font. `Fonts/README.md` documents the optional future brand-font workflow.

@@ -46,7 +46,7 @@
 
 ### 3. Assets & config (the main remaining work for a v1)
 - 🟡 **App icon** — asset catalog + accent color wired; ⬜ drop `AppIcon-1024.png` into `Resources/Assets.xcassets/AppIcon.appiconset/`
-- 🟡 **Fonts** — `UIAppFonts` listed + README; ⬜ drop `Outfit-*.ttf`/`Inter-*.ttf` into `Resources/Fonts/` and switch `Typography` to `.custom`
+- ✅ **Fonts** — shipping system-font type scale; optional Outfit/Inter adoption is documented but not declared until bundled
 - ⬜ Brand images: logo, splash eggs (or keep the `BrandOrb` code stand-in)
 - ✅ Deep-link routing wired (`DeepLink` parser + `onOpenURL` + Universal Link → `InviteView`)
 - ✅ Error / not-found surface (`ErrorStateView`)

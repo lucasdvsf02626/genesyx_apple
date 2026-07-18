@@ -55,13 +55,13 @@ final class PhInsightLogicTests: XCTestCase {
         XCTAssertEqual(r.trend, .up) // 6.8 - 6.4 = 0.4 > 0.1
         XCTAssertEqual(r.avg7!, 6.6, accuracy: 1e-9)
         XCTAssertTrue(r.insight.contains("optimal range"))
-        XCTAssertFalse(r.recommendation.isEmpty)
+        XCTAssertEqual(r.recommendation, "", "dietary recommendations removed for App Store 1.4.1")
     }
 
     func testAcidicWeeklyAverageProducesTheAcidicInsight() {
         let r = PhInsightLogic.compute([reading(5.5, 1), reading(5.7, 0)], now: now)
         XCTAssertTrue(r.insight.contains("acidic"))
-        XCTAssertTrue(r.recommendation.contains("leafy greens"))
+        XCTAssertEqual(r.recommendation, "", "dietary recommendations removed for App Store 1.4.1")
     }
 
     func testAlkalineWeeklyAverageProducesTheAlkalineInsight() {

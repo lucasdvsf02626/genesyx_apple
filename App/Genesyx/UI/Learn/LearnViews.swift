@@ -9,6 +9,10 @@ final class TabRouter: ObservableObject {
     @Published var selection: Int
     /// Set by a Learn notification tap; consumed by `LearnLandingView`, which pushes the article.
     @Published var pendingLearnSlug: String?
+    /// Set by the Home hydration card tap; consumed by `TrackView`, which opens the hydration detail.
+    @Published var pendingHydration = false
+    /// Set by the Home pH card tap; consumed by `TrackView`, which opens the pH detail.
+    @Published var pendingPh = false
     init(selection: Int = 0) { self.selection = selection }
 }
 
@@ -305,6 +309,10 @@ struct ArticleDetailView: View {
 
                 ForEach(Array(article.body.enumerated()), id: \.offset) { _, block in
                     blockView(block)
+                }
+
+                if let sourceIDs = LearnSourceMap.sources(for: article.slug) {
+                    SourcesFooter(sourceIDs: sourceIDs)
                 }
 
                 if let cta = article.cta { ctaButton(cta) }

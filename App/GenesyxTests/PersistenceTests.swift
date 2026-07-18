@@ -23,6 +23,20 @@ final class PersistenceTests: XCTestCase {
         XCTAssertEqual(log.dto.domain, log)
     }
 
+    func testDailyLogRemoteRowCarriesSleepMinutes() throws {
+        let date = CalendarDate(2026, 7, 16)
+        let row = DailyLogRow(
+            userId: "user-1",
+            date: date,
+            log: DailyLog(sleepMinutes: 455, waterMl: 1_200)
+        )
+        let data = try JSONEncoder().encode(row)
+        let payload = try XCTUnwrap(String(data: data, encoding: .utf8))
+
+        XCTAssertTrue(payload.contains("\"sleep_minutes\":455"), payload)
+        XCTAssertEqual(row.domain.sleepMinutes, 455)
+    }
+
     func testPhReadingDTORoundTrip() {
         let r = PhReading(id: "abc", phValue: 6.8, recordedAt: Date(timeIntervalSince1970: 1_000_000), notes: "am")
         XCTAssertEqual(r.dto.domain, r)

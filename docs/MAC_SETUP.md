@@ -51,8 +51,8 @@ API nuance on your Xcode version.
 
 ## 7. Drop in assets (anytime)
 - [ ] `AppIcon-1024.png` → `App/Genesyx/Resources/Assets.xcassets/AppIcon.appiconset/`
-- [ ] Outfit + Inter `.ttf` → `App/Genesyx/Resources/Fonts/` (see that folder's README), then
-      switch `Typography.swift` from `.system` to `.custom`.
+- [ ] Optional future branding only: follow `App/Genesyx/Resources/Fonts/README.md` before
+      switching the shipping system-font type scale to custom fonts.
 
 ## 8. Tests in Xcode (optional)
 - [ ] ⌘U runs both the `GenesyxCore` tests and the `GenesyxAppTests` (repository/DTO) suite.

@@ -5,6 +5,9 @@ import GenesyxCore
 /// Ported from the Android `ProfileScreen` + `ProfileViewModel`.
 struct ProfileView: View {
 
+    private static let privacyPolicyURL = URL(string: "https://genesyx.co.uk/policies/privacy-policy")!
+    private static let supportURL = URL(string: "https://genesyx.co.uk")!
+
     @EnvironmentObject private var session: SessionRepository
     @EnvironmentObject private var prefs: PreferencesRepository
     @EnvironmentObject private var partner: PartnerRepository
@@ -109,11 +112,6 @@ struct ProfileView: View {
                 Text(session.email ?? "Sign in to sync your data").font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
             }
             Spacer()
-            if session.isSignedIn {
-                Text("PREMIUM").font(.system(size: 10.5, weight: .semibold)).foregroundStyle(GenesyxColor.primary)
-                    .padding(.horizontal, 10).padding(.vertical, 4)
-                    .background(GenesyxColor.primary.opacity(0.10)).clipShape(Capsule())
-            }
         }
         .padding(20).background(GenesyxColor.card).clipShape(RoundedRectangle(cornerRadius: 24))
     }
@@ -271,9 +269,13 @@ struct ProfileView: View {
             cardGroup {
                 rowItem("Privacy & Data") { detail = "Privacy & Data" }
                 divider
-                rowItem("Help & Support") { detail = "Help & Support" }
+                linkItem("Privacy Policy", destination: Self.privacyPolicyURL)
+                divider
+                linkItem("Help & Support", destination: Self.supportURL)
                 divider
                 rowItem("Medical Disclaimer") { detail = "Medical Disclaimer" }
+                divider
+                navRow("Medical Sources & Disclaimer") { MedicalSourcesView() }
             }
         }
     }
@@ -333,6 +335,34 @@ struct ProfileView: View {
             .padding(.horizontal, 16).frame(minHeight: 52)
         }
         .buttonStyle(.plain)
+    }
+
+    private func navRow<Destination: View>(_ label: String, @ViewBuilder destination: @escaping () -> Destination) -> some View {
+        NavigationLink(destination: destination) {
+            HStack {
+                Text(label).font(.system(size: 14.5)).foregroundStyle(GenesyxColor.foreground)
+                Spacer()
+                Image(systemName: "chevron.right").font(.system(size: 14)).foregroundStyle(GenesyxColor.mutedForeground)
+            }
+            .padding(.horizontal, 16).frame(minHeight: 52)
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(label)
+    }
+
+    private func linkItem(_ label: String, destination: URL) -> some View {
+        Link(destination: destination) {
+            HStack {
+                Text(label).font(.system(size: 14.5)).foregroundStyle(GenesyxColor.foreground)
+                Spacer()
+                Image(systemName: "arrow.up.right")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(GenesyxColor.mutedForeground)
+            }
+            .padding(.horizontal, 16).frame(minHeight: 52)
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(label)
     }
 
     private func switchRow(_ label: String, isOn: Binding<Bool>) -> some View {

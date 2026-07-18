@@ -306,6 +306,10 @@ private struct PhInsightsCard: View {
                     Text(ph.recommendation).font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground).padding(.top, 6)
                 }
                 Text(countLine).font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground.opacity(0.9)).padding(.top, 6)
+                Text("Urine pH typically ranges from about 4.5 to 8 and varies with diet and hydration. Readings are for general wellness tracking, not for diagnosing or monitoring any medical condition.")
+                    .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+                    .fixedSize(horizontal: false, vertical: true).padding(.top, 6)
+                CitationLink("statpearls-urinalysis").padding(.top, 4)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -393,6 +397,7 @@ private struct HydrationInsightsCard: View {
                 Text("Steady hydration makes your pH readings more comparable — concentrated urine reads more acidic.")
                     .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
                     .fixedSize(horizontal: false, vertical: true).padding(.top, 6)
+                CitationLink("statpearls-urinalysis").padding(.top, 4)
             }
         }
         .padding(20)

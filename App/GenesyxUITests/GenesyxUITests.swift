@@ -49,12 +49,48 @@ final class GenesyxUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Log today"].waitForExistence(timeout: 10), "Home should show the Log today button")
     }
 
+    /// Quick-add now lives in the Track hydration sheet (the Home card is a tap-through summary).
+    /// A single +250 adds exactly 250 (no double-fire), and −250 returns the total to where it
+    /// started. Seed logs 750 ml today.
+    func testTrackHydrationQuickAddAddsExactlyAndReverses() {
+        let app = launchSeeded(tab: 0)
+
+        let summary = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Hydration,")).firstMatch
+        XCTAssertTrue(summary.waitForExistence(timeout: 10), "Home should show the hydration summary")
+        XCTAssertTrue(summary.label.contains("750 of 2,400"), "Seeded today total should be 750 ml; got: \(summary.label)")
+        summary.tap()
+
+        XCTAssertTrue(app.navigationBars["Hydration"].waitForExistence(timeout: 5), "Summary should open the Track hydration sheet")
+        XCTAssertTrue(app.staticTexts["750"].waitForExistence(timeout: 5), "Sheet should reflect the seeded 750 ml")
+
+        app.buttons["Add 250 millilitres"].tap()
+        XCTAssertTrue(app.staticTexts["1,000"].waitForExistence(timeout: 5), "One tap must add exactly 250, not double-fire")
+
+        app.buttons["Remove 250 millilitres"].tap()
+        XCTAssertTrue(app.staticTexts["750"].waitForExistence(timeout: 5), "After +250 then −250, the total must be unchanged")
+    }
+
+    func testHomeHydrationSummaryOpensTrackHydrationControls() {
+        let app = launchSeeded(tab: 0)
+        let summary = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Hydration,")).firstMatch
+        XCTAssertTrue(summary.waitForExistence(timeout: 10))
+        summary.tap()
+
+        // Landing on the Track hydration sheet (nav bar + its quick-add controls) proves the jump.
+        XCTAssertTrue(app.navigationBars["Hydration"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Add 500 millilitres"].exists)
+        XCTAssertTrue(app.buttons["Remove 250 millilitres"].exists)
+    }
+
     func testTabNavigation() {
         let app = launchSeeded(tab: 0)
         XCTAssertTrue(app.buttons["Home"].waitForExistence(timeout: 10))
+        // The Home hydration card shows a label-only "Track" affordance, so match the tab-bar
+        // buttons by their accessibility identifier to avoid a duplicate-"Track" collision.
         for label in ["Track", "Nutrition", "Insights", "Learn", "Profile", "Home"] {
-            app.buttons[label].tap()
-            XCTAssertTrue(app.buttons[label].exists, "Should switch to \(label)")
+            let tab = app.buttons.matching(identifier: label).firstMatch
+            tab.tap()
+            XCTAssertTrue(tab.exists, "Should switch to \(label)")
         }
     }
 
@@ -71,6 +107,13 @@ final class GenesyxUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Edit name"].waitForExistence(timeout: 10), "Profile should show account rows")
         XCTAssertTrue(app.staticTexts["Delete account"].exists || app.buttons["Delete account"].exists,
                       "Profile should offer account deletion (App Store requirement)")
+
+        let privacyPolicy = app.descendants(matching: .any)
+            .matching(identifier: "Privacy Policy")
+            .firstMatch
+        for _ in 0..<4 where !privacyPolicy.exists { app.swipeUp() }
+        XCTAssertTrue(privacyPolicy.waitForExistence(timeout: 5),
+                      "Profile should provide an accessible in-app privacy-policy link")
     }
 
     /// Device-side data-isolation guard: seeded (User A) health data must be gone after sign-out,

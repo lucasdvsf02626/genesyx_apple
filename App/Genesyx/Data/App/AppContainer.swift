@@ -115,7 +115,8 @@ final class AppContainer: ObservableObject {
         container.ph.create(PhReading(phValue: 6.3, recordedAt: Date().addingTimeInterval(-5 * 86_400)))
         container.ph.create(PhReading(phValue: 6.7, recordedAt: Date().addingTimeInterval(-2 * 86_400)))
         container.ph.create(PhReading(phValue: 6.9, recordedAt: Date()))
-        container.session.signIn(email: "lucas@example.com", name: "Lucas")
+        // Public screenshots must never expose a real person's account details.
+        container.session.signIn(email: "maya@example.com", name: "Maya")
         UserDefaults.standard.set(true, forKey: "genesyx.onboardingComplete")
         return container
     }

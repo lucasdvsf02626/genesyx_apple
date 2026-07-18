@@ -1,0 +1,74 @@
+[
+  {
+    "id": "nhs-water",
+    "title": "Water, drinks and hydration",
+    "organisation": "NHS (UK)",
+    "url": "https://www.nhs.uk/live-well/eat-well/food-guidelines-and-food-labels/water-drinks-nutrition/"
+  },
+  {
+    "id": "valtin-2002",
+    "title": "\"Drink at least eight glasses of water a day.\" Really? (Valtin, 2002)",
+    "organisation": "American Journal of Physiology / PubMed",
+    "url": "https://pubmed.ncbi.nlm.nih.gov/12376390/"
+  },
+  {
+    "id": "statpearls-urinalysis",
+    "title": "Urinalysis (StatPearls)",
+    "organisation": "NCBI / National Library of Medicine",
+    "url": "https://www.ncbi.nlm.nih.gov/books/NBK557685/"
+  },
+  {
+    "id": "armstrong-2012",
+    "title": "Mild dehydration affects mood in healthy young women (Armstrong et al., 2012)",
+    "organisation": "Journal of Nutrition / PubMed",
+    "url": "https://pubmed.ncbi.nlm.nih.gov/22190027/"
+  },
+  {
+    "id": "efsa-water",
+    "title": "Scientific Opinion on Dietary Reference Values for water",
+    "organisation": "European Food Safety Authority (EFSA)",
+    "url": "https://www.efsa.europa.eu/en/efsajournal/pub/1459"
+  },
+  {
+    "id": "nhs-vitamins",
+    "title": "Vitamins and minerals",
+    "organisation": "NHS (UK)",
+    "url": "https://www.nhs.uk/conditions/vitamins-and-minerals/"
+  },
+  {
+    "id": "nhs-eatwell",
+    "title": "The Eatwell Guide",
+    "organisation": "NHS (UK)",
+    "url": "https://www.nhs.uk/live-well/eat-well/food-guidelines-and-food-labels/the-eatwell-guide/"
+  },
+  {
+    "id": "nhs-periods",
+    "title": "Periods and the menstrual cycle",
+    "organisation": "NHS (UK)",
+    "url": "https://www.nhs.uk/conditions/periods/"
+  },
+  {
+    "id": "nhs-iron",
+    "title": "Iron (vitamins and minerals)",
+    "organisation": "NHS (UK)",
+    "url": "https://www.nhs.uk/conditions/vitamins-and-minerals/iron/"
+  },
+  {
+    "id": "nhs-preconception",
+    "title": "Planning your pregnancy — folic acid and preconception",
+    "organisation": "NHS (UK)",
+    "url": "https://www.nhs.uk/pregnancy/trying-for-a-baby/planning-your-pregnancy/"
+  },
+  {
+    "id": "nhs-vitamin-d",
+    "title": "Vitamin D",
+    "organisation": "NHS (UK)",
+    "url": "https://www.nhs.uk/conditions/vitamins-and-minerals/vitamin-d/"
+  },
+  {
+    "id": "nhs-vitamin-b",
+    "title": "B vitamins and folic acid",
+    "organisation": "NHS (UK)",
+    "url": "https://www.nhs.uk/conditions/vitamins-and-minerals/vitamin-b/"
+  }
+]

@@ -21,7 +21,7 @@ pushed and CI hasn't run yet.
 | App screens (all 13) | ✅ Done | Onboarding, Home, Track, Nutrition, Log, pH, Insights, Profile, Partner, Pregnancy, Auth, Invite |
 | Persistence (local v1) | ✅ Done + tested | `LocalStore` + 6 repositories; repository/DTO tests added |
 | Navigation + deep links | ✅ Done | Tabs, sheets, `genesyx://invite/{code}` + Universal Link routing |
-| Theme (light/dark) | ✅ Done | Adaptive colors; ⬜ Outfit/Inter fonts to drop in |
+| Theme (light/dark) | ✅ Done | Adaptive colors + shipping system-font type scale |
 | Reproducible project (XcodeGen) | ✅ Done | `project.yml` → `xcodegen generate` |
 | CI | ✅ Done | `swift test` + `xcodebuild test` on macOS (runs once pushed) |
 | Supabase remote layer | 🟡 Scaffolded | Protocols/DTOs/config/guarded impl + `docs/SUPABASE.md`; not linked (v1 stays local) |

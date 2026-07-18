@@ -1,6 +1,6 @@
 # Genesyx — Project Status & Inventory
 
-_Snapshot: 2026-07-12 · branch `main` · version 1.1.0 (build 11)_
+_Snapshot: 2026-07-16 · branch `main` · version 1.1.0 (build 12)_
 
 This is the "where we are" document: what shipped, what's uploaded, what's live on
 the backend, and what still needs a human. It is a status report, not a spec.
@@ -11,12 +11,15 @@ the backend, and what still needs a human. It is a status report, not a spec.
 
 | Thing | State |
 |---|---|
-| **App Store (v1.0, build 8)** | In review — baseline `c258921` is **frozen**, do not merge into it |
-| **Current dev version** | 1.1.0, build 11 |
+| **App Store** | Version 1.1.0 build 12 — **Waiting for Review** (submitted 16 July 2026, 23:53 BST) |
+| **Previous submission** | Version 1.0 build 8 rejected under Guideline 2.1 and replaced by build 12 |
+| **Review access fix** | Production reviewer account created, password login verified, fictional sample data seeded |
+| **Current dev version** | 1.1.0, build 12 |
+| **Build 12 IPA** | Signed, uploaded, processed, attached to App Review, and assigned to internal TestFlight |
 | **Build 11 IPA** | Validated + **uploaded to TestFlight** (`build/Export/Genesyx.ipa`, 6.3 MB) |
 | **Build 10** | Uploaded but **dead** — ignore/expire it (had the notification bug below) |
 | **Supabase backend** | Live: schema + RLS + auth + migrations all applied |
-| **1.1 review submission** | **Not** submitted (deliberate manual step, waits for 1.0 to clear) |
+| **1.1 review submission** | **Waiting for Review**; manual release selected |
 
 ---
 
@@ -109,13 +112,14 @@ everyone**. Only a real Simulator run caught it (the UI claim disagreed with iOS
 ## 7. Outstanding
 
 **Human / device (not agent-doable)**
-- Install build 11 on a real phone → grant permission via toggle → cold-start a
+- Install build 12 from TestFlight on a real phone → grant permission via toggle → cold-start a
   notification tap → confirm banner renders → two-device pH sync sanity check.
+- Monitor App Review messages and keep the verified reviewer account active throughout review.
+- If Apple approves, use the manual release control only after the final live-readiness check.
 
 **Sequenced later**
-- Decide on **build 12** to carry `de70acf` (and the in-progress invite work).
-- Flip Supabase **Confirm-email ON** — only after build 11 is live.
-- **Submit 1.1 for review** — only after 1.0 (build 8) clears.
+- Flip Supabase **Confirm-email ON** only after the approved build is live and the sign-up flow is
+  retested with confirmation enabled.
 - Apple Sign-in key expires ~6 months out — set a reminder.
 
 ---

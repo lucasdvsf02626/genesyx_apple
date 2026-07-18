@@ -271,13 +271,19 @@ private struct SleepSheet: View {
         _minutes = State(initialValue: (initialMinutes ?? 420) % 60)
     }
 
+    /// Sleep caps at 12h, so at 12h only 0m is selectable — the pick always matches what is saved.
+    private var minuteOptions: [Int] {
+        hours >= 12 ? [0] : Array(stride(from: 0, through: 55, by: 5))
+    }
+
     var body: some View {
         NavigationStack {
             HStack(spacing: 0) {
                 Picker("Hours", selection: $hours) { ForEach(0...12, id: \.self) { Text("\($0)h") } }.pickerStyle(.wheel)
-                Picker("Minutes", selection: $minutes) { ForEach(Array(stride(from: 0, through: 55, by: 5)), id: \.self) { Text("\($0)m") } }.pickerStyle(.wheel)
+                Picker("Minutes", selection: $minutes) { ForEach(minuteOptions, id: \.self) { Text("\($0)m") } }.pickerStyle(.wheel)
             }
             .padding()
+            .onChange(of: hours) { if $0 >= 12 { minutes = 0 } }
             .navigationTitle("Sleep").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { onDone(hours * 60 + minutes); dismiss() } }
