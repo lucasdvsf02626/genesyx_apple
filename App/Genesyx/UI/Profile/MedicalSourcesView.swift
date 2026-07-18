@@ -25,6 +25,7 @@ struct MedicalSourcesView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
+                    .accessibilityIdentifier("medSource.\(source.id)")
                 }
             }
         }

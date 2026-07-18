@@ -321,6 +321,7 @@ struct HomeView: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Check your pH")
         .accessibilityHint("Opens the pH tracker in Track")
+        .accessibilityIdentifier("home.phCard")
     }
 
     private func openPhDetail() {

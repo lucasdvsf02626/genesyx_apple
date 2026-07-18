@@ -144,6 +144,9 @@ struct NutritionView: View {
                     Image(systemName: "chevron.down").font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(GenesyxColor.mutedForeground).rotationEffect(.degrees(whyExpanded ? 180 : 0))
                 }
+                // Full-width hit area so a tap anywhere on the row expands the section, rather than
+                // falling through the Spacer gap to the card's tap-to-open-Track gesture.
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             if whyExpanded {
@@ -154,12 +157,12 @@ struct NutritionView: View {
             }
         }
         .padding(20)
-        .background(
-            GenesyxColor.card
-                .contentShape(Rectangle())
-                .onTapGesture { openHydrationDetail() }
-        )
+        .background(GenesyxColor.card)
         .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+        // Tap-to-open-Track lives on the whole card (outer), not the background sublayer, so the
+        // inner "Why hydration?" and "Track" buttons win their taps instead of losing to it.
+        .contentShape(Rectangle())
+        .onTapGesture { openHydrationDetail() }
         .accessibilityElement(children: .contain)
         .accessibilityHint("Opens hydration in Track")
     }

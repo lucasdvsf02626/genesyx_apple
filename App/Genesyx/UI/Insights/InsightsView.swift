@@ -309,6 +309,7 @@ private struct PhInsightsCard: View {
                 Text("Urine pH typically ranges from about 4.5 to 8 and varies with diet and hydration. Readings are for general wellness tracking, not for diagnosing or monitoring any medical condition.")
                     .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
                     .fixedSize(horizontal: false, vertical: true).padding(.top, 6)
+                    .accessibilityIdentifier("phCaveat")
                 CitationLink("statpearls-urinalysis").padding(.top, 4)
             }
         }

@@ -19,6 +19,7 @@ struct CitationLink: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("View medical source: \(source.title)")
+            .accessibilityIdentifier("citation.\(sourceID)")
         }
     }
 }
@@ -47,6 +48,7 @@ struct SourcesFooter: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("View medical source: \(source.title)")
+                    .accessibilityIdentifier("source.\(id)")
                 }
             }
         }
