@@ -77,10 +77,9 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.genesyx.app
         MARKETING_VERSION: "1.1.0"
         # Build number MUST exceed the highest build already in App Store Connect / TestFlight.
-        # Confirm the real highest before archiving (see release runbook). Left at 12 pending
-        # Lucas's confirmation — docs/PROJECT_STATUS.md records builds 10 & 11 as already uploaded,
-        # so the "default 9" fallback would be rejected by ASC.
-        CURRENT_PROJECT_VERSION: "12"
+        # 2026-07-18: browser session confirmed ASC has no build 13 (never produced), so bumped
+        # to 13 for the Guideline 1.4.1 resubmission.
+        CURRENT_PROJECT_VERSION: "13"
         SWIFT_VERSION: "5.9"
         TARGETED_DEVICE_FAMILY: "1" # iPhone
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
