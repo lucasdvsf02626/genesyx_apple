@@ -2,7 +2,42 @@
 
 All notable changes to Genesyx (iOS) are recorded here.
 
-## Unreleased — build 14 (in progress)
+## Unreleased — build 15
+
+### Vaginal pH migration (complete)
+Full clinical migration of the pH tracker from the legacy urine model to vaginal pH. The Supabase
+migration was already applied on 22 Jul 2026 (column `measurement_type text NOT NULL DEFAULT 'urine'`
+with constraint `ph_measurement_type_check` in {'urine','vaginal'}) — **no DB work in this build**.
+
+- **Scale & bands** (`PhStatus`): range **3.5–7.0**, step 0.1; two-band model **Healthy (≤4.5) /
+  Elevated (>4.5)** replacing acidic/optimal/alkaline. Two band colours (`phHealthy`/`phElevated`).
+  Chart domain 3.5–7.0 with a two-band background; log dial defaults to 4.2 and clamps to range.
+- **measurement_type wired end-to-end** (`PhReading` → `PhReadingRow` remote DTO → `PhReadingDTO`
+  local DTO → `PhRepository`): new readings written as `vaginal`; rows/records missing the field
+  decode as `urine` (legacy tolerance — never defaulted to vaginal).
+- **Legacy exclusion**: `PhInsightLogic` filters to vaginal-only before computing; all-legacy input
+  returns the empty state. Legacy rows show the neutral `urine (legacy)` marker (one canonical
+  lowercase string) on the pH card and Track row, and are clamped on the chart — never classified.
+- **One-time notice** on first pH-section visit (`ph_vaginal_notice_seen`), dismissible, no re-fire.
+- **Copy** (`PhCopy`, British English): Healthy / Elevated insight lines, an Elevated GP/pharmacist
+  signpost, a detail+log disclaimer, and the migration notice — all rendered from one source.
+- **Learn rewrite**: the pH guides now describe vaginal pH (typical range 3.8–4.5, cycle variation,
+  when to speak to a GP); all urine-collection instructions removed. No user-visible "urine" remains
+  except the legacy marker. No diet advice, condition names, or treatment claims in pH copy.
+- **Citations re-pointed**: removed `statpearls-urinalysis`; added `vaginal-ph` (NHS *Bacterial
+  vaginosis*) and `statpearls-vaginitis` (StatPearls *Vaginitis*); all pH guides + the pH footer
+  now cite these.
+- **Tests**: rewrote `PhInsightLogicTests` for the vaginal model (boundaries, clamp, legacy
+  exclusion, verbatim copy, pH-copy banned-phrase guard); added `measurement_type` DTO round-trip
+  tests, a Learn pH-content banned-phrase guard (`PhContentGuardTests`), and a one-time-notice UI
+  test. Green: core 116, app unit 138, UI 23 (1 intentional skip), 0 failures.
+
+Delivered across commits `4f73d9e` (1/5 scale+bands), `8053318` (2/5 measurement_type+legacy),
+`fd6de38` (3/5 copy+Learn+citations), `f234641` (4/5 tests).
+
+## Unreleased — build 14 (superseded by build 15)
+
+### pH tracker relabel: Urine → Vaginal pH
 
 ### pH tracker relabel: Urine → Vaginal pH
 - Renamed the pH feature wording from "Urine pH" to "Vaginal pH" across the visible UI:
@@ -18,11 +53,9 @@ All notable changes to Genesyx (iOS) are recorded here.
 - Updated `CitationE2ETests` to drop the removed urinalysis-citation assertions. Build green;
   CitationE2ETests 7/7 pass on iPhone 17 Pro.
 
-**Known follow-ups (NOT done — wording-only pass):** the pH input slider range (4.5–9.0) and the
-`PhStatus` bands (acidic <6.0 / optimal 6.0–7.5 / alkaline >7.5) are still urine-oriented, so a
-healthy vaginal reading (~3.8–4.5) would render outside "optimal"; the Nutrition "Why hydration?"
-copy and the Learn urine-strip guides still describe urine. These need a clinical pass before a
-vaginal-pH feature is medically consistent.
+**Known follow-ups — ✅ RESOLVED in build 15:** the pH input scale/bands, the Nutrition
+"Why hydration?" copy, and the Learn urine-strip guides were all migrated to the vaginal model in
+build 15 (see above).
 
 ## 2026-07-18 — build 1.1.0 (13)
 
