@@ -1,7 +1,7 @@
 import SwiftUI
 import GenesyxCore
 
-/// Insights — every card is computed from the user's real logged data: urine pH, hydration,
+/// Insights — every card is computed from the user's real logged data: vaginal pH, hydration,
 /// nutrition consistency, sleep, cycle regularity, symptom patterns, and predicted ovulation. No
 /// mock/hardcoded/sine values. (The Android "Nutrition consistency" card was a mock; the iOS one
 /// is honest — it counts the supplements she actually logged each day this week.)
@@ -263,7 +263,7 @@ private struct PhInsightsCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text("Urine pH").font(.gxCardHeading).foregroundStyle(GenesyxColor.foreground)
+                Text("Vaginal pH").font(.gxCardHeading).foregroundStyle(GenesyxColor.foreground)
                 Spacer()
                 NavigationLink {
                     PhTrackerScreen()
@@ -306,11 +306,10 @@ private struct PhInsightsCard: View {
                     Text(ph.recommendation).font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground).padding(.top, 6)
                 }
                 Text(countLine).font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground.opacity(0.9)).padding(.top, 6)
-                Text("Urine pH typically ranges from about 4.5 to 8 and varies with diet and hydration. Readings are for general wellness tracking, not for diagnosing or monitoring any medical condition.")
+                Text("Vaginal pH naturally shifts across your cycle. Logging your cycle day alongside each reading helps you understand your own patterns.")
                     .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
                     .fixedSize(horizontal: false, vertical: true).padding(.top, 6)
                     .accessibilityIdentifier("phCaveat")
-                CitationLink("statpearls-urinalysis").padding(.top, 4)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -394,12 +393,6 @@ private struct HydrationInsightsCard: View {
             Text(insights.insight)
                 .font(.gxBodySmall).foregroundStyle(GenesyxColor.foreground.opacity(0.8))
                 .fixedSize(horizontal: false, vertical: true).padding(.top, 14)
-            if hasPh {
-                Text("Steady hydration makes your pH readings more comparable — concentrated urine reads more acidic.")
-                    .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
-                    .fixedSize(horizontal: false, vertical: true).padding(.top, 6)
-                CitationLink("statpearls-urinalysis").padding(.top, 4)
-            }
         }
         .padding(20)
         .background(GenesyxColor.card)
@@ -771,7 +764,7 @@ private struct OvulationCard: View {
     }
 }
 
-/// Full urine-pH tracker (card + chart + Log pH), pushed from the Insights "Open tracker" link.
+/// Full vaginal-pH tracker (card + chart + Log pH), pushed from the Insights "Open tracker" link.
 private struct PhTrackerScreen: View {
     var body: some View {
         ScrollView {
@@ -780,7 +773,7 @@ private struct PhTrackerScreen: View {
         }
         .frame(maxWidth: .infinity)
         .background(GenesyxColor.background)
-        .navigationTitle("Urine pH")
+        .navigationTitle("Vaginal pH")
         .navigationBarTitleDisplayMode(.inline)
     }
 }

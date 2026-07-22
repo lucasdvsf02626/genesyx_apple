@@ -15,13 +15,11 @@ final class CitationE2ETests: XCTestCase {
         return app
     }
 
-    /// Insights: hydration card Source link + pH caveat, and no dietary advice anywhere.
+    /// Insights: the vaginal-pH card shows its cycle caveat, and no dietary advice anywhere.
     func testInsightsCitationsPresent() {
         let app = launch(tab: 3)
         XCTAssertTrue(app.buttons["Insights"].waitForExistence(timeout: 15))
-        XCTAssertTrue(app.buttons.matching(identifier: "citation.statpearls-urinalysis").firstMatch.waitForExistence(timeout: 10),
-                      "Insights should show a StatPearls Source link")
-        XCTAssertTrue(app.staticTexts["phCaveat"].firstMatch.exists, "Insights pH card should show the pH caveat")
+        XCTAssertTrue(app.staticTexts["phCaveat"].firstMatch.waitForExistence(timeout: 10), "Insights pH card should show the vaginal-pH caveat")
         assertNoDietaryAdvice(app)
     }
 
@@ -45,11 +43,10 @@ final class CitationE2ETests: XCTestCase {
         }
     }
 
-    /// pH tracker: caveat + citation present, and NO leftover dietary-recommendation strings.
+    /// pH tracker: the vaginal-pH caveat is present, and NO leftover dietary-recommendation strings.
     func testPhTrackerCaveatAndNoDietaryAdvice() {
         let app = launch(tab: 2)
         XCTAssertTrue(app.staticTexts["phCaveat"].firstMatch.waitForExistence(timeout: 15))
-        XCTAssertTrue(app.buttons.matching(identifier: "citation.statpearls-urinalysis").firstMatch.exists)
         assertNoDietaryAdvice(app)
     }
 

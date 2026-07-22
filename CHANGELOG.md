@@ -2,6 +2,28 @@
 
 All notable changes to Genesyx (iOS) are recorded here.
 
+## Unreleased — build 14 (in progress)
+
+### pH tracker relabel: Urine → Vaginal pH
+- Renamed the pH feature wording from "Urine pH" to "Vaginal pH" across the visible UI:
+  - Track: tracker row title + pH detail sheet title (`TrackView.swift`).
+  - Insights: pH card title + the pushed "Open tracker" screen title (`InsightsView.swift`).
+  - Shared pH card (`PhTrackerSection.swift`, used by Nutrition + the Insights tracker screen):
+    "Urine Tracker" → "Vaginal pH Tracker"; log-sheet label → "Track your vaginal pH from 4.5 to 9.0."
+- Caveat copy rewritten (cycle-tied, no numeric range, no citation), on both the Insights pH card
+  and the shared card: "Vaginal pH naturally shifts across your cycle. Logging your cycle day
+  alongside each reading helps you understand your own patterns."
+- Removed the urine-specific hydration claim "…concentrated urine reads more acidic" and its
+  `statpearls-urinalysis` citation from the Insights hydration card (false for vaginal pH).
+- Updated `CitationE2ETests` to drop the removed urinalysis-citation assertions. Build green;
+  CitationE2ETests 7/7 pass on iPhone 17 Pro.
+
+**Known follow-ups (NOT done — wording-only pass):** the pH input slider range (4.5–9.0) and the
+`PhStatus` bands (acidic <6.0 / optimal 6.0–7.5 / alkaline >7.5) are still urine-oriented, so a
+healthy vaginal reading (~3.8–4.5) would render outside "optimal"; the Nutrition "Why hydration?"
+copy and the Learn urine-strip guides still describe urine. These need a clinical pass before a
+vaginal-pH feature is medically consistent.
+
 ## 2026-07-18 — build 1.1.0 (13)
 
 ### App Store Guideline 1.4.1 — medical citations (release-critical)

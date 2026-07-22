@@ -402,7 +402,7 @@ struct TrackSignalSummary: Equatable {
             .mapValues { $0.last?.phValue ?? 0 }
         let latest = readings.last
         return TrackSignalSummary(
-            title: "Urine pH",
+            title: "Vaginal pH",
             icon: "testtube.2",
             value: latest.map { String(format: "Latest %.1f", $0.phValue) } ?? emptyValue,
             sparkValues: trailingSeven(today: today).map { date in
@@ -679,7 +679,7 @@ private struct PhDetailView: View {
                     .padding(.bottom, 24)
             }
             .background(GenesyxColor.background)
-            .navigationTitle("Urine pH")
+            .navigationTitle("Vaginal pH")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }

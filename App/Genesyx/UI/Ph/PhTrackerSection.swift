@@ -2,7 +2,7 @@ import SwiftUI
 import Charts
 import GenesyxCore
 
-/// Self-contained urine-pH card + log sheet, embedded on Track and Nutrition.
+/// Self-contained vaginal-pH card + log sheet, embedded on Track and Nutrition.
 /// Ported from the Android `PhTrackerSection` / `PhTrackerCard` / `PhLogDialog`.
 struct PhTrackerSection: View {
     @EnvironmentObject private var ph: PhRepository
@@ -53,7 +53,7 @@ private struct PhTrackerCard: View {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Eyebrow("Track your pH", color: GenesyxColor.primary)
-                    Text("Urine Tracker").font(.gxCardHeading).foregroundStyle(GenesyxColor.foreground)
+                    Text("Vaginal pH Tracker").font(.gxCardHeading).foregroundStyle(GenesyxColor.foreground)
                 }
                 Spacer()
                 Button(action: onLog) {
@@ -68,11 +68,10 @@ private struct PhTrackerCard: View {
                 .buttonStyle(.plain)
             }
 
-            Text("Urine pH typically ranges from about 4.5 to 8 and varies with diet and hydration. Readings are for general wellness tracking, not for diagnosing or monitoring any medical condition.")
+            Text("Vaginal pH naturally shifts across your cycle. Logging your cycle day alongside each reading helps you understand your own patterns.")
                 .font(.caption2).foregroundStyle(GenesyxColor.mutedForeground)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("phCaveat")
-            CitationLink("statpearls-urinalysis")
 
             if let latest = readings.last {
                 latestPanel(latest)
