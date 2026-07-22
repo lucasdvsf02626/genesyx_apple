@@ -81,13 +81,13 @@ public enum PhInsightLogic {
         // range caveat + citation. Sourced recommendations return in 1.2.0.
         let recommendation = ""
         if last7.count >= 2, let avg7 {
+            // Interim two-band wording to keep this compiling after the scale/band migration
+            // (step 1/5). The verbatim Healthy/Elevated insight + signpost copy lands in the copy step.
             switch PhStatus.classify(avg7) {
-            case .acidic:
-                insight = "Your pH readings have averaged on the acidic side this week."
-            case .alkaline:
-                insight = "Your pH readings have averaged on the alkaline side this week."
-            case .optimal:
-                insight = "Your pH readings have been sitting in the optimal range this week."
+            case .healthy:
+                insight = "Your recent readings are within the usual range."
+            case .elevated:
+                insight = "Your recent readings are above the usual range."
             }
         }
 

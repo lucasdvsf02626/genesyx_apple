@@ -19,9 +19,8 @@ enum Theme {
 
     static func color(for status: PhStatus) -> Color {
         switch status {
-        case .acidic: return GenesyxColor.phAcidic
-        case .optimal: return GenesyxColor.phOptimal
-        case .alkaline: return GenesyxColor.phAlkaline
+        case .healthy: return GenesyxColor.phHealthy
+        case .elevated: return GenesyxColor.phElevated
         }
     }
 

@@ -147,8 +147,8 @@ private struct PhTrackerCard: View {
     }
 }
 
-/// pH line chart. The three status bands (acidic <6, optimal 6–7.5, alkaline >7.5) fall into
-/// exactly equal thirds of the 4.5–9.0 domain, so the background is three equal bands.
+/// Vaginal pH line chart over the 3.5–7.0 domain. Two-band background: healthy (green) 3.8–4.5,
+/// elevated (amber) above 4.5.
 private struct PhChart: View {
     let readings: [PhReading]
 
@@ -166,22 +166,29 @@ private struct PhChart: View {
         .chartYScale(domain: PhStatus.min...PhStatus.max)
         .chartXAxis(.hidden)
         .chartYAxis {
-            AxisMarks(values: [PhStatus.min, 6.0, 7.5, PhStatus.max]) { value in
+            AxisMarks(values: [PhStatus.min, 3.8, 4.5, PhStatus.max]) { value in
                 AxisValueLabel { if let v = value.as(Double.self) { Text(String(format: "%.1f", v)).font(.system(size: 9)) } }
                 AxisGridLine()
             }
         }
         .chartBackground { _ in
-            VStack(spacing: 0) {
-                Theme.color(for: .alkaline).opacity(0.06)
-                Theme.color(for: .optimal).opacity(0.08)
-                Theme.color(for: .acidic).opacity(0.06)
+            GeometryReader { geo in
+                // Two bands only: shade healthy 3.8–4.5 (green) and elevated >4.5 (amber),
+                // proportional to the 3.5–7.0 domain. Below 3.8 is left unshaded.
+                let span = PhStatus.max - PhStatus.min
+                let elevatedHeight = geo.size.height * (PhStatus.max - 4.5) / span
+                let healthyHeight = geo.size.height * (4.5 - 3.8) / span
+                VStack(spacing: 0) {
+                    Theme.color(for: .elevated).opacity(0.10).frame(height: elevatedHeight)
+                    Theme.color(for: .healthy).opacity(0.12).frame(height: healthyHeight)
+                    Color.clear
+                }
             }
         }
     }
 }
 
-/// Log / edit a urine-pH reading: value tile coloured by status, slider 4.5–9.0 step 0.1 with
+/// Log / edit a vaginal-pH reading: value tile coloured by status, slider 3.5–7.0 step 0.1 with
 /// ± buttons, when picker, notes, Save (+ Delete when editing).
 private struct PhLogSheet: View {
     let existing: PhReading?
@@ -197,7 +204,7 @@ private struct PhLogSheet: View {
         self.existing = existing
         self.onSave = onSave
         self.onDelete = onDelete
-        _value = State(initialValue: existing?.phValue ?? 6.5)
+        _value = State(initialValue: existing?.phValue ?? 4.2)
         _recordedAt = State(initialValue: existing?.recordedAt ?? Date())
         _notes = State(initialValue: existing?.notes ?? "")
     }
@@ -212,7 +219,7 @@ private struct PhLogSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    Text("Track your urine pH from 4.5 to 9.0.")
+                    Text("Track your vaginal pH from 3.5 to 7.0.")
                         .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
 
                     VStack(spacing: 6) {

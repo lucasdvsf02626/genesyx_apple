@@ -51,10 +51,9 @@ public enum GenesyxColor {
     public static let electricPink = Color(hex: 0xC782D8) // avatar gradient end
     public static let babyPink = Color(hex: 0xDEBED2)
 
-    // pH status colors (use-ph.ts)
-    public static let phAcidic = Color(hex: 0xD85A8A)
-    public static let phOptimal = Color(hex: 0x3FA37A)
-    public static let phAlkaline = Color(hex: 0x4D4DAA)
+    // Vaginal pH status colors (two-band model)
+    public static let phHealthy = Color(hex: 0x3FA37A)   // green — 3.8–4.5
+    public static let phElevated = Color(hex: 0xE0952B)  // amber — above 4.5
 
     // Nutrition focus-food accents (per phase)
     public static let foodPeriod = Color(hex: 0xF48FB1)
