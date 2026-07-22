@@ -48,10 +48,11 @@ struct InsightsView: View {
         return HydrationDeltaLogic.weekOverWeekLine(thisWeekMl: thisWeek, lastWeekMl: lastWeek)
     }
 
-    /// pH readings in the last 30 days — the "how solid is this trend" context line.
+    /// Vaginal pH readings in the last 30 days — the "how solid is this trend" context line.
+    /// Legacy urine readings are excluded (different scale, never classified).
     private var phCountLine: String {
         let cutoff = CalendarDate.today().minusDays(30)
-        let count = ph.readings.filter { CalendarDate.today(now: $0.recordedAt) >= cutoff }.count
+        let count = ph.readings.filter { $0.measurementType == .vaginal && CalendarDate.today(now: $0.recordedAt) >= cutoff }.count
         return PhContextLogic.readingCountLine(count: count)
     }
 
@@ -134,7 +135,7 @@ struct InsightsView: View {
                     header
                     logHistoryLink
                     consistencyCard
-                    PhInsightsCard(ph: insights, countLine: phCountLine, hasTrend: ph.readings.count >= 2)
+                    PhInsightsCard(ph: insights, countLine: phCountLine, hasTrend: ph.readings.filter { $0.measurementType == .vaginal }.count >= 2)
                     hydrationInsightsCard
                     nutritionConsistencyCard
                     sleepCard

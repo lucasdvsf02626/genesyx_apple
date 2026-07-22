@@ -43,9 +43,13 @@ public enum PhInsightLogic {
     private static let secondsPerDay: TimeInterval = 86_400
 
     public static func compute(_ readings: [PhReading], now: Date = Date()) -> PhInsights {
-        if readings.isEmpty { return PhInsights() }
+        // Vaginal-only: legacy urine readings are on a different scale and must never be classified
+        // into a Healthy/Elevated band. Filter BEFORE any computation; with no vaginal readings we
+        // return the empty/default state.
+        let vaginal = readings.filter { $0.measurementType == .vaginal }
+        if vaginal.isEmpty { return PhInsights() }
 
-        let sorted = readings.sorted { $0.recordedAt < $1.recordedAt }
+        let sorted = vaginal.sorted { $0.recordedAt < $1.recordedAt }
         let latest = sorted[sorted.count - 1]
         let previous = sorted.count >= 2 ? sorted[sorted.count - 2] : nil
         let status = PhStatus.classify(latest.phValue)

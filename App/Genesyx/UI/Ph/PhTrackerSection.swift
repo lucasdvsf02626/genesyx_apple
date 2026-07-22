@@ -9,6 +9,11 @@ struct PhTrackerSection: View {
     @State private var showSheet = false
     @State private var editing: PhReading?
 
+    /// One-time vaginal-pH migration notice: shown on the first visit to the pH section (not app
+    /// launch), dismiss sets the flag, never re-fires.
+    @AppStorage("ph_vaginal_notice_seen") private var noticeSeen = false
+    @State private var showNotice = false
+
     var body: some View {
         PhTrackerCard(readings: ph.readings) { editing = nil; showSheet = true }
             .sheet(isPresented: $showSheet) {
@@ -20,6 +25,12 @@ struct PhTrackerSection: View {
                     },
                     onDelete: { id in ph.delete(id: id); showSheet = false }
                 )
+            }
+            .onAppear { if !noticeSeen { showNotice = true } }
+            .alert("Vaginal pH tracking", isPresented: $showNotice) {
+                Button("Got it") { noticeSeen = true }
+            } message: {
+                Text(PhCopy.oneTimeNotice)
             }
     }
 }
@@ -91,8 +102,9 @@ private struct PhTrackerCard: View {
     }
 
     private func latestPanel(_ latest: PhReading) -> some View {
-        let status = PhStatus.classify(latest.phValue)
-        let color = Theme.color(for: status)
+        // Legacy urine readings are never classified into a band — show the neutral marker instead.
+        let isLegacy = latest.measurementType == .urine
+        let color = isLegacy ? GenesyxColor.mutedForeground : Theme.color(for: PhStatus.classify(latest.phValue))
         return HStack(spacing: 14) {
             Image(systemName: "drop.fill").foregroundStyle(color)
                 .frame(width: 48, height: 48).background(color.opacity(0.18))
@@ -105,7 +117,8 @@ private struct PhTrackerCard: View {
                     .font(.system(size: 11.5)).foregroundStyle(GenesyxColor.mutedForeground)
             }
             Spacer()
-            Text(status.label.uppercased()).font(.system(size: 11, weight: .semibold))
+            Text(isLegacy ? PhCopy.legacyMarker : PhStatus.classify(latest.phValue).label.uppercased())
+                .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(color)
                 .padding(.horizontal, 12).padding(.vertical, 4)
                 .background(color.opacity(0.18)).clipShape(Capsule())
@@ -155,10 +168,13 @@ private struct PhChart: View {
     var body: some View {
         Chart {
             ForEach(Array(readings.enumerated()), id: \.element.id) { index, reading in
-                LineMark(x: .value("i", index), y: .value("pH", reading.phValue))
+                // Clamp to the 3.5–7.0 axis so legacy urine readings on the old scale stay on-chart
+                // without being classified.
+                let y = Swift.min(Swift.max(reading.phValue, PhStatus.min), PhStatus.max)
+                LineMark(x: .value("i", index), y: .value("pH", y))
                     .foregroundStyle(GenesyxColor.primary)
                     .interpolationMethod(.catmullRom)
-                PointMark(x: .value("i", index), y: .value("pH", reading.phValue))
+                PointMark(x: .value("i", index), y: .value("pH", y))
                     .foregroundStyle(GenesyxColor.primary)
                     .symbolSize(40)
             }
@@ -258,7 +274,9 @@ private struct PhLogSheet: View {
                         onSave(PhReading(
                             id: existing?.id ?? UUID().uuidString,
                             phValue: value, recordedAt: recordedAt,
-                            notes: notes.isEmpty ? nil : notes
+                            notes: notes.isEmpty ? nil : notes,
+                            // New readings are vaginal; an edit keeps the existing reading's type.
+                            measurementType: existing?.measurementType ?? .vaginal
                         ))
                     }.fontWeight(.semibold)
                 }

@@ -60,6 +60,9 @@ struct PhReadingRow: Codable {
     var notes: String?
     var updatedAt: String
     var deletedAt: String?
+    /// Optional on decode so a row missing the column tolerates as legacy `urine` (see `domain`).
+    /// Always sent on insert/upsert as the reading's real type ('vaginal' for new readings).
+    var measurementType: String?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -69,11 +72,15 @@ struct PhReadingRow: Codable {
         case notes
         case updatedAt = "updated_at"
         case deletedAt = "deleted_at"
+        case measurementType = "measurement_type"
     }
 
     var domain: PhRecord {
         PhRecord(
-            reading: PhReading(id: id, phValue: phValue, recordedAt: parseISO(recordedAt), notes: notes),
+            reading: PhReading(
+                id: id, phValue: phValue, recordedAt: parseISO(recordedAt), notes: notes,
+                // Absent or unrecognised → legacy urine. NEVER default to vaginal.
+                measurementType: measurementType.flatMap(PhMeasurementType.init(rawValue:)) ?? .urine),
             updatedAt: parseISO(updatedAt),
             pendingSync: false,
             deleted: deletedAt != nil
@@ -90,6 +97,7 @@ struct PhReadingRow: Codable {
         // The deletion's timestamp is the edit that made it — so a later edit on another device
         // still wins the merge.
         self.deletedAt = record.deleted ? isoFormatter.string(from: record.updatedAt) : nil
+        self.measurementType = record.reading.measurementType.rawValue
     }
 }
 

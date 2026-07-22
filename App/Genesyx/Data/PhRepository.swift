@@ -1,7 +1,7 @@
 import Foundation
 import GenesyxCore
 
-/// Urine-pH readings. Local-first, ordered by `recordedAt` ascending; pH rounded to 1 dp on write
+/// pH readings. Local-first, ordered by `recordedAt` ascending; pH rounded to 1 dp on write
 /// (web `round(v*10)/10`). Mirrors the Android `PhRepository`.
 ///
 /// The device is the source of truth. Every write is saved locally first and then queued for the
@@ -36,12 +36,12 @@ final class PhRepository: ObservableObject {
     private func round1(_ value: Double) -> Double { (value * 10).rounded() / 10 }
 
     func create(_ reading: PhReading) {
-        let normalized = PhReading(id: reading.id, phValue: round1(reading.phValue), recordedAt: reading.recordedAt, notes: reading.notes)
+        let normalized = PhReading(id: reading.id, phValue: round1(reading.phValue), recordedAt: reading.recordedAt, notes: reading.notes, measurementType: reading.measurementType)
         save(PhRecord(reading: normalized, updatedAt: Date(), pendingSync: true))
     }
 
     func update(_ reading: PhReading) {
-        let normalized = PhReading(id: reading.id, phValue: round1(reading.phValue), recordedAt: reading.recordedAt, notes: reading.notes)
+        let normalized = PhReading(id: reading.id, phValue: round1(reading.phValue), recordedAt: reading.recordedAt, notes: reading.notes, measurementType: reading.measurementType)
         save(PhRecord(reading: normalized, updatedAt: Date(), pendingSync: true))
     }
 

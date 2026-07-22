@@ -53,14 +53,23 @@ struct PhReadingDTO: Codable {
     var updatedAt: Date? = nil
     var pendingSync: Bool? = nil
     var deleted: Bool? = nil
+    /// Optional so rows persisted before the migration decode as legacy `urine` (see `domain`).
+    var measurementType: String? = nil
 }
 
 extension PhReading {
-    var dto: PhReadingDTO { PhReadingDTO(id: id, phValue: phValue, recordedAt: recordedAt, notes: notes) }
+    var dto: PhReadingDTO {
+        PhReadingDTO(id: id, phValue: phValue, recordedAt: recordedAt, notes: notes,
+                     measurementType: measurementType.rawValue)
+    }
 }
 
 extension PhReadingDTO {
-    var domain: PhReading { PhReading(id: id, phValue: phValue, recordedAt: recordedAt, notes: notes) }
+    var domain: PhReading {
+        PhReading(id: id, phValue: phValue, recordedAt: recordedAt, notes: notes,
+                  // Absent or unrecognised → legacy urine. NEVER default to vaginal.
+                  measurementType: measurementType.flatMap(PhMeasurementType.init(rawValue:)) ?? .urine)
+    }
 
     var record: PhRecord {
         PhRecord(
