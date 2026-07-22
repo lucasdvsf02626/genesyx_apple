@@ -118,6 +118,10 @@ final class AppContainer: ObservableObject {
         // Public screenshots must never expose a real person's account details.
         container.session.signIn(email: "maya@example.com", name: "Maya")
         UserDefaults.standard.set(true, forKey: "genesyx.onboardingComplete")
+        // Suppress the one-time vaginal-pH notice in seeded tests/screenshots so it can't intercept
+        // the UI. A test that wants to exercise it passes `-uiTestPhNotice YES`.
+        let wantsPhNotice = UserDefaults.standard.bool(forKey: "uiTestPhNotice")
+        UserDefaults.standard.set(!wantsPhNotice, forKey: "ph_vaginal_notice_seen")
         return container
     }
     #endif

@@ -230,7 +230,7 @@ private struct PhLogSheet: View {
     }
 
     private func clampRound(_ v: Double) -> Double {
-        min(max((v * 10).rounded() / 10, PhStatus.min), PhStatus.max)
+        PhStatus.clamped((v * 10).rounded() / 10)
     }
 
     var body: some View {

@@ -16,6 +16,7 @@
 		0DCC3D33A978CC1789DDCDB2 /* CycleSettingsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E5C7355A555DF5D7CDD47A0 /* CycleSettingsSheet.swift */; };
 		107B7052AF78CF3D802DDB2B /* InviteShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF1A0DDC1903F444BDA44FC2 /* InviteShareSheet.swift */; };
 		1146798384EB5D274EF846F5 /* medical_sources.json in Resources */ = {isa = PBXBuildFile; fileRef = AA0A2838F2F34E16B2B9B5DC /* medical_sources.json */; };
+		1413FE71B9060C273AC9D89C /* PhContentGuardTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2F8D8EAE8E2F5145C9AE700 /* PhContentGuardTests.swift */; };
 		1494A02CFC3EEF97529A059C /* MedicalSourcesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B4F125B2519639D68DF8408 /* MedicalSourcesView.swift */; };
 		171C66812D35CE18F49E8077 /* ErrorStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98022BBAD2E97CCAD9CBDF20 /* ErrorStateView.swift */; };
 		179450D82831FD20FBB06431 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FAEDB5BABAF4DB17A1EA885 /* RootView.swift */; };
@@ -169,6 +170,7 @@
 		BC4D301E002F9F92D74DCA2E /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		BD311BB01E946FB3AB4FE7F8 /* AuthRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthRepository.swift; sourceTree = "<group>"; };
 		BF1A0DDC1903F444BDA44FC2 /* InviteShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InviteShareSheet.swift; sourceTree = "<group>"; };
+		C2F8D8EAE8E2F5145C9AE700 /* PhContentGuardTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhContentGuardTests.swift; sourceTree = "<group>"; };
 		C514C0E95E071BDA9843904E /* PersistenceDTOs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceDTOs.swift; sourceTree = "<group>"; };
 		C945804E1BB5F3133A5710D6 /* LearnContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearnContent.swift; sourceTree = "<group>"; };
 		CA1FD2DBFCCA2572F4AF84F1 /* PhRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhRepository.swift; sourceTree = "<group>"; };
@@ -260,6 +262,7 @@
 				04A99C624A4D983AB1E3D538 /* NutritionHydrationTests.swift */,
 				07AB939CB828EB246F36B517 /* PartnerTests.swift */,
 				303189AF2EDB7CEDB86E0060 /* PersistenceTests.swift */,
+				C2F8D8EAE8E2F5145C9AE700 /* PhContentGuardTests.swift */,
 				7F8902F736BE65A51377ABF0 /* QuizContentTests.swift */,
 				2A6A7DAC8C3FC99236B1ADB7 /* RealInsightsTests.swift */,
 				8FD8DC508575F00BB7566E22 /* RepositoryTests.swift */,
@@ -714,6 +717,7 @@
 				65A5F1876DC627D25E629435 /* NutritionHydrationTests.swift in Sources */,
 				48E3074CD9FFCEC5B1C9F220 /* PartnerTests.swift in Sources */,
 				3D63A628C151330C2E790EF8 /* PersistenceTests.swift in Sources */,
+				1413FE71B9060C273AC9D89C /* PhContentGuardTests.swift in Sources */,
 				023C7A8E010B52705228034E /* QuizContentTests.swift in Sources */,
 				EEDE83F0AF5220C2F2BD57D2 /* RealInsightsTests.swift in Sources */,
 				2A61DF86DC8A79DAB133FEAF /* RepositoryTests.swift in Sources */,

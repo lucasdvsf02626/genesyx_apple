@@ -23,4 +23,9 @@ public enum PhStatus: String, CaseIterable, Sendable {
     public static func classify(_ value: Double) -> PhStatus {
         value > 4.5 ? .elevated : .healthy
     }
+
+    /// Clamp a raw value to the loggable range [min, max] (3.5–7.0).
+    public static func clamped(_ value: Double) -> Double {
+        Swift.min(Swift.max(value, min), max)
+    }
 }

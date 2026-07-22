@@ -42,6 +42,36 @@ final class PersistenceTests: XCTestCase {
         XCTAssertEqual(r.dto.domain, r)
     }
 
+    // MARK: measurement_type (vaginal pH migration)
+
+    func testRemoteRowSendsVaginalMeasurementType() throws {
+        let reading = PhReading(id: "x", phValue: 4.2, recordedAt: Date(timeIntervalSince1970: 1_000_000), measurementType: .vaginal)
+        let row = PhReadingRow(userId: "u", record: PhRecord(reading: reading, updatedAt: Date(timeIntervalSince1970: 1_000_000), pendingSync: false))
+        let json = try XCTUnwrap(String(data: JSONEncoder().encode(row), encoding: .utf8))
+        XCTAssertTrue(json.contains("\"measurement_type\":\"vaginal\""), json)
+    }
+
+    func testRemoteRowMissingMeasurementTypeDecodesAsUrine() throws {
+        // A row from before the column existed decodes as legacy urine — never vaginal.
+        let json = #"{"id":"x","user_id":"u","ph_value":6.5,"recorded_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"}"#
+        let row = try JSONDecoder().decode(PhReadingRow.self, from: Data(json.utf8))
+        XCTAssertEqual(row.domain.reading.measurementType, .urine)
+    }
+
+    func testLocalDTODefaultsLegacyUrineWhenFieldAbsent() {
+        // An old on-device row (no measurementType) maps to urine.
+        let dto = PhReadingDTO(id: "x", phValue: 6.5, recordedAt: Date())
+        XCTAssertEqual(dto.domain.measurementType, .urine)
+    }
+
+    func testLocalDTORoundTripPreservesVaginal() throws {
+        let reading = PhReading(phValue: 4.2, recordedAt: Date(timeIntervalSince1970: 1_000_000), measurementType: .vaginal)
+        let data = try JSONEncoder().encode(reading.dto)
+        XCTAssertTrue(try XCTUnwrap(String(data: data, encoding: .utf8)).contains("\"measurementType\":\"vaginal\""))
+        let decoded = try JSONDecoder().decode(PhReadingDTO.self, from: data)
+        XCTAssertEqual(decoded.domain.measurementType, .vaginal)
+    }
+
     func testLocalStoreSaveLoadCodable() {
         let store = makeStore()
         let settings = CycleSettings(lastPeriodDate: CalendarDate(2026, 6, 1), cycleLength: 30, periodLength: 4)

@@ -38,9 +38,26 @@ final class CitationE2ETests: XCTestCase {
                       "Tapping 'Why hydration?' must expand the section, not navigate to Track (navigatedToTrack=\(app.navigationBars["Hydration"].exists))")
         XCTAssertTrue(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "source.")).firstMatch.waitForExistence(timeout: 5),
                       "Why-hydration should reveal a Sources footer")
-        for id in ["source.armstrong-2012", "source.statpearls-urinalysis", "source.valtin-2002", "source.nhs-water"] {
+        for id in ["source.armstrong-2012", "source.valtin-2002", "source.nhs-water"] {
             XCTAssertTrue(app.buttons[id].exists, "Why-hydration Sources footer missing \(id)")
         }
+    }
+
+    /// The one-time vaginal-pH migration notice fires on the first pH-section visit, and does not
+    /// re-fire after it's dismissed. Opt into it with `-uiTestPhNotice YES` (seeds suppress it otherwise).
+    func testOneTimeVaginalNoticeFiresOnceThenPersists() {
+        let app = XCUIApplication()
+        app.launchArguments += ["-uiTestSeed", "YES", "-uiTestTab", "2", "-uiTestPhNotice", "YES"]
+        app.launch()
+
+        let gotIt = app.alerts.buttons["Got it"]
+        XCTAssertTrue(gotIt.waitForExistence(timeout: 15), "one-time vaginal-pH notice should appear on first pH-section visit")
+        gotIt.tap()
+
+        // Leave the pH section and return — the notice must not re-fire (flag persisted).
+        app.buttons.matching(identifier: "Home").firstMatch.tap()
+        app.buttons.matching(identifier: "Nutrition").firstMatch.tap()
+        XCTAssertFalse(app.alerts.buttons["Got it"].waitForExistence(timeout: 3), "notice must not re-fire after dismissal")
     }
 
     /// pH tracker: the vaginal-pH caveat is present, and NO leftover dietary-recommendation strings.
