@@ -153,7 +153,7 @@ struct NutritionView: View {
                 Text(HydrationCoach.whyText)
                     .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground.opacity(0.9))
                     .fixedSize(horizontal: false, vertical: true)
-                SourcesFooter(sourceIDs: ["armstrong-2012", "statpearls-urinalysis", "valtin-2002", "nhs-water"])
+                SourcesFooter(sourceIDs: ["armstrong-2012", "valtin-2002", "nhs-water"])
             }
         }
         .padding(20)

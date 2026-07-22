@@ -2,7 +2,7 @@ import Foundation
 
 public enum Trend: String, Sendable { case up, down, flat }
 
-/// Computed urine-pH insights, mirroring the Android `PhInsights` data class.
+/// Computed vaginal-pH insights, mirroring the Android `PhInsights` data class.
 public struct PhInsights: Equatable, Sendable {
     public var hasReadings: Bool
     public var currentValue: Double?
@@ -34,7 +34,7 @@ public struct PhInsights: Equatable, Sendable {
     }
 }
 
-/// Pure urine-pH insight computation, ported from the Android `PhInsightLogic` (web
+/// Pure vaginal-pH insight computation, ported from the Android `PhInsightLogic` (web
 /// `PhInsightsSection`). Trend uses the last two readings (threshold 0.1); the
 /// insight/recommendation derive from the 7-day-average status once there are at least two
 /// recent readings. Averages are over the 7- and 30-day windows ending at `now`.
@@ -80,18 +80,16 @@ public enum PhInsightLogic {
         }
 
         var insight = "Log a few more readings and we'll share gentle observations."
-        // Dietary recommendations were removed for App Store 1.4.1 (health advice needs a cited
-        // source shown beside it). The descriptive trend line stays; the pH card carries the
-        // range caveat + citation. Sourced recommendations return in 1.2.0.
-        let recommendation = ""
+        // The "recommendation" field carries the non-alarming GP/pharmacist signpost for elevated
+        // readings only — never dietary advice.
+        var recommendation = ""
         if last7.count >= 2, let avg7 {
-            // Interim two-band wording to keep this compiling after the scale/band migration
-            // (step 1/5). The verbatim Healthy/Elevated insight + signpost copy lands in the copy step.
             switch PhStatus.classify(avg7) {
             case .healthy:
-                insight = "Your recent readings are within the usual range."
+                insight = PhCopy.healthy
             case .elevated:
-                insight = "Your recent readings are above the usual range."
+                insight = PhCopy.elevated
+                recommendation = PhCopy.elevatedSignpost
             }
         }
 

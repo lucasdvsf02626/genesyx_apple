@@ -404,7 +404,10 @@ struct TrackSignalSummary: Equatable {
         return TrackSignalSummary(
             title: "Vaginal pH",
             icon: "testtube.2",
-            value: latest.map { String(format: "Latest %.1f", $0.phValue) } ?? emptyValue,
+            value: latest.map { r in
+                let base = String(format: "Latest %.1f", r.phValue)
+                return r.measurementType == .urine ? "\(base) · \(PhCopy.legacyMarker)" : base
+            } ?? emptyValue,
             sparkValues: trailingSeven(today: today).map { date in
                 guard let value = valuesByDate[date] else { return 0 }
                 return min(max((value - PhStatus.min) / (PhStatus.max - PhStatus.min), 0), 1)

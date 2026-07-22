@@ -64,7 +64,6 @@
 		B07097DA3A3F2D2E4BA97906 /* YearMonth+Foundation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A35F920C88F39DE4A48AA3 /* YearMonth+Foundation.swift */; };
 		B6E509C4E98BD004D072025C /* CitationE2ETests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2915F9FE693FBE33A7871BC /* CitationE2ETests.swift */; };
 		BCC0CE448AC34CDDD5CD6736 /* Typography.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BD8D73ED6547E875275A4E1 /* Typography.swift */; };
-		C0DBEA69C54313ED8CF06A29 /* PhCopy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C81C41DDE543E2A25E40E669 /* PhCopy.swift */; };
 		C4A444E7B1D33B58A8A1DAB1 /* LearnModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40B409A2563A374272520A72 /* LearnModels.swift */; };
 		C850284037447966A3511645 /* PhRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA1FD2DBFCCA2572F4AF84F1 /* PhRepository.swift */; };
 		C8D8A6E74E7EA7B0F2070013 /* PlaceholderScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A00188AAFEE31CD41906486 /* PlaceholderScreen.swift */; };
@@ -171,7 +170,6 @@
 		BD311BB01E946FB3AB4FE7F8 /* AuthRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthRepository.swift; sourceTree = "<group>"; };
 		BF1A0DDC1903F444BDA44FC2 /* InviteShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InviteShareSheet.swift; sourceTree = "<group>"; };
 		C514C0E95E071BDA9843904E /* PersistenceDTOs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceDTOs.swift; sourceTree = "<group>"; };
-		C81C41DDE543E2A25E40E669 /* PhCopy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhCopy.swift; sourceTree = "<group>"; };
 		C945804E1BB5F3133A5710D6 /* LearnContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearnContent.swift; sourceTree = "<group>"; };
 		CA1FD2DBFCCA2572F4AF84F1 /* PhRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhRepository.swift; sourceTree = "<group>"; };
 		D262BD3C0DBE243270F855CB /* GenesyxAppTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = GenesyxAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -380,7 +378,6 @@
 		8E528A461888B9BE1741DE19 /* Ph */ = {
 			isa = PBXGroup;
 			children = (
-				C81C41DDE543E2A25E40E669 /* PhCopy.swift */,
 				D48509B6EC8A02B3A142AF09 /* PhTrackerSection.swift */,
 			);
 			path = Ph;
@@ -684,7 +681,6 @@
 				19D20718E9D21DC08671E277 /* OnboardingFlowView.swift in Sources */,
 				3924E9760802BE0291932FD9 /* PartnerRepository.swift in Sources */,
 				E11E796D15E7BC987E6780E2 /* PersistenceDTOs.swift in Sources */,
-				C0DBEA69C54313ED8CF06A29 /* PhCopy.swift in Sources */,
 				C850284037447966A3511645 /* PhRepository.swift in Sources */,
 				C9EE7E47540C49C939B39E43 /* PhTrackerSection.swift in Sources */,
 				C8D8A6E74E7EA7B0F2070013 /* PlaceholderScreen.swift in Sources */,

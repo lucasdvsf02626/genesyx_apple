@@ -12,10 +12,16 @@
     "url": "https://pubmed.ncbi.nlm.nih.gov/12376390/"
   },
   {
-    "id": "statpearls-urinalysis",
-    "title": "Urinalysis (StatPearls)",
+    "id": "vaginal-ph",
+    "title": "Bacterial vaginosis",
+    "organisation": "NHS (UK)",
+    "url": "https://www.nhs.uk/conditions/bacterial-vaginosis/"
+  },
+  {
+    "id": "statpearls-vaginitis",
+    "title": "Vaginitis (StatPearls)",
     "organisation": "NCBI / National Library of Medicine",
-    "url": "https://www.ncbi.nlm.nih.gov/books/NBK557685/"
+    "url": "https://www.ncbi.nlm.nih.gov/books/NBK470302/"
   },
   {
     "id": "armstrong-2012",

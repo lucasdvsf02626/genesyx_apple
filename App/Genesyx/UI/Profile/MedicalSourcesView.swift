@@ -8,7 +8,7 @@ struct MedicalSourcesView: View {
     var body: some View {
         List {
             Section("Medical Disclaimer") {
-                Text("Genesyx provides general health and wellness information for educational purposes only. It is not a medical device and is not a substitute for professional medical advice, diagnosis, or treatment. Hydration goals and insights are general guidance, and urine pH readings are for wellness tracking only — not for diagnosing or monitoring any medical condition. Always consult a qualified healthcare provider with any questions about your health, and do not rely on this app for contraception.")
+                Text("Genesyx provides general health and wellness information for educational purposes only. It is not a medical device and is not a substitute for professional medical advice, diagnosis, or treatment. Hydration goals and insights are general guidance, and vaginal pH readings are for wellness tracking only — not for diagnosing or monitoring any medical condition. Always consult a qualified healthcare provider with any questions about your health, and do not rely on this app for contraception.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }

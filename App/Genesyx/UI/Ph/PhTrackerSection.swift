@@ -83,6 +83,10 @@ private struct PhTrackerCard: View {
                 .font(.caption2).foregroundStyle(GenesyxColor.mutedForeground)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("phCaveat")
+            Text(PhCopy.disclaimer)
+                .font(.caption2).foregroundStyle(GenesyxColor.mutedForeground)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("phDisclaimer")
 
             if let latest = readings.last {
                 latestPanel(latest)
@@ -237,6 +241,9 @@ private struct PhLogSheet: View {
                 VStack(alignment: .leading, spacing: 16) {
                     Text("Track your vaginal pH from 3.5 to 7.0.")
                         .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+                    Text(PhCopy.disclaimer)
+                        .font(.caption2).foregroundStyle(GenesyxColor.mutedForeground)
+                        .fixedSize(horizontal: false, vertical: true)
 
                     VStack(spacing: 6) {
                         Text(String(format: "%.1f", value)).font(.system(size: 44, weight: .semibold)).foregroundStyle(color)

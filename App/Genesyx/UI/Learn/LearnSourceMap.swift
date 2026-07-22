@@ -9,11 +9,11 @@ enum LearnSourceMap {
         "hydration-basics": ["nhs-water", "valtin-2002", "efsa-water"],
         "eating-with-your-cycle": ["nhs-periods", "nhs-iron", "nhs-eatwell"],
         "gentle-guide-supplements": ["nhs-preconception", "nhs-vitamin-b", "nhs-vitamin-d"],
-        "guide-urine-tracker-with-stick": ["statpearls-urinalysis"],
-        "guide-how-to-log-ph": ["statpearls-urinalysis"],
+        "guide-urine-tracker-with-stick": ["vaginal-ph", "statpearls-vaginitis"],
+        "guide-how-to-log-ph": ["vaginal-ph", "statpearls-vaginitis"],
         "guide-nutrition-focus": ["nhs-periods", "nhs-eatwell"],
-        "guide-how-hydration-works": ["nhs-water", "armstrong-2012", "statpearls-urinalysis"],
-        "guide-track-ph-in-nutrition": ["statpearls-urinalysis", "nhs-water"],
+        "guide-how-hydration-works": ["nhs-water", "armstrong-2012"],
+        "guide-track-ph-in-nutrition": ["vaginal-ph", "statpearls-vaginitis"],
     ]
 
     /// Sources for a slug, or nil when the article carries no external health-fact claims.

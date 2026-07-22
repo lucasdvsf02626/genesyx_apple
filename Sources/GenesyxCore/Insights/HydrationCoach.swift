@@ -77,7 +77,7 @@ public enum HydrationCoach {
         }
     }
 
-    public static let whyText = "Steady hydration supports your energy and mood, and it makes your pH readings more consistent — concentrated urine reads more acidic, well-hydrated reads closer to neutral. The old 'eight glasses a day' rule came from a 1945 recommendation whose next sentence got lost: most of that water already comes from food. Thirst is a reasonable guide. Anchor a glass to meals and routines, and you won't have to think about it."
+    public static let whyText = "Steady hydration supports your energy and mood. The old 'eight glasses a day' rule came from a 1945 recommendation whose next sentence got lost: most of that water already comes from food. Thirst is a reasonable guide. Anchor a glass to meals and routines, and you won't have to think about it."
 
     /// Every user-facing string, for the content-safety scan.
     public static var allStrings: [String] {

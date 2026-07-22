@@ -288,7 +288,7 @@ struct HomeView: View {
 
     // MARK: - pH nudge (compact prompt — Track owns logging)
 
-    /// A small tap-through card inviting her to check her urine pH. Shows the last reading when one
+    /// A small tap-through card inviting her to check her vaginal pH. Shows the last reading when one
     /// exists, otherwise a gentle first-log prompt. Tapping jumps to the pH tracker in Track.
     private var phNudgeCard: some View {
         let latest = ph.readings.last
