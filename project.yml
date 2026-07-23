@@ -77,9 +77,9 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.genesyx.app
         MARKETING_VERSION: "1.1.0"
         # Build number MUST exceed the highest build already in App Store Connect / TestFlight.
-        # 2026-07-18: browser session confirmed ASC has no build 13 (never produced), so bumped
-        # to 13 for the Guideline 1.4.1 resubmission.
-        CURRENT_PROJECT_VERSION: "13"
+        # Build 13 was the 1.4.1 resubmission. Build 15 ships the full vaginal-pH migration (the
+        # CHANGELOG "build 15" section); 14 was a wording-only WIP never uploaded.
+        CURRENT_PROJECT_VERSION: "15"
         SWIFT_VERSION: "5.9"
         TARGETED_DEVICE_FAMILY: "1" # iPhone
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
