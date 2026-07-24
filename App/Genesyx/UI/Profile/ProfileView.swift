@@ -12,6 +12,7 @@ struct ProfileView: View {
     @EnvironmentObject private var prefs: PreferencesRepository
     @EnvironmentObject private var partner: PartnerRepository
     @EnvironmentObject private var notifications: NotificationService
+    @Environment(\.openURL) private var openURL
 
     @State private var nameOpen = false
     @State private var detail: String?
@@ -60,6 +61,9 @@ struct ProfileView: View {
         .sheet(isPresented: $showPregnancy) { PregnancyView() }
         .sheet(isPresented: $nameOpen) { EditNameSheet(initial: name) { session.updateDisplayName($0) } }
         .alert(detail ?? "", isPresented: Binding(get: { detail != nil }, set: { if !$0 { detail = nil } })) {
+            if detail == "Privacy & Data" {
+                Button("Read our full privacy policy") { openURL(Self.privacyPolicyURL) }
+            }
             Button("Done") { detail = nil }
         } message: {
             Text(detail.flatMap { Self.detailCopy[$0] } ?? "This section is ready for your saved app settings.")
