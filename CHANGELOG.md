@@ -2,6 +2,37 @@
 
 All notable changes to Genesyx (iOS) are recorded here.
 
+## Unreleased — database & docs (main, build 16 source `547d2d4`)
+
+### Database — pH constraint codified in version control
+- Added migration `supabase/migrations/20260722_ph_conditional_value_range.sql`. It captures the
+  production reality (applied via the dashboard on 22 Jul 2026) in version control: the
+  `measurement_type` column + `ph_measurement_type_check` (`urine`/`vaginal`), and a **conditional
+  `ph_value_range`** — vaginal `3.5–7.0`, legacy urine `4.5–9.0` — replacing the old unconditional
+  4.5–9.0 CHECK. Idempotent; drops the old check name-agnostically (a `pg_constraint` `DO` block) so a
+  future `db push`/rebuild reproduces prod instead of reintroducing the single-range rule.
+- Updated `docs/supabase_schema.sql` `ph_readings` to show `measurement_type` + the conditional check.
+- **Not auto-applied** from the repo; a no-op against the live DB (which already has this).
+
+### Docs
+- Refreshed `App_Inventory.md` to `main`/`547d2d4`, 1.1.1 (16): vaginal-pH two-band model, the Home
+  "Check your pH" card, sleep ISO-week alignment, the medical-citation system + Medical Sources
+  screen, the reviewer/demo account, and the pH DB constraint. Corrected the stale FEATURES.md note.
+
+## 1.1.1 (16) — external TestFlight
+
+- Bumped `MARKETING_VERSION` 1.1.1 / `CURRENT_PROJECT_VERSION` 16 for external TestFlight testing.
+- Signed, uploadable archive built from `main @ 547d2d4`; `strings`-verified free of user-facing
+  "Urine pH" (only the neutral `urine (legacy)` marker, enum raw value, and slug remain).
+- Reviewer/demo account (`demo@genesyx.co.uk`) verified against production: profile + cycle +
+  ~21 daily logs + pH readings present, so App Review lands on a populated app.
+
+## build 17 — in flight (`fix/privacy-links-b17`, PR #2, not merged)
+
+- Unifies both in-app privacy entry points on `https://genesyx.co.uk/policies/privacy-policy`
+  (Profile row + the disclaimer alert's "Read our full privacy policy" button).
+- Deletes the stale `docs/PRIVACY_POLICY.md`. Not required for the build-16 submission.
+
 ## Unreleased — build 15
 
 ### Vaginal pH migration (complete)

@@ -68,12 +68,21 @@ create table if not exists public.cycle_settings (
 -- ph_readings — many per user (id is a client-generated UUID string)
 -- ------------------------------------------------------------------
 create table if not exists public.ph_readings (
-    id          uuid primary key default gen_random_uuid(),
-    user_id     uuid not null references auth.users (id) on delete cascade,
-    ph_value    double precision not null,
-    recorded_at timestamptz not null,
-    notes       text,
-    created_at  timestamptz not null default now()
+    id               uuid primary key default gen_random_uuid(),
+    user_id          uuid not null references auth.users (id) on delete cascade,
+    ph_value         double precision not null,
+    measurement_type text not null default 'urine'
+                       check (measurement_type in ('urine', 'vaginal')),
+    recorded_at      timestamptz not null,
+    notes            text,
+    created_at       timestamptz not null default now(),
+    -- Conditional range: vaginal 3.5–7.0, legacy urine 4.5–9.0.
+    -- Kept in sync with migration 20260722_ph_conditional_value_range.sql.
+    constraint ph_value_range check (
+        (measurement_type = 'vaginal' and ph_value >= 3.5 and ph_value <= 7.0)
+        or
+        (measurement_type = 'urine'   and ph_value >= 4.5 and ph_value <= 9.0)
+    )
 );
 create index if not exists ph_readings_user_recorded_idx
     on public.ph_readings (user_id, recorded_at);

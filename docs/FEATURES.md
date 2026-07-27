@@ -67,5 +67,6 @@ Supabase; data is wiped locally on sign-out.
 
 ## Notes
 - Fertility/wellness guidance is educational only — not medical advice, and not for contraception.
-- The pH tracker's copy is being migrated from urine to **vaginal pH** (build 14); the input scale
-  and status bands still need a clinical pass — see the CHANGELOG "build 14" follow-ups.
+- The pH tracker is fully **vaginal pH** (completed in build 15): scale **3.5–7.0**, two-band
+  **Healthy / Elevated** model, vaginal-only insights, and legacy urine readings preserved and
+  marked `urine (legacy)`. See the CHANGELOG "build 15" entry.
