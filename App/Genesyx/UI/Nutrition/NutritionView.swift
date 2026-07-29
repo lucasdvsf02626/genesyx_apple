@@ -293,21 +293,22 @@ struct SupplementAvatar: View {
 
 private struct SupplementPlanSheet: View {
     @Environment(\.dismiss) private var dismiss
+
+    // Custom supplements persist LOCALLY only for now. Remote Supabase persistence is pending the
+    // shared Android schema (see CustomSupplement) — flagged, not applied.
+    @AppStorage("custom_supplements") private var customJSON = "[]"
+    @State private var newName = ""
+    @State private var newDose = ""
+    @State private var newTime = ""
+
+    private var custom: [CustomSupplement] { CustomSupplement.decodeList(customJSON) }
+
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("Gentle, evidence-informed essentials for fertility prep.")
-                        .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
-                    ForEach(Array(NutritionContent.supplementPlan.enumerated()), id: \.element.initial) { i, s in
-                        HStack(alignment: .top, spacing: 12) {
-                            SupplementAvatar(initial: s.initial, index: i)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(s.name).font(.gxBody.weight(.medium)).foregroundStyle(GenesyxColor.foreground)
-                                Text(s.rationale).font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
-                            }
-                        }
-                    }
+                VStack(alignment: .leading, spacing: 24) {
+                    genesyxEssentials
+                    yourSupplements
                 }
                 .padding(20)
             }
@@ -315,5 +316,102 @@ private struct SupplementPlanSheet: View {
             .navigationTitle("Your supplement plan").navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Got it") { dismiss() } } }
         }
+    }
+
+    private var genesyxEssentials: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("GENESYX ESSENTIALS").font(.gxEyebrow).tracking(1.4).foregroundStyle(GenesyxColor.mutedForeground)
+            Text("Gentle, evidence-informed essentials for fertility prep.")
+                .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+            ForEach(Array(NutritionContent.supplementPlan.enumerated()), id: \.element.initial) { i, s in
+                HStack(alignment: .top, spacing: 12) {
+                    SupplementAvatar(initial: s.initial, index: i)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(s.name).font(.gxBody.weight(.medium)).foregroundStyle(GenesyxColor.foreground)
+                        Text(s.rationale).font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+                    }
+                }
+            }
+        }
+    }
+
+    private var yourSupplements: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("YOUR SUPPLEMENTS").font(.gxEyebrow).tracking(1.4).foregroundStyle(GenesyxColor.mutedForeground)
+            if custom.isEmpty {
+                Text("Add your own supplements to keep everything in one place.")
+                    .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+            } else {
+                ForEach(custom) { item in
+                    HStack(alignment: .top, spacing: 12) {
+                        Image(systemName: "pills").font(.system(size: 15))
+                            .foregroundStyle(GenesyxColor.primary)
+                            .frame(width: 28, height: 28)
+                            .background(GenesyxColor.primary.opacity(0.12)).clipShape(Circle())
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(item.name).font(.gxBody.weight(.medium)).foregroundStyle(GenesyxColor.foreground)
+                            let detail = [item.dose, item.time].filter { !$0.isEmpty }.joined(separator: " · ")
+                            if !detail.isEmpty {
+                                Text(detail).font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+                            }
+                        }
+                        Spacer()
+                        Button { remove(item) } label: {
+                            Image(systemName: "xmark").font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(GenesyxColor.mutedForeground)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Remove \(item.name)")
+                    }
+                }
+            }
+            addForm
+        }
+    }
+
+    private var addForm: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            field("Name (e.g. Magnesium)", text: $newName)
+            HStack(spacing: 8) {
+                field("Dose (e.g. 200 mg)", text: $newDose)
+                field("Time (e.g. Evening)", text: $newTime)
+            }
+            Button(action: add) {
+                HStack(spacing: 4) {
+                    Image(systemName: "plus").font(.system(size: 13, weight: .semibold))
+                    Text("Add your own supplement").font(.system(size: 14, weight: .semibold))
+                }
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .background(newName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                            ? GenesyxColor.primary.opacity(0.45) : GenesyxColor.primary)
+                .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .disabled(newName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .accessibilityIdentifier("supplement.add")
+        }
+        .padding(.top, 4)
+    }
+
+    private func field(_ placeholder: String, text: Binding<String>) -> some View {
+        TextField(placeholder, text: text)
+            .font(.gxBodySmall).padding(.horizontal, 12).frame(height: 44)
+            .background(GenesyxColor.card).clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(GenesyxColor.border, lineWidth: 1))
+    }
+
+    private func add() {
+        let item = CustomSupplement(
+            name: newName.trimmingCharacters(in: .whitespacesAndNewlines),
+            dose: newDose.trimmingCharacters(in: .whitespacesAndNewlines),
+            time: newTime.trimmingCharacters(in: .whitespacesAndNewlines))
+        guard item.isValid else { return }
+        customJSON = CustomSupplement.encodeList(custom + [item])
+        newName = ""; newDose = ""; newTime = ""
+    }
+
+    private func remove(_ item: CustomSupplement) {
+        customJSON = CustomSupplement.encodeList(custom.filter { $0.id != item.id })
     }
 }
