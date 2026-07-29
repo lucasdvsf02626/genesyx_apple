@@ -37,11 +37,18 @@ struct NutritionView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     header
+                    // Client parity: cycle-phase food recommendations lead; hydration and general
+                    // articles drop below them.
+                    if let phase {
+                        focusFoodsCard(NutritionContent.phaseFoods[phase] ?? [])
+                    }
+                    mealSuggestionsCard
+                    if let phase {
+                        supplementPlanCard
+                    }
                     hydrationCard
                     PhTrackerSection()
                     if let phase {
-                        focusFoodsCard(NutritionContent.phaseFoods[phase] ?? [])
-                        supplementPlanCard
                         articlesSection
                     }
                 }
@@ -288,6 +295,32 @@ struct SupplementAvatar: View {
             .font(.system(size: 11, weight: .semibold)).foregroundStyle(tint)
             .frame(width: 28, height: 28).background(tint.opacity(0.12)).clipShape(Circle())
             .overlay(Circle().strokeBorder(GenesyxColor.card, lineWidth: 1.5))
+    }
+}
+
+private extension NutritionView {
+    /// Honest empty state for content not built yet (meal suggestions + food preferences). No fake
+    /// data — a clean "coming soon" placeholder that keeps the section discoverable.
+    var mealSuggestionsCard: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "fork.knife").font(.system(size: 16))
+                .foregroundStyle(GenesyxColor.electricLavender)
+                .frame(width: 40, height: 40)
+                .background(GenesyxColor.primary.opacity(0.10)).clipShape(RoundedRectangle(cornerRadius: 12))
+            VStack(alignment: .leading, spacing: 4) {
+                Eyebrow("Coming soon", color: GenesyxColor.mutedForeground)
+                Text("Meal suggestions & food preferences")
+                    .font(.gxCardHeadingSmall).foregroundStyle(GenesyxColor.foreground)
+                Text("Personalised meals and dietary preferences are on the way. For now, your phase focus foods above are your guide.")
+                    .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(GenesyxColor.card)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
     }
 }
 
