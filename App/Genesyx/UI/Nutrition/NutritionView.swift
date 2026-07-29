@@ -17,6 +17,8 @@ struct NutritionView: View {
     @State private var whyExpanded = false
     @EnvironmentObject private var router: TabRouter
     @State private var articlePath: [String] = []
+    @AppStorage("hydration_unit") private var hydrationUnitRaw = HydrationUnit.glasses.rawValue
+    private var hydrationUnit: HydrationUnit { HydrationUnit(rawValue: hydrationUnitRaw) ?? .glasses }
 
     private var phase: Phase? { cycle.settings.map { CycleEngine.cyclePhase(settings: $0, target: today).phase } }
 
@@ -94,12 +96,8 @@ struct NutritionView: View {
                 .buttonStyle(.plain)
             }
             HStack(alignment: .bottom) {
-                HStack(alignment: .bottom, spacing: 4) {
-                    Text(String(format: "%.1f", Double(waterMl) / 1000))
-                        .font(.system(size: 28, weight: .semibold)).foregroundStyle(GenesyxColor.foreground)
-                    Text("/ \(String(format: "%.1f", Double(waterGoalMl) / 1000)) L")
-                        .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground).padding(.bottom, 4)
-                }
+                Text(HydrationFormat.progress(ml: waterMl, goalMl: waterGoalMl, unit: hydrationUnit))
+                    .font(.system(size: 28, weight: .semibold)).foregroundStyle(GenesyxColor.foreground)
                 Spacer()
                 Text(HydrationCoach.streakLabel(streak))
                     .font(.system(size: 11.5, weight: .medium))
@@ -129,7 +127,7 @@ struct NutritionView: View {
             }
             HStack(spacing: 6) {
                 Image(systemName: "drop").font(.system(size: 13)).foregroundStyle(GenesyxColor.mutedForeground)
-                Text(remaining > 0 ? "\(remaining)ml to go" : "Target reached — nice work")
+                Text(remaining > 0 ? "\(HydrationFormat.amount(ml: remaining, unit: hydrationUnit)) to go" : "Target reached — nice work")
                     .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
             }
             Text("Daily target based on general adequate-intake guidance for women (from all food and drink).")

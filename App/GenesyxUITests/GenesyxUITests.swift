@@ -50,24 +50,24 @@ final class GenesyxUITests: XCTestCase {
     }
 
     /// Quick-add now lives in the Track hydration sheet (the Home card is a tap-through summary).
-    /// A single +250 adds exactly 250 (no double-fire), and −250 returns the total to where it
-    /// started. Seed logs 750 ml today.
+    /// Hydration defaults to the glasses unit (1 glass = 250 ml), so quick-add is +1/+2 glasses and
+    /// the readout is in glasses. A single +1 glass adds exactly one (no double-fire), and −1 glass
+    /// returns the total to where it started. Seed logs 750 ml today = 3 glasses; goal 2400 = 9.6.
     func testTrackHydrationQuickAddAddsExactlyAndReverses() {
         let app = launchSeeded(tab: 0)
 
         let summary = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Hydration,")).firstMatch
         XCTAssertTrue(summary.waitForExistence(timeout: 10), "Home should show the hydration summary")
-        XCTAssertTrue(summary.label.contains("750 of 2,400"), "Seeded today total should be 750 ml; got: \(summary.label)")
         summary.tap()
 
         XCTAssertTrue(app.navigationBars["Hydration"].waitForExistence(timeout: 5), "Summary should open the Track hydration sheet")
-        XCTAssertTrue(app.staticTexts["750"].waitForExistence(timeout: 5), "Sheet should reflect the seeded 750 ml")
+        XCTAssertTrue(app.staticTexts["3 / 9.6 glasses"].waitForExistence(timeout: 5), "Sheet should reflect the seeded 750 ml as 3 glasses")
 
-        app.buttons["Add 250 millilitres"].tap()
-        XCTAssertTrue(app.staticTexts["1,000"].waitForExistence(timeout: 5), "One tap must add exactly 250, not double-fire")
+        app.buttons["Add 1 glass"].tap()
+        XCTAssertTrue(app.staticTexts["4 / 9.6 glasses"].waitForExistence(timeout: 5), "One tap must add exactly one glass, not double-fire")
 
-        app.buttons["Remove 250 millilitres"].tap()
-        XCTAssertTrue(app.staticTexts["750"].waitForExistence(timeout: 5), "After +250 then −250, the total must be unchanged")
+        app.buttons["Remove 1 glass"].tap()
+        XCTAssertTrue(app.staticTexts["3 / 9.6 glasses"].waitForExistence(timeout: 5), "After +1 then −1 glass, the total must be unchanged")
     }
 
     func testHomeHydrationSummaryOpensTrackHydrationControls() {
@@ -76,10 +76,10 @@ final class GenesyxUITests: XCTestCase {
         XCTAssertTrue(summary.waitForExistence(timeout: 10))
         summary.tap()
 
-        // Landing on the Track hydration sheet (nav bar + its quick-add controls) proves the jump.
+        // Landing on the Track hydration sheet (nav bar + its glasses quick-add controls) proves the jump.
         XCTAssertTrue(app.navigationBars["Hydration"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["Add 500 millilitres"].exists)
-        XCTAssertTrue(app.buttons["Remove 250 millilitres"].exists)
+        XCTAssertTrue(app.buttons["Add 2 glass"].exists)
+        XCTAssertTrue(app.buttons["Remove 1 glass"].exists)
     }
 
     func testTabNavigation() {

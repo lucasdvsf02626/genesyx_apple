@@ -198,7 +198,8 @@ struct HomeView: View {
             HStack(alignment: .center, spacing: 16) {
                 hydrationRing(pct: pct)
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("\(todayMl.formatted()) / \(goal.formatted()) ml")
+                    Text(HydrationFormat.progress(ml: todayMl, goalMl: goal,
+                        unit: HydrationUnit(rawValue: UserDefaults.standard.string(forKey: "hydration_unit") ?? "") ?? .glasses))
                         .font(.gxCardHeadingSmall).foregroundStyle(GenesyxColor.foreground)
                         .fixedSize(horizontal: false, vertical: true)
                     statusChip(status)

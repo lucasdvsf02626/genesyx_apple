@@ -390,10 +390,11 @@ struct TrackSignalSummary: Equatable {
     static func hydration(logs: [CalendarDate: DailyLog], today: CalendarDate, goalMl: Int = TrackingEngine.defaultWaterGoalMl) -> TrackSignalSummary {
         let week = trailingSeven(today: today).map { logs[$0]?.waterMl ?? 0 }
         let todayMl = logs[today]?.waterMl ?? 0
+        let unit = HydrationUnit(rawValue: UserDefaults.standard.string(forKey: "hydration_unit") ?? "") ?? .glasses
         return TrackSignalSummary(
             title: "Hydration",
             icon: "drop.fill",
-            value: todayMl > 0 ? "\(todayMl.formatted()) / \(goalMl.formatted()) ml" : emptyValue,
+            value: todayMl > 0 ? HydrationFormat.progress(ml: todayMl, goalMl: goalMl, unit: unit) : emptyValue,
             sparkValues: week.map { goalMl > 0 ? min(Double($0) / Double(goalMl), 1) : 0 },
             tint: GenesyxColor.electricBlue)
     }
@@ -703,6 +704,8 @@ private struct HydrationDetailSheet: View {
 
     @State private var manualMl = ""
     @State private var feedbackOverride: DailyLogSyncState?
+    @AppStorage("hydration_unit") private var hydrationUnitRaw = HydrationUnit.glasses.rawValue
+    private var unit: HydrationUnit { HydrationUnit(rawValue: hydrationUnitRaw) ?? .glasses }
 
     var body: some View {
         let water = dailyLog.waterMl(on: today)
@@ -721,11 +724,8 @@ private struct HydrationDetailSheet: View {
                 VStack(alignment: .leading, spacing: 16) {
                     VStack(alignment: .leading, spacing: 10) {
                         Eyebrow("Today", color: GenesyxColor.electricBlue)
-                        HStack(alignment: .firstTextBaseline, spacing: 5) {
-                            Text(water.formatted()).font(.gxDisplayLarge).foregroundStyle(GenesyxColor.foreground)
-                            Text("/ \(goal.formatted()) ml")
-                                .font(.gxBody).foregroundStyle(GenesyxColor.mutedForeground)
-                        }
+                        Text(HydrationFormat.progress(ml: water, goalMl: goal, unit: unit))
+                            .font(.gxDisplayLarge).foregroundStyle(GenesyxColor.foreground)
                         ProgressView(value: progress).tint(GenesyxColor.electricBlue)
                         HStack(spacing: 6) {
                             syncIcon(syncState)
@@ -795,10 +795,17 @@ private struct HydrationDetailSheet: View {
             Text("QUICK ADD").font(.gxEyebrow).tracking(1.4)
                 .foregroundStyle(GenesyxColor.mutedForeground)
             HStack(spacing: 8) {
-                adjustmentButton(title: "−250", delta: -250, secondary: true, disabled: water <= 0)
-                adjustmentButton(title: "+200", delta: 200, secondary: false)
-                adjustmentButton(title: "+250", delta: 250, secondary: false)
-                adjustmentButton(title: "+500", delta: 500, secondary: false)
+                if unit == .glasses {
+                    // Glass-sized increments (1 glass = 250 ml). Storage stays in ml.
+                    adjustmentButton(title: "−1", delta: -HydrationUnit.mlPerGlass, secondary: true, disabled: water <= 0)
+                    adjustmentButton(title: "+1", delta: HydrationUnit.mlPerGlass, secondary: false)
+                    adjustmentButton(title: "+2", delta: HydrationUnit.mlPerGlass * 2, secondary: false)
+                } else {
+                    adjustmentButton(title: "−250", delta: -250, secondary: true, disabled: water <= 0)
+                    adjustmentButton(title: "+200", delta: 200, secondary: false)
+                    adjustmentButton(title: "+250", delta: 250, secondary: false)
+                    adjustmentButton(title: "+500", delta: 500, secondary: false)
+                }
             }
         }
         .padding(16)
@@ -816,7 +823,13 @@ private struct HydrationDetailSheet: View {
         }
         .buttonStyle(.plain)
         .disabled(disabled)
-        .accessibilityLabel(delta < 0 ? "Remove \(-delta) millilitres" : "Add \(delta) millilitres")
+        .accessibilityLabel({
+            if unit == .glasses {
+                let g = abs(delta) / HydrationUnit.mlPerGlass
+                return delta < 0 ? "Remove \(g) glass" : "Add \(g) glass"
+            }
+            return delta < 0 ? "Remove \(-delta) millilitres" : "Add \(delta) millilitres"
+        }())
     }
 
     private func weeklyBlock(_ insight: HydrationInsights) -> some View {
@@ -873,7 +886,9 @@ private struct HydrationDetailSheet: View {
                         Text(row.dayLabel(today: today))
                             .font(.gxEyebrow)
                             .foregroundStyle(GenesyxColor.mutedForeground)
-                        Text(row.displayTotal)
+                        Text(unit == .glasses
+                             ? (row.ml > 0 ? HydrationFormat.trimmedGlasses(fromMl: row.ml) : "0")
+                             : row.displayTotal)
                             .font(.system(size: 11.5, weight: .semibold))
                             .foregroundStyle(row.ml > 0 ? GenesyxColor.foreground : GenesyxColor.mutedForeground)
                             .lineLimit(1)

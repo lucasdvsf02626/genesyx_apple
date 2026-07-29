@@ -90,10 +90,19 @@ final class HydrationInsightTests: XCTestCase {
         var log = DailyLog()
         log.waterMl = 1_250
 
-        let summary = TrackSignalSummary.hydration(logs: [today: log], today: today)
+        // The Track row value honours the display-unit preference (glasses is the default primary
+        // unit; ml is the secondary option). Storage is always ml.
+        let key = "hydration_unit"
+        let saved = UserDefaults.standard.string(forKey: key)
+        defer { if let saved { UserDefaults.standard.set(saved, forKey: key) } else { UserDefaults.standard.removeObject(forKey: key) } }
 
-        XCTAssertEqual(summary.value, "1,250 / 2,400 ml")
-        XCTAssertEqual(summary.sparkValues.last ?? 0, 1_250.0 / 2_400.0, accuracy: 0.001)
+        UserDefaults.standard.set(HydrationUnit.milliliters.rawValue, forKey: key)
+        XCTAssertEqual(TrackSignalSummary.hydration(logs: [today: log], today: today).value, "1250 / 2400 ml")
+
+        UserDefaults.standard.set(HydrationUnit.glasses.rawValue, forKey: key)
+        let glasses = TrackSignalSummary.hydration(logs: [today: log], today: today)
+        XCTAssertEqual(glasses.value, "5 / 9.6 glasses")   // 1250/250 = 5, 2400/250 = 9.6
+        XCTAssertEqual(glasses.sparkValues.last ?? 0, 1_250.0 / 2_400.0, accuracy: 0.001)
     }
 
     func testTrackHubWeeklyBucketsMatchInsightsBuckets() {
