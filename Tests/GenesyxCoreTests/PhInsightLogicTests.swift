@@ -116,13 +116,21 @@ final class PhInsightLogicTests: XCTestCase {
         XCTAssertEqual(PhCopy.disclaimer, "This tracker is for your own record and isn't medical advice. If a reading worries you, or a pattern persists, please speak to a GP, nurse, or pharmacist.")
         XCTAssertEqual(PhCopy.oneTimeNotice, "This tracker now records vaginal pH. Your earlier readings are kept and marked 'urine (legacy)'. New readings are saved as vaginal pH, on a different scale.")
         XCTAssertEqual(PhCopy.legacyMarker, "urine (legacy)")
+        XCTAssertEqual(PhCopy.spineWhyTitle, "Why pH matters")
+        XCTAssertEqual(PhCopy.spineWhyBody, "Your vaginal pH is a simple, everyday signal of intimate wellbeing. It shifts naturally across your cycle, so your own pattern over time tells you more than any single reading.")
+        XCTAssertEqual(PhCopy.spineMeaningTitle, "What this result means")
+        XCTAssertEqual(PhCopy.spineNextTitle, "What to do next")
+        XCTAssertEqual(PhCopy.spineNextHealthy, "Keep logging as you go — a steady record is what makes your trend meaningful.")
+        XCTAssertEqual(PhCopy.spineSupplementsTitle, "Genesyx supplements")
+        XCTAssertEqual(PhCopy.spineSupplementsBody, "A consistent daily routine supports your overall wellbeing. Explore your Genesyx supplement plan whenever you're ready.")
     }
 
     // ── Banned-phrase guard over pH-surface copy (Learn pH content guarded in the app test target) ──
 
     func testPhCopyHasNoBannedClinicalOrDietTerms() {
         let banned = ["bv", "thrush", "infection", "candida", "vaginosis", "leafy greens", "whole grains", "mineral water"]
-        let surfaces = [PhCopy.healthy, PhCopy.elevated, PhCopy.elevatedSignpost, PhCopy.disclaimer, PhCopy.oneTimeNotice, PhCopy.legacyMarker]
+        let surfaces = [PhCopy.healthy, PhCopy.elevated, PhCopy.elevatedSignpost, PhCopy.disclaimer, PhCopy.oneTimeNotice, PhCopy.legacyMarker,
+                        PhCopy.spineWhyTitle, PhCopy.spineWhyBody, PhCopy.spineMeaningTitle, PhCopy.spineNextTitle, PhCopy.spineNextHealthy, PhCopy.spineSupplementsTitle, PhCopy.spineSupplementsBody]
         for s in surfaces {
             let lower = s.lowercased()
             for term in banned {

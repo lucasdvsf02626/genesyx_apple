@@ -48,7 +48,7 @@ struct TrackView: View {
         }
         .sheet(isPresented: $showLog) { LogView() }
         .sheet(isPresented: $showHydration) { HydrationDetailSheet() }
-        .sheet(isPresented: $showPhDetail) { PhDetailView() }
+        .sheet(isPresented: $showPhDetail) { PhDetailView(onOpenSupplements: { showPhDetail = false; router.selection = 2 }) }
         .sheet(isPresented: $showSleepDetail) { SleepDetailView() }
         .sheet(isPresented: $showSymptomsDetail) { SymptomsDetailView() }
         .sheet(isPresented: $showNutritionDetail) { NutritionDetailView() }
@@ -673,11 +673,12 @@ private struct CycleDetailView: View {
 
 private struct PhDetailView: View {
     @Environment(\.dismiss) private var dismiss
+    var onOpenSupplements: (() -> Void)? = nil
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                PhTrackerSection()
+                PhTrackerSection(variant: .full, onOpenSupplements: onOpenSupplements)
                     .padding(.horizontal, 20)
                     .padding(.top, 8)
                     .padding(.bottom, 24)

@@ -20,4 +20,21 @@ public enum PhCopy {
 
     /// One-time migration notice, shown on the first visit to the pH section after the update.
     public static let oneTimeNotice = "This tracker now records vaginal pH. Your earlier readings are kept and marked 'urine (legacy)'. New readings are saved as vaginal pH, on a different scale."
+
+    // ── pH "product spine" sections (shown on the full pH detail view; all cited) ──
+
+    /// a. Why pH matters (general wellness framing; rendered with a Sources footer).
+    public static let spineWhyTitle = "Why pH matters"
+    public static let spineWhyBody = "Your vaginal pH is a simple, everyday signal of intimate wellbeing. It shifts naturally across your cycle, so your own pattern over time tells you more than any single reading."
+
+    /// b. What this result means — the interpretation reuses `healthy` / `elevated` per band.
+    public static let spineMeaningTitle = "What this result means"
+
+    /// c. What to do next — per band. Healthy uses this line; elevated reuses `elevatedSignpost`.
+    public static let spineNextTitle = "What to do next"
+    public static let spineNextHealthy = "Keep logging as you go — a steady record is what makes your trend meaningful."
+
+    /// d. Genesyx supplements connection (navigational; no causal pH claim).
+    public static let spineSupplementsTitle = "Genesyx supplements"
+    public static let spineSupplementsBody = "A consistent daily routine supports your overall wellbeing. Explore your Genesyx supplement plan whenever you're ready."
 }

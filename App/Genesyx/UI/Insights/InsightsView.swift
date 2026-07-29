@@ -769,7 +769,7 @@ private struct OvulationCard: View {
 private struct PhTrackerScreen: View {
     var body: some View {
         ScrollView {
-            PhTrackerSection()
+            PhTrackerSection(variant: .full)
                 .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 24)
         }
         .frame(maxWidth: .infinity)

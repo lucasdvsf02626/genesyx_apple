@@ -4,7 +4,16 @@ import GenesyxCore
 
 /// Self-contained vaginal-pH card + log sheet, embedded on Track and Nutrition.
 /// Ported from the Android `PhTrackerSection` / `PhTrackerCard` / `PhLogDialog`.
+/// Whether the pH view shows the full "product spine" (the four educational sections) or just the
+/// compact tracker card. The full spine belongs on the pH *detail* view (Track / Insights); the
+/// compact card is embedded on Nutrition where supplements already live on-screen.
+enum PhSpineVariant { case compact, full }
+
 struct PhTrackerSection: View {
+    var variant: PhSpineVariant = .compact
+    /// Optional navigation into the supplements area (only wired where a router is available).
+    var onOpenSupplements: (() -> Void)? = nil
+
     @EnvironmentObject private var ph: PhRepository
     @State private var showSheet = false
     @State private var editing: PhReading?
@@ -15,7 +24,7 @@ struct PhTrackerSection: View {
     @State private var showNotice = false
 
     var body: some View {
-        PhTrackerCard(readings: ph.readings) { editing = nil; showSheet = true }
+        PhTrackerCard(readings: ph.readings, variant: variant, onOpenSupplements: onOpenSupplements) { editing = nil; showSheet = true }
             .sheet(isPresented: $showSheet) {
                 PhLogSheet(
                     existing: editing,
@@ -50,6 +59,8 @@ private enum PhRange: String, CaseIterable, Identifiable {
 
 private struct PhTrackerCard: View {
     let readings: [PhReading]
+    var variant: PhSpineVariant = .compact
+    var onOpenSupplements: (() -> Void)? = nil
     let onLog: () -> Void
     @State private var range: PhRange = .month
 
@@ -98,6 +109,10 @@ private struct PhTrackerCard: View {
                 }
             } else {
                 emptyState
+            }
+
+            if variant == .full {
+                PhSpine(latest: readings.last, onOpenSupplements: onOpenSupplements)
             }
         }
         .padding(20)
@@ -204,6 +219,62 @@ private struct PhChart: View {
                     Color.clear
                 }
             }
+        }
+    }
+}
+
+/// The pH "product spine": four cited sections answering Why pH matters, What this result means,
+/// What to do next, and the Genesyx supplements connection. Wellness framing only — the health
+/// claim in "Why pH matters" carries a Sources footer (NHS + StatPearls) to satisfy Guideline 1.4.1.
+private struct PhSpine: View {
+    let latest: PhReading?
+    let onOpenSupplements: (() -> Void)?
+
+    private static let sourceIDs = ["vaginal-ph", "statpearls-vaginitis"]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Rectangle().fill(GenesyxColor.border.opacity(0.6)).frame(height: 1)
+
+            // a. Why pH matters — the one general health statement, so it carries the citations.
+            section(PhCopy.spineWhyTitle, PhCopy.spineWhyBody) {
+                SourcesFooter(sourceIDs: PhSpine.sourceIDs)
+            }
+
+            // b + c. Interpretation and next-steps only when there's a current, classifiable reading.
+            if let latest, latest.measurementType != .urine {
+                let status = PhStatus.classify(latest.phValue)
+                section(PhCopy.spineMeaningTitle, status == .elevated ? PhCopy.elevated : PhCopy.healthy)
+                section(PhCopy.spineNextTitle, status == .elevated ? PhCopy.elevatedSignpost : PhCopy.spineNextHealthy)
+            }
+
+            // d. Genesyx supplements connection (navigational; no causal pH claim).
+            VStack(alignment: .leading, spacing: 8) {
+                Text(PhCopy.spineSupplementsTitle).font(.gxCardHeadingSmall).foregroundStyle(GenesyxColor.foreground)
+                Text(PhCopy.spineSupplementsBody).font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let onOpenSupplements {
+                    Button(action: onOpenSupplements) {
+                        HStack(spacing: 4) {
+                            Text("See your supplement plan").font(.system(size: 13, weight: .semibold))
+                            Image(systemName: "arrow.right").font(.system(size: 12, weight: .semibold))
+                        }
+                        .foregroundStyle(GenesyxColor.primary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("phSpine.supplements")
+                }
+            }
+        }
+        .accessibilityIdentifier("phSpine")
+    }
+
+    private func section<Footer: View>(_ title: String, _ body: String, @ViewBuilder footer: () -> Footer = { EmptyView() }) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title).font(.gxCardHeadingSmall).foregroundStyle(GenesyxColor.foreground)
+            Text(body).font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+                .fixedSize(horizontal: false, vertical: true)
+            footer()
         }
     }
 }
