@@ -241,17 +241,18 @@ struct TrackView: View {
                 .foregroundStyle(GenesyxColor.mutedForeground)
                 .padding(.leading, 4)
             VStack(spacing: 0) {
+                // Order (client/Android parity): Cycle → pH → Nutrition → remaining (symptoms, sleep, hydration).
                 trackerButton(TrackSignalSummary.cycle(settings: cycle.settings, today: today)) { showCycleDetail = true }
-                divider
-                trackerButton(TrackSignalSummary.hydration(logs: dailyLog.logByDate, today: today)) { showHydration = true }
                 divider
                 trackerButton(TrackSignalSummary.ph(readings: ph.readings, today: today)) { showPhDetail = true }
                 divider
-                trackerButton(TrackSignalSummary.sleep(logs: dailyLog.logByDate, today: today)) { showSleepDetail = true }
+                trackerButton(TrackSignalSummary.nutrition(logs: dailyLog.logByDate, today: today)) { showNutritionDetail = true }
                 divider
                 trackerButton(TrackSignalSummary.symptoms(logs: dailyLog.logByDate, today: today)) { showSymptomsDetail = true }
                 divider
-                trackerButton(TrackSignalSummary.nutrition(logs: dailyLog.logByDate, today: today)) { showNutritionDetail = true }
+                trackerButton(TrackSignalSummary.sleep(logs: dailyLog.logByDate, today: today)) { showSleepDetail = true }
+                divider
+                trackerButton(TrackSignalSummary.hydration(logs: dailyLog.logByDate, today: today)) { showHydration = true }
             }
             .background(GenesyxColor.card)
             .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
