@@ -401,6 +401,25 @@ final class RepositoryTests: XCTestCase {
                       "and it must not come back from the store on next launch")
     }
 
+    /// Sign-out must also wipe locally-stored custom supplements — they are user-entered and as
+    /// personal as a log, so the next user on the device must not inherit them.
+    func testSignOutClearsCustomSupplements() {
+        let key = CustomSupplement.storageKey
+        let saved = UserDefaults.standard.string(forKey: key)
+        defer { if let saved { UserDefaults.standard.set(saved, forKey: key) } else { UserDefaults.standard.removeObject(forKey: key) } }
+
+        let container = AppContainer(store: makeStore(), backend: nil)
+        UserDefaults.standard.set(CustomSupplement.encodeList([
+            CustomSupplement(name: "Magnesium", dose: "200 mg", time: "Evening")
+        ]), forKey: key)
+        XCTAssertFalse(CustomSupplement.decodeList(UserDefaults.standard.string(forKey: key) ?? "[]").isEmpty)
+
+        container.session.signOut()
+
+        XCTAssertTrue(CustomSupplement.decodeList(UserDefaults.standard.string(forKey: key) ?? "[]").isEmpty,
+                      "custom supplements must not survive sign-out")
+    }
+
     /// Account deletion (success path) must wipe the same on-device health data.
     func testDeleteAccountClearsLocalHealthData() async throws {
         let store = makeStore()

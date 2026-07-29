@@ -329,7 +329,7 @@ private struct SupplementPlanSheet: View {
 
     // Custom supplements persist LOCALLY only for now. Remote Supabase persistence is pending the
     // shared Android schema (see CustomSupplement) — flagged, not applied.
-    @AppStorage("custom_supplements") private var customJSON = "[]"
+    @AppStorage(CustomSupplement.storageKey) private var customJSON = "[]"
     @State private var newName = ""
     @State private var newDose = ""
     @State private var newTime = ""

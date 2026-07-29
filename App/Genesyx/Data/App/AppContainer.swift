@@ -84,6 +84,9 @@ final class AppContainer: ObservableObject {
         LearnReadLog.clear()
         // Nor may the next account inherit her partner link or her pending invites.
         partner.clearLocalState()
+        // Custom supplements are user-entered and stored locally (@AppStorage, UserDefaults.standard);
+        // they must not follow her out of the app either.
+        UserDefaults.standard.removeObject(forKey: CustomSupplement.storageKey)
     }
 
     /// Production init — standard on-device store + resolved backend.

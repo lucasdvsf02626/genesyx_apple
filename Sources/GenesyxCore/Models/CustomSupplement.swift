@@ -8,6 +8,10 @@ import Foundation
 /// currently persisted LOCALLY only (JSON in UserDefaults). Do not add a Supabase table / DTO until
 /// the shared Android schema (table name + column names/types) is confirmed — flag, don't apply.
 public struct CustomSupplement: Identifiable, Codable, Equatable, Sendable {
+    /// UserDefaults key for the locally-stored list (shared by the @AppStorage UI binding and the
+    /// sign-out wipe, so the two can never drift apart).
+    public static let storageKey = "custom_supplements"
+
     public let id: String
     public var name: String
     public var dose: String
