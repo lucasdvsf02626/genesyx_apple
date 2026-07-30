@@ -248,24 +248,30 @@ struct ProfileView: View {
     private var hydrationSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             groupLabel("Hydration")
-            HStack(spacing: 6) {
-                hydrationSeg(HydrationUnit.glasses)
-                hydrationSeg(HydrationUnit.milliliters)
+            HStack {
+                Text("Unit").font(.system(size: 14.5)).foregroundStyle(GenesyxColor.foreground)
+                Spacer()
+                Menu {
+                    Picker("Unit", selection: $hydrationUnitRaw) {
+                        ForEach(HydrationUnit.allCases) { unit in
+                            Text(unit.settingsLabel).tag(unit.rawValue)
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(HydrationUnit(rawValue: hydrationUnitRaw)?.settingsLabel ?? "Glasses")
+                            .font(.system(size: 14.5, weight: .medium))
+                        Image(systemName: "chevron.up.chevron.down").font(.system(size: 11, weight: .semibold))
+                    }
+                    .foregroundStyle(GenesyxColor.primary)
+                }
+                .accessibilityIdentifier("hydrationUnitMenu")
             }
-            .padding(4).background(GenesyxColor.muted).clipShape(RoundedRectangle(cornerRadius: 16))
-            Text("1 glass = 250 ml. This changes how amounts are shown; your logged totals are unchanged.")
+            .padding(.horizontal, 16).frame(minHeight: 52)
+            .background(GenesyxColor.card).clipShape(RoundedRectangle(cornerRadius: 16))
+            Text("1 glass = 250 ml, 1 cup = 240 ml. This changes how amounts are shown; your logged totals are unchanged.")
                 .font(.caption2).foregroundStyle(GenesyxColor.mutedForeground)
         }
-    }
-
-    private func hydrationSeg(_ unit: HydrationUnit) -> some View {
-        let selected = hydrationUnitRaw == unit.rawValue
-        return Text(unit.settingsLabel).font(.system(size: 13, weight: .medium))
-            .foregroundStyle(selected ? GenesyxColor.foreground : GenesyxColor.mutedForeground)
-            .frame(maxWidth: .infinity, minHeight: 40)
-            .background(selected ? GenesyxColor.card : .clear)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .onTapGesture { hydrationUnitRaw = unit.rawValue }
     }
 
     private var themeSection: some View {

@@ -4,8 +4,20 @@ import XCTest
 /// Display-layer hydration unit conversion (glasses primary, ml secondary). Storage is unaffected.
 final class HydrationUnitTests: XCTestCase {
 
-    func testGlassConstantIs250() {
+    func testUnitConstants() {
         XCTAssertEqual(HydrationUnit.mlPerGlass, 250)
+        XCTAssertEqual(HydrationUnit.mlPerCup, 240)
+        XCTAssertEqual(HydrationUnit.allCases, [.milliliters, .glasses, .cups])
+        XCTAssertNil(HydrationUnit.milliliters.mlPerUnit)
+        XCTAssertEqual(HydrationUnit.glasses.mlPerUnit, 250)
+        XCTAssertEqual(HydrationUnit.cups.mlPerUnit, 240)
+        XCTAssertEqual(HydrationUnit.cups.settingsLabel, "Cups")
+    }
+
+    func testCupsAmountAndProgress() {
+        XCTAssertEqual(HydrationFormat.amount(ml: 240, unit: .cups), "1 cup")
+        XCTAssertEqual(HydrationFormat.amount(ml: 480, unit: .cups), "2 cups")
+        XCTAssertEqual(HydrationFormat.progress(ml: 480, goalMl: 2400, unit: .cups), "2 / 10 cups")
     }
 
     func testAmountInMl() {

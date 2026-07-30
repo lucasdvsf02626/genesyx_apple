@@ -27,13 +27,13 @@ final class PhInsightLogicTests: XCTestCase {
     // ── Scale constants + clamp ──
 
     func testScaleConstants() {
-        XCTAssertEqual(PhStatus.min, 3.5, accuracy: 0)
+        XCTAssertEqual(PhStatus.min, 3.8, accuracy: 0, "client-signed-off input floor is 3.8, not 3.5")
         XCTAssertEqual(PhStatus.max, 7.0, accuracy: 0)
         XCTAssertEqual(PhStatus.step, 0.1, accuracy: 0)
     }
 
     func testClampToRange() {
-        XCTAssertEqual(PhStatus.clamped(3.4), 3.5, accuracy: 1e-9, "below-range clamps up to 3.5")
+        XCTAssertEqual(PhStatus.clamped(3.4), 3.8, accuracy: 1e-9, "below-range clamps up to the 3.8 floor")
         XCTAssertEqual(PhStatus.clamped(7.1), 7.0, accuracy: 1e-9, "above-range clamps down to 7.0")
         XCTAssertEqual(PhStatus.clamped(4.2), 4.2, accuracy: 1e-9, "in-range unchanged")
     }

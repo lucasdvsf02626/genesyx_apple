@@ -795,11 +795,11 @@ private struct HydrationDetailSheet: View {
             Text("QUICK ADD").font(.gxEyebrow).tracking(1.4)
                 .foregroundStyle(GenesyxColor.mutedForeground)
             HStack(spacing: 8) {
-                if unit == .glasses {
-                    // Glass-sized increments (1 glass = 250 ml). Storage stays in ml.
-                    adjustmentButton(title: "−1", delta: -HydrationUnit.mlPerGlass, secondary: true, disabled: water <= 0)
-                    adjustmentButton(title: "+1", delta: HydrationUnit.mlPerGlass, secondary: false)
-                    adjustmentButton(title: "+2", delta: HydrationUnit.mlPerGlass * 2, secondary: false)
+                if let per = unit.mlPerUnit {
+                    // Unit-sized increments (1 glass = 250 ml, 1 cup = 240 ml). Storage stays in ml.
+                    adjustmentButton(title: "−1", delta: -per, secondary: true, disabled: water <= 0)
+                    adjustmentButton(title: "+1", delta: per, secondary: false)
+                    adjustmentButton(title: "+2", delta: per * 2, secondary: false)
                 } else {
                     adjustmentButton(title: "−250", delta: -250, secondary: true, disabled: water <= 0)
                     adjustmentButton(title: "+200", delta: 200, secondary: false)
@@ -824,9 +824,9 @@ private struct HydrationDetailSheet: View {
         .buttonStyle(.plain)
         .disabled(disabled)
         .accessibilityLabel({
-            if unit == .glasses {
-                let g = abs(delta) / HydrationUnit.mlPerGlass
-                return delta < 0 ? "Remove \(g) glass" : "Add \(g) glass"
+            if let per = unit.mlPerUnit {
+                let n = abs(delta) / per
+                return delta < 0 ? "Remove \(n) \(unit.noun.one)" : "Add \(n) \(unit.noun.one)"
             }
             return delta < 0 ? "Remove \(-delta) millilitres" : "Add \(delta) millilitres"
         }())
@@ -886,8 +886,8 @@ private struct HydrationDetailSheet: View {
                         Text(row.dayLabel(today: today))
                             .font(.gxEyebrow)
                             .foregroundStyle(GenesyxColor.mutedForeground)
-                        Text(unit == .glasses
-                             ? (row.ml > 0 ? HydrationFormat.trimmedGlasses(fromMl: row.ml) : "0")
+                        Text(unit.mlPerUnit != nil
+                             ? (row.ml > 0 ? HydrationFormat.trimmedUnits(fromMl: row.ml, unit: unit) : "0")
                              : row.displayTotal)
                             .font(.system(size: 11.5, weight: .semibold))
                             .foregroundStyle(row.ml > 0 ? GenesyxColor.foreground : GenesyxColor.mutedForeground)

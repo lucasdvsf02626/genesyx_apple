@@ -201,7 +201,7 @@ private struct PhChart: View {
         .chartYScale(domain: PhStatus.min...PhStatus.max)
         .chartXAxis(.hidden)
         .chartYAxis {
-            AxisMarks(values: [PhStatus.min, 3.8, 4.5, PhStatus.max]) { value in
+            AxisMarks(values: [PhStatus.min, 4.5, PhStatus.max]) { value in
                 AxisValueLabel { if let v = value.as(Double.self) { Text(String(format: "%.1f", v)).font(.system(size: 9)) } }
                 AxisGridLine()
             }
@@ -310,7 +310,7 @@ private struct PhLogSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    Text("Track your vaginal pH from 3.5 to 7.0.")
+                    Text("Track your vaginal pH from 3.8 to 7.0.")
                         .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
                     Text(PhCopy.disclaimer)
                         .font(.caption2).foregroundStyle(GenesyxColor.mutedForeground)
