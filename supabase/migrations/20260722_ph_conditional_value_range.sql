@@ -4,7 +4,7 @@
 -- The vaginal-pH migration was applied to the LIVE genesyx project on 22 Jul 2026 directly in the
 -- dashboard (measurement_type column + its domain check), but the change was never committed as a
 -- migration. Meanwhile ph_readings still carried the old *unconditional* ph_value CHECK (4.5–9.0),
--- which is wrong for vaginal readings (valid 3.5–7.0). This migration captures the production reality
+-- which is wrong for vaginal readings (valid 3.8–7.0). This migration captures the production reality
 -- in version control so a future `db push` / rebuild reproduces it instead of drifting back to the
 -- old single-range rule.
 --
@@ -47,13 +47,13 @@ begin
 end $$;
 
 -- 4. The conditional value-range constraint ---------------------------------------------------
--- vaginal: 3.5–7.0 (app PhStatus.min/max). urine (legacy): 4.5–9.0 (old range; keeps existing
+-- vaginal: 3.8–7.0 (app PhStatus.min/max). urine (legacy): 4.5–9.0 (old range; keeps existing
 -- urine rows valid). Bounds inclusive to match the client clamp.
 alter table public.ph_readings drop constraint if exists ph_value_range;
 alter table public.ph_readings
   add constraint ph_value_range
   check (
-    (measurement_type = 'vaginal' and ph_value >= 3.5 and ph_value <= 7.0)
+    (measurement_type = 'vaginal' and ph_value >= 3.8 and ph_value <= 7.0)
     or
     (measurement_type = 'urine'   and ph_value >= 4.5 and ph_value <= 9.0)
   );
