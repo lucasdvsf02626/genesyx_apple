@@ -81,6 +81,9 @@ final class AppContainer: ObservableObject {
         // Notification state is derived from her data, so it is her data: milestone flags and the
         // read-article list must not follow her out of the app.
         prefs.clearNotificationState()
+        // Onboarding does not re-run on sign-out — that flag is device-local and stays set — so
+        // without this the next user on the phone would silently inherit her quiz answers.
+        prefs.clearQuizAnswers()
         LearnReadLog.clear()
         // Nor may the next account inherit her partner link or her pending invites.
         partner.clearLocalState()
@@ -120,7 +123,10 @@ final class AppContainer: ObservableObject {
         container.ph.create(PhReading(phValue: 6.9, recordedAt: Date()))
         // Public screenshots must never expose a real person's account details.
         container.session.signIn(email: "maya@example.com", name: "Maya")
-        UserDefaults.standard.set(true, forKey: "genesyx.onboardingComplete")
+        // Onboarding is skipped by default — every other test wants the tabs. `-uiTestOnboarding YES`
+        // leaves it un-run so the quiz itself can be driven.
+        UserDefaults.standard.set(!UserDefaults.standard.bool(forKey: "uiTestOnboarding"),
+                                  forKey: "genesyx.onboardingComplete")
         // Suppress the one-time vaginal-pH notice in seeded tests/screenshots so it can't intercept
         // the UI. A test that wants to exercise it passes `-uiTestPhNotice YES`.
         let wantsPhNotice = UserDefaults.standard.bool(forKey: "uiTestPhNotice")

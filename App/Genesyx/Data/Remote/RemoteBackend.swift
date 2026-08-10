@@ -79,10 +79,18 @@ protocol ProfileBackend {
     func upsert(displayName: String) async throws
 }
 
+/// The part of her `profiles` row this device owns and syncs. Wider than its name: the onboarding
+/// quiz answers ride along because they live in the same row, are written by the same device, and
+/// owe the server the same retry — a second pending queue for one dictionary would be more
+/// machinery than the thing it carries.
 struct ProfilePrefs: Equatable {
     var focusMode: FocusMode
     var themeMode: ThemeMode
     var pushEnabled: Bool
+    /// What she answered in onboarding, keyed by `QuizQuestion.id` with `QuizOption.id` as the
+    /// value. A dictionary rather than a typed struct because the questions are content, and a
+    /// field per question would need a schema change every time the copy does.
+    var quizAnswers: [String: String] = [:]
 }
 
 protocol PartnerBackend {

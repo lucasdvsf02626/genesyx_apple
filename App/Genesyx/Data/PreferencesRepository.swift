@@ -36,6 +36,13 @@ final class PreferencesRepository: ObservableObject {
         didSet { store.save(supplementReminders, forKey: supplementRemindersKey) }
     }
 
+    /// What she answered in onboarding, keyed by `QuizQuestion.id`. Read-only from outside:
+    /// `recordQuizAnswers` is the one way in, because it is also what owes the answers to the
+    /// server. Empty until she answers, and empty again after sign-out.
+    @Published private(set) var quizAnswers: [String: String] {
+        didSet { store.save(quizAnswers, forKey: quizAnswersKey) }
+    }
+
     private let store: LocalStore
     private let backend: ProfileBackend?
     private let themeKey = "theme_mode"
@@ -44,6 +51,7 @@ final class PreferencesRepository: ObservableObject {
     private let reminderHourKey = "reminder_hour"
     private let mutedNotificationsKey = "muted_notifications"
     private let supplementRemindersKey = "supplement_reminders"
+    private let quizAnswersKey = "quiz_answers"
     private let pendingKey = "profile_pending"
 
     /// Set while applying a pulled profile, so writing those values doesn't bounce them straight
@@ -101,12 +109,32 @@ final class PreferencesRepository: ObservableObject {
         self.mutedNotifications = Set((store.load([String].self, forKey: mutedNotificationsKey) ?? [])
             .compactMap(NotificationCategory.init(rawValue:)))
         self.supplementReminders = store.load([String: Int].self, forKey: supplementRemindersKey) ?? [:]
+        self.quizAnswers = store.load([String: String].self, forKey: quizAnswersKey) ?? [:]
         self.pendingPush = store.bool(forKey: pendingKey, default: false)
         self.celebratedMilestones = Set(store.load([String].self, forKey: celebratedKey) ?? [])
     }
 
+    /// Record what she answered in onboarding. The quiz runs *before* sign-up, so at the moment she
+    /// answers there is no session to write under and no row to write to — hence the local write
+    /// and the owed push, which sign-in drains once a user id exists. Without this the answers only
+    /// had to survive four screens of navigation to be lost.
+    func recordQuizAnswers(_ answers: [String: String]) {
+        quizAnswers = answers
+        pushPrefs()
+    }
+
+    /// An intake questionnaire is as personal as a log, so it leaves with her. Deliberately does
+    /// *not* push the wipe: at sign-out there is no session to write under, and the retry would
+    /// land on whoever signs in next. Her answers stay on the server, and come back on her next
+    /// profile pull.
+    func clearQuizAnswers() {
+        quizAnswers = [:]
+        store.remove(forKey: quizAnswersKey)
+    }
+
     private var prefs: ProfilePrefs {
-        ProfilePrefs(focusMode: focusMode, themeMode: themeMode, pushEnabled: pushEnabled)
+        ProfilePrefs(focusMode: focusMode, themeMode: themeMode, pushEnabled: pushEnabled,
+                     quizAnswers: quizAnswers)
     }
 
     /// Push what's owed, then pull. A profile the server has never seen is created from the local
@@ -142,6 +170,7 @@ final class PreferencesRepository: ObservableObject {
         themeMode = remote.themeMode
         pushEnabled = remote.pushEnabled
         focusMode = remote.focusMode
+        quizAnswers = remote.quizAnswers
         isApplyingRemote = false
     }
 

@@ -125,7 +125,7 @@ private struct SupabaseProfile: ProfileBackend {
     func fetch() async throws -> ProfilePrefs? {
         let uid = try requireUID(auth)
         let rows: [ProfilePrefsRow] = try await client.from("profiles")
-            .select("id,focus_mode,theme,push_enabled").eq("id", value: uid).limit(1).execute().value
+            .select("id,focus_mode,theme,push_enabled,quiz_answers").eq("id", value: uid).limit(1).execute().value
         return rows.first?.domain
     }
 

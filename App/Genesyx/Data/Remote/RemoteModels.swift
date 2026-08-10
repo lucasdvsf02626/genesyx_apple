@@ -201,19 +201,24 @@ struct ProfilePrefsRow: Codable {
     var focusMode: String
     var theme: String
     var pushEnabled: Bool
+    /// Optional so a row written before the column existed decodes as "not answered", and so an
+    /// empty local answer set omits the key entirely on encode (see `init`).
+    var quizAnswers: [String: String]?
 
     enum CodingKeys: String, CodingKey {
         case id
         case focusMode = "focus_mode"
         case theme
         case pushEnabled = "push_enabled"
+        case quizAnswers = "quiz_answers"
     }
 
     var domain: ProfilePrefs {
         ProfilePrefs(
             focusMode: FocusMode(rawValue: focusMode) ?? .prep,
             themeMode: ThemeMode(rawValue: theme) ?? .system,
-            pushEnabled: pushEnabled
+            pushEnabled: pushEnabled,
+            quizAnswers: quizAnswers ?? [:]
         )
     }
 
@@ -222,5 +227,9 @@ struct ProfilePrefsRow: Codable {
         self.focusMode = prefs.focusMode.rawValue
         self.theme = prefs.themeMode.rawValue
         self.pushEnabled = prefs.pushEnabled
+        // Empty means "this device has nothing to say about the quiz", not "she answered nothing":
+        // only onboarding fills it and onboarding runs once. Encoded, it would let a routine theme
+        // change on a reinstalled phone erase the answers she gave before.
+        self.quizAnswers = prefs.quizAnswers.isEmpty ? nil : prefs.quizAnswers
     }
 }

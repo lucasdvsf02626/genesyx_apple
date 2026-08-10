@@ -8,6 +8,11 @@ struct OnboardingFlowView: View {
 
     let onFinished: () -> Void
 
+    /// Holds the quiz answers past the end of the quiz. They are given before there is an account,
+    /// so they are written on-device here and owed to her `profiles` row until sign-in provides a
+    /// user id to write them under.
+    @EnvironmentObject private var prefs: PreferencesRepository
+
     private enum Step { case splash, intro, quiz, summary, waitlist }
     @State private var step: Step = .splash
     @State private var showAuth = false
@@ -21,7 +26,10 @@ struct OnboardingFlowView: View {
             case .intro:
                 OnboardingIntroView(onContinue: { step = .quiz }, onBack: { step = .splash })
             case .quiz:
-                QuizView(onComplete: { step = .summary }, onBack: { step = .intro })
+                QuizView(onComplete: { answers in
+                    prefs.recordQuizAnswers(answers)
+                    step = .summary
+                }, onBack: { step = .intro })
             case .summary:
                 ReadinessSummaryView(onUnlockGuide: { step = .waitlist }, onContinue: { showAuth = true }, onBack: { step = .quiz })
             case .waitlist:
@@ -147,7 +155,9 @@ private struct OnboardingIntroView: View {
 // MARK: - Quiz
 
 private struct QuizView: View {
-    let onComplete: () -> Void
+    /// Hands the answers up rather than keeping them: every question is answered before Continue
+    /// unlocks, so completion is the one point at which they are whole.
+    let onComplete: ([String: String]) -> Void
     let onBack: () -> Void
 
     private let questions = QuizContent.questions
@@ -159,7 +169,7 @@ private struct QuizView: View {
     private var selected: String? { answers[question.id] }
     private var isLast: Bool { step == questions.count - 1 }
 
-    private func advance() { if isLast { onComplete() } else { step += 1 } }
+    private func advance() { if isLast { onComplete(answers) } else { step += 1 } }
     private func onContinue() { if let fact = question.fact { pendingFact = fact } else { advance() } }
 
     var body: some View {
@@ -181,6 +191,9 @@ private struct QuizView: View {
                 GxOptionPill(text: option.label, selected: selected == option.id) {
                     answers[question.id] = option.id
                 }
+                // Identified by shape rather than by copy, so a UI test can walk the quiz without
+                // pinning the wording — which T7 is about to rewrite.
+                .accessibilityIdentifier("quiz.option")
                 .padding(.bottom, 12)
             }
             Spacer()

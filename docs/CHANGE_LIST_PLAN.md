@@ -97,9 +97,28 @@ T1 inherits G2's block. Do not ship T1 alone.
 - [ ] ⬜ **T7 — Gender question → 4 options.** `Sources/GenesyxCore/Content/QuizContent.swift:83`:
       Girl / Boy / No preference / Prefer not to say, and skippable. Current options only record
       *that* a preference exists ("hope" / "either" / "private"), never which. *Needs G1.*
-- [ ] ⬜ **T8 — Persist quiz answers.** `OnboardingFlowView.swift:155` collects answers into a local
-      dict and **discards them on completion**. T7 is pointless without this. Needs a model field,
-      repository write, and Supabase column.
+- [x] ✅ **T8 — Persist quiz answers.** `OnboardingFlowView.swift:155` collected answers into a local
+      dict and **discarded them on completion**. They now go to `profiles.quiz_answers` (`jsonb`,
+      keyed by question id) via `PreferencesRepository.recordQuizAnswers`.
+
+      The quiz runs *before* sign-up, so at the moment she answers there is no session to write
+      under — the answers are written on-device and stay **owed** to the server until sign-in
+      drains them, which is the same queue the other repositories already use for offline writes.
+      Wiped on sign-out: onboarding does not re-run (that flag is device-local), so without the wipe
+      the next user on the phone would inherit them.
+
+      `jsonb` rather than a column per question because the questions are content and T7 rewrites
+      one of them. **Question ids are now storage keys** — renaming one orphans every answer already
+      given to it, on both clients. `QuizContentTests.testFiveQuestionsInOrder` pins them.
+
+      **Nothing reads the answers yet**, by design: the consumer is T7's personalised copy, which
+      needs G1. This is the plumbing only, as scoped.
+
+      ⚠️ **Raised for G3/security:** `profiles` carries a partner-read policy, and her answer to the
+      baby's-sex question now lives in that row — under a helper line that promises "This is just
+      for you." If that policy selects whole rows rather than named columns, the promise is false.
+      The check is written into `supabase/migrations/20260810_profiles_quiz_answers.sql` §2 and must
+      be run before this reaches production.
 - [ ] ⬜ **T9 — Connectivity write-up** for the client. *Needs G3.*
 
 ## 3. Phase 2 — the real gaps (15–18d)
@@ -249,7 +268,7 @@ start today and finish inside one sprint. Ordered so each day ships something de
 | 8 | T10 · T11 — `sexualActivity` model + persistence + migration | 2.5d | ✅ |
 | 9 | T12 — private logging UI (excluded from partner surfaces) | 1.5d | ✅ |
 | 10 | T13 — calendar dot markers (pH, symptoms, activity) | 2d | ✅ |
-| 11 | T8 — persist quiz answers (plumbing only; T7's copy needs G1) | 1.5d | ⬜ |
+| 11 | T8 — persist quiz answers (plumbing only; T7's copy needs G1) | 1.5d | ✅ |
 | | **Total** | **12.75d** | 1.25d QA buffer |
 
 **7-day option — "start the scope."** Rows 1–7 only: the complete notification layer plus the quick
@@ -273,7 +292,7 @@ amount of tooling shortens it. That is why Sprint 1 is built entirely from work 
 
 ## 10. Verification gate
 
-Green baseline is **165 domain + 157 app tests** (was 125 + 139 before Sprint 1), plus **27 UI tests**
+Green baseline is **165 domain + 161 app tests** (was 125 + 139 before Sprint 1), plus **28 UI tests**
 (1 skipped) behind the `-uiTestSeed` harness. Run after every task:
 
 ```bash

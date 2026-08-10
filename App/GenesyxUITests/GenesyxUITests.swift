@@ -18,6 +18,49 @@ final class GenesyxUITests: XCTestCase {
         return app
     }
 
+    /// Seeded, but with onboarding left un-run so the quiz can be driven.
+    private func launchOnboarding() -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchArguments += ["-uiTestSeed", "YES", "-uiTestOnboarding", "YES"]
+        app.launch()
+        return app
+    }
+
+    /// The quiz answers now go somewhere, which means the flow reaches out of itself for the first
+    /// time: `OnboardingFlowView` takes a repository from the environment, and a missing
+    /// `@EnvironmentObject` is a crash, not a warning. Nothing else in the suite launches
+    /// onboarding at all, so without this the whole flow ships unexercised.
+    ///
+    /// Where it stops: nothing on screen shows her answers back to her, so this proves the path
+    /// runs, not that the answers landed. That they landed is `RepositoryTests`' job.
+    func testTheOnboardingQuizRunsEndToEnd() {
+        let app = launchOnboarding()
+
+        XCTAssertTrue(app.buttons["Start Your Personalised Quiz"].waitForExistence(timeout: 10),
+                      "an un-onboarded launch should open on the splash")
+        app.buttons["Start Your Personalised Quiz"].tap()
+        app.buttons["Continue"].tap()               // intro
+
+        // Answer every question with whichever option is first — the copy is T7's to rewrite, so
+        // the test holds on to the shape of the quiz rather than its wording.
+        for question in 1...5 {
+            // The step counter, so the loop can't pass by quietly answering the same screen twice.
+            XCTAssertTrue(app.staticTexts["\(question)/5"].waitForExistence(timeout: 5),
+                          "should be on question \(question) of 5")
+            let option = app.buttons.matching(identifier: "quiz.option").firstMatch
+            XCTAssertTrue(option.exists, "question \(question) should offer options")
+            option.tap()
+            // One question answers into a "Did you know?" alert, which has to be dismissed before
+            // the next one appears.
+            if app.buttons["Continue"].exists { app.buttons["Continue"].tap() }
+            if app.alerts.buttons["Continue"].exists { app.alerts.buttons["Continue"].tap() }
+            if app.buttons["See My Summary"].exists { app.buttons["See My Summary"].tap() }
+        }
+
+        XCTAssertTrue(app.staticTexts["A thoughtful starting point"].waitForExistence(timeout: 10),
+                      "answering every question should land on the readiness summary")
+    }
+
     func testMainTabsPresent() {
         let app = launchSeeded()
         // Custom six-icon bottom bar (all tabs visible, no "More" overflow).

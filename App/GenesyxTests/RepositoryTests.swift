@@ -433,6 +433,67 @@ final class RepositoryTests: XCTestCase {
         XCTAssertFalse(repo.pushEnabled)
     }
 
+    /// The whole of T8: the quiz is answered *before* she has an account, so at the moment she
+    /// answers there is no session to write under. The answers have to sit on the device, owed to
+    /// the server, until sign-in provides a user id — which is exactly the offline case the other
+    /// repositories already handle, so it is handled the same way.
+    func testQuizAnswersGivenBeforeSignInStillReachTheProfile() async {
+        let backend = FakeProfileBackend()
+        backend.online = false                             // no session yet: every write is refused
+        let repo = PreferencesRepository(store: makeStore(), backend: backend)
+
+        repo.recordQuizAnswers(["stage": "trying", "gender": "private"])
+        XCTAssertNil(backend.remote, "there is nobody to write them under yet")
+
+        backend.online = true                              // she signs in
+        await repo.refresh()
+
+        XCTAssertEqual(backend.remote?.quizAnswers, ["stage": "trying", "gender": "private"])
+    }
+
+    func testQuizAnswersSurviveARelaunchBeforeSheEverSignsIn() {
+        let store = makeStore()
+        PreferencesRepository(store: store).recordQuizAnswers(["stage": "preparing"])
+
+        XCTAssertEqual(PreferencesRepository(store: store).quizAnswers, ["stage": "preparing"])
+    }
+
+    /// Sign-out does not re-run onboarding — that flag is device-local and stays set — so nothing
+    /// would ever overwrite these. Left behind, the next user on the phone silently inherits what
+    /// the previous one said about her conception journey.
+    func testSignOutWipesTheQuizAnswers() {
+        let container = AppContainer(store: makeStore(), backend: nil)
+        container.prefs.recordQuizAnswers(["gender": "hope"])
+
+        container.session.signOut()
+
+        XCTAssertTrue(container.prefs.quizAnswers.isEmpty,
+                      "her intake answers are as personal as a log and must leave with her")
+    }
+
+    /// A device with no answers has *nothing to say* about the quiz, which is not the same as
+    /// saying she answered nothing — onboarding runs once, so most installs are in that state. If
+    /// an empty set were written, one theme toggle on a reinstalled phone would erase what she
+    /// answered before.
+    func testAnEmptyAnswerSetIsOmittedRatherThanWrittenAsEmpty() throws {
+        var prefs = ProfilePrefs(focusMode: .prep, themeMode: .dark, pushEnabled: true)
+        let untouched = try encodedColumns(ProfilePrefsRow(id: "u", prefs: prefs))
+        prefs.quizAnswers = ["stage": "trying"]
+        let answered = try encodedColumns(ProfilePrefsRow(id: "u", prefs: prefs))
+
+        XCTAssertFalse(untouched.contains("quiz_answers"),
+                       "an empty set must not be sent, or it overwrites the server's copy")
+        XCTAssertTrue(answered.contains("quiz_answers"))
+    }
+
+    /// The column names a row actually writes — an omitted key leaves the server's value alone,
+    /// which is the difference this test exists to see.
+    private func encodedColumns<T: Encodable>(_ row: T) throws -> Set<String> {
+        let json = try JSONSerialization.jsonObject(with: JSONEncoder().encode(row))
+        guard let object = json as? [String: Any] else { return [] }
+        return Set(object.keys)
+    }
+
     /// Sign-out must also wipe the notification state derived from her data. Milestone flags and
     /// the read-article list are as personal as a log: leaving them behind means the next user on
     /// the device silently inherits them — her celebrations already "spent", her Learn nudges
