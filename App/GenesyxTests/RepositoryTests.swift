@@ -471,19 +471,26 @@ final class RepositoryTests: XCTestCase {
                       "her intake answers are as personal as a log and must leave with her")
     }
 
+    /// `profiles` is partner-readable — `profiles_select` grants a linked partner the whole row —
+    /// and Postgres RLS filters rows, never columns. So the only way to keep answers the quiz calls
+    /// "just for you" out of his reach is to keep them out of that row entirely.
+    func testTheProfileRowNeverCarriesHerQuizAnswers() throws {
+        var prefs = ProfilePrefs(focusMode: .prep, themeMode: .dark, pushEnabled: true)
+        prefs.quizAnswers = ["stage": "trying", "gender": "private"]
+
+        XCTAssertFalse(try encodedColumns(ProfilePrefsRow(id: "u", prefs: prefs)).contains("quiz_answers"),
+                       "a partner can read this row; her intake answers must live in their own table")
+    }
+
     /// A device with no answers has *nothing to say* about the quiz, which is not the same as
     /// saying she answered nothing — onboarding runs once, so most installs are in that state. If
     /// an empty set were written, one theme toggle on a reinstalled phone would erase what she
     /// answered before.
-    func testAnEmptyAnswerSetIsOmittedRatherThanWrittenAsEmpty() throws {
-        var prefs = ProfilePrefs(focusMode: .prep, themeMode: .dark, pushEnabled: true)
-        let untouched = try encodedColumns(ProfilePrefsRow(id: "u", prefs: prefs))
-        prefs.quizAnswers = ["stage": "trying"]
-        let answered = try encodedColumns(ProfilePrefsRow(id: "u", prefs: prefs))
-
-        XCTAssertFalse(untouched.contains("quiz_answers"),
-                       "an empty set must not be sent, or it overwrites the server's copy")
-        XCTAssertTrue(answered.contains("quiz_answers"))
+    func testAnEmptyAnswerSetIsNotWrittenAtAll() {
+        XCTAssertNil(QuizAnswersRow(userId: "u", answers: [:]),
+                     "an empty set must not be sent, or it overwrites the server's copy")
+        XCTAssertEqual(QuizAnswersRow(userId: "u", answers: ["stage": "trying"])?.answers,
+                       ["stage": "trying"])
     }
 
     /// The column names a row actually writes — an omitted key leaves the server's value alone,

@@ -30,7 +30,7 @@ final class QuizContentTests: XCTestCase {
         XCTAssertEqual(gender?.options.count, 3, "Gender question has three options (Android parity)")
     }
 
-    /// These ids are storage keys, not just array order: her answers persist to `profiles.quiz_answers`
+    /// These ids are storage keys, not just array order: her answers persist to `quiz_answers.answers`
     /// keyed by them. Renaming one orphans every answer already given to that question, on both
     /// clients, with nothing to report it — so a change here is a data migration, not a rename.
     func testFiveQuestionsInOrder() {

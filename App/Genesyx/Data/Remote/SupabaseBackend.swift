@@ -125,13 +125,18 @@ private struct SupabaseProfile: ProfileBackend {
     func fetch() async throws -> ProfilePrefs? {
         let uid = try requireUID(auth)
         let rows: [ProfilePrefsRow] = try await client.from("profiles")
-            .select("id,focus_mode,theme,push_enabled,quiz_answers").eq("id", value: uid).limit(1).execute().value
-        return rows.first?.domain
+            .select("id,focus_mode,theme,push_enabled").eq("id", value: uid).limit(1).execute().value
+        guard let row = rows.first else { return nil }
+        let quiz: [QuizAnswersRow] = try await client.from("quiz_answers")
+            .select("user_id,answers").eq("user_id", value: uid).limit(1).execute().value
+        return row.domain(quizAnswers: quiz.first?.answers ?? [:])
     }
 
     func upsert(_ prefs: ProfilePrefs) async throws {
         let uid = try requireUID(auth)
         try await client.from("profiles").upsert(ProfilePrefsRow(id: uid, prefs: prefs)).execute()
+        guard let quiz = QuizAnswersRow(userId: uid, answers: prefs.quizAnswers) else { return }
+        try await client.from("quiz_answers").upsert(quiz).execute()
     }
 
     func upsert(displayName: String) async throws {

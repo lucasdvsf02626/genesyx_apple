@@ -201,24 +201,21 @@ struct ProfilePrefsRow: Codable {
     var focusMode: String
     var theme: String
     var pushEnabled: Bool
-    /// Optional so a row written before the column existed decodes as "not answered", and so an
-    /// empty local answer set omits the key entirely on encode (see `init`).
-    var quizAnswers: [String: String]?
 
     enum CodingKeys: String, CodingKey {
         case id
         case focusMode = "focus_mode"
         case theme
         case pushEnabled = "push_enabled"
-        case quizAnswers = "quiz_answers"
     }
 
-    var domain: ProfilePrefs {
+    /// Quiz answers live in their own table, so they arrive separately and are merged in here.
+    func domain(quizAnswers: [String: String]) -> ProfilePrefs {
         ProfilePrefs(
             focusMode: FocusMode(rawValue: focusMode) ?? .prep,
             themeMode: ThemeMode(rawValue: theme) ?? .system,
             pushEnabled: pushEnabled,
-            quizAnswers: quizAnswers ?? [:]
+            quizAnswers: quizAnswers
         )
     }
 
@@ -227,9 +224,30 @@ struct ProfilePrefsRow: Codable {
         self.focusMode = prefs.focusMode.rawValue
         self.theme = prefs.themeMode.rawValue
         self.pushEnabled = prefs.pushEnabled
-        // Empty means "this device has nothing to say about the quiz", not "she answered nothing":
-        // only onboarding fills it and onboarding runs once. Encoded, it would let a routine theme
-        // change on a reinstalled phone erase the answers she gave before.
-        self.quizAnswers = prefs.quizAnswers.isEmpty ? nil : prefs.quizAnswers
+    }
+}
+
+/// Her onboarding quiz answers, in a table only she can read.
+///
+/// `profiles` is partner-readable (`profiles_select` grants a linked partner the whole row), and
+/// Postgres RLS filters rows, never columns — so the only way to keep an answer set the quiz calls
+/// "just for you" out of a partner's reach is to keep it out of that row.
+struct QuizAnswersRow: Codable {
+    var userId: String
+    var answers: [String: String]
+
+    enum CodingKeys: String, CodingKey {
+        case userId = "user_id"
+        case answers
+    }
+
+    /// `nil` when there is nothing to write. A device with no answers has *nothing to say* about
+    /// the quiz, which is not the same as saying she answered nothing — onboarding runs once, so
+    /// most installs are in that state. Written as empty, one theme toggle on a reinstalled phone
+    /// would erase what she answered before.
+    init?(userId: String, answers: [String: String]) {
+        guard !answers.isEmpty else { return nil }
+        self.userId = userId
+        self.answers = answers
     }
 }

@@ -1,5 +1,9 @@
 -- Genesyx — profiles.quiz_answers (client change list T8).
 --
+-- ⚠️ SUPERSEDED by `20260810_quiz_answers_owner_table.sql`. The RLS audit in step 2 below came back
+-- badly — the partner-read policy selects whole rows — so the answers moved to their own table the
+-- same day. Kept for history; do not apply to a fresh database.
+--
 -- Onboarding asks her five questions and, until now, threw every answer away the moment the quiz
 -- ended. Nothing could be personalised from them because nothing survived the next screen.
 --
