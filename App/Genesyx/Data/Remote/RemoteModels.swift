@@ -179,6 +179,9 @@ struct EmailInviteResponse: Codable {
     var reason: String?
 }
 
+/// Read-only. `authenticated` has no UPDATE privilege on `profiles.partner_id` — only the
+/// `accept_partner_invite` / `unlink_partner` Edge Functions write it, with the service role — so
+/// upserting this struct would fail with SQLSTATE 42501 the moment the encoder emitted that key.
 struct ProfileRow: Codable {
     var id: String
     var displayName: String?
