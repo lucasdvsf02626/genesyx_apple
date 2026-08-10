@@ -271,6 +271,20 @@ start today and finish inside one sprint. Ordered so each day ships something de
 | 11 | T8 — persist quiz answers (plumbing only; T7's copy needs G1) | 1.5d | ✅ |
 | | **Total** | **12.75d** | 1.25d QA buffer |
 
+**Sprint 1 is complete** — all eleven rows shipped, `71567c8` … `148e754`. Two things it leaves
+behind for whoever picks up next:
+
+1. **One migration is not applied.** `20260810_daily_logs_sexual_activity.sql` and
+   `20260810_profiles_quiz_answers.sql` both need running by hand in the Supabase SQL Editor; this
+   repo never pushes schema. Until then those two columns exist only in the app's decoders, which
+   tolerate their absence — so nothing breaks, and nothing syncs either.
+2. **An Android coordination item.** `sexualActivity` is deliberately *not* counted by
+   `TrackingEngine.isMeaningfulLog` or `StreakEngine.hasAnyEntry`. Those two predicates are mirrored
+   in the Android client and driven by a byte-for-byte shared `tracking_test_vectors.json`, so
+   widening one alone gives the two platforms different streaks for identical data with nothing to
+   report the divergence. Flipping it is one change across both clients and the vectors, or none.
+   Until then a sex-only day does not extend her streak.
+
 **7-day option — "start the scope."** Rows 1–7 only: the complete notification layer plus the quick
 UX wins. ≈5.25d of work, ~1.75d buffer. This is the fastest path to something the client can hold in
 their hand, and it closes the one item they raised that was genuinely missing.
