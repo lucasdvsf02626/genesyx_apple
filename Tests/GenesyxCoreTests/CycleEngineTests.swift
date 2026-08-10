@@ -18,6 +18,39 @@ final class CycleEngineTests: XCTestCase {
         )
     }
 
+    // MARK: - Announcing a phase change
+
+    /// The whole point: yesterday's phase is not today's, so the Nutrition focus foods she is
+    /// looking at are not the ones she saw last time.
+    func testCrossingIntoANewPhaseIsAnnounced() {
+        XCTAssertTrue(CycleEngine.announcesPhaseChange(to: .luteal, lastSeen: .ovulatory))
+    }
+
+    func testStayingInThePhaseSaysNothing() {
+        XCTAssertFalse(CycleEngine.announcesPhaseChange(to: .luteal, lastSeen: .luteal))
+    }
+
+    /// A fresh install has seen nothing, but she is mid-phase rather than transitioning — the card
+    /// would be announcing something that happened days before she opened the app.
+    func testTheFirstPhaseThisDeviceSeesIsNotAChange() {
+        for phase in Phase.allCases {
+            XCTAssertFalse(CycleEngine.announcesPhaseChange(to: phase, lastSeen: nil), "\(phase)")
+        }
+    }
+
+    /// Phases repeat, so "last seen" is only ever compared against the phase immediately before it.
+    /// Coming back around to `.period` a cycle later must still announce — it is a real transition,
+    /// and storing the phase alone has to be enough to catch it.
+    func testTheSamePhaseNextCycleIsStillAChange() {
+        // A full lap: period → follicular → ovulatory → luteal → period.
+        let lap: [Phase] = [.period, .follicular, .ovulatory, .luteal, .period]
+        let announced = zip(lap, lap.dropFirst()).map {
+            CycleEngine.announcesPhaseChange(to: $1, lastSeen: $0)
+        }
+
+        XCTAssertEqual(announced, [true, true, true, true], "every step of the lap is a transition")
+    }
+
     func testDayOneIsPeriodDayOfCycleOne() {
         let info = phaseOn(lastPeriod)
         XCTAssertEqual(info.dayOfCycle, 1)

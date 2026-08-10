@@ -223,6 +223,55 @@ final class GenesyxUITests: XCTestCase {
         XCTAssertEqual(learn.label, "Learn", "a first install has no new articles to announce")
     }
 
+    // MARK: - The phase-change card
+
+    /// Seeded launches wipe defaults, so every one of them is a first install — the card must stay
+    /// away. This is the case that actually ships to a new user, and it is the one an over-eager
+    /// `lastSeen == nil` check would get wrong by announcing a transition that never happened.
+    func testNutritionShowsNoPhaseChangeCardOnAFreshInstall() {
+        let app = launchSeeded(tab: 2)
+
+        XCTAssertTrue(app.staticTexts["Your nutrition focus"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["nutrition.phaseChangeCard"].exists,
+                       "she is mid-phase on a first install, not transitioning")
+    }
+
+    /// With a stale phase on the device the card is due, and tapping it must land on the article
+    /// itself — the slug is a bare string, so a typo would push a route nothing can resolve and
+    /// leave her on a blank screen.
+    func testPhaseChangeCardOpensTheCycleEatingArticle() {
+        let app = XCUIApplication()
+        app.launchArguments += ["-uiTestSeed", "YES", "-uiTestTab", "2", "-uiTestPhaseChange", "YES"]
+        app.launch()
+
+        let card = app.buttons["nutrition.phaseChangeCard"]
+        XCTAssertTrue(card.waitForExistence(timeout: 10), "a crossed phase should be announced")
+        card.tap()
+
+        // "Related" only exists at the foot of an article, so reaching it proves the push landed.
+        XCTAssertTrue(app.staticTexts["Related"].waitForExistence(timeout: 10),
+                      "the card should open 'Eating with your cycle', not just scroll")
+    }
+
+    /// Dismissing has to be as final as reading: the card records the phase either way, or the one
+    /// she closed comes straight back and the × is decoration.
+    func testDismissingThePhaseChangeCardKeepsItAway() {
+        let app = XCUIApplication()
+        app.launchArguments += ["-uiTestSeed", "YES", "-uiTestTab", "2", "-uiTestPhaseChange", "YES"]
+        app.launch()
+
+        let card = app.buttons["nutrition.phaseChangeCard"]
+        XCTAssertTrue(card.waitForExistence(timeout: 10))
+        app.buttons["nutrition.phaseChangeDismiss"].tap()
+
+        XCTAssertFalse(card.waitForExistence(timeout: 3), "dismissing should settle it")
+
+        // Leave and come back — the phase is stored, not just held in view state.
+        app.buttons["Home"].tap()
+        app.buttons["Nutrition"].tap()
+        XCTAssertFalse(card.waitForExistence(timeout: 3), "and it must not return on the next visit")
+    }
+
     func testHomeShowsLogToday() {
         let app = launchSeeded(tab: 0)
         XCTAssertTrue(app.buttons["Log today"].waitForExistence(timeout: 10), "Home should show the Log today button")

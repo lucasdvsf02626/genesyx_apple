@@ -63,6 +63,16 @@ public enum CycleEngine {
         )
     }
 
+    /// Whether she has crossed into a new phase since the last one she was told about.
+    ///
+    /// `lastSeen == nil` is the first time this device has looked, which is not a transition: on a
+    /// fresh install she is already mid-phase, and announcing "your luteal phase started" would be
+    /// stating something that happened days ago. Record silently and announce from the next change.
+    public static func announcesPhaseChange(to current: Phase, lastSeen: Phase?) -> Bool {
+        guard let lastSeen else { return false }
+        return lastSeen != current
+    }
+
     /// Calendar day classification. Order matches web cycle.ts: period > ovulation > fertile > luteal.
     public static func dayType(for info: CyclePhaseInfo) -> DayType {
         if info.phase == .period {

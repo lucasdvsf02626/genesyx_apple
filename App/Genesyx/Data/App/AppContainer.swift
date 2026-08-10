@@ -92,6 +92,9 @@ final class AppContainer: ObservableObject {
         // Custom supplements are user-entered and stored locally (@AppStorage, UserDefaults.standard);
         // they must not follow her out of the app either.
         UserDefaults.standard.removeObject(forKey: CustomSupplement.storageKey)
+        // Which cycle phase she was last in is health data too, and leaving it would announce a
+        // phase change to the next account for a transition that was not hers.
+        UserDefaults.standard.removeObject(forKey: NutritionView.lastSeenPhaseKey)
     }
 
     /// Production init — standard on-device store + resolved backend.
@@ -133,6 +136,12 @@ final class AppContainer: ObservableObject {
         // the UI. A test that wants to exercise it passes `-uiTestPhNotice YES`.
         let wantsPhNotice = UserDefaults.standard.bool(forKey: "uiTestPhNotice")
         UserDefaults.standard.set(!wantsPhNotice, forKey: "ph_vaginal_notice_seen")
+        // The wipe above makes every seeded launch a first install, which by design shows no
+        // phase-change card. `-uiTestPhaseChange YES` backdates the last phase she was told about
+        // to the one before the seeded cycle day (day 9 → follicular), so the card is due.
+        if UserDefaults.standard.bool(forKey: "uiTestPhaseChange") {
+            UserDefaults.standard.set(Phase.period.rawValue, forKey: NutritionView.lastSeenPhaseKey)
+        }
         return container
     }
     #endif

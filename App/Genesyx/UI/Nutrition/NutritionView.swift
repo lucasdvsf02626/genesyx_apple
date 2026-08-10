@@ -20,7 +20,17 @@ struct NutritionView: View {
     @AppStorage("hydration_unit") private var hydrationUnitRaw = HydrationUnit.glasses.rawValue
     private var hydrationUnit: HydrationUnit { HydrationUnit(rawValue: hydrationUnitRaw) ?? .glasses }
 
+    /// The last phase she was told about. Device-local and wiped on sign-out, like the other
+    /// `@AppStorage` health state — see `AppContainer.clearLocalState`.
+    @AppStorage(NutritionView.lastSeenPhaseKey) private var lastSeenPhaseRaw = ""
+    static let lastSeenPhaseKey = "nutrition_last_seen_phase"
+
     private var phase: Phase? { cycle.settings.map { CycleEngine.cyclePhase(settings: $0, target: today).phase } }
+
+    private var showsPhaseChange: Bool {
+        guard let phase else { return false }
+        return CycleEngine.announcesPhaseChange(to: phase, lastSeen: Phase(rawValue: lastSeenPhaseRaw))
+    }
 
     /// Consecutive complete weeks (≥4 of 7 days), for the de-pressured "steady weeks" line.
     /// pH days count toward weekly consistency, so pH readings feed the engine here too.
@@ -40,6 +50,7 @@ struct NutritionView: View {
                     // Client parity: cycle-phase food recommendations lead; hydration and general
                     // articles drop below them.
                     if let phase {
+                        if showsPhaseChange { phaseChangeCard(phase) }
                         focusFoodsCard(NutritionContent.phaseFoods[phase] ?? [])
                     }
                     mealSuggestionsCard
@@ -61,6 +72,10 @@ struct NutritionView: View {
             .navigationDestination(for: String.self) { slug in
                 ArticleDetailView(slug: slug, path: $articlePath)
             }
+            // Settings arrive from the store after the first render, so the silent first record has
+            // to react to the phase appearing, not just to the screen appearing.
+            .onAppear { recordFirstPhase() }
+            .onChange(of: phase) { _ in recordFirstPhase() }
         }
         .sheet(isPresented: $planOpen) { SupplementPlanSheet() }
     }
@@ -175,6 +190,76 @@ struct NutritionView: View {
     private func openHydrationDetail() {
         router.pendingHydration = true
         router.selection = 1
+    }
+
+    // MARK: Phase change
+
+    /// Announced once per transition: her phase has moved on, so the focus foods directly below
+    /// have moved with it, and the article explains what genuinely changes across the four.
+    ///
+    /// Carries no nutrition claim of its own — every line is either a phase label or a statement
+    /// about this screen. The reviewed guidance stays in `focusFoodsCard` below, so the card adds
+    /// nothing new for a medical reviewer to sign off.
+    private func phaseChangeCard(_ phase: Phase) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "arrow.triangle.2.circlepath").font(.system(size: 16))
+                    .foregroundStyle(GenesyxColor.electricLavender)
+                    .frame(width: 40, height: 40)
+                    .background(GenesyxColor.electricLavender.opacity(0.12))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                VStack(alignment: .leading, spacing: 4) {
+                    Eyebrow("Your phase just changed", color: GenesyxColor.mutedForeground)
+                    Text(CycleContent.phaseLabel[phase]!)
+                        .font(.gxCardHeadingSmall).foregroundStyle(GenesyxColor.foreground)
+                    Text("Your focus foods below have changed with it.")
+                        .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+                // Without this the only way to clear the card is to read an article she may not
+                // want; it would then sit on the screen for the rest of the phase.
+                Button { markPhaseSeen(phase) } label: {
+                    Image(systemName: "xmark").font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(GenesyxColor.mutedForeground)
+                        .frame(width: 28, height: 28).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Dismiss")
+                .accessibilityIdentifier("nutrition.phaseChangeDismiss")
+            }
+            Button {
+                markPhaseSeen(phase)
+                articlePath.append(Self.phaseArticleSlug)
+            } label: {
+                HStack(spacing: 4) {
+                    Text("What changes across your phases").font(.gxBodySmall.weight(.semibold))
+                    Image(systemName: "chevron.right").font(.system(size: 11, weight: .semibold))
+                }
+                .foregroundStyle(GenesyxColor.primary)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("nutrition.phaseChangeCard")
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(GenesyxColor.card)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+    }
+
+    static let phaseArticleSlug = "eating-with-your-cycle"
+
+    /// She has been told. Recorded on either action, so reading and dismissing both settle it.
+    private func markPhaseSeen(_ phase: Phase) {
+        withAnimation(.easeInOut(duration: 0.2)) { lastSeenPhaseRaw = phase.rawValue }
+    }
+
+    /// The first phase this device sees is recorded without a card — she is mid-phase on a fresh
+    /// install, not transitioning. Announcing from the next change is the same rule the Learn badge
+    /// uses for a first install, and for the same reason.
+    private func recordFirstPhase() {
+        guard lastSeenPhaseRaw.isEmpty, let phase else { return }
+        lastSeenPhaseRaw = phase.rawValue
     }
 
     // MARK: Focus foods

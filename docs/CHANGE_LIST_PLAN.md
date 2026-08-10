@@ -190,7 +190,11 @@ T1 inherits G2's block. Do not ship T1 alone.
 - [ ] ⬜ **T23 — Custom glass size.** `Sources/GenesyxCore/Insights/HydrationUnit.swift:14` is 3
       fixed presets (glasses 250ml / cups 240ml / ml).
 - [ ] ⬜ **T24 — Nutrition text pass.** Smaller than the client thinks; disclosures already exist.
-- [ ] ⬜ **T25 — Phase-change card** linking to the `eating-with-your-cycle` article.
+- [x] ✅ **T25 — Phase-change card** linking to the `eating-with-your-cycle` article. Announced once
+      per transition, never on a first install — she is mid-phase then, not crossing into one, and
+      the card would be reporting something that happened days before she opened the app. Carries no
+      nutrition claim of its own (every line is a phase label or a statement about the screen), so it
+      needs no medical sign-off; the reviewed guidance stays in the focus-foods card below it.
 - [ ] ⬜ **T26 — Meal logging** model + UI. Replaces the "Coming soon" placeholder at
       `NutritionView.swift:304`. **Most expensive item on the list — scope separately.**
 - [ ] ⬜ **T27 — Recipe cards** with imagery. Needs content + design, not just code.
@@ -312,14 +316,14 @@ nutrition items while the context is warm.
 | # | Task | Effort | Status |
 |---|---|---|---|
 | 12 | T28 (remaining half) — Learn unread badge + Home dashboard card | 1d | ✅ |
-| 13 | T25 — phase-change card linking to the cycle-eating article | 1d | ⬜ |
+| 13 | T25 — phase-change card linking to the cycle-eating article | 1d | ✅ |
 | 14 | T23 — custom glass size | 1d | ⬜ |
 
 ---
 
 ## 10. Verification gate
 
-Green baseline is **170 domain + 168 app tests** (was 125 + 139 before Sprint 1), plus **30 UI tests**
+Green baseline is **174 domain + 169 app tests** (was 125 + 139 before Sprint 1), plus **33 UI tests**
 (1 skipped) behind the `-uiTestSeed` harness. Run after every task:
 
 ```bash
