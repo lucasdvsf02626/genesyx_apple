@@ -7,7 +7,7 @@ import XCTest
 final class PhContentGuardTests: XCTestCase {
 
     private let banned = ["bv", "thrush", "infection", "candida", "vaginosis", "leafy greens", "whole grains", "mineral water"]
-    private let phSlugs: Set<String> = ["guide-urine-tracker-with-stick", "guide-how-to-log-ph", "guide-track-ph-in-nutrition"]
+    private let phSlugs: Set<String> = ["guide-vaginal-ph-tracker", "guide-how-to-log-ph", "guide-track-ph-in-nutrition"]
 
     func testLearnPhGuidesHaveNoBannedTerms() {
         let phArticles = LearnLibrary.articles.filter { phSlugs.contains($0.slug) || $0.tags.contains("ph") }

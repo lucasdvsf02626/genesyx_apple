@@ -311,7 +311,7 @@ let learnArticles: [LearnArticle] = [
 
     LearnArticle(
         id: "g1",
-        slug: "guide-urine-tracker-with-stick",
+        slug: "guide-vaginal-ph-tracker",
         title: "Using the vaginal pH tracker",
         excerpt: "How to read a pH strip, match it to a value, and log it so your trend is honest.",
         body: [
@@ -362,7 +362,7 @@ let learnArticles: [LearnArticle] = [
                 "Add a custom symptom if yours isn't listed — type it once and it's there next time.",
                 "Tap sleep, water, or supplements to adjust those if you want — or skip them entirely.",
                 "Add a note if something specific happened (new medication, travel, illness, stress).",
-                "Tap \"Save log\". Online, it saves and closes. Offline, it blocks the save and tells you to reconnect — so the server never overwrites a later entry.",
+                "Tap \"Save log\". It saves on your device straight away and closes — even with no signal. If you're offline, it syncs by itself the next time you're connected, so nothing is lost.",
             ]),
             .heading("What's worth logging"),
             .bulletList([

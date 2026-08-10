@@ -54,7 +54,7 @@ final class LearnContentTests: XCTestCase {
             "small-habits-that-hold",
             "using-what-you-learn",
             // Health-adjacent guides (A, C, D, F) also carry the disclaimer.
-            "guide-urine-tracker-with-stick",
+            "guide-vaginal-ph-tracker",
             "guide-how-to-log-ph",
             "guide-nutrition-focus",
             "guide-track-ph-in-nutrition",

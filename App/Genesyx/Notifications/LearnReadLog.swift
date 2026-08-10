@@ -5,8 +5,13 @@ import Foundation
 enum LearnReadLog {
     private static let key = "genesyx.learn_read_slugs"
 
+    /// Slugs renamed after release, mapped old → new. Without this a rename silently resets her
+    /// read history, and the Learn nudge offers her an article she has already read.
+    private static let renamed = ["guide-urine-tracker-with-stick": "guide-vaginal-ph-tracker"]
+
     static var readSlugs: Set<String> {
-        Set(UserDefaults.standard.stringArray(forKey: key) ?? [])
+        let stored = UserDefaults.standard.stringArray(forKey: key) ?? []
+        return Set(stored.map { renamed[$0] ?? $0 })
     }
 
     static func markRead(_ slug: String) {
