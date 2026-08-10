@@ -16,7 +16,8 @@ final class NotificationPlannerTests: XCTestCase {
                           learn: [LearnCandidate]? = nil,
                           sent: [NotificationSlot: Int] = [:],
                           loggedToday: Bool = false, waterToday: Int = 0,
-                          reminderHour: Int = 19) -> NotificationSnapshot {
+                          reminderHour: Int = 19,
+                          fertileInDays: Int? = nil, todayWeekday: Int = 1) -> NotificationSnapshot {
         NotificationSnapshot(
             streak: StreakState(dailyHydration: daily, weeklyStreak: weekly,
                                 daysLoggedThisWeek: weekDays, bestDailyStreak: best,
@@ -28,7 +29,8 @@ final class NotificationPlannerTests: XCTestCase {
             learnCandidates: learn ?? library,
             daysSinceSent: sent,
             hasMeaningfulLogToday: loggedToday, waterTodayMl: waterToday,
-            reminderHour: reminderHour)
+            reminderHour: reminderHour,
+            daysUntilFertileWindow: fertileInDays, todayWeekday: todayWeekday)
     }
 
     private func plan(_ s: NotificationSnapshot) -> NotificationPlan { NotificationPlanner.plan(s) }
@@ -180,5 +182,66 @@ final class NotificationPlannerTests: XCTestCase {
         let p = plan(snapshot(daysSinceLastPh: 1, phCount: 0, learn: readPh))
 
         XCTAssertEqual(p.weekly.first { $0.slot == .learn }?.learnSlug, "hydration")
+    }
+
+    // MARK: - Fertile window
+
+    /// It is scheduled for the day the window opens, not the day the plan was made — so it carries
+    /// the offset, and a weekday derived from it.
+    func testFertileNudgeIsPinnedToTheMorningTheWindowOpens() {
+        let thursday = plan(snapshot(fertileInDays: 3, todayWeekday: 1)).weekly.first { $0.slot == .fertile }
+
+        XCTAssertEqual(thursday?.dayOffset, 3)
+        XCTAssertEqual(thursday?.weekday, 4, "Monday + 3 is Thursday")
+        XCTAssertEqual(thursday?.hour, NotificationPlanner.fertileHour)
+
+        let wrapped = plan(snapshot(fertileInDays: 2, todayWeekday: 7)).weekly.first { $0.slot == .fertile }
+        XCTAssertEqual(wrapped?.weekday, 2, "Sunday + 2 wraps to Tuesday")
+    }
+
+    /// Written in the present tense because it is read on the day it fires — a countdown planned
+    /// today would arrive stale.
+    func testFertileCopyIsPresentTenseWhicheverDayItIsPlanned() {
+        let today = plan(snapshot(fertileInDays: 0)).weekly.first { $0.slot == .fertile }
+        let inAWeek = plan(snapshot(fertileInDays: 7)).weekly.first { $0.slot == .fertile }
+
+        XCTAssertEqual(today?.body, inAWeek?.body)
+        XCTAssertTrue(today!.body.contains("today"))
+    }
+
+    /// A lock screen is read by whoever is holding the phone. The specifics stay inside the app.
+    func testFertileNudgeKeepsTheSpecificsOffTheLockScreen() {
+        let nudge = plan(snapshot(fertileInDays: 0)).weekly.first { $0.slot == .fertile }!
+        let shown = (nudge.title + " " + nudge.body).lowercased()
+
+        for word in ["fertile", "ovulation", "ovulating", "conceive", "conception", "sex"] {
+            XCTAssertFalse(shown.contains(word), "'\(word)' should not reach a lock screen: \(shown)")
+        }
+    }
+
+    func testNoFertileNudgeBeyondTheHorizonOrWithoutACycle() {
+        XCTAssertNil(plan(snapshot(fertileInDays: 8)).weekly.first { $0.slot == .fertile })
+        XCTAssertNil(plan(snapshot(fertileInDays: nil)).weekly.first { $0.slot == .fertile })
+    }
+
+    /// A window opens once a cycle. Re-planning must not mean re-telling her.
+    func testFertileNudgeIsNotRepeatedWithinTheSameOpening() {
+        XCTAssertNil(plan(snapshot(sent: [.fertile: 3], fertileInDays: 0)).weekly.first { $0.slot == .fertile })
+        XCTAssertNotNil(plan(snapshot(sent: [.fertile: 20], fertileInDays: 0)).weekly.first { $0.slot == .fertile })
+    }
+
+    /// Invariant 2 still holds once a dynamic day joins the fixed ones: the evergreen nudge gives
+    /// way, because "your window opens today" cannot be told on Tuesday instead.
+    func testFertileNudgeTakesTheMorningFromAnEvergreenNudge() {
+        // Everything due at once, with the window opening on the pH nudge's Monday.
+        let p = plan(snapshot(daily: 0, weekDays: 6, weekly: 2, daysSinceLastPh: 30, phCount: 6,
+                              daysSinceLastLog: 5, topSymptom: ("Fatigue", 5),
+                              fertileInDays: 0, todayWeekday: NotificationPlanner.phWeekday))
+        let weekdays = p.weekly.compactMap(\.weekday)
+
+        XCTAssertNotNil(p.weekly.first { $0.slot == .fertile })
+        XCTAssertNil(p.weekly.first { $0.slot == .ph }, "the pH nudge owned that morning and gives it up")
+        XCTAssertEqual(Set(weekdays).count, weekdays.count, "two nudges on one morning is two too many")
+        XCTAssertLessThanOrEqual(p.weekly.count, NotificationPlanner.weeklyBudget)
     }
 }

@@ -53,6 +53,11 @@ public struct NotificationSnapshot {
     public let waterGoalMl: Int
     /// Hour (0–23) she's chosen for the daily evening check-in.
     public let reminderHour: Int
+    /// Days until her next predicted fertile window opens (0 = today). nil when no cycle is set.
+    public let daysUntilFertileWindow: Int?
+    /// ISO weekday of today (1 = Mon … 7 = Sun). The planner has no calendar of its own, and needs
+    /// this to turn a day *offset* into the weekday the other nudges are keyed on.
+    public let todayWeekday: Int
 
     public init(
         streak: StreakState,
@@ -65,7 +70,9 @@ public struct NotificationSnapshot {
         hasMeaningfulLogToday: Bool = false,
         waterTodayMl: Int = 0,
         waterGoalMl: Int = TrackingEngine.defaultWaterGoalMl,
-        reminderHour: Int = NotificationPlanner.hydrationHour
+        reminderHour: Int = NotificationPlanner.hydrationHour,
+        daysUntilFertileWindow: Int? = nil,
+        todayWeekday: Int = 1
     ) {
         self.streak = streak
         self.daysSinceLastPh = daysSinceLastPh
@@ -78,13 +85,15 @@ public struct NotificationSnapshot {
         self.waterTodayMl = waterTodayMl
         self.waterGoalMl = waterGoalMl
         self.reminderHour = reminderHour
+        self.daysUntilFertileWindow = daysUntilFertileWindow
+        self.todayWeekday = todayWeekday
     }
 }
 
 // MARK: - Outputs
 
 public enum NotificationSlot: String, CaseIterable, Sendable {
-    case hydration, ph, learn, insights, track
+    case hydration, ph, learn, insights, track, fertile
 }
 
 /// Where a tap lands. Raw values match the app's tab order.
@@ -102,9 +111,14 @@ public struct PlannedNotification: Equatable, Sendable {
     /// ISO weekday (1 = Mon … 7 = Sun). nil for the daily hydration nudge.
     public let weekday: Int?
     public let hour: Int
+    /// Days from today, for a nudge tied to a specific date rather than a recurring weekday.
+    /// The weekly nudges leave this nil and are scheduled by weekday alone; the fertile-window
+    /// nudge sets it, because "the next Tuesday" and "the Tuesday her window opens" are only the
+    /// same date until the hour has passed.
+    public let dayOffset: Int?
 
     public init(slot: NotificationSlot, title: String, body: String, target: NotificationTarget,
-                learnSlug: String? = nil, weekday: Int?, hour: Int) {
+                learnSlug: String? = nil, weekday: Int?, hour: Int, dayOffset: Int? = nil) {
         self.slot = slot
         self.title = title
         self.body = body
@@ -112,6 +126,7 @@ public struct PlannedNotification: Equatable, Sendable {
         self.learnSlug = learnSlug
         self.weekday = weekday
         self.hour = hour
+        self.dayOffset = dayOffset
     }
 }
 
@@ -149,6 +164,14 @@ public enum NotificationPlanner {
     static let trackWeekday = 5,     trackHour = 12    // Friday 12:00
     static let learnWeekday = 7,     learnHour = 9     // Sunday 09:00
     public static let hydrationHour = 10               // daily 10:00
+    static let fertileHour = 8                         // morning her window opens
+
+    /// Only plan the fertile nudge a week out. Beyond that the estimate has had no chance to move
+    /// with a corrected period date, and the next replan will pick it up anyway.
+    static let fertileHorizonDays = 7
+    /// A window opens once a cycle, so anything under a fortnight is the same opening being
+    /// re-planned — not a new one.
+    static let fertileRepeatGuardDays = 14
 
     public static func plan(_ snapshot: NotificationSnapshot) -> NotificationPlan {
         // Invariant 4 — she's gone. One hand back at most, then nothing. An app that keeps
@@ -159,12 +182,48 @@ public enum NotificationPlanner {
         }
 
         // Invariant 1 — each of these returns nil when it has nothing true to say.
-        let weekly = [ph(snapshot), insights(snapshot), track(snapshot), learn(snapshot)]
+        //
+        // The fertile nudge goes first and the evergreen ones give way to it. It is the only nudge
+        // pinned to a date she cannot be told about later: "your window opens today" is worthless
+        // on Thursday. Everything else keeps just as well for a week.
+        let fertileNudge = fertile(snapshot)
+        let evergreen = [ph(snapshot), insights(snapshot), track(snapshot), learn(snapshot)]
             .compactMap { $0 }
-            .prefix(weeklyBudget)
+            .filter { $0.weekday != fertileNudge?.weekday }   // invariant 2 — one a day
+        let weekly = (Array([fertileNudge].compactMap { $0 }) + evergreen).prefix(weeklyBudget)
 
         let evening = hydration(snapshot).map { [$0] } ?? []
         return NotificationPlan(notifications: evening + Array(weekly))
+    }
+
+    // MARK: Fertile window — the one nudge that cannot wait a week
+
+    /// Fires on the morning her predicted fertile window opens.
+    ///
+    /// Deliberately discreet: a lock screen is read by whoever is holding the phone, so the words
+    /// that reach it stay vague and the specifics ("days 9–15", the conception framing) stay inside
+    /// the app, where she has already chosen to look.
+    static func fertile(_ snapshot: NotificationSnapshot) -> PlannedNotification? {
+        guard let days = snapshot.daysUntilFertileWindow,
+              (0...fertileHorizonDays).contains(days) else { return nil }
+        guard (snapshot.daysSinceSent[.fertile] ?? .max) >= fertileRepeatGuardDays else { return nil }
+
+        return PlannedNotification(
+            slot: .fertile,
+            title: "A note about your cycle",
+            // Present tense, always: this is scheduled for the morning the window opens, so it is
+            // read on that day. Counting down from plan time ("in 3 days") would arrive stale.
+            body: "Your predicted window opens today. Tap to see where you are.",
+            target: .track,
+            weekday: weekday(snapshot.todayWeekday, plus: days),
+            hour: fertileHour,
+            dayOffset: days
+        )
+    }
+
+    /// ISO weekday `offset` days after `weekday`.
+    static func weekday(_ weekday: Int, plus offset: Int) -> Int {
+        ((weekday - 1 + offset) % 7) + 1
     }
 
     // MARK: Evening check-in — one nudge at the hour she chose, in present-tense, guilt-free words
@@ -316,7 +375,8 @@ public enum NotificationPlanner {
         ]
         func snapshot(daily: Int, best: Int, weekDays: Int, weekly: Int,
                       ph: Int?, phCount: Int, log: Int?, symptom: (String, Int)?,
-                      loggedToday: Bool = false, waterToday: Int = 0) -> NotificationSnapshot {
+                      loggedToday: Bool = false, waterToday: Int = 0,
+                      fertileInDays: Int? = nil) -> NotificationSnapshot {
             NotificationSnapshot(
                 streak: StreakState(dailyHydration: daily, weeklyStreak: weekly,
                                     daysLoggedThisWeek: weekDays, bestDailyStreak: best,
@@ -324,7 +384,8 @@ public enum NotificationPlanner {
                 daysSinceLastPh: ph, phReadingsLast30Days: phCount, daysSinceLastLog: log,
                 topSymptom: symptom.map { (name: $0.0, count: $0.1) },
                 learnCandidates: library, daysSinceSent: [:],
-                hasMeaningfulLogToday: loggedToday, waterTodayMl: waterToday)
+                hasMeaningfulLogToday: loggedToday, waterTodayMl: waterToday,
+                daysUntilFertileWindow: fertileInDays)
         }
 
         let states = [
@@ -337,6 +398,11 @@ public enum NotificationPlanner {
             snapshot(daily: 6, best: 6, weekDays: 5, weekly: 1, ph: 9, phCount: 6, log: 0, symptom: ("Cramps", 3)),
             snapshot(daily: 13, best: 13, weekDays: 6, weekly: 2, ph: 2, phCount: 6, log: 0, symptom: nil),
             snapshot(daily: 22, best: 22, weekDays: 7, weekly: 4, ph: 1, phCount: 9, log: 0, symptom: nil),
+            // Fertile window — opening today, and opening later in the week.
+            snapshot(daily: 3, best: 3, weekDays: 3, weekly: 1, ph: 2, phCount: 5, log: 0, symptom: nil,
+                     fertileInDays: 0),
+            snapshot(daily: 3, best: 3, weekDays: 3, weekly: 1, ph: 2, phCount: 5, log: 0, symptom: nil,
+                     fertileInDays: 4),
         ]
 
         var copy = states.flatMap { plan($0).notifications.flatMap { [$0.title, $0.body] } }

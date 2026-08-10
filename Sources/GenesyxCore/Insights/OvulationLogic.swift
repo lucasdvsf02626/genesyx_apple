@@ -49,4 +49,14 @@ public enum OvulationLogic {
             insight: insight
         )
     }
+
+    /// Days from `today` until her next predicted fertile window opens; 0 means it opens today.
+    /// Once this cycle's window has already opened it wraps to the next cycle, so the answer is
+    /// always the *next* opening and never a date in the past. nil when no cycle is set.
+    public static func daysUntilFertileWindow(settings: CycleSettings?, today: CalendarDate = .today()) -> Int? {
+        guard let settings else { return nil }
+        let info = CycleEngine.cyclePhase(settings: settings, target: today)
+        let delta = info.fertileWindow.startDay - info.dayOfCycle
+        return delta >= 0 ? delta : delta + settings.cycleLength
+    }
 }

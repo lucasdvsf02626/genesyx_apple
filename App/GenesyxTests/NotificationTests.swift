@@ -102,6 +102,22 @@ final class NotificationTests: XCTestCase {
         XCTAssertEqual(next, date(15, 8), "Wednesday 08:00")
     }
 
+    // MARK: - Date-pinned nudges (the fertile window)
+
+    /// The fertile nudge is pinned to a date, not a weekday: "your window opens today" has to land
+    /// on that day, and `nextOccurrence` would push a same-day fire a full week out.
+    func testFireDateLandsOnTheRequestedDay() {
+        XCTAssertEqual(NotificationService.fireDate(daysFromNow: 3, hour: 8, now: date(13, 12)), date(16, 8))
+        XCTAssertEqual(NotificationService.fireDate(daysFromNow: 0, hour: 20, now: date(13, 12)), date(13, 20),
+                       "later the same day still counts")
+    }
+
+    /// Telling her the window opened this morning, this evening, is worth nothing — the app shows
+    /// her where she is the moment she opens it.
+    func testFireDateRefusesAMomentThatHasPassed() {
+        XCTAssertNil(NotificationService.fireDate(daysFromNow: 0, hour: 8, now: date(13, 12)))
+    }
+
     // MARK: - Tap routing
 
     func testLearnTapCarriesTheArticleSlug() {

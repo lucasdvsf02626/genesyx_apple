@@ -19,6 +19,7 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
     private let prefs: PreferencesRepository
     private let dailyLog: DailyLogRepository
     private let ph: PhRepository
+    private let cycle: CycleRepository
     private let store: LocalStore
     private let center: UNUserNotificationCenter
     private var cancellables: Set<AnyCancellable> = []
@@ -29,15 +30,24 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
     init(prefs: PreferencesRepository,
          dailyLog: DailyLogRepository,
          ph: PhRepository,
+         cycle: CycleRepository,
          store: LocalStore,
          center: UNUserNotificationCenter = .current()) {
         self.prefs = prefs
         self.dailyLog = dailyLog
         self.ph = ph
+        self.cycle = cycle
         self.store = store
         self.center = center
         super.init()
         center.delegate = self
+
+        // Correcting a period date moves the predicted fertile window, and with it the day the
+        // cycle nudge is due — re-plan rather than let a stale date sit in the schedule.
+        cycle.$settings
+            .dropFirst()
+            .sink { [weak self] _ in self?.replan() }
+            .store(in: &cancellables)
 
         // Logging changes everything the plan is built from: today's hydration nudge becomes
         // unnecessary the moment she logs water, a gap closes, a streak crosses a milestone.
@@ -161,7 +171,9 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
             hasMeaningfulLogToday: loggedToday,
             waterTodayMl: dailyLog.waterMl(on: today),
             waterGoalMl: TrackingEngine.defaultWaterGoalMl,
-            reminderHour: prefs.reminderHour
+            reminderHour: prefs.reminderHour,
+            daysUntilFertileWindow: OvulationLogic.daysUntilFertileWindow(settings: cycle.settings, today: today),
+            todayWeekday: Self.isoWeekday(of: Date())
         )
     }
 
@@ -200,7 +212,9 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
 
     private func schedule(_ planned: PlannedNotification, restDays: Set<Int> = []) {
         let fire: Date?
-        if let weekday = planned.weekday {
+        if let offset = planned.dayOffset {
+            fire = Self.fireDate(daysFromNow: offset, hour: planned.hour, now: Date())
+        } else if let weekday = planned.weekday {
             fire = Self.nextOccurrence(isoWeekday: weekday, hour: planned.hour, now: Date())
         } else {
             // Whether the day is "done" is decided by the planner (it returns nil when there's
@@ -231,6 +245,17 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
             trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
         ))
         rememberScheduledFire(kind, at: fire)
+    }
+
+    /// A specific day at a specific hour. Returns nil when that moment has already passed — the
+    /// window opened earlier today and she is being told about it after the fact, which is worth
+    /// nothing: the app itself shows her where she is the moment she opens it.
+    nonisolated static func fireDate(daysFromNow: Int, hour: Int, now: Date,
+                                     calendar: Calendar = .current) -> Date? {
+        guard let day = calendar.date(byAdding: .day, value: daysFromNow, to: now),
+              let fire = calendar.date(bySettingHour: hour, minute: 0, second: 0, of: day),
+              fire > now else { return nil }
+        return fire
     }
 
     /// The next time this weekday and hour comes round.
