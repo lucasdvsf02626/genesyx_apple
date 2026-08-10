@@ -2,6 +2,58 @@
 
 All notable changes to Genesyx (iOS) are recorded here.
 
+## Unreleased — client change list, Sprint 1 (main, `71567c8` … `998b5c2`, 10 Aug 2026)
+
+Twelve items from the client's "Simplified Consolidated Changes" list, all chosen because they need
+no client or medical-reviewer sign-off. Audit and plan in `docs/CHANGE_LIST_PLAN.md`.
+
+### Corrections
+- **Urine → vaginal pH in Learn** (`71567c8`). Slug `guide-urine-tracker-with-stick` →
+  `guide-vaginal-ph-tracker`, with an old→new map in `LearnReadLog` so the rename does not reset read
+  history or re-offer an article she has finished. Deleted three orphaned `urine*` image assets.
+  Fixed a Learn article that claimed logging is blocked offline — `LogView.save()` never blocked, and
+  this is the likely origin of the client's "offline symbol" report.
+- **Light mode is the default** (`560591e`); the dark toggle stays in Profile.
+- **pH disclaimer collapses** into an expandable panel on the card. It stays permanently visible on
+  the log sheet — the moment she is entering a reading is not the moment to hide the safety note.
+
+### Tracking
+- **Sexual activity** (`f082d31`, `ca28088`). A plain `Bool` on `DailyLog`, an Intimacy chip in the
+  log sheet, and `daily_logs.sexual_activity` in Supabase. Carries its privacy promise on screen:
+  *"Private to you. A linked partner sees your name — never your logs."* That claim is test-asserted,
+  not just written. Reaches no partner surface and no notification copy.
+  ⚠️ Deliberately **not** counted by `TrackingEngine.isMeaningfulLog` / `StreakEngine.hasAnyEntry`:
+  those are the cross-platform contract, so flipping one client alone gives iOS and Android different
+  streaks for identical data. Needs one coordinated change across both clients and
+  `tracking_test_vectors.json`, or none.
+- **Calendar markers** (`8c9f1f1`) for pH tests, symptoms/notes and intimacy, with the legend
+  extended to name all three. Water, mood, energy, sleep and supplements are deliberately unmarked —
+  a grid where most days carry most dots marks nothing.
+  Fixed en route (pre-existing): every cell squared the day *number* rather than the cell, so
+  two-digit days rendered as "…" — 8 of 31 days unreadable on the August grid.
+- **Onboarding quiz answers are kept** (`148e754`), to `profiles.quiz_answers` (`jsonb`). The quiz
+  runs before sign-up, so answers are written on-device and stay owed to the server until sign-in
+  drains them. Nothing reads them yet by design — the consumer is the Girl/Boy question, which is
+  blocked on sign-off.
+
+### Notifications
+- **Fertile-window alert** (`d35cfa0`) the morning her predicted window opens, with discreet
+  lock-screen wording by default.
+- **Per-category toggles** (`5dda691`) — one global switch would not hold eight categories.
+- **Per-supplement reminder times** (`39a19e6`), with "No reminder" a first-class choice.
+- **Weekly article drop** (`855a9be`, `998b5c2`). The Sunday nudge, a new Learn tab badge and a new
+  Home dashboard card all pick through one rule, so the three can never name different articles. The
+  badge counts *new-and-unread* only: zero on a first install, because badging all sixteen articles
+  would read as a backlog rather than an invitation.
+
+### Owed
+- Two migrations are **not applied** — `20260810_daily_logs_sexual_activity.sql` and
+  `20260810_profiles_quiz_answers.sql` need running by hand in the Supabase SQL Editor. Until then
+  those columns exist only in the app's decoders, which tolerate their absence.
+- `profiles` carries a partner-read policy, and her answer to the baby's-sex question now lives in
+  that row. If the policy selects whole rows rather than named columns, the "just for you" promise is
+  false. The check is written into the migration §2 and must run before production.
+
 ## Unreleased — database & docs (main, build 16 source `547d2d4`)
 
 ### Database — pH constraint codified in version control
