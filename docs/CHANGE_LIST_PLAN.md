@@ -104,10 +104,22 @@ T1 inherits G2's block. Do not ship T1 alone.
 
 ## 3. Phase 2 — the real gaps (15–18d)
 
-- [ ] ⬜ **T10 — `sexualActivity` on `DailyLog`.** Add beside the existing fields at
-      `Sources/GenesyxCore/Models/DailyLog.swift:36-42`. No such field exists today.
-- [ ] ⬜ **T11 — Persist it.** `PersistenceDTOs.swift`, `RemoteModels.swift`, + Supabase migration.
-      Follow the existing "absent → legacy default" decode pattern.
+- [x] ✅ **T10 — `sexualActivity` on `DailyLog`.** A plain `Bool` (default `false`), not
+      protected/unprotected: this is a conception-prep app, so the question the data answers is
+      whether it fell inside the fertile window. `false` means nothing recorded — the same collapse
+      `waterMl == 0` and an empty `symptoms` already make.
+- [x] ✅ **T11 — Persist it.** `DailyLogDTO`, `DailyLogRow` (`sexual_activity`), and
+      `supabase/migrations/20260810_daily_logs_sexual_activity.sql`. Absent decodes as `false`
+      everywhere: a day written before the column existed was never asked the question.
+
+      ⚠️ **Deliberately NOT in `TrackingEngine.isMeaningfulLog`.** It plainly is a meaningful log,
+      but that predicate is the cross-platform contract — the same rule runs in the Android
+      `TrackingEngine` against the same `tracking_test_vectors.json`, so counting it here alone would
+      give the two clients different streak numbers for identical data with nothing to report the
+      divergence. **Android coordination item:** flip it in both clients and the vectors in one
+      change. `MeaningfulLogTests.testStreakContractIgnoresSexualActivity` fails if someone flips it
+      unilaterally. Until then a sex-only day does not extend her streak, and does not stop the
+      notification dormancy check concluding she has gone quiet — resolve before T12 ships the UI.
 - [ ] ⬜ **T12 — Private logging UI** in `LogView.swift`. Must be excluded from any partner-visible
       surface.
 - [ ] ⬜ **T13 — Calendar markers.** `TrackView.swift:146`. Period/fertile/ovulation/luteal already
@@ -210,7 +222,7 @@ start today and finish inside one sprint. Ordered so each day ships something de
 | 5 | T15 — per-category notification toggles | 1d | ✅ |
 | 6 | T28 (notification half) — weekly new-article alert | 0.5d | ✅ |
 | 7 | T30 — per-supplement reminders | 1d | ✅ |
-| 8 | T10 · T11 — `sexualActivity` model + persistence + migration | 2.5d | ⬜ |
+| 8 | T10 · T11 — `sexualActivity` model + persistence + migration | 2.5d | ✅ |
 | 9 | T12 — private logging UI (excluded from partner surfaces) | 1.5d | ⬜ |
 | 10 | T13 — calendar dot markers (pH, symptoms, activity) | 2d | ⬜ |
 | 11 | T8 — persist quiz answers (plumbing only; T7's copy needs G1) | 1.5d | ⬜ |
@@ -237,7 +249,7 @@ amount of tooling shortens it. That is why Sprint 1 is built entirely from work 
 
 ## 10. Verification gate
 
-Green baseline is **155 domain + 150 app tests** (was 125 + 139 before Sprint 1). Run after every task:
+Green baseline is **159 domain + 157 app tests** (was 125 + 139 before Sprint 1). Run after every task:
 
 ```bash
 swift test && xcodebuild test -project Genesyx.xcodeproj -scheme Genesyx \

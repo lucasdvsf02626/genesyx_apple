@@ -101,6 +101,9 @@ struct PhReadingRow: Codable {
     }
 }
 
+/// Row-level security on `daily_logs` is what actually keeps this private — a partner holds a
+/// `partner_id` link, not a read grant, and nothing in the app ever selects another user's logs.
+/// That matters more here than on the other tables because of `sexual_activity`.
 struct DailyLogRow: Codable {
     var userId: String
     var date: String             // yyyy-MM-dd
@@ -111,6 +114,8 @@ struct DailyLogRow: Codable {
     var waterMl: Int
     var supplements: [String]
     var notes: String?
+    /// Optional on decode so a row from before the column existed tolerates as `false`.
+    var sexualActivity: Bool?
 
     enum CodingKeys: String, CodingKey {
         case userId = "user_id"
@@ -118,6 +123,7 @@ struct DailyLogRow: Codable {
         case mood, energy, symptoms, notes, supplements
         case sleepMinutes = "sleep_minutes"
         case waterMl = "water_ml"
+        case sexualActivity = "sexual_activity"
     }
 
     var domain: DailyLog {
@@ -128,7 +134,8 @@ struct DailyLogRow: Codable {
             sleepMinutes: sleepMinutes,
             supplements: Set(supplements),
             notes: notes,
-            waterMl: waterMl
+            waterMl: waterMl,
+            sexualActivity: sexualActivity ?? false
         )
     }
 
@@ -142,6 +149,7 @@ struct DailyLogRow: Codable {
         self.waterMl = log.waterMl
         self.supplements = Array(log.supplements)
         self.notes = log.notes
+        self.sexualActivity = log.sexualActivity
     }
 }
 

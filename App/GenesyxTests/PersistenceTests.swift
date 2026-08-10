@@ -37,6 +37,35 @@ final class PersistenceTests: XCTestCase {
         XCTAssertEqual(row.domain.sleepMinutes, 455)
     }
 
+    // MARK: sexual_activity (T10 · T11)
+
+    func testDailyLogDTOCarriesSexualActivity() {
+        let log = DailyLog(waterMl: 500, sexualActivity: true)
+        XCTAssertEqual(log.dto.domain, log)
+    }
+
+    /// A day persisted before the field existed was never asked the question, so `false` is the only
+    /// honest reading of it. Decoding it as anything else would invent an answer she never gave.
+    func testALocalDayWrittenBeforeTheFieldExistedDecodesAsNotRecorded() throws {
+        let json = #"{"symptoms":[],"supplements":[],"waterMl":750}"#
+        let dto = try JSONDecoder().decode(DailyLogDTO.self, from: Data(json.utf8))
+        XCTAssertFalse(dto.domain.sexualActivity)
+    }
+
+    func testRemoteRowSendsSexualActivityAsItsColumn() throws {
+        let row = DailyLogRow(userId: "u", date: CalendarDate(2026, 8, 10),
+                              log: DailyLog(sexualActivity: true))
+        let json = try XCTUnwrap(String(data: JSONEncoder().encode(row), encoding: .utf8))
+
+        XCTAssertTrue(json.contains("\"sexual_activity\":true"), json)
+    }
+
+    func testARemoteRowMissingTheColumnDecodesAsNotRecorded() throws {
+        let json = #"{"user_id":"u","date":"2026-08-10","symptoms":[],"supplements":[],"water_ml":0}"#
+        let row = try JSONDecoder().decode(DailyLogRow.self, from: Data(json.utf8))
+        XCTAssertFalse(row.domain.sexualActivity)
+    }
+
     func testPhReadingDTORoundTrip() {
         let r = PhReading(id: "abc", phValue: 6.8, recordedAt: Date(timeIntervalSince1970: 1_000_000), notes: "am")
         XCTAssertEqual(r.dto.domain, r)

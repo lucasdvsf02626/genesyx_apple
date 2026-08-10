@@ -23,6 +23,12 @@ public protocol TrackingLoggable {
 }
 
 extension DailyLog: TrackingLoggable {
+    /// ⚠️ `sexualActivity` is deliberately absent. It plainly *is* a meaningful log, but this
+    /// predicate is the cross-platform contract: the same rule runs in the Android `TrackingEngine`
+    /// against the same `tracking_test_vectors.json`, so adding a term here alone would give the two
+    /// clients different streak numbers for identical data — with no error anywhere to say so.
+    /// Flag for Android coordination; do not apply unilaterally. `testStreakContractIgnoresSexualActivity`
+    /// fails if someone does.
     public var isMeaningfulLog: Bool {
         waterMl > 0 || mood != nil || energy != nil || !symptoms.isEmpty
             || (sleepMinutes ?? 0) > 0 || !supplements.isEmpty || !(notes ?? "").isEmpty

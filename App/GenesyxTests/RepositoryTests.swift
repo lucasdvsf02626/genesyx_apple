@@ -116,6 +116,41 @@ final class RepositoryTests: XCTestCase {
         XCTAssertEqual(repo.syncState(on: today), .synced)
     }
 
+    func testSexualActivityIsIncludedInOutboundDailyLogSyncPayload() async {
+        let backend = FakeDailyLogBackend()
+        let today = CalendarDate.today()
+        let repo = DailyLogRepository(store: makeStore(), backend: backend)
+
+        repo.upsert(DailyLog(sexualActivity: true), on: today)
+        await repo.drainPending()
+
+        XCTAssertEqual(backend.remote[today]?.sexualActivity, true)
+        XCTAssertEqual(repo.syncState(on: today), .synced)
+    }
+
+    func testSexualActivitySurvivesARelaunch() {
+        let store = makeStore()
+        let today = CalendarDate.today()
+        DailyLogRepository(store: store).upsert(DailyLog(sexualActivity: true), on: today)
+
+        XCTAssertTrue(DailyLogRepository(store: store).log(on: today).sexualActivity)
+    }
+
+    /// Covered in bulk by `testSignOutClearsLocalHealthData`, and pinned separately anyway: this is
+    /// the most sensitive thing she records, and a future change that clears logs field-by-field
+    /// rather than by key should fail loudly here rather than leave it on the device for whoever
+    /// signs in next.
+    func testSignOutClearsSexualActivity() {
+        let store = makeStore()
+        let c = AppContainer(store: store, backend: nil)
+        c.dailyLog.upsert(DailyLog(sexualActivity: true), on: .today())
+
+        c.session.signOut()
+
+        XCTAssertFalse(c.dailyLog.log(on: .today()).sexualActivity)
+        XCTAssertFalse(DailyLogRepository(store: store).log(on: .today()).sexualActivity)
+    }
+
     func testHydrationRestoresFromBackendDailyLogList() async {
         let backend = FakeDailyLogBackend()
         let today = CalendarDate.today()

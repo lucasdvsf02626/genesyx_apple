@@ -41,6 +41,20 @@ public struct DailyLog: Hashable, Sendable {
     public var notes: String?
     public var waterMl: Int
 
+    /// Whether she recorded sexual activity on this day.
+    ///
+    /// A plain flag, not protected/unprotected: this is a conception-prep app, so the question the
+    /// data answers is whether it fell inside the fertile window. Contraception status is a
+    /// different product.
+    ///
+    /// `false` means nothing recorded, the same collapse `waterMl == 0` and an empty `symptoms`
+    /// already make — the log sheet offers one toggle, so there is no third state for it to carry.
+    ///
+    /// The most sensitive field in the app. It is never sent to a partner (`PartnerRepository`
+    /// exchanges display names only) and never reaches notification copy, which lands on a lock
+    /// screen anyone holding the phone can read.
+    public var sexualActivity: Bool
+
     public init(
         mood: Mood? = nil,
         energy: EnergyLevel? = nil,
@@ -48,7 +62,8 @@ public struct DailyLog: Hashable, Sendable {
         sleepMinutes: Int? = nil,
         supplements: Set<String> = [],
         notes: String? = nil,
-        waterMl: Int = 0
+        waterMl: Int = 0,
+        sexualActivity: Bool = false
     ) {
         self.mood = mood
         self.energy = energy
@@ -57,5 +72,6 @@ public struct DailyLog: Hashable, Sendable {
         self.supplements = supplements
         self.notes = notes
         self.waterMl = waterMl
+        self.sexualActivity = sexualActivity
     }
 }

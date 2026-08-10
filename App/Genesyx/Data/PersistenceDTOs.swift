@@ -12,6 +12,9 @@ struct DailyLogDTO: Codable {
     var supplements: [String] = []
     var notes: String?
     var waterMl: Int = 0
+    /// Optional so days written before the column existed still decode — as `false`, which is the
+    /// only honest reading of a day that was never asked the question.
+    var sexualActivity: Bool? = nil
 }
 
 extension DailyLog {
@@ -23,7 +26,8 @@ extension DailyLog {
             sleepMinutes: sleepMinutes,
             supplements: Array(supplements),
             notes: notes,
-            waterMl: waterMl
+            waterMl: waterMl,
+            sexualActivity: sexualActivity
         )
     }
 }
@@ -37,7 +41,8 @@ extension DailyLogDTO {
             sleepMinutes: sleepMinutes,
             supplements: Set(supplements),
             notes: notes,
-            waterMl: waterMl
+            waterMl: waterMl,
+            sexualActivity: sexualActivity ?? false
         )
     }
 }
