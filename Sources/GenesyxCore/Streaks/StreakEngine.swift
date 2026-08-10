@@ -45,6 +45,11 @@ public protocol StreakLoggable {
 
 /// Conform the existing DailyLog model to the engine's input protocol (§3).
 extension DailyLog: StreakLoggable {
+    /// ⚠️ `sexualActivity` is deliberately absent, for the same reason it is absent from
+    /// `TrackingEngine.isMeaningfulLog` — see the note there. Widening either one alone gives iOS
+    /// and Android different streaks for identical data. The notification layer folds it in
+    /// separately (`NotificationService.snapshot`), which is safe because notifications are
+    /// iOS-only and mirror nothing.
     public var hasAnyEntry: Bool {
         waterMl > 0 || mood != nil || energy != nil || !symptoms.isEmpty
             || sleepMinutes != nil || !supplements.isEmpty || !(notes ?? "").isEmpty

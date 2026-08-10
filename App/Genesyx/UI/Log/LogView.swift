@@ -21,6 +21,7 @@ struct LogView: View {
     @State private var sleepMinutes: Int?
     @State private var waterMl = 0
     @State private var selectedSupplements: Set<String> = []
+    @State private var sexualActivity = false
 
     @State private var showAddSymptom = false
     @State private var customSymptom = ""
@@ -40,6 +41,7 @@ struct LogView: View {
                     moodSection
                     energySection
                     symptomsSection
+                    intimacySection
                     miniCards
                     notesSection
                     Spacer().frame(height: 20)
@@ -81,6 +83,7 @@ struct LogView: View {
         sleepMinutes = log.sleepMinutes
         waterMl = log.waterMl
         selectedSupplements = log.supplements
+        sexualActivity = log.sexualActivity
         loaded = true
     }
 
@@ -89,7 +92,8 @@ struct LogView: View {
             DailyLog(
                 mood: mood, energy: energy, symptoms: symptoms,
                 sleepMinutes: sleepMinutes, supplements: selectedSupplements,
-                notes: notes.isEmpty ? nil : notes, waterMl: waterMl
+                notes: notes.isEmpty ? nil : notes, waterMl: waterMl,
+                sexualActivity: sexualActivity
             ),
             on: date
         )
@@ -204,6 +208,37 @@ struct LogView: View {
             .padding(.horizontal, 14).frame(height: 36)
             .overlay(Capsule().strokeBorder(GenesyxColor.border, lineWidth: 1))
             .onTapGesture { showAddSymptom = true }
+        }
+    }
+
+    /// The most private thing she records, so the screen says out loud what becomes of it rather
+    /// than leaving her to guess. The claim is literal: linking a partner exchanges display names
+    /// (`PartnerRepository`), and `daily_logs` is owner-only under RLS — a partner link is a row in
+    /// `profiles`, not a read grant.
+    private var intimacySection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            sectionLabel("Intimacy")
+            Button {
+                sexualActivity.toggle()
+            } label: {
+                HStack(spacing: 4) {
+                    if sexualActivity { Image(systemName: "checkmark").font(.system(size: 12, weight: .bold)) }
+                    Text("Sex").font(.system(size: 13, weight: .medium))
+                }
+                .foregroundStyle(sexualActivity ? .white : GenesyxColor.foreground.opacity(0.8))
+                .padding(.horizontal, 14).frame(height: 36)
+                .background(sexualActivity ? GenesyxColor.primary : GenesyxColor.card)
+                .clipShape(Capsule())
+                .overlay(Capsule().strokeBorder(sexualActivity ? .clear : GenesyxColor.border, lineWidth: 1))
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("log.sexualActivity")
+            .accessibilityLabel(sexualActivity ? "Sex, logged" : "Sex, not logged")
+
+            Text("Private to you. A linked partner sees your name — never your logs.")
+                .font(.gxBodySmall)
+                .foregroundStyle(GenesyxColor.mutedForeground)
+                .padding(.top, 8).padding(.leading, 4)
         }
     }
 

@@ -168,7 +168,13 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
     private func snapshot() -> NotificationSnapshot {
         let today = CalendarDate.today()
         let phDays = ph.readings.map { CalendarDate.today(now: $0.recordedAt) }
-        let loggedToday = dailyLog.log(on: today).isMeaningfulLog || phDays.contains(today)
+        // `sexualActivity` is folded in here and in `lastActivityDay`, but NOT into the engines'
+        // `isMeaningfulLog` / `hasAnyEntry`: those two are the cross-platform streak contract and
+        // cannot widen until Android does (see `TrackingEngine`). Notifications are iOS-only and
+        // mirror nothing, so widening here diverges nothing — and the alternative is nudging her to
+        // log on a day she logged.
+        let log = dailyLog.log(on: today)
+        let loggedToday = log.isMeaningfulLog || log.sexualActivity || phDays.contains(today)
 
         return NotificationSnapshot(
             streak: StreakEngine.compute(
@@ -192,9 +198,10 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
         )
     }
 
-    /// Any activity at all — a log or a pH reading.
+    /// Any activity at all — a log or a pH reading. Drives "she went quiet, so we go quiet", which
+    /// is why `sexualActivity` counts here (see `snapshot`).
     private func lastActivityDay(phDays: [CalendarDate]) -> CalendarDate? {
-        let logDays = dailyLog.logByDate.filter { $0.value.hasAnyEntry }.keys
+        let logDays = dailyLog.logByDate.filter { $0.value.hasAnyEntry || $0.value.sexualActivity }.keys
         return (Array(logDays) + phDays).max()
     }
 

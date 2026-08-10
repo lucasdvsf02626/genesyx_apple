@@ -37,4 +37,12 @@ final class MeaningfulLogTests: XCTestCase {
     func testItNeverSuppressesADayThatCountsForAnotherReason() {
         XCTAssertTrue(DailyLog(waterMl: 250, sexualActivity: true).isMeaningfulLog)
     }
+
+    /// The streak engine's own predicate is the same contract and carries the same exclusion —
+    /// widening one and not the other would be the divergence arriving by the side door.
+    func testTheStreakEnginesPredicateExcludesItToo() {
+        XCTAssertFalse(DailyLog(sexualActivity: true).hasAnyEntry,
+                       "coordinate with Android and the shared vectors before changing this")
+        XCTAssertTrue(DailyLog(mood: .good, sexualActivity: true).hasAnyEntry)
+    }
 }

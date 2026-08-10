@@ -62,6 +62,31 @@ final class GenesyxUITests: XCTestCase {
                       "turning a reminder back off must be as easy as setting one")
     }
 
+    /// The most private thing she can record, so this walks the whole path rather than trusting the
+    /// model test: log it, save, reopen, and find it still there. A field that saves but doesn't
+    /// repopulate reads as the app having quietly discarded it — worse here than anywhere else.
+    func testSexualActivityIsLoggedPrivatelyAndComesBack() {
+        let app = launchSeeded(tab: 0)
+
+        app.buttons["Log today"].tap()
+        let chip = app.buttons["log.sexualActivity"]
+        XCTAssertTrue(chip.waitForExistence(timeout: 10), "Log Today should offer the intimacy chip")
+        XCTAssertEqual(chip.label, "Sex, not logged", "nothing is recorded until she says so")
+
+        // The promise made on screen is a real one: partner linking exchanges display names, and
+        // `daily_logs` is owner-only under RLS.
+        XCTAssertTrue(app.staticTexts["Private to you. A linked partner sees your name — never your logs."].exists,
+                      "she should be told what becomes of this before she taps it")
+
+        chip.tap()
+        XCTAssertEqual(chip.label, "Sex, logged")
+        app.buttons["Save log"].tap()
+
+        app.buttons["Log today"].tap()
+        XCTAssertTrue(chip.waitForExistence(timeout: 5))
+        XCTAssertEqual(chip.label, "Sex, logged", "it must survive the save it just went through")
+    }
+
     func testLearnTabShowsArticles() {
         let app = launchSeeded(tab: 4)   // Learn
         XCTAssertTrue(app.staticTexts["Your first week with Genesyx"].waitForExistence(timeout: 10),

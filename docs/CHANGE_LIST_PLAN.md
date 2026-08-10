@@ -92,8 +92,8 @@ T1 inherits G2's block. Do not ship T1 alone.
 - [x] ✅ **T5 — Fix false offline copy.** `LearnContent.swift:365` claimed "Offline, it blocks the save
       and tells you to reconnect". `LogView.save()` (line 87) never blocks. Likely origin of the
       client's "offline" confusion.
-- [ ] ⬜ **T6 — Disclaimer into expandable panel.** `PhTrackerSection.swift:97` and `:315`. Keep it
-      permanently visible on the **log sheet**; only collapse the card copy.
+- [x] ✅ **T6 — Disclaimer into expandable panel.** `PhTrackerSection.swift:97` and `:315`. Kept
+      permanently visible on the **log sheet**; only the card copy collapses.
 - [ ] ⬜ **T7 — Gender question → 4 options.** `Sources/GenesyxCore/Content/QuizContent.swift:83`:
       Girl / Boy / No preference / Prefer not to say, and skippable. Current options only record
       *that* a preference exists ("hope" / "either" / "private"), never which. *Needs G1.*
@@ -118,17 +118,30 @@ T1 inherits G2's block. Do not ship T1 alone.
       give the two clients different streak numbers for identical data with nothing to report the
       divergence. **Android coordination item:** flip it in both clients and the vectors in one
       change. `MeaningfulLogTests.testStreakContractIgnoresSexualActivity` fails if someone flips it
-      unilaterally. Until then a sex-only day does not extend her streak, and does not stop the
-      notification dormancy check concluding she has gone quiet — resolve before T12 ships the UI.
-- [ ] ⬜ **T12 — Private logging UI** in `LogView.swift`. Must be excluded from any partner-visible
-      surface.
+      unilaterally. Until then a sex-only day does not extend her streak. **The dormancy half of that
+      problem is solved in T12** — see below.
+- [x] ✅ **T12 — Private logging UI.** An Intimacy chip in `LogView.swift`, between Symptoms and the
+      mini-cards, carrying the promise on screen: *"Private to you. A linked partner sees your name —
+      never your logs."* That claim is literal and now test-asserted — `PartnerRepository` exchanges
+      display names, and `daily_logs` is owner-only under RLS. A partner link is a row in `profiles`,
+      not a read grant.
+
+      The notification layer folds `sexualActivity` in at `NotificationService.snapshot()` and
+      `lastActivityDay()`, so a sex-only day no longer reads as silence and she is not nudged to log
+      on a day she logged. Safe there and not in the engines: local notifications are iOS-only and
+      mirror nothing. The **streak** consequence above still stands, awaiting Android.
+
+      `StreakEngine.hasAnyEntry` carries the same ⚠️ as `isMeaningfulLog`, pinned by
+      `MeaningfulLogTests.testTheStreakEnginesPredicateExcludesItToo` — otherwise the divergence
+      arrives by the side door. The field reaches no partner surface and no notification copy, which
+      lands on a lock screen anyone holding the phone can read.
 - [ ] ⬜ **T13 — Calendar markers.** `TrackView.swift:146`. Period/fertile/ovulation/luteal already
       render as backgrounds; **add pH test, symptoms/notes, sexual activity as dots** — more
       background tints will not stay legible.
-- [ ] ⬜ **T14 — Fertile-window notification.** Extend `NotificationPlanner.plan()`; `OvulationLogic`
-      already computes the window. Use discreet lock-screen wording by default (sensitive health
-      data visible to anyone holding the phone).
-- [ ] ⬜ **T15 — Per-category notification toggles.** `ProfileView.swift:176`. One global switch will
+- [x] ✅ **T14 — Fertile-window notification.** Extends `NotificationPlanner.plan()`; `OvulationLogic`
+      already computed the window. Discreet lock-screen wording by default (sensitive health data is
+      visible to anyone holding the phone).
+- [x] ✅ **T15 — Per-category notification toggles.** `ProfileView.swift:176`. One global switch would
       not hold 8 categories.
 - [ ] ⬜ **T16 — Health Profile editor.** `ProfileView.swift:167` currently opens a static alert only.
 - [ ] ⬜ **T17 — Tracking Preferences editor.** `ProfileView.swift:169`, same problem.
@@ -138,8 +151,8 @@ T1 inherits G2's block. Do not ship T1 alone.
 
 ## 4. Phase 3 — design (10–20d, design-gated)
 
-- [ ] ⬜ **T20 — Light mode default.** One line at `PreferencesRepository.swift:66`
-      (`.system` → `.light`). Toggle already exists in Profile. QA both schemes.
+- [x] ✅ **T20 — Light mode default.** One line at `PreferencesRepository.swift:66`
+      (`.system` → `.light`). Toggle already existed in Profile.
 - [ ] ⬜ **T21 — Restore egg artwork.** Replace orbs at `OnboardingFlowView.swift:49`; wire
       `egg_female`/`egg_male`; add background motifs. *Needs G4.*
 - [ ] ⬜ **T22 — Warm/premium visual pass.** Open-ended — require a design spec or this will sprawl.
@@ -156,10 +169,12 @@ T1 inherits G2's block. Do not ship T1 alone.
 
 ## 6. Phase 5 — education (6–8d + medical review)
 
-- [ ] ⬜ **T28 — Weekly article drop + unread badge/dashboard card.** Repoint the existing Sunday
-      Learn nudge. 16 articles ship today; adding one is ~30 min in `LearnContent.swift`.
+- [~] 🟡 **T28 — Weekly article drop + unread badge/dashboard card.** Notification half ✅ (the Sunday
+      Learn nudge now names the new article). Unread badge + dashboard card still ⬜. 16 articles ship
+      today; adding one is ~30 min in `LearnContent.swift`.
 - [ ] ⬜ **T29 — Write and wire the 12 articles** (~0.5d each). **T29b (Shettles) needs G1.**
-- [ ] ⬜ **T30 — Per-supplement reminders.** No per-supplement scheduling exists today.
+- [x] ✅ **T30 — Per-supplement reminders.** Each supplement carries its own time, the Genesyx
+      essentials included; "No reminder" stays a first-class choice in the menu.
 
 ## 7. Phase 6 — quote separately (40–60d)
 
@@ -223,7 +238,7 @@ start today and finish inside one sprint. Ordered so each day ships something de
 | 6 | T28 (notification half) — weekly new-article alert | 0.5d | ✅ |
 | 7 | T30 — per-supplement reminders | 1d | ✅ |
 | 8 | T10 · T11 — `sexualActivity` model + persistence + migration | 2.5d | ✅ |
-| 9 | T12 — private logging UI (excluded from partner surfaces) | 1.5d | ⬜ |
+| 9 | T12 — private logging UI (excluded from partner surfaces) | 1.5d | ✅ |
 | 10 | T13 — calendar dot markers (pH, symptoms, activity) | 2d | ⬜ |
 | 11 | T8 — persist quiz answers (plumbing only; T7's copy needs G1) | 1.5d | ⬜ |
 | | **Total** | **12.75d** | 1.25d QA buffer |
@@ -249,7 +264,8 @@ amount of tooling shortens it. That is why Sprint 1 is built entirely from work 
 
 ## 10. Verification gate
 
-Green baseline is **159 domain + 157 app tests** (was 125 + 139 before Sprint 1). Run after every task:
+Green baseline is **160 domain + 157 app tests** (was 125 + 139 before Sprint 1), plus **25 UI tests**
+(1 skipped) behind the `-uiTestSeed` harness. Run after every task:
 
 ```bash
 swift test && xcodebuild test -project Genesyx.xcodeproj -scheme Genesyx \
