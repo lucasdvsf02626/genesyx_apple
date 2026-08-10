@@ -135,9 +135,18 @@ T1 inherits G2's block. Do not ship T1 alone.
       `MeaningfulLogTests.testTheStreakEnginesPredicateExcludesItToo` — otherwise the divergence
       arrives by the side door. The field reaches no partner surface and no notification copy, which
       lands on a lock screen anyone holding the phone can read.
-- [ ] ⬜ **T13 — Calendar markers.** `TrackView.swift:146`. Period/fertile/ovulation/luteal already
-      render as backgrounds; **add pH test, symptoms/notes, sexual activity as dots** — more
-      background tints will not stay legible.
+- [x] ✅ **T13 — Calendar markers.** pH test, symptoms/notes and intimacy as dots under the day
+      number, with the legend extended to name all three. The rule lives in `DayMarkers`
+      (GenesyxCore) rather than the view, so it is unit-tested and shaped to mirror on Android.
+      Deliberately *not* marked: water, mood, energy, sleep, supplements — a grid where most days
+      carry most dots marks nothing. The day sheet now accounts for every dot, since a marked day
+      described as "No log for this day" reads as the app having lost what she entered.
+
+      **Fixed en route (pre-existing, not introduced here):** every calendar cell was squaring the
+      day *number* rather than the cell, so cells collapsed to one line of text and two-digit days
+      rendered as "…" — on 2026-08-10 that was 8 of 31 days unreadable. Verified against a
+      screenshot of `main` before the marker work. The square now comes from `Color.clear`, the same
+      shape the empty leading cells already used.
 - [x] ✅ **T14 — Fertile-window notification.** Extends `NotificationPlanner.plan()`; `OvulationLogic`
       already computed the window. Discreet lock-screen wording by default (sensitive health data is
       visible to anyone holding the phone).
@@ -239,7 +248,7 @@ start today and finish inside one sprint. Ordered so each day ships something de
 | 7 | T30 — per-supplement reminders | 1d | ✅ |
 | 8 | T10 · T11 — `sexualActivity` model + persistence + migration | 2.5d | ✅ |
 | 9 | T12 — private logging UI (excluded from partner surfaces) | 1.5d | ✅ |
-| 10 | T13 — calendar dot markers (pH, symptoms, activity) | 2d | ⬜ |
+| 10 | T13 — calendar dot markers (pH, symptoms, activity) | 2d | ✅ |
 | 11 | T8 — persist quiz answers (plumbing only; T7's copy needs G1) | 1.5d | ⬜ |
 | | **Total** | **12.75d** | 1.25d QA buffer |
 
@@ -264,7 +273,7 @@ amount of tooling shortens it. That is why Sprint 1 is built entirely from work 
 
 ## 10. Verification gate
 
-Green baseline is **160 domain + 157 app tests** (was 125 + 139 before Sprint 1), plus **25 UI tests**
+Green baseline is **165 domain + 157 app tests** (was 125 + 139 before Sprint 1), plus **27 UI tests**
 (1 skipped) behind the `-uiTestSeed` harness. Run after every task:
 
 ```bash

@@ -24,6 +24,12 @@ struct TrackView: View {
     private let today = CalendarDate.today()
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 7)
 
+    /// pH readings are timestamped rather than day-keyed, so collapse them onto dates once per
+    /// render instead of once per cell.
+    private var phDays: Set<CalendarDate> {
+        Set(ph.readings.map { CalendarDate.today(now: $0.recordedAt) })
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -52,7 +58,11 @@ struct TrackView: View {
         .sheet(isPresented: $showSleepDetail) { SleepDetailView() }
         .sheet(isPresented: $showSymptomsDetail) { SymptomsDetailView() }
         .sheet(isPresented: $showNutritionDetail) { NutritionDetailView() }
-        .sheet(item: $selectedDay) { day in DayDetailSheet(day: day, today: today, log: dailyLog.log(on: day.date)) }
+        .sheet(item: $selectedDay) { day in
+            DayDetailSheet(day: day, today: today,
+                           log: dailyLog.log(on: day.date),
+                           hasPhReading: phDays.contains(day.date))
+        }
         .onAppear { consumePendingHydration(); consumePendingPh() }
         .onChange(of: router.pendingHydration) { _ in consumePendingHydration() }
         .onChange(of: router.pendingPh) { _ in consumePendingPh() }
@@ -129,17 +139,63 @@ struct TrackView: View {
             Color.clear.aspectRatio(1, contentMode: .fit)
         case let .day(date, info, isToday):
             let type = CycleEngine.dayType(for: info)
+            let markers = DayMarkers.markers(log: dailyLog.log(on: date), hasPhReading: phDays.contains(date))
             Button { selectedDay = DayInfo(date: date, info: info) } label: {
-                Text("\(date.day)")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(type == .ovulation ? .white : GenesyxColor.foreground)
-                    .frame(maxWidth: .infinity)
+                // The square comes from `Color.clear`, which is flexible in both axes — the same
+                // shape `.empty` above already uses. Squaring the *number* instead collapses the
+                // cell to one line of text, which is how two-digit days came to render as "…".
+                Color.clear
                     .aspectRatio(1, contentMode: .fit)
+                    .overlay {
+                        Text("\(date.day)")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(type == .ovulation ? .white : GenesyxColor.foreground)
+                    }
+                    .overlay(alignment: .bottom) { markerRow(markers) }
                     .background(cellBackground(type))
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                     .overlay(cellBorder(type: type, isToday: isToday))
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(cellLabel(date: date, type: type, isToday: isToday, markers: markers))
+        }
+    }
+
+    /// The dots. Colors stay constant across all five cell backgrounds — going white on the solid
+    /// ovulation cell would cost the marker its identity on the one day it matters most.
+    @ViewBuilder
+    private func markerRow(_ markers: [DayMarker]) -> some View {
+        if !markers.isEmpty {
+            HStack(spacing: 3) {
+                ForEach(markers, id: \.self) { Circle().fill(markerColor($0)).frame(width: 4, height: 4) }
+            }
+            .padding(.bottom, 4)
+        }
+    }
+
+    private func markerColor(_ marker: DayMarker) -> Color {
+        switch marker {
+        case .ph: return GenesyxColor.electricBlue
+        case .symptoms: return GenesyxColor.phElevated
+        case .intimacy: return GenesyxColor.electricPink
+        }
+    }
+
+    /// Dots carry meaning no screen reader can see, so the cell says it instead of reading out a
+    /// bare number.
+    private func cellLabel(date: CalendarDate, type: DayType, isToday: Bool, markers: [DayMarker]) -> String {
+        var parts = ["\(date.day)"]
+        if isToday { parts.append("today") }
+        parts.append(legendLabel(for: type))
+        parts.append(contentsOf: markers.map { markerLabel($0) })
+        return parts.joined(separator: ", ")
+    }
+
+    private func markerLabel(_ marker: DayMarker) -> String {
+        switch marker {
+        case .ph: return "pH logged"
+        case .symptoms: return "symptoms or notes logged"
+        case .intimacy: return "intimacy logged"
         }
     }
 
@@ -174,20 +230,52 @@ struct TrackView: View {
         .buttonStyle(.plain)
     }
 
+    /// Two halves, and the split is the point: tinted squares are the *predicted* cycle, dots are
+    /// what she actually recorded. Swatches read from `cellBackground` so the key cannot drift out
+    /// of step with the grid it explains.
     private var legend: some View {
-        let items: [(String, Color)] = [
-            ("Period", GenesyxColor.powderPink.tintOnWhite(0.55)),
-            ("Fertile window", GenesyxColor.powderBlue.tintOnWhite(0.55)),
-            ("Ovulation", GenesyxColor.primary),
-            ("Luteal", GenesyxColor.babyLavender.tintOnWhite(0.25)),
-        ]
-        return LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], alignment: .leading, spacing: 6) {
-            ForEach(items, id: \.0) { label, color in
-                HStack(spacing: 8) {
-                    RoundedRectangle(cornerRadius: 4).fill(color).frame(width: 14, height: 14)
-                    Text(label).font(.system(size: 11.5)).foregroundStyle(GenesyxColor.mutedForeground)
+        let phases: [DayType] = [.period, .fertile, .ovulation, .luteal]
+        let key = [GridItem(.flexible()), GridItem(.flexible())]
+        return VStack(alignment: .leading, spacing: 8) {
+            LazyVGrid(columns: key, alignment: .leading, spacing: 6) {
+                ForEach(phases, id: \.self) { type in
+                    legendRow(label: legendLabel(for: type)) {
+                        RoundedRectangle(cornerRadius: 4).fill(cellBackground(type)).frame(width: 14, height: 14)
+                    }
                 }
             }
+            LazyVGrid(columns: key, alignment: .leading, spacing: 6) {
+                ForEach(DayMarker.allCases, id: \.self) { marker in
+                    legendRow(label: legendLabel(for: marker)) {
+                        Circle().fill(markerColor(marker)).frame(width: 6, height: 6).frame(width: 14)
+                    }
+                }
+            }
+        }
+    }
+
+    private func legendRow<Swatch: View>(label: String, @ViewBuilder swatch: () -> Swatch) -> some View {
+        HStack(spacing: 8) {
+            swatch()
+            Text(label).font(.system(size: 11.5)).foregroundStyle(GenesyxColor.mutedForeground)
+        }
+    }
+
+    private func legendLabel(for type: DayType) -> String {
+        switch type {
+        case .period: return "Period"
+        case .fertile: return "Fertile window"
+        case .ovulation: return "Ovulation"
+        case .luteal: return "Luteal"
+        case .follicular: return "Follicular"
+        }
+    }
+
+    private func legendLabel(for marker: DayMarker) -> String {
+        switch marker {
+        case .ph: return "pH test"
+        case .symptoms: return "Symptoms / notes"
+        case .intimacy: return "Intimacy"
         }
     }
 
@@ -1272,6 +1360,9 @@ private struct DayDetailSheet: View {
     let day: DayInfo
     let today: CalendarDate
     let log: DailyLog
+    /// Carried so the sheet can account for every dot on the cell that opened it — a day marked on
+    /// the grid and then described as empty here reads as the app having lost what she entered.
+    let hasPhReading: Bool
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -1308,6 +1399,9 @@ private struct DayDetailSheet: View {
         if !log.symptoms.isEmpty { parts.append("\(log.symptoms.count) symptom\(log.symptoms.count == 1 ? "" : "s")") }
         if !log.supplements.isEmpty { parts.append("\(log.supplements.count) supplement\(log.supplements.count == 1 ? "" : "s")") }
         if let m = log.sleepMinutes, m > 0 { parts.append(String(format: "%.1f h sleep", Double(m) / 60)) }
+        if hasPhReading { parts.append("pH test") }
+        if !(log.notes ?? "").isEmpty { parts.append("a note") }
+        if log.sexualActivity { parts.append("intimacy") }
         guard !parts.isEmpty else { return nil }
         return "Logged: " + parts.joined(separator: ", ") + "."
     }

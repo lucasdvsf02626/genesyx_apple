@@ -87,6 +87,62 @@ final class GenesyxUITests: XCTestCase {
         XCTAssertEqual(chip.label, "Sex, logged", "it must survive the save it just went through")
     }
 
+    /// The month grid spends its backgrounds on the four predicted cycle phases, so what she
+    /// actually recorded arrives as dots. Dots are invisible to a screen reader, which is why the
+    /// cell carries an explicit label — and why asserting on that label is the honest way to prove
+    /// the marker rendered. Drives the real path rather than reading a fixture: the seed plants a pH
+    /// reading today but no intimacy, so this logs it and then goes looking for it.
+    func testCalendarMarksWhatSheRecordedOnTheDay() {
+        let app = launchSeeded(tab: 0)
+
+        app.buttons["Log today"].tap()
+        let chip = app.buttons["log.sexualActivity"]
+        XCTAssertTrue(chip.waitForExistence(timeout: 10))
+        chip.tap()
+        app.buttons["Save log"].tap()
+
+        app.buttons.matching(identifier: "Track").firstMatch.tap()
+
+        // Today carries both markers: the seeded pH reading and the intimacy just logged.
+        let todayCell = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "today", "intimacy logged")
+        ).firstMatch
+        XCTAssertTrue(todayCell.waitForExistence(timeout: 10), "the day she logged it should be marked")
+        XCTAssertTrue(todayCell.label.contains("pH logged"), "the seeded pH reading should be marked too")
+
+        // A dot she cannot decode is decoration, so the key names all three.
+        for label in ["pH test", "Symptoms / notes", "Intimacy"] {
+            XCTAssertTrue(app.staticTexts[label].exists, "the legend should explain the \(label) dot")
+        }
+
+        // Opening the day must account for every dot on it — a marked day described as empty reads
+        // as the app having lost what she entered.
+        todayCell.tap()
+        let summary = app.staticTexts.matching(
+            NSPredicate(format: "label BEGINSWITH %@", "Logged:")
+        ).firstMatch
+        XCTAssertTrue(summary.waitForExistence(timeout: 5), "the day sheet should summarise the day")
+        XCTAssertTrue(summary.label.contains("intimacy"), "the sheet must not contradict the dot: \(summary.label)")
+        XCTAssertTrue(summary.label.contains("pH test"), "the sheet must not contradict the dot: \(summary.label)")
+    }
+
+    /// The other half of the rule: a day she left alone stays clean. Without this the marker test
+    /// passes just as well against a grid that dots every cell. Counts rather than naming dates, so
+    /// it does not start failing on the 3rd of a month when the seeded days fall behind the anchor.
+    func testCalendarLeavesUntouchedDaysUnmarked() {
+        let app = launchSeeded(tab: 1)   // Track
+
+        // Every cell labels itself "<day number>, <phase>[, markers…]", which is what separates the
+        // grid from the rest of the buttons on the screen.
+        let cells = app.buttons.matching(NSPredicate(format: "label MATCHES %@", "^[0-9]+, .*"))
+        XCTAssertTrue(cells.firstMatch.waitForExistence(timeout: 10), "the month grid should render")
+
+        let marked = cells.allElementsBoundByIndex.filter { $0.label.contains("logged") }
+        XCTAssertFalse(marked.isEmpty, "the seeded days should be marked")
+        XCTAssertGreaterThanOrEqual(cells.count - marked.count, 20,
+                                    "most of the month is untouched and must stay bare")
+    }
+
     func testLearnTabShowsArticles() {
         let app = launchSeeded(tab: 4)   // Learn
         XCTAssertTrue(app.staticTexts["Your first week with Genesyx"].waitForExistence(timeout: 10),
