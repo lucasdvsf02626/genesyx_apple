@@ -197,9 +197,11 @@ T1 inherits G2's block. Do not ship T1 alone.
 
 ## 6. Phase 5 — education (6–8d + medical review)
 
-- [~] 🟡 **T28 — Weekly article drop + unread badge/dashboard card.** Notification half ✅ (the Sunday
-      Learn nudge now names the new article). Unread badge + dashboard card still ⬜. 16 articles ship
-      today; adding one is ~30 min in `LearnContent.swift`.
+- [x] ✅ **T28 — Weekly article drop + unread badge/dashboard card.** The Sunday nudge, the Learn tab
+      badge and the Home card all pick through one rule (`NotificationPlanner.nextRead`), so they can
+      never name different articles. The badge counts *new-and-unread* only — zero on a first install,
+      because badging all 16 would read as a backlog. 16 articles ship today; adding one is ~30 min in
+      `LearnContent.swift`.
 - [ ] ⬜ **T29 — Write and wire the 12 articles** (~0.5d each). **T29b (Shettles) needs G1.**
 - [x] ✅ **T30 — Per-supplement reminders.** Each supplement carries its own time, the Genesyx
       essentials included; "No reminder" stays a first-class choice in the menu.
@@ -302,11 +304,22 @@ their hand, and it closes the one item they raised that was genuinely missing.
 moves at AI speed. G1 in particular is calendar time — client sign-off plus medical review — and no
 amount of tooling shortens it. That is why Sprint 1 is built entirely from work that needs neither.
 
+### 9.3 After Sprint 1 — finishing the partials
+
+Sprint 1 left exactly one row half-built. This batch closes it and takes the two smallest gate-free
+nutrition items while the context is warm.
+
+| # | Task | Effort | Status |
+|---|---|---|---|
+| 12 | T28 (remaining half) — Learn unread badge + Home dashboard card | 1d | ✅ |
+| 13 | T25 — phase-change card linking to the cycle-eating article | 1d | ⬜ |
+| 14 | T23 — custom glass size | 1d | ⬜ |
+
 ---
 
 ## 10. Verification gate
 
-Green baseline is **165 domain + 161 app tests** (was 125 + 139 before Sprint 1), plus **28 UI tests**
+Green baseline is **170 domain + 168 app tests** (was 125 + 139 before Sprint 1), plus **30 UI tests**
 (1 skipped) behind the `-uiTestSeed` harness. Run after every task:
 
 ```bash

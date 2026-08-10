@@ -11,6 +11,7 @@ struct HomeView: View {
     @EnvironmentObject private var dailyLog: DailyLogRepository
     @EnvironmentObject private var ph: PhRepository
     @EnvironmentObject private var session: SessionRepository
+    @EnvironmentObject private var learn: LearnProgress
 
     @EnvironmentObject private var router: TabRouter
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -31,6 +32,7 @@ struct HomeView: View {
                         focusCard(for: settings)
                         hydrationCard
                         phNudgeCard
+                        learnCard
                         GxPrimaryButton(title: "Log today", leadingSystemImage: "square.and.pencil") { showLog = true }
                         // v1: Pregnancy preview entry hidden (destination intact, unreachable). Restore by uncommenting.
                         // pregnancyPathwayLink
@@ -328,6 +330,56 @@ struct HomeView: View {
     private func openPhDetail() {
         router.pendingPh = true   // consumed by TrackView
         router.selection = 1      // Track tab
+    }
+
+    // MARK: - Learn (one read, chosen the same way the Sunday nudge chooses)
+
+    /// Surfaces a single unread article, preferring one that arrived in this update. Disappears once
+    /// she has read the library rather than repeating something she's finished — the Sunday nudge
+    /// goes quiet at the same point, and for the same reason.
+    @ViewBuilder
+    private var learnCard: some View {
+        if let next = learn.nextRead {
+            Button { openLearnArticle(next.article.slug) } label: {
+                HStack(spacing: 14) {
+                    Image(systemName: "book")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(GenesyxColor.electricLavender)
+                        .frame(width: 44, height: 44)
+                        .background(GenesyxColor.electricLavender.opacity(0.12))
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Eyebrow(next.headline, color: GenesyxColor.mutedForeground)
+                        Text(next.article.title)
+                            .font(.gxCardHeadingSmall).foregroundStyle(GenesyxColor.foreground)
+                            .multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text(next.article.readingTime)
+                            .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+                    }
+                    Spacer(minLength: 8)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(GenesyxColor.mutedForeground)
+                }
+                .padding(20)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(GenesyxColor.card)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+            }
+            .buttonStyle(.plain)
+            // Label only — adding `accessibilityElement(children: .ignore)` here would wrap the
+            // button in a plain container that takes the label with it, leaving the button itself
+            // labelled by its raw text and unreachable by identifier.
+            .accessibilityLabel("\(next.headline): \(next.article.title), \(next.article.readingTime)")
+            .accessibilityHint("Opens the article in Learn")
+            .accessibilityIdentifier("home.learnCard")
+        }
+    }
+
+    private func openLearnArticle(_ slug: String) {
+        router.pendingLearnSlug = slug   // consumed by LearnLandingView, which pushes the article
+        router.selection = 4             // Learn tab
     }
 
     // MARK: - First-run setup

@@ -288,12 +288,14 @@ struct ArticleDetailView: View {
     @Binding var path: [String]
 
     @EnvironmentObject private var tabs: TabRouter
+    @EnvironmentObject private var learn: LearnProgress
     @State private var showLog = false
 
     var body: some View {
         if let article = LearnLibrary.articleBySlug(slug) {
-            // Remembered so a Learn nudge never offers her something she has already read.
-            content(article).onAppear { LearnReadLog.markRead(slug) }
+            // Remembered so a Learn nudge never offers her something she has already read — and so
+            // the tab badge and the Home card drop it the moment she opens it.
+            content(article).onAppear { learn.markRead(slug) }
         } else {
             unavailable
         }

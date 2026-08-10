@@ -300,6 +300,55 @@ final class NotificationPlannerTests: XCTestCase {
         XCTAssertEqual(learn?.title, "A read for your week")
     }
 
+    // MARK: - The same pick on the Home card
+
+    /// The card calls `nextRead` with no interests, because ranking by relevance needs the whole
+    /// snapshot and Home would have to rebuild it. Nothing above exercises that path — every test
+    /// so far goes through `plan`, which always supplies interests.
+    func testTheCardStillPicksSomethingWhenItKnowsNothingAboutHer() {
+        XCTAssertNotNil(NotificationPlanner.nextRead(from: library))
+    }
+
+    /// Two surfaces naming two different articles in the same week reads as two different apps
+    /// talking. They can only diverge on relevance, so the case worth pinning is the drop: when
+    /// something new arrives, both must land on it regardless of what her data says.
+    func testTheCardAndTheSundayNudgeNameTheSameNewArticle() {
+        let withADrop = [
+            LearnCandidate(slug: "ph-trend", title: "Reading your pH trend", readingTime: "4 min", tags: ["ph"], read: false),
+            LearnCandidate(slug: "first-weeks", title: "Your first two weeks", readingTime: "2 min", tags: [], read: false, isNew: true),
+        ]
+        // Thin pH history pulls the *nudge* hard towards "ph-trend"; the card has no such pull.
+        let nudge = plan(snapshot(daysSinceLastPh: 2, phCount: 1, learn: withADrop))
+            .weekly.first { $0.slot == .learn }
+
+        XCTAssertEqual(NotificationPlanner.nextRead(from: withADrop)?.slug, nudge?.learnSlug)
+    }
+
+    /// The card goes quiet at exactly the point the nudge does. A dashboard card that re-offered a
+    /// finished library would be the one surface she cannot dismiss.
+    func testTheCardDisappearsOnceSheHasReadEverything() {
+        let allRead = library.map {
+            LearnCandidate(slug: $0.slug, title: $0.title, readingTime: $0.readingTime, tags: $0.tags, read: true)
+        }
+        XCTAssertNil(NotificationPlanner.nextRead(from: allRead))
+    }
+
+    /// With no interests every candidate scores zero, so the tiebreak is doing all the work. If it
+    /// were not stable the card would name a different article on every redraw.
+    func testTheCardsPickDoesNotMoveBetweenRedraws() {
+        let picks = (0..<5).map { _ in NotificationPlanner.nextRead(from: library.shuffled())?.slug }
+
+        XCTAssertEqual(Set(picks).count, 1, "the pick must not depend on declaration order")
+    }
+
+    func testTheCardHeadlineMatchesTheNudges() {
+        let drop = LearnCandidate(slug: "a", title: "A", readingTime: "2 min", tags: [], read: false, isNew: true)
+        let old = LearnCandidate(slug: "b", title: "B", readingTime: "2 min", tags: [], read: false)
+
+        XCTAssertEqual(NotificationPlanner.learnHeadline(drop), "New this week")
+        XCTAssertEqual(NotificationPlanner.learnHeadline(old), "A read for your week")
+    }
+
     // MARK: - Fertile window
 
     /// It is scheduled for the day the window opens, not the day the plan was made — so it carries

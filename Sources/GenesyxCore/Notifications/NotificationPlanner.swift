@@ -341,26 +341,44 @@ public enum NotificationPlanner {
     // MARK: Learn — the article her own data points at
 
     static func learn(_ snapshot: NotificationSnapshot) -> PlannedNotification? {
-        let unread = snapshot.learnCandidates.filter { !$0.read }
-        guard !unread.isEmpty else { return nil }   // she's read the library — say nothing
-
-        // A piece that has just arrived is the week's drop, and it outranks relevance: the library
-        // she has had all along will still be there next Sunday. Within either pool the pick is
-        // still what her own logging points at.
-        let dropped = unread.filter(\.isNew)
-        let pool = dropped.isEmpty ? unread : dropped
-
-        let interests = interestTags(snapshot)
-        let best = pool.max { a, b in
-            (relevance(a, to: interests), b.slug) < (relevance(b, to: interests), a.slug)
-        }!
+        guard let best = nextRead(from: snapshot.learnCandidates, interests: interestTags(snapshot))
+        else { return nil }   // she's read the library — say nothing
 
         return PlannedNotification(
             slot: .learn,
-            title: dropped.isEmpty ? "A read for your week" : "New this week",
+            title: learnHeadline(best),
             body: "'\(best.title)' — a \(best.readingTime).",
             target: .learn, learnSlug: best.slug, weekday: learnWeekday, hour: learnHour
         )
+    }
+
+    /// The one article to point her at next, or nil once she's read them all.
+    ///
+    /// Shared by the Sunday nudge and the Home dashboard card so the two can never name different
+    /// articles at the same moment. The card passes no interests: ranking by relevance needs the
+    /// whole `NotificationSnapshot`, and Home would have to rebuild it — the ordering that actually
+    /// matters (a new drop first, then a stable pick) is the part both surfaces share.
+    public static func nextRead(from candidates: [LearnCandidate],
+                                interests: [String] = []) -> LearnCandidate? {
+        let unread = candidates.filter { !$0.read }
+        guard !unread.isEmpty else { return nil }
+
+        // A piece that has just arrived is the week's drop, and it outranks relevance: the library
+        // she has had all along will still be there next Sunday. Within either pool the pick is
+        // still what her own logging points at, and slug breaks ties so it doesn't move between
+        // launches.
+        let dropped = unread.filter(\.isNew)
+        let pool = dropped.isEmpty ? unread : dropped
+
+        return pool.max { a, b in
+            (relevance(a, to: interests), b.slug) < (relevance(b, to: interests), a.slug)
+        }
+    }
+
+    /// What to call the pick. `isNew` doubles as "this was the drop pool", because `nextRead` only
+    /// ever reaches the whole-library pool when nothing new is unread.
+    public static func learnHeadline(_ candidate: LearnCandidate) -> String {
+        candidate.isNew ? "New this week" : "A read for your week"
     }
 
     /// What her data suggests she'd want to read about, most-wanted first.

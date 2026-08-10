@@ -192,6 +192,37 @@ final class GenesyxUITests: XCTestCase {
                       "Learn should show the featured article")
     }
 
+    /// The Home card has to cross two boundaries the unit tests can't reach: it sets a slug on the
+    /// shared router, switches tab, and relies on `LearnLandingView` — a view that is alive but
+    /// hidden — to notice and push. A card that named an article but landed nowhere would still
+    /// pass every test in `NotificationTests`.
+    ///
+    /// A seeded launch is a fresh install, so nothing is new: the headline is the library one.
+    func testHomeLearnCardOpensTheArticleItNames() {
+        let app = launchSeeded(tab: 0)
+
+        let card = app.buttons["home.learnCard"]
+        XCTAssertTrue(card.waitForExistence(timeout: 10), "Home should offer a read")
+        XCTAssertTrue(card.label.hasPrefix("A read for your week:"),
+                      "nothing arrived in this build, so it must not claim to be new — got '\(card.label)'")
+        card.tap()
+
+        // "Related" only exists at the foot of an article, so reaching it proves the push landed
+        // rather than merely switching tab.
+        XCTAssertTrue(app.staticTexts["Related"].waitForExistence(timeout: 10),
+                      "the card should open the article itself, not just the Learn tab")
+    }
+
+    /// Nothing has arrived in a fresh install, so the tab must be bare. A badge of 16 would be the
+    /// library presenting itself as a backlog.
+    func testLearnTabIsNotBadgedOnAFreshInstall() {
+        let app = launchSeeded(tab: 0)
+        let learn = app.buttons["Learn"]
+
+        XCTAssertTrue(learn.waitForExistence(timeout: 10))
+        XCTAssertEqual(learn.label, "Learn", "a first install has no new articles to announce")
+    }
+
     func testHomeShowsLogToday() {
         let app = launchSeeded(tab: 0)
         XCTAssertTrue(app.buttons["Log today"].waitForExistence(timeout: 10), "Home should show the Log today button")

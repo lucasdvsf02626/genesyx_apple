@@ -70,7 +70,12 @@ final class CitationE2ETests: XCTestCase {
     /// A Learn article (reached from the Nutrition articles list) ends with a Sources footer.
     func testLearnArticleHasSourcesFooter() {
         let app = launch(tab: 2)
-        let article = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", "Eating with your cycle")).firstMatch
+        // Two buttons now name this article: this list row, and Home's "a read for your week" card.
+        // The tab ZStack keeps every tab's elements in the tree (see `testHomePhCardHasNoUncitedClaim`),
+        // so the Home card has to be excluded by name or `firstMatch` lands on it.
+        let article = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] %@ AND identifier != %@",
+                        "Eating with your cycle", "home.learnCard")).firstMatch
         XCTAssertTrue(article.waitForExistence(timeout: 15))
         article.tap()
         XCTAssertTrue(app.staticTexts["Sources"].waitForExistence(timeout: 10), "Article should end with a Sources footer")

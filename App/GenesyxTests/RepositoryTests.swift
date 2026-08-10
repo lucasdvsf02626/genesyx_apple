@@ -509,7 +509,7 @@ final class RepositoryTests: XCTestCase {
 
         XCTAssertTrue(container.prefs.celebratedMilestones.isEmpty,
                       "the next user must be able to earn her own milestones")
-        XCTAssertFalse(LearnReadLog.readSlugs.contains("first-week"),
+        XCTAssertFalse(LearnReadLog.readSlugs().contains("first-week"),
                        "the next user has not read the previous user's articles")
         XCTAssertTrue(PreferencesRepository(store: store).celebratedMilestones.isEmpty,
                       "and it must not come back from the store on next launch")

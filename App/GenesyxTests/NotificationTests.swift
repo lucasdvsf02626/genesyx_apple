@@ -163,11 +163,11 @@ final class NotificationTests: XCTestCase {
 
     func testAnArticleSheHasOpenedIsNotOfferedAgain() {
         let slug = "test-\(UUID().uuidString)"
-        XCTAssertFalse(LearnReadLog.readSlugs.contains(slug))
+        XCTAssertFalse(LearnReadLog.readSlugs().contains(slug))
 
         LearnReadLog.markRead(slug)
 
-        XCTAssertTrue(LearnReadLog.readSlugs.contains(slug))
+        XCTAssertTrue(LearnReadLog.readSlugs().contains(slug))
     }
 
     // MARK: - Which articles are new
@@ -206,5 +206,98 @@ final class NotificationTests: XCTestCase {
         LearnLibraryLog.markAnnounced("b", defaults: defaults)
 
         XCTAssertTrue(LearnLibraryLog.newSlugs(in: ["a", "b"], defaults: defaults).isEmpty)
+    }
+
+    // MARK: - The Learn tab badge
+
+    /// Real articles rather than fixtures — the badge counts the shipped library, and a fixture
+    /// would only prove the arithmetic.
+    private var shipped: [LearnArticle] { LearnLibrary.articles }
+
+    /// A first install badges nothing. Sixteen articles arrived together in the build she just
+    /// downloaded; "16 new" is a chore list, not an invitation.
+    @MainActor
+    func testAFreshInstallBadgesNothing() {
+        let progress = LearnProgress(articles: shipped, defaults: isolatedDefaults())
+
+        XCTAssertEqual(progress.unreadNewCount, 0)
+    }
+
+    @MainActor
+    func testAnArticleAddedInAnUpdateBadgesUntilSheReadsIt() {
+        let defaults = isolatedDefaults()
+        let added = shipped.last!
+        _ = LearnProgress(articles: Array(shipped.dropLast()), defaults: defaults)   // the build before
+
+        let progress = LearnProgress(articles: shipped, defaults: defaults)
+        XCTAssertEqual(progress.unreadNewCount, 1)
+
+        progress.markRead(added.slug)
+        XCTAssertEqual(progress.unreadNewCount, 0)
+    }
+
+    /// The badge is the *persistent* half of the pair. If it tracked `markAnnounced` live it would
+    /// vanish the instant the Sunday nudge delivered — she dismisses the banner and the article is
+    /// gone from both surfaces at once, with nothing left pointing at it.
+    @MainActor
+    func testTheSundayNudgeFiringDoesNotTakeTheBadgeWithIt() {
+        let defaults = isolatedDefaults()
+        let added = shipped.last!
+        _ = LearnProgress(articles: Array(shipped.dropLast()), defaults: defaults)
+        let progress = LearnProgress(articles: shipped, defaults: defaults)
+
+        LearnLibraryLog.markAnnounced(added.slug, defaults: defaults)
+
+        XCTAssertEqual(progress.unreadNewCount, 1, "only reading it should clear the badge")
+    }
+
+    /// What she has read is as personal as what she has logged, and the badge must not greet the
+    /// next account with the last one's leftovers.
+    @MainActor
+    func testSigningOutClearsTheBadgeAndTheReadHistory() {
+        let defaults = isolatedDefaults()
+        _ = LearnProgress(articles: Array(shipped.dropLast()), defaults: defaults)
+        let progress = LearnProgress(articles: shipped, defaults: defaults)
+        progress.markRead(shipped.first!.slug)
+
+        progress.clear()
+
+        XCTAssertTrue(progress.readSlugs.isEmpty)
+        XCTAssertEqual(progress.unreadNewCount, 0)
+    }
+
+    // MARK: - The Home dashboard card
+
+    @MainActor
+    func testTheCardNamesAnArticleSheHasNotRead() {
+        let progress = LearnProgress(articles: shipped, defaults: isolatedDefaults())
+
+        let next = progress.nextRead
+        XCTAssertNotNil(next)
+        XCTAssertFalse(progress.readSlugs.contains(next!.article.slug))
+    }
+
+    /// It disappears rather than re-offering a library she has finished — the card is the one
+    /// surface she cannot dismiss, so it has to know when to stop.
+    @MainActor
+    func testTheCardDisappearsOnceSheHasReadEverything() {
+        let progress = LearnProgress(articles: shipped, defaults: isolatedDefaults())
+        for article in shipped { progress.markRead(article.slug) }
+
+        XCTAssertNil(progress.nextRead)
+    }
+
+    /// The card and the badge are two views of one fact, so a newly-arrived article must be what
+    /// the card leads with — otherwise the badge says "1 new" and the card names something else.
+    @MainActor
+    func testTheCardLeadsWithTheNewArticleTheBadgeIsCounting() {
+        let defaults = isolatedDefaults()
+        let added = shipped.last!
+        _ = LearnProgress(articles: Array(shipped.dropLast()), defaults: defaults)
+
+        let progress = LearnProgress(articles: shipped, defaults: defaults)
+
+        XCTAssertEqual(progress.nextRead?.article.slug, added.slug)
+        XCTAssertEqual(progress.nextRead?.headline, "New this week")
     }
 }

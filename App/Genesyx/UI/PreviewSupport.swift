@@ -45,6 +45,7 @@ extension View {
             .environmentObject(container.prefs)
             .environmentObject(container.session)
             .environmentObject(container.partner)
+            .environmentObject(container.learn)
             .tint(GenesyxColor.primary)
     }
 }

@@ -217,19 +217,14 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
         return (name: best.key, count: best.value)
     }
 
+    /// Read fresh rather than from `LearnProgress`: a replan can happen long after launch, and the
+    /// nudge must not offer her something she read an hour ago.
     private func learnCandidates() -> [LearnCandidate] {
-        let read = LearnReadLog.readSlugs
-        let arrived = LearnLibraryLog.newSlugs(in: learnArticles.map(\.slug))
-        return learnArticles.map { article in
-            LearnCandidate(
-                slug: article.slug,
-                title: article.title,
-                readingTime: article.readingTime,
-                tags: article.tags.map { $0.lowercased() },
-                read: read.contains(article.slug),
-                isNew: arrived.contains(article.slug)
-            )
-        }
+        LearnProgress.candidates(
+            learnArticles,
+            read: LearnReadLog.readSlugs(),
+            arrived: LearnLibraryLog.newSlugs(in: learnArticles.map(\.slug))
+        )
     }
 
     // MARK: - Scheduling

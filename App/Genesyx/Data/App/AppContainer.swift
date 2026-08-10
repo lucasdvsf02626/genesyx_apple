@@ -18,6 +18,7 @@ final class AppContainer: ObservableObject {
     let prefs: PreferencesRepository
     let session: SessionRepository
     let partner: PartnerRepository
+    let learn: LearnProgress
 
     /// Designated init. Allows an injected store (used by previews/tests for isolation).
     init(store: LocalStore, backend: GenesyxBackend?) {
@@ -30,6 +31,7 @@ final class AppContainer: ObservableObject {
         self.prefs = PreferencesRepository(store: store, backend: backend?.profile)
         self.session = SessionRepository(auth: backend?.auth)
         self.partner = PartnerRepository(backend: backend?.partner)
+        self.learn = LearnProgress()
 
         // Auth-transition wiring: wipe on-device health data on sign-out / account deletion, and
         // rehydrate from the backend on sign-in. Weak self avoids a retain cycle (container owns session).
@@ -84,7 +86,7 @@ final class AppContainer: ObservableObject {
         // Onboarding does not re-run on sign-out — that flag is device-local and stays set — so
         // without this the next user on the phone would silently inherit her quiz answers.
         prefs.clearQuizAnswers()
-        LearnReadLog.clear()
+        learn.clear()
         // Nor may the next account inherit her partner link or her pending invites.
         partner.clearLocalState()
         // Custom supplements are user-entered and stored locally (@AppStorage, UserDefaults.standard);

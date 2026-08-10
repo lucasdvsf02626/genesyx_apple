@@ -8,6 +8,9 @@ import SwiftUI
 struct MainTabView: View {
     @StateObject private var router = TabRouter(selection: MainTabView.initialSelection)
     @EnvironmentObject private var notifications: NotificationService
+    @EnvironmentObject private var learn: LearnProgress
+
+    private static let learnTab = 4
 
     private static let items: [(title: String, icon: String)] = [
         ("Home", "house"),
@@ -67,11 +70,15 @@ struct MainTabView: View {
 
     private func tabButton(_ index: Int, _ item: (title: String, icon: String)) -> some View {
         let selected = router.selection == index
+        let badge = index == Self.learnTab ? learn.unreadNewCount : 0
         return Button {
             router.selection = index
         } label: {
             VStack(spacing: 3) {
                 Image(systemName: item.icon).font(.system(size: 20))
+                    .overlay(alignment: .topTrailing) {
+                        if badge > 0 { badgeDot(badge) }
+                    }
                 Text(item.title).font(.system(size: 10, weight: .medium))
             }
             .foregroundStyle(selected ? GenesyxColor.primary : GenesyxColor.mutedForeground)
@@ -81,7 +88,22 @@ struct MainTabView: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier(item.title)
-        .accessibilityLabel(item.title)
+        // VoiceOver gets the count in words; the dot alone would be silent.
+        .accessibilityLabel(badge > 0
+                            ? "\(item.title), \(badge) new article\(badge == 1 ? "" : "s")"
+                            : item.title)
+    }
+
+    /// Counts only articles that arrived in an update and are still unread, so it reads 0 on a
+    /// first install — a badge of 16 would be a chore list, not an invitation.
+    private func badgeDot(_ count: Int) -> some View {
+        Text("\(count)")
+            .font(.system(size: 10, weight: .bold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 4)
+            .frame(minWidth: 15, minHeight: 15)
+            .background(GenesyxColor.electricPink, in: Capsule())
+            .offset(x: 9, y: -5)
     }
 
     /// Initial tab for screenshot capture (`-uiTestTab N` launch arg); always Home in Release.
