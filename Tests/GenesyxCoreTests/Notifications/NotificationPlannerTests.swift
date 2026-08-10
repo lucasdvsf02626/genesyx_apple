@@ -254,6 +254,52 @@ final class NotificationPlannerTests: XCTestCase {
         XCTAssertEqual(p.weekly.first { $0.slot == .learn }?.learnSlug, "hydration")
     }
 
+    /// An article that arrived in the update she just installed beats one that has been sitting
+    /// there — including one her own logging points at harder. The relevant old piece will still be
+    /// unread next Sunday; the drop is only new once.
+    func testANewArticleOutranksAMoreRelevantOldOne() {
+        let withADrop = [
+            LearnCandidate(slug: "ph-trend", title: "Reading your pH trend", readingTime: "4 min", tags: ["ph"], read: false),
+            LearnCandidate(slug: "first-weeks", title: "Your first two weeks", readingTime: "2 min", tags: [], read: false, isNew: true),
+        ]
+        // Thin pH history — without the drop this would pick "ph-trend" (see the test above).
+        let p = plan(snapshot(daysSinceLastPh: 2, phCount: 1, learn: withADrop))
+
+        XCTAssertEqual(p.weekly.first { $0.slot == .learn }?.learnSlug, "first-weeks")
+    }
+
+    /// Within the new ones it is still her data that decides, not the order they were declared.
+    func testAmongSeveralNewArticlesHerDataStillChooses() {
+        let twoDrops = [
+            LearnCandidate(slug: "hydration", title: "Hydration and your cycle", readingTime: "3 min", tags: ["hydration"], read: false, isNew: true),
+            LearnCandidate(slug: "fatigue", title: "When energy dips", readingTime: "5 min", tags: ["fatigue"], read: false, isNew: true),
+        ]
+        let p = plan(snapshot(daily: 5, daysSinceLastPh: 1, phCount: 9, topSymptom: ("Fatigue", 4), learn: twoDrops))
+
+        XCTAssertEqual(p.weekly.first { $0.slot == .learn }?.learnSlug, "fatigue")
+    }
+
+    /// The title tells her which it is. "New this week" on a library she's had for months is the
+    /// kind of small lie that teaches her to stop reading the notifications.
+    func testTheTitleSaysNewOnlyWhenSomethingActuallyArrived() {
+        let drop = [LearnCandidate(slug: "first-weeks", title: "Your first two weeks", readingTime: "2 min", tags: [], read: false, isNew: true)]
+
+        XCTAssertEqual(plan(snapshot(learn: drop)).weekly.first { $0.slot == .learn }?.title, "New this week")
+        XCTAssertEqual(plan(snapshot()).weekly.first { $0.slot == .learn }?.title, "A read for your week")
+    }
+
+    /// A new article she has already opened is not news. Read wins over new.
+    func testANewArticleSheHasAlreadyReadIsNotAnnounced() {
+        let readDrop = [
+            LearnCandidate(slug: "first-weeks", title: "Your first two weeks", readingTime: "2 min", tags: [], read: true, isNew: true),
+            LearnCandidate(slug: "hydration", title: "Hydration and your cycle", readingTime: "3 min", tags: ["hydration"], read: false),
+        ]
+        let learn = plan(snapshot(learn: readDrop)).weekly.first { $0.slot == .learn }
+
+        XCTAssertEqual(learn?.learnSlug, "hydration")
+        XCTAssertEqual(learn?.title, "A read for your week")
+    }
+
     // MARK: - Fertile window
 
     /// It is scheduled for the day the window opens, not the day the plan was made — so it carries

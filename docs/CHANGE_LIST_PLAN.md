@@ -208,7 +208,7 @@ start today and finish inside one sprint. Ordered so each day ships something de
 | 3 | T6 — disclaimer → expandable (log sheet stays pinned) | 0.5d | ✅ `560591e` |
 | 4 | T14 — fertile-window notification | 1.5d | ✅ `d35cfa0` |
 | 5 | T15 — per-category notification toggles | 1d | ✅ |
-| 6 | T28 (notification half) — weekly new-article alert | 0.5d | ⬜ |
+| 6 | T28 (notification half) — weekly new-article alert | 0.5d | ✅ |
 | 7 | T30 — per-supplement reminders | 1d | ⬜ |
 | 8 | T10 · T11 — `sexualActivity` model + persistence + migration | 2.5d | ⬜ |
 | 9 | T12 — private logging UI (excluded from partner surfaces) | 1.5d | ⬜ |
@@ -237,7 +237,7 @@ amount of tooling shortens it. That is why Sprint 1 is built entirely from work 
 
 ## 10. Verification gate
 
-Green baseline is **143 domain + 143 app tests** (was 125 + 139 before Sprint 1). Run after every task:
+Green baseline is **147 domain + 146 app tests** (was 125 + 139 before Sprint 1). Run after every task:
 
 ```bash
 swift test && xcodebuild test -project Genesyx.xcodeproj -scheme Genesyx \

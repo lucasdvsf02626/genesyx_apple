@@ -26,6 +26,7 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
 
     private let lastSentKey = "notification_last_sent"
     private let scheduledFireKey = "notification_scheduled_fire"
+    private let queuedLearnSlugKey = "notification_queued_learn_slug"
 
     init(prefs: PreferencesRepository,
          dailyLog: DailyLogRepository,
@@ -205,13 +206,15 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
 
     private func learnCandidates() -> [LearnCandidate] {
         let read = LearnReadLog.readSlugs
+        let arrived = LearnLibraryLog.newSlugs(in: learnArticles.map(\.slug))
         return learnArticles.map { article in
             LearnCandidate(
                 slug: article.slug,
                 title: article.title,
                 readingTime: article.readingTime,
                 tags: article.tags.map { $0.lowercased() },
-                read: read.contains(article.slug)
+                read: read.contains(article.slug),
+                isNew: arrived.contains(article.slug)
             )
         }
     }
@@ -253,6 +256,7 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
             trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
         ))
         rememberScheduledFire(kind, at: fire)
+        if let slug = planned.learnSlug { store.setString(slug, forKey: queuedLearnSlugKey) }
     }
 
     /// A specific day at a specific hour. Returns nil when that moment has already passed — the
@@ -326,6 +330,12 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
         for (id, fire) in scheduled where fire <= now {
             sent[id] = fire
             scheduled[id] = nil
+            // An article stops being "new" the moment she has actually been told about it. Doing
+            // this at schedule time instead would let any replan before Sunday — logging a glass of
+            // water is enough — quietly demote the drop back to an ordinary weekly read.
+            if id == NotificationKind.weeklyLearn.rawValue, let slug = store.string(forKey: queuedLearnSlugKey) {
+                LearnLibraryLog.markAnnounced(slug)
+            }
         }
         store.save(scheduled, forKey: scheduledFireKey)
         store.save(sent, forKey: lastSentKey)

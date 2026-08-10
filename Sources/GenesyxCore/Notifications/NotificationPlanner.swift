@@ -23,13 +23,18 @@ public struct LearnCandidate: Equatable, Sendable {
     /// Lowercased topic tags, matched against what she's actually logging.
     public let tags: [String]
     public let read: Bool
+    /// Arrived in an update she has just installed — this week's drop, rather than a corner of the
+    /// library she has had all along.
+    public let isNew: Bool
 
-    public init(slug: String, title: String, readingTime: String, tags: [String], read: Bool) {
+    public init(slug: String, title: String, readingTime: String, tags: [String], read: Bool,
+                isNew: Bool = false) {
         self.slug = slug
         self.title = title
         self.readingTime = readingTime
         self.tags = tags
         self.read = read
+        self.isNew = isNew
     }
 }
 
@@ -339,14 +344,20 @@ public enum NotificationPlanner {
         let unread = snapshot.learnCandidates.filter { !$0.read }
         guard !unread.isEmpty else { return nil }   // she's read the library — say nothing
 
+        // A piece that has just arrived is the week's drop, and it outranks relevance: the library
+        // she has had all along will still be there next Sunday. Within either pool the pick is
+        // still what her own logging points at.
+        let dropped = unread.filter(\.isNew)
+        let pool = dropped.isEmpty ? unread : dropped
+
         let interests = interestTags(snapshot)
-        let best = unread.max { a, b in
+        let best = pool.max { a, b in
             (relevance(a, to: interests), b.slug) < (relevance(b, to: interests), a.slug)
         }!
 
         return PlannedNotification(
             slot: .learn,
-            title: "A read for your week",
+            title: dropped.isEmpty ? "A read for your week" : "New this week",
             body: "'\(best.title)' — a \(best.readingTime).",
             target: .learn, learnSlug: best.slug, weekday: learnWeekday, hour: learnHour
         )
@@ -389,17 +400,21 @@ public enum NotificationPlanner {
             LearnCandidate(slug: "a", title: "Reading your pH trend", readingTime: "4 min read", tags: ["ph"], read: false),
             LearnCandidate(slug: "b", title: "Hydration and your cycle", readingTime: "3 min read", tags: ["hydration"], read: false),
         ]
+        let libraryWithADrop = [
+            LearnCandidate(slug: "a", title: "Reading your pH trend", readingTime: "4 min read", tags: ["ph"], read: false),
+            LearnCandidate(slug: "c", title: "Your first two weeks", readingTime: "2 min read", tags: ["cycle"], read: false, isNew: true),
+        ]
         func snapshot(daily: Int, best: Int, weekDays: Int, weekly: Int,
                       ph: Int?, phCount: Int, log: Int?, symptom: (String, Int)?,
                       loggedToday: Bool = false, waterToday: Int = 0,
-                      fertileInDays: Int? = nil) -> NotificationSnapshot {
+                      fertileInDays: Int? = nil, newDrop: Bool = false) -> NotificationSnapshot {
             NotificationSnapshot(
                 streak: StreakState(dailyHydration: daily, weeklyStreak: weekly,
                                     daysLoggedThisWeek: weekDays, bestDailyStreak: best,
                                     milestones: [], lapsedCelebrations: [], weekDots: []),
                 daysSinceLastPh: ph, phReadingsLast30Days: phCount, daysSinceLastLog: log,
                 topSymptom: symptom.map { (name: $0.0, count: $0.1) },
-                learnCandidates: library, daysSinceSent: [:],
+                learnCandidates: newDrop ? libraryWithADrop : library, daysSinceSent: [:],
                 hasMeaningfulLogToday: loggedToday, waterTodayMl: waterToday,
                 daysUntilFertileWindow: fertileInDays)
         }
@@ -419,6 +434,9 @@ public enum NotificationPlanner {
                      fertileInDays: 0),
             snapshot(daily: 3, best: 3, weekDays: 3, weekly: 1, ph: 2, phCount: 5, log: 0, symptom: nil,
                      fertileInDays: 4),
+            // An article that arrived in this update — the Sunday read announces itself differently.
+            snapshot(daily: 3, best: 3, weekDays: 3, weekly: 1, ph: 2, phCount: 5, log: 0, symptom: nil,
+                     newDrop: true),
         ]
 
         var copy = states.flatMap { plan($0).notifications.flatMap { [$0.title, $0.body] } }

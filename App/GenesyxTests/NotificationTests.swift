@@ -153,4 +153,42 @@ final class NotificationTests: XCTestCase {
 
         XCTAssertTrue(LearnReadLog.readSlugs.contains(slug))
     }
+
+    // MARK: - Which articles are new
+
+    private func isolatedDefaults() -> UserDefaults {
+        let suite = "learn-library-\(UUID().uuidString)"
+        addTeardownBlock { UserDefaults.standard.removePersistentDomain(forName: suite) }
+        return UserDefaults(suiteName: suite)!
+    }
+
+    /// Nothing is new to someone who is only just starting. The whole library is recorded on first
+    /// run, so she doesn't get sixteen consecutive "new this week" Sundays for articles that shipped
+    /// together in the build she installed.
+    func testOnFirstRunNothingIsNew() {
+        let defaults = isolatedDefaults()
+
+        XCTAssertTrue(LearnLibraryLog.newSlugs(in: ["a", "b", "c"], defaults: defaults).isEmpty)
+        XCTAssertTrue(LearnLibraryLog.newSlugs(in: ["a", "b", "c"], defaults: defaults).isEmpty)
+    }
+
+    /// An article that shows up in a *later* build is the one worth announcing.
+    func testAnArticleThatArrivesInALaterBuildIsNew() {
+        let defaults = isolatedDefaults()
+        _ = LearnLibraryLog.newSlugs(in: ["a", "b"], defaults: defaults)
+
+        XCTAssertEqual(LearnLibraryLog.newSlugs(in: ["a", "b", "c"], defaults: defaults), ["c"])
+    }
+
+    /// It stays new until the nudge naming it has actually fired — a replan before Sunday must not
+    /// quietly demote the drop to an ordinary weekly read.
+    func testAnArticleStaysNewUntilItHasBeenAnnounced() {
+        let defaults = isolatedDefaults()
+        _ = LearnLibraryLog.newSlugs(in: ["a"], defaults: defaults)
+        XCTAssertEqual(LearnLibraryLog.newSlugs(in: ["a", "b"], defaults: defaults), ["b"])
+
+        LearnLibraryLog.markAnnounced("b", defaults: defaults)
+
+        XCTAssertTrue(LearnLibraryLog.newSlugs(in: ["a", "b"], defaults: defaults).isEmpty)
+    }
 }
