@@ -42,26 +42,33 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
         super.init()
         center.delegate = self
 
+        // `@Published` publishes from `willSet`, so a subscriber that runs synchronously reads the
+        // property's OLD value — re-planning off the state she just left. Hopping to the next turn
+        // of the run loop lets the write land first. Without it, moving the reminder time schedules
+        // the hour she moved away from.
+        func onChange(_ publisher: some Publisher<some Any, Never>, _ act: @escaping () -> Void) -> AnyCancellable {
+            publisher.dropFirst().receive(on: RunLoop.main).sink { _ in act() }
+        }
+
         // Correcting a period date moves the predicted fertile window, and with it the day the
         // cycle nudge is due — re-plan rather than let a stale date sit in the schedule.
-        cycle.$settings
-            .dropFirst()
-            .sink { [weak self] _ in self?.replan() }
+        onChange(cycle.$settings) { [weak self] in self?.replan() }
             .store(in: &cancellables)
 
         // Logging changes everything the plan is built from: today's hydration nudge becomes
         // unnecessary the moment she logs water, a gap closes, a streak crosses a milestone.
         // Observing the repository means no screen has to remember to tell us.
-        dailyLog.$logByDate
-            .dropFirst()
-            .sink { [weak self] _ in self?.replan() }
+        onChange(dailyLog.$logByDate) { [weak self] in self?.replan() }
             .store(in: &cancellables)
 
         // Moving the reminder time changes when tonight's check-in should fire — re-plan so the
         // scheduled request follows her choice without her having to toggle reminders off and on.
-        prefs.$reminderHour
-            .dropFirst()
-            .sink { [weak self] _ in self?.replan() }
+        onChange(prefs.$reminderHour) { [weak self] in self?.replan() }
+            .store(in: &cancellables)
+
+        // Switching a category off has to take effect now: a request for it is already queued with
+        // the system and would still fire. `replan` cancels the lot and rebuilds without it.
+        onChange(prefs.$mutedNotifications) { [weak self] in self?.replan() }
             .store(in: &cancellables)
     }
 
@@ -173,7 +180,8 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
             waterGoalMl: TrackingEngine.defaultWaterGoalMl,
             reminderHour: prefs.reminderHour,
             daysUntilFertileWindow: OvulationLogic.daysUntilFertileWindow(settings: cycle.settings, today: today),
-            todayWeekday: Self.isoWeekday(of: Date())
+            todayWeekday: Self.isoWeekday(of: Date()),
+            mutedCategories: prefs.mutedNotifications
         )
     }
 
@@ -355,17 +363,21 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
             celebrated: prefs.celebratedMilestones
         )
 
-        for milestone in state.milestones {
-            let content = UNMutableNotificationContent()
-            content.title = NotificationContent.milestoneTitle(milestone)
-            content.body = NotificationContent.milestoneBody(milestone)
-            content.sound = .default
-            content.userInfo = NotificationRouter.payload(tab: .insights)
-            center.add(UNNotificationRequest(
-                identifier: NotificationKind(milestone: milestone).rawValue,
-                content: content,
-                trigger: UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
-            ))
+        // Muted or not, they are still flagged as celebrated below: switching milestones back on
+        // should not deliver a backlog of every one she passed while they were off.
+        if !prefs.mutedNotifications.contains(.milestones) {
+            for milestone in state.milestones {
+                let content = UNMutableNotificationContent()
+                content.title = NotificationContent.milestoneTitle(milestone)
+                content.body = NotificationContent.milestoneBody(milestone)
+                content.sound = .default
+                content.userInfo = NotificationRouter.payload(tab: .insights)
+                center.add(UNNotificationRequest(
+                    identifier: NotificationKind(milestone: milestone).rawValue,
+                    content: content,
+                    trigger: UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+                ))
+            }
         }
         prefs.celebrate(state.milestones.map(\.flagKey))
         prefs.clearCelebrations(state.lapsedCelebrations)

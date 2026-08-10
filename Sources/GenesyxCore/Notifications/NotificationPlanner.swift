@@ -58,6 +58,9 @@ public struct NotificationSnapshot {
     /// ISO weekday of today (1 = Mon … 7 = Sun). The planner has no calendar of its own, and needs
     /// this to turn a day *offset* into the weekday the other nudges are keyed on.
     public let todayWeekday: Int
+    /// Categories she has switched off. Empty means everything is on, so a category added in a
+    /// later build arrives on rather than silently off for everyone who upgraded.
+    public let mutedCategories: Set<NotificationCategory>
 
     public init(
         streak: StreakState,
@@ -72,7 +75,8 @@ public struct NotificationSnapshot {
         waterGoalMl: Int = TrackingEngine.defaultWaterGoalMl,
         reminderHour: Int = NotificationPlanner.hydrationHour,
         daysUntilFertileWindow: Int? = nil,
-        todayWeekday: Int = 1
+        todayWeekday: Int = 1,
+        mutedCategories: Set<NotificationCategory> = []
     ) {
         self.streak = streak
         self.daysSinceLastPh = daysSinceLastPh
@@ -87,6 +91,7 @@ public struct NotificationSnapshot {
         self.reminderHour = reminderHour
         self.daysUntilFertileWindow = daysUntilFertileWindow
         self.todayWeekday = todayWeekday
+        self.mutedCategories = mutedCategories
     }
 }
 
@@ -174,11 +179,22 @@ public enum NotificationPlanner {
     static let fertileRepeatGuardDays = 14
 
     public static func plan(_ snapshot: NotificationSnapshot) -> NotificationPlan {
+        // Muting is applied here rather than to the finished plan, and that placement is the point:
+        // a nudge dropped afterwards would still have consumed its share of the weekly budget and
+        // still have claimed its morning, so hydration would stand down for a message she switched
+        // off. Silenced means absent, not invisible.
+        func allowed(_ notification: PlannedNotification?) -> PlannedNotification? {
+            guard let notification,
+                  !snapshot.mutedCategories.contains(notification.slot.category) else { return nil }
+            return notification
+        }
+
         // Invariant 4 — she's gone. One hand back at most, then nothing. An app that keeps
         // nagging someone who left is how it gets deleted.
         if let gap = snapshot.daysSinceLastLog, gap >= dormantAfterDays {
             let alreadyReachedOut = (snapshot.daysSinceSent[.track] ?? .max) < dormantAfterDays
-            return NotificationPlan(notifications: alreadyReachedOut ? [] : [dormantNudge()])
+            let handBack = alreadyReachedOut ? nil : allowed(dormantNudge())
+            return NotificationPlan(notifications: [handBack].compactMap { $0 })
         }
 
         // Invariant 1 — each of these returns nil when it has nothing true to say.
@@ -186,13 +202,13 @@ public enum NotificationPlanner {
         // The fertile nudge goes first and the evergreen ones give way to it. It is the only nudge
         // pinned to a date she cannot be told about later: "your window opens today" is worthless
         // on Thursday. Everything else keeps just as well for a week.
-        let fertileNudge = fertile(snapshot)
+        let fertileNudge = allowed(fertile(snapshot))
         let evergreen = [ph(snapshot), insights(snapshot), track(snapshot), learn(snapshot)]
-            .compactMap { $0 }
+            .compactMap(allowed)
             .filter { $0.weekday != fertileNudge?.weekday }   // invariant 2 — one a day
         let weekly = (Array([fertileNudge].compactMap { $0 }) + evergreen).prefix(weeklyBudget)
 
-        let evening = hydration(snapshot).map { [$0] } ?? []
+        let evening = allowed(hydration(snapshot)).map { [$0] } ?? []
         return NotificationPlan(notifications: evening + Array(weekly))
     }
 

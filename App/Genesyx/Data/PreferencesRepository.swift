@@ -18,12 +18,20 @@ final class PreferencesRepository: ObservableObject {
     /// the phone in her hand, not her synced profile. Defaults to 19:00.
     @Published var reminderHour: Int { didSet { store.setInt(reminderHour, forKey: reminderHourKey) } }
 
+    /// Notification categories she has switched off. Stored as what she *muted*, not what she kept,
+    /// so a category added in a later build arrives on rather than silently off for everyone who
+    /// upgraded. Device-local for the same reason as `reminderHour`.
+    @Published var mutedNotifications: Set<NotificationCategory> {
+        didSet { store.save(mutedNotifications.map(\.rawValue), forKey: mutedNotificationsKey) }
+    }
+
     private let store: LocalStore
     private let backend: ProfileBackend?
     private let themeKey = "theme_mode"
     private let pushKey = "push_enabled"
     private let focusKey = "focus_mode"
     private let reminderHourKey = "reminder_hour"
+    private let mutedNotificationsKey = "muted_notifications"
     private let pendingKey = "profile_pending"
 
     /// Set while applying a pulled profile, so writing those values doesn't bounce them straight
@@ -74,6 +82,8 @@ final class PreferencesRepository: ObservableObject {
         self.pushEnabled = store.bool(forKey: pushKey, default: false)
         self.focusMode = store.string(forKey: focusKey).flatMap(FocusMode.init(rawValue:)) ?? .prep
         self.reminderHour = store.int(forKey: reminderHourKey, default: 19)
+        self.mutedNotifications = Set((store.load([String].self, forKey: mutedNotificationsKey) ?? [])
+            .compactMap(NotificationCategory.init(rawValue:)))
         self.pendingPush = store.bool(forKey: pendingKey, default: false)
         self.celebratedMilestones = Set(store.load([String].self, forKey: celebratedKey) ?? [])
     }

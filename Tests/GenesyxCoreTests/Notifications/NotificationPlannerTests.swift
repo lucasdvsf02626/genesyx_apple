@@ -17,7 +17,8 @@ final class NotificationPlannerTests: XCTestCase {
                           sent: [NotificationSlot: Int] = [:],
                           loggedToday: Bool = false, waterToday: Int = 0,
                           reminderHour: Int = 19,
-                          fertileInDays: Int? = nil, todayWeekday: Int = 1) -> NotificationSnapshot {
+                          fertileInDays: Int? = nil, todayWeekday: Int = 1,
+                          muted: Set<NotificationCategory> = []) -> NotificationSnapshot {
         NotificationSnapshot(
             streak: StreakState(dailyHydration: daily, weeklyStreak: weekly,
                                 daysLoggedThisWeek: weekDays, bestDailyStreak: best,
@@ -30,7 +31,8 @@ final class NotificationPlannerTests: XCTestCase {
             daysSinceSent: sent,
             hasMeaningfulLogToday: loggedToday, waterTodayMl: waterToday,
             reminderHour: reminderHour,
-            daysUntilFertileWindow: fertileInDays, todayWeekday: todayWeekday)
+            daysUntilFertileWindow: fertileInDays, todayWeekday: todayWeekday,
+            mutedCategories: muted)
     }
 
     private func plan(_ s: NotificationSnapshot) -> NotificationPlan { NotificationPlanner.plan(s) }
@@ -118,6 +120,74 @@ final class NotificationPlannerTests: XCTestCase {
         let p = plan(snapshot(daysSinceLastLog: 30, sent: [.track: 3]))
 
         XCTAssertTrue(p.notifications.isEmpty, "she was already reached out to — now leave her alone")
+    }
+
+    // MARK: - Switching a category off
+
+    /// Everything due at once, with the window opening on a Tuesday so it collides with nothing.
+    private var everythingDue: NotificationSnapshot {
+        snapshot(daily: 0, weekDays: 6, weekly: 2, daysSinceLastPh: 30, phCount: 6,
+                 daysSinceLastLog: 5, topSymptom: ("Fatigue", 5), fertileInDays: 1)
+    }
+
+    func testAMutedCategoryIsNotPlannedAtAll() {
+        let p = plan(snapshot(daysSinceLastPh: 30, muted: [.ph]))
+
+        XCTAssertNil(p.weekly.first { $0.slot == .ph }, "a reading is due, but she asked us not to")
+    }
+
+    /// The reason muting happens at plan time. A nudge removed afterwards would still have claimed
+    /// its morning, and hydration would have stood down for a message she never receives.
+    func testMutingGivesTheMorningBackToHydration() {
+        let heard = plan(snapshot(daysSinceLastPh: 30))
+        XCTAssertTrue(heard.hydrationRestDays.contains(NotificationPlanner.phWeekday))
+
+        let muted = plan(snapshot(daysSinceLastPh: 30, muted: [.ph]))
+        XCTAssertFalse(muted.hydrationRestDays.contains(NotificationPlanner.phWeekday))
+        XCTAssertNotNil(muted.hydration, "and the daily nudge is still on")
+    }
+
+    /// Same reason, for the weekly budget: five things are due and only four fit, so silencing one
+    /// should let the one that missed out through rather than leave the week a nudge short.
+    func testMutingOneCategoryLetsAnotherUseTheBudget() {
+        let heard = plan(everythingDue)
+        XCTAssertEqual(heard.weekly.count, NotificationPlanner.weeklyBudget)
+        XCTAssertNil(heard.weekly.first { $0.slot == .learn }, "crowded out by the other four")
+
+        let muted = plan(snapshot(daily: 0, weekDays: 6, weekly: 2, daysSinceLastPh: 30, phCount: 6,
+                                  daysSinceLastLog: 5, topSymptom: ("Fatigue", 5),
+                                  fertileInDays: 1, muted: [.ph]))
+
+        XCTAssertNil(muted.weekly.first { $0.slot == .ph })
+        XCTAssertNotNil(muted.weekly.first { $0.slot == .learn }, "the Sunday read takes the free slot")
+        XCTAssertEqual(muted.weekly.count, NotificationPlanner.weeklyBudget)
+    }
+
+    func testMutingTheCycleCategorySilencesTheFertileNudge() {
+        XCTAssertNotNil(plan(snapshot(fertileInDays: 0)).weekly.first { $0.slot == .fertile })
+        XCTAssertNil(plan(snapshot(fertileInDays: 0, muted: [.cycle])).weekly.first { $0.slot == .fertile })
+    }
+
+    func testMutingTheEveningCheckInLeavesTheWeeklyNudgesAlone() {
+        let p = plan(snapshot(daysSinceLastPh: 30, muted: [.checkIn]))
+
+        XCTAssertNil(p.hydration)
+        XCTAssertNotNil(p.weekly.first { $0.slot == .ph })
+    }
+
+    /// The dormant hand-back is a logging nudge too. Someone who switched those off after two silent
+    /// weeks has been about as clear as it is possible to be.
+    func testMutingLoggingAlsoSilencesTheHandBackAfterALongGap() {
+        XCTAssertEqual(plan(snapshot(daysSinceLastLog: 20)).notifications.count, 1)
+        XCTAssertTrue(plan(snapshot(daysSinceLastLog: 20, muted: [.logging])).notifications.isEmpty)
+    }
+
+    func testMutingEverythingSendsNothing() {
+        let p = plan(snapshot(daily: 0, weekDays: 6, weekly: 2, daysSinceLastPh: 30, phCount: 6,
+                              daysSinceLastLog: 5, topSymptom: ("Fatigue", 5), fertileInDays: 1,
+                              muted: Set(NotificationCategory.allCases)))
+
+        XCTAssertTrue(p.notifications.isEmpty)
     }
 
     // MARK: - The evening check-in: two branches, both guilt-free

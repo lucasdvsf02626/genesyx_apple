@@ -177,6 +177,18 @@ final class RepositoryTests: XCTestCase {
         XCTAssertEqual(reloaded.focusMode, .pregnancy)
     }
 
+    /// Stored as what she muted, not what she kept — so a category shipped in a later build arrives
+    /// switched on, rather than silently off for everyone who upgraded.
+    func testEveryNotificationCategoryStartsOnAndMutingSurvivesRelaunch() {
+        let store = makeStore()
+        XCTAssertTrue(PreferencesRepository(store: store).mutedNotifications.isEmpty)
+
+        let prefs = PreferencesRepository(store: store)
+        prefs.mutedNotifications = [.ph, .milestones]
+
+        XCTAssertEqual(PreferencesRepository(store: store).mutedNotifications, [.ph, .milestones])
+    }
+
     // MARK: - Local health-data wipe on auth transitions
 
     /// Seeds cycle/pH/daily-log data into a container, then asserts sign-out clears both the

@@ -59,5 +59,13 @@ final class NotificationFlowUITests: XCTestCase {
         let switchedOn = NSPredicate(format: "value == '1'")
         expectation(for: switchedOn, evaluatedWith: toggle)
         waitForExpectations(timeout: 20)
+
+        // And now that they're on, each kind of message is hers to keep or silence separately. One
+        // switch cannot hold seven of them: "all of it or none of it" is how people choose none.
+        for category in ["check_in", "cycle", "ph", "logging", "insights", "learn", "milestones"] {
+            let row = app.switches["notifCategory.\(category)"]
+            XCTAssertTrue(row.waitForExistence(timeout: 5), "\(category) should have its own switch")
+            XCTAssertEqual(row.value as? String, "1", "\(category) starts on — muting is opt-in")
+        }
     }
 }

@@ -207,6 +207,22 @@ struct ProfileView: View {
                         .tint(GenesyxColor.primary)
                     }
                     .padding(.horizontal, 14).padding(.vertical, 8)
+
+                    ForEach(NotificationCategory.allCases, id: \.self) { category in
+                        divider
+                        Toggle(category.title, isOn: Binding(
+                            get: { !prefs.mutedNotifications.contains(category) },
+                            set: { on in
+                                if on { prefs.mutedNotifications.remove(category) }
+                                else { prefs.mutedNotifications.insert(category) }
+                            }
+                        ))
+                        .tint(GenesyxColor.primary)
+                        .font(.system(size: 14.5))
+                        .foregroundStyle(GenesyxColor.foreground)
+                        .padding(.horizontal, 14).padding(.vertical, 8)
+                        .accessibilityIdentifier("notifCategory.\(category.rawValue)")
+                    }
                 }
             }
             if notifications.isSystemDenied && prefs.pushEnabled {
@@ -226,9 +242,9 @@ struct ProfileView: View {
     private var reminderPromptSheet: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Gentle reminders").font(.gxCardHeading).foregroundStyle(GenesyxColor.foreground)
-            Text("An evening check-in on days you haven't logged, a weekly pH reminder, your phase for the week, a nutrition check-in, and a Sunday read. Just one a day at most, and never a word about a streak you've missed.")
+            Text("An evening check-in on days you haven't logged, a weekly pH reminder, a note when your cycle reaches its predicted window, and a Sunday read. Just one a day at most, and never a word about a streak you've missed.")
                 .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
-            Text("You can turn these off any time.")
+            Text("You can switch the lot off, or any one of them on its own, whenever you like.")
                 .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
             Spacer()
             GxPrimaryButton(title: "Turn on reminders") {
