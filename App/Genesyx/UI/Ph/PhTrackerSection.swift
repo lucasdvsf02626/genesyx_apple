@@ -63,6 +63,7 @@ private struct PhTrackerCard: View {
     var onOpenSupplements: (() -> Void)? = nil
     let onLog: () -> Void
     @State private var range: PhRange = .month
+    @State private var disclaimerExpanded = false
 
     private var filtered: [PhReading] {
         guard let days = range.days else { return readings }
@@ -94,10 +95,27 @@ private struct PhTrackerCard: View {
                 .font(.caption2).foregroundStyle(GenesyxColor.mutedForeground)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("phCaveat")
-            Text(PhCopy.disclaimer)
-                .font(.caption2).foregroundStyle(GenesyxColor.mutedForeground)
-                .fixedSize(horizontal: false, vertical: true)
-                .accessibilityIdentifier("phDisclaimer")
+            // Collapsed on the card so the small print stops crowding the tracker itself. The log
+            // sheet keeps it pinned and always visible — that is the surface where she records a
+            // reading, and there the disclaimer must never be a tap away.
+            Button { withAnimation(.easeInOut(duration: 0.2)) { disclaimerExpanded.toggle() } } label: {
+                HStack {
+                    Text("Safety note").font(.caption2.weight(.medium)).foregroundStyle(GenesyxColor.primary)
+                    Spacer()
+                    Image(systemName: "chevron.down").font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(GenesyxColor.mutedForeground)
+                        .rotationEffect(.degrees(disclaimerExpanded ? 180 : 0))
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("phDisclaimerToggle")
+            if disclaimerExpanded {
+                Text(PhCopy.disclaimer)
+                    .font(.caption2).foregroundStyle(GenesyxColor.mutedForeground)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("phDisclaimer")
+            }
 
             if let latest = readings.last {
                 latestPanel(latest)

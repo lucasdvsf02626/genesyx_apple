@@ -159,6 +159,12 @@ final class RepositoryTests: XCTestCase {
         XCTAssertTrue(repo.readings.isEmpty)
     }
 
+    /// A first launch must land on the designed light palette, not on whatever scheme the phone
+    /// happens to be in.
+    func testThemeDefaultsToLightBeforeAnyChoice() {
+        XCTAssertEqual(PreferencesRepository(store: makeStore()).themeMode, .light)
+    }
+
     func testPreferencesPersist() {
         let store = makeStore()
         let prefs = PreferencesRepository(store: store)

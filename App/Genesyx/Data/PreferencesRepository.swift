@@ -63,7 +63,10 @@ final class PreferencesRepository: ObservableObject {
     init(store: LocalStore, backend: ProfileBackend? = nil) {
         self.store = store
         self.backend = backend
-        self.themeMode = store.string(forKey: themeKey).flatMap(ThemeMode.init(rawValue:)) ?? .system
+        // Defaults to light, not system: the warm palette is the designed look, and following a
+        // phone that happens to be in dark mode showed first-time users a scheme nobody signed off.
+        // `.system` stays available in Profile for anyone who wants it.
+        self.themeMode = store.string(forKey: themeKey).flatMap(ThemeMode.init(rawValue:)) ?? .light
         // Defaults to FALSE. "On" must mean she asked for reminders — defaulting it true made the
         // Profile toggle read as on before iOS had ever been asked for permission, so the
         // pre-prompt never appeared, permission was never requested, and nothing was ever
