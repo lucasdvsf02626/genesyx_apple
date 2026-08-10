@@ -25,6 +25,17 @@ final class PreferencesRepository: ObservableObject {
         didSet { store.save(mutedNotifications.map(\.rawValue), forKey: mutedNotificationsKey) }
     }
 
+    /// Hour of the day she wants reminding about one supplement, keyed by `SupplementReminder.id`.
+    /// Absent means no reminder, which is the default for every supplement — the plan is hers to
+    /// follow at her own pace, and four unrequested alarms a day is how an app gets muted entirely.
+    ///
+    /// Held here rather than on `CustomSupplement` on purpose: that type's shape is frozen until the
+    /// shared Android schema is confirmed, and keying by id covers the fixed Genesyx essentials too,
+    /// which have no record of their own to hang a field on.
+    @Published var supplementReminders: [String: Int] {
+        didSet { store.save(supplementReminders, forKey: supplementRemindersKey) }
+    }
+
     private let store: LocalStore
     private let backend: ProfileBackend?
     private let themeKey = "theme_mode"
@@ -32,6 +43,7 @@ final class PreferencesRepository: ObservableObject {
     private let focusKey = "focus_mode"
     private let reminderHourKey = "reminder_hour"
     private let mutedNotificationsKey = "muted_notifications"
+    private let supplementRemindersKey = "supplement_reminders"
     private let pendingKey = "profile_pending"
 
     /// Set while applying a pulled profile, so writing those values doesn't bounce them straight
@@ -66,6 +78,10 @@ final class PreferencesRepository: ObservableObject {
     func clearNotificationState() {
         celebratedMilestones = []
         store.remove(forKey: celebratedKey)
+        // Keyed to supplements that are themselves wiped on sign-out. Left behind, the next user on
+        // this device would be woken at 8am for someone else's magnesium.
+        supplementReminders = [:]
+        store.remove(forKey: supplementRemindersKey)
     }
 
     init(store: LocalStore, backend: ProfileBackend? = nil) {
@@ -84,6 +100,7 @@ final class PreferencesRepository: ObservableObject {
         self.reminderHour = store.int(forKey: reminderHourKey, default: 19)
         self.mutedNotifications = Set((store.load([String].self, forKey: mutedNotificationsKey) ?? [])
             .compactMap(NotificationCategory.init(rawValue:)))
+        self.supplementReminders = store.load([String: Int].self, forKey: supplementRemindersKey) ?? [:]
         self.pendingPush = store.bool(forKey: pendingKey, default: false)
         self.celebratedMilestones = Set(store.load([String].self, forKey: celebratedKey) ?? [])
     }

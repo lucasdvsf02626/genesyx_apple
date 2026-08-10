@@ -201,7 +201,7 @@ struct ProfileView: View {
                             get: { prefs.reminderHour },
                             set: { prefs.reminderHour = $0 }
                         )) {
-                            ForEach(0..<24, id: \.self) { h in Text(Self.hourLabel(h)).tag(h) }
+                            ForEach(0..<24, id: \.self) { h in Text(gxHourLabel(h)).tag(h) }
                         }
                         .labelsHidden()
                         .tint(GenesyxColor.primary)
@@ -359,14 +359,6 @@ struct ProfileView: View {
 
     private func groupLabel(_ text: String) -> some View {
         Eyebrow(text, color: GenesyxColor.mutedForeground).padding(.leading, 4)
-    }
-
-    /// Localised time-of-day label for the reminder-hour picker (respects 12/24-hour formatting).
-    private static func hourLabel(_ hour: Int) -> String {
-        var components = DateComponents(); components.hour = hour; components.minute = 0
-        let date = Calendar.current.date(from: components) ?? Date()
-        let formatter = DateFormatter(); formatter.timeStyle = .short
-        return formatter.string(from: date)
     }
 
     private func cardGroup<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {

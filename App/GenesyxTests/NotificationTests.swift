@@ -45,6 +45,22 @@ final class NotificationTests: XCTestCase {
         }
     }
 
+    /// Supplement reminders repeat, so their ids are the only way to ever stop them. Unlike every
+    /// other notification here the id is built from data rather than an enum case, which is exactly
+    /// why it is pinned by a test.
+    func testASupplementReminderIdIsDerivedFromItsKey() {
+        XCTAssertEqual(NotificationService.supplementRequestId("mag"), "genesyx.supplement.mag")
+        XCTAssertEqual(NotificationService.supplementRequestId("essential.F"),
+                       "genesyx.supplement.essential.F")
+    }
+
+    /// Every category she can mute needs a name she'd recognise on the Profile row.
+    func testEveryMutableCategoryHasATitle() {
+        for category in NotificationCategory.allCases {
+            XCTAssertFalse(category.title.isEmpty, "\(category.rawValue) has no title")
+        }
+    }
+
     /// Build 9 scheduled a nutrition and a phase nudge. They're retired, but their IDs must survive
     /// so an upgrading app can still cancel what it already scheduled.
     func testRetiredIdsSurviveSoTheyCanBeCancelled() {

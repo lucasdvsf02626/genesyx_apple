@@ -74,5 +74,6 @@ enum NotificationContent {
     static var allCopyStrings: [String] {
         Milestone.allCases.flatMap { [milestoneTitle($0), milestoneBody($0)] }
             + NotificationPlanner.allPossibleCopy()
+            + SupplementReminder.allPossibleCopy
     }
 }

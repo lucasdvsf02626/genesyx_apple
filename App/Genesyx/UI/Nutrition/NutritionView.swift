@@ -326,6 +326,7 @@ private extension NutritionView {
 
 private struct SupplementPlanSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var prefs: PreferencesRepository
 
     // Custom supplements persist LOCALLY only for now. Remote Supabase persistence is pending the
     // shared Android schema (see CustomSupplement) — flagged, not applied.
@@ -363,6 +364,8 @@ private struct SupplementPlanSheet: View {
                         Text(s.name).font(.gxBody.weight(.medium)).foregroundStyle(GenesyxColor.foreground)
                         Text(s.rationale).font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
                     }
+                    Spacer()
+                    reminderMenu(key: SupplementReminder.essentialKey(initial: s.initial), name: s.name)
                 }
             }
         }
@@ -389,6 +392,7 @@ private struct SupplementPlanSheet: View {
                             }
                         }
                         Spacer()
+                        reminderMenu(key: item.id, name: item.name)
                         Button { remove(item) } label: {
                             Image(systemName: "xmark").font(.system(size: 12, weight: .semibold))
                                 .foregroundStyle(GenesyxColor.mutedForeground)
@@ -427,6 +431,31 @@ private struct SupplementPlanSheet: View {
         .padding(.top, 4)
     }
 
+    /// Off by default, and off is a first-class option rather than something to be talked out of —
+    /// a plan of six supplements should not mean six alarms nobody asked for.
+    private func reminderMenu(key: String, name: String) -> some View {
+        let hour = prefs.supplementReminders[key]
+        return Menu {
+            Picker("Reminder", selection: Binding(
+                get: { prefs.supplementReminders[key] ?? -1 },
+                set: { prefs.supplementReminders[key] = $0 < 0 ? nil : $0 }
+            )) {
+                Text("No reminder").tag(-1)
+                ForEach(0..<24, id: \.self) { h in Text(gxHourLabel(h)).tag(h) }
+            }
+        } label: {
+            HStack(spacing: 3) {
+                Image(systemName: hour == nil ? "bell" : "bell.fill").font(.system(size: 12, weight: .semibold))
+                if let hour { Text(gxHourLabel(hour)).font(.system(size: 12, weight: .medium)) }
+            }
+            .foregroundStyle(hour == nil ? GenesyxColor.mutedForeground : GenesyxColor.primary)
+        }
+        .accessibilityLabel(hour == nil
+                            ? "Set a reminder for \(name)"
+                            : "\(name) reminder at \(gxHourLabel(hour!))")
+        .accessibilityIdentifier("supplementReminder.\(key)")
+    }
+
     private func field(_ placeholder: String, text: Binding<String>) -> some View {
         TextField(placeholder, text: text)
             .font(.gxBodySmall).padding(.horizontal, 12).frame(height: 44)
@@ -446,5 +475,6 @@ private struct SupplementPlanSheet: View {
 
     private func remove(_ item: CustomSupplement) {
         customJSON = CustomSupplement.encodeList(custom.filter { $0.id != item.id })
+        prefs.supplementReminders[item.id] = nil
     }
 }

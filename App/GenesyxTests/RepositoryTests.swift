@@ -438,6 +438,32 @@ final class RepositoryTests: XCTestCase {
                       "custom supplements must not survive sign-out")
     }
 
+    /// No supplement is reminded about until she says so, and what she chose has to survive a
+    /// relaunch — a reminder time that quietly forgot itself would be worse than never offering one.
+    func testSupplementRemindersStartEmptyAndSurviveRelaunch() {
+        let store = makeStore()
+        XCTAssertTrue(PreferencesRepository(store: store).supplementReminders.isEmpty)
+
+        let prefs = PreferencesRepository(store: store)
+        prefs.supplementReminders["mag"] = 8
+
+        XCTAssertEqual(PreferencesRepository(store: store).supplementReminders, ["mag": 8])
+    }
+
+    /// They are keyed to supplements that are themselves wiped on sign-out. Left behind, the next
+    /// user on this device would be woken at 8am for someone else's magnesium.
+    func testSignOutClearsSupplementReminders() {
+        let store = makeStore()
+        let container = AppContainer(store: store, backend: nil)
+        container.prefs.supplementReminders["mag"] = 8
+
+        container.session.signOut()
+
+        XCTAssertTrue(container.prefs.supplementReminders.isEmpty)
+        XCTAssertTrue(PreferencesRepository(store: store).supplementReminders.isEmpty,
+                      "and it must not come back from the store on next launch")
+    }
+
     /// Account deletion (success path) must wipe the same on-device health data.
     func testDeleteAccountClearsLocalHealthData() async throws {
         let store = makeStore()

@@ -27,6 +27,7 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
     private let lastSentKey = "notification_last_sent"
     private let scheduledFireKey = "notification_scheduled_fire"
     private let queuedLearnSlugKey = "notification_queued_learn_slug"
+    private let scheduledSupplementIdsKey = "notification_scheduled_supplements"
 
     init(prefs: PreferencesRepository,
          dailyLog: DailyLogRepository,
@@ -70,6 +71,10 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
         // Switching a category off has to take effect now: a request for it is already queued with
         // the system and would still fire. `replan` cancels the lot and rebuilds without it.
         onChange(prefs.$mutedNotifications) { [weak self] in self?.replan() }
+            .store(in: &cancellables)
+
+        // Setting or clearing a supplement's time is a direct instruction about when to speak.
+        onChange(prefs.$supplementReminders) { [weak self] in self?.replan() }
             .store(in: &cancellables)
     }
 
@@ -134,6 +139,7 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
             schedule(hydration, restDays: plan.hydrationRestDays)
         }
         fireDueMilestones()
+        scheduleSupplementReminders()
         dumpScheduleForDebugging()
     }
 
@@ -310,9 +316,14 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
     }
 
     func cancelAll() {
+        // Supplement reminders repeat, so they are the one thing here that outlives neglect: missing
+        // them would leave the master switch off and her phone still going off every morning. Their
+        // ids are dynamic, hence remembered rather than enumerated.
         let ids = NotificationKind.allCases.map(\.rawValue)
+            + (store.load([String].self, forKey: scheduledSupplementIdsKey) ?? [])
         center.removePendingNotificationRequests(withIdentifiers: ids)
         center.removeDeliveredNotifications(withIdentifiers: ids)
+        store.save([String](), forKey: scheduledSupplementIdsKey)
     }
 
     // MARK: - What has already fired
@@ -391,6 +402,53 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
         }
         prefs.celebrate(state.milestones.map(\.flagKey))
         prefs.clearCelebrations(state.lapsedCelebrations)
+    }
+
+    // MARK: - Supplement reminders
+
+    /// Alarms she set herself, so they are scheduled outside the plan: no weekly budget, no
+    /// one-a-day rule, and no going quiet when she does. See `SupplementReminder`.
+    ///
+    /// These repeat, unlike everything else here. The planned nudges are single-shot because their
+    /// content is recomputed from her data each time the app opens; a supplement reminder says the
+    /// same thing every day, and one that stopped working because she hadn't opened the app in a
+    /// week would be an alarm clock that needs winding.
+    private func scheduleSupplementReminders() {
+        // `cancelAll` has already torn down the previous set, including any supplement she has since
+        // deleted — which is why the ids it cancels are remembered rather than derived from what
+        // exists now.
+        guard !prefs.mutedNotifications.contains(.supplements) else { return }
+
+        let reminders = SupplementReminder.all(customs: customSupplements(),
+                                               hours: prefs.supplementReminders)
+        for reminder in reminders {
+            let content = UNMutableNotificationContent()
+            content.title = reminder.title
+            content.body = reminder.body
+            content.sound = .default
+            content.userInfo = NotificationRouter.payload(tab: .nutrition)
+
+            var components = DateComponents()
+            components.hour = reminder.hour
+            components.minute = 0
+
+            center.add(UNNotificationRequest(
+                identifier: Self.supplementRequestId(reminder.id),
+                content: content,
+                trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
+            ))
+        }
+        store.save(reminders.map { Self.supplementRequestId($0.id) },
+                   forKey: scheduledSupplementIdsKey)
+    }
+
+    nonisolated static func supplementRequestId(_ key: String) -> String { "genesyx.supplement.\(key)" }
+
+    /// Written by the Nutrition sheet through `@AppStorage`, which is `UserDefaults.standard` — the
+    /// same place the sign-out wipe clears, so the two cannot drift apart.
+    private func customSupplements() -> [CustomSupplement] {
+        CustomSupplement.decodeList(
+            UserDefaults.standard.string(forKey: CustomSupplement.storageKey) ?? "[]")
     }
 
     // MARK: - Delegate

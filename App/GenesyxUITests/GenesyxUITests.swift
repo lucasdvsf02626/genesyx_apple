@@ -38,6 +38,30 @@ final class GenesyxUITests: XCTestCase {
                        "The hardcoded supplement count must never come back")
     }
 
+    /// Every supplement she can see is hers to be reminded about — the four Genesyx essentials
+    /// included, since excluding them would mean the ones the app actually recommends were the only
+    /// ones with no reminder. Reaching the sheet at all is half the point: it reads preferences out
+    /// of the environment, and a sheet that doesn't inherit them crashes on open rather than
+    /// failing a unit test.
+    func testEachSupplementCanBeGivenItsOwnReminderTime() {
+        let app = launchSeeded(tab: 2)   // Nutrition
+
+        let review = app.buttons["Review Plan"]
+        XCTAssertTrue(review.waitForExistence(timeout: 10))
+        review.tap()
+
+        let folate = app.buttons["supplementReminder.essential.F"]
+        XCTAssertTrue(folate.waitForExistence(timeout: 5), "the Genesyx essentials need reminders too")
+        XCTAssertTrue(folate.label.hasPrefix("Set a reminder"), "no supplement is reminded about until she says so")
+
+        folate.tap()
+
+        // The menu offers "No reminder" alongside the hours — off stays a first-class choice, not
+        // something she has to back out of the menu to keep.
+        XCTAssertTrue(app.buttons["No reminder"].waitForExistence(timeout: 5),
+                      "turning a reminder back off must be as easy as setting one")
+    }
+
     func testLearnTabShowsArticles() {
         let app = launchSeeded(tab: 4)   // Learn
         XCTAssertTrue(app.staticTexts["Your first week with Genesyx"].waitForExistence(timeout: 10),

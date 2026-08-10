@@ -5,6 +5,15 @@ extension Color {
     func tintOnWhite(_ fraction: Double) -> Color { opacity(fraction) }
 }
 
+/// An hour of the day in her locale's own format — "9 AM" or "09:00" depending on the phone. Shared
+/// so the reminder-time pickers in Profile and in the supplement plan can't drift apart.
+func gxHourLabel(_ hour: Int) -> String {
+    var components = DateComponents(); components.hour = hour; components.minute = 0
+    let date = Calendar.current.date(from: components) ?? Date()
+    let formatter = DateFormatter(); formatter.timeStyle = .short
+    return formatter.string(from: date)
+}
+
 /// ALL-CAPS section eyebrow (matches Android `Eyebrow`).
 struct Eyebrow: View {
     let text: String
