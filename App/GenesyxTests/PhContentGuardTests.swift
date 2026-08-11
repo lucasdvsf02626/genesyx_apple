@@ -9,8 +9,11 @@ final class PhContentGuardTests: XCTestCase {
     private let banned = ["bv", "thrush", "infection", "candida", "vaginosis", "leafy greens", "whole grains", "mineral water"]
     private let phSlugs: Set<String> = ["guide-vaginal-ph-tracker", "guide-how-to-log-ph", "guide-track-ph-in-nutrition"]
 
+    /// Scans `allArticles` for the same reason the banned-phrase guard does: a pH piece in the
+    /// weekly series is compiled in months before it is revealed, and checking only the published
+    /// set would first inspect it on the morning it reached readers.
     func testLearnPhGuidesHaveNoBannedTerms() {
-        let phArticles = LearnLibrary.articles.filter { phSlugs.contains($0.slug) || $0.tags.contains("ph") }
+        let phArticles = LearnLibrary.allArticles.filter { phSlugs.contains($0.slug) || $0.tags.contains("ph") }
         XCTAssertFalse(phArticles.isEmpty, "expected pH Learn guides to scan")
         for a in phArticles {
             var strings = [a.title, a.excerpt] + a.tags

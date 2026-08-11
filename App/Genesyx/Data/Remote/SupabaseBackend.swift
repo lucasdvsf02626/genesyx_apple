@@ -22,6 +22,12 @@ final class SupabaseBackend: GenesyxBackend {
         guard RemoteConfig.isConfigured, let url = URL(string: RemoteConfig.url) else { return nil }
         client = SupabaseClient(supabaseURL: url, supabaseKey: RemoteConfig.anonKey)
     }
+
+    /// `waitlist_emails` is locked down (RLS on, no client policies); the only write path is the
+    /// SECURITY DEFINER `join_waitlist` RPC, callable under the anon key from pre-auth onboarding.
+    func joinWaitlist(email: String) async throws {
+        try await client.rpc("join_waitlist", params: ["p_email": email]).execute()
+    }
 }
 
 private struct SupabaseAuth: AuthBackend {

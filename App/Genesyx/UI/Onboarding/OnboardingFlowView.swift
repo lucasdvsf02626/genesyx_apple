@@ -2,8 +2,8 @@ import SwiftUI
 import GenesyxCore
 
 /// The onboarding state machine: Splash → Intro → Quiz → Readiness Summary → (Waitlist) → app.
-/// Ported from the Android onboarding screens. Brand egg artwork is approximated with soft
-/// decorative orbs until the image assets are bundled.
+/// Ported from the Android onboarding screens, and now with the real brand egg artwork on the
+/// splash rather than the `BrandOrb` blobs that stood in for it.
 struct OnboardingFlowView: View {
 
     let onFinished: () -> Void
@@ -12,6 +12,9 @@ struct OnboardingFlowView: View {
     /// so they are written on-device here and owed to her `profiles` row until sign-in provides a
     /// user id to write them under.
     @EnvironmentObject private var prefs: PreferencesRepository
+    /// Reached only for the waiting-list write, which happens before there is an account — so it
+    /// goes straight to the backend rather than through a session-scoped repository.
+    @EnvironmentObject private var container: AppContainer
 
     private enum Step { case splash, intro, quiz, summary, waitlist }
     @State private var step: Step = .splash
@@ -33,7 +36,14 @@ struct OnboardingFlowView: View {
             case .summary:
                 ReadinessSummaryView(onUnlockGuide: { step = .waitlist }, onContinue: { showAuth = true }, onBack: { step = .quiz })
             case .waitlist:
-                WaitlistView(onContinue: { showAuth = true }, onBack: { step = .summary })
+                WaitlistView(
+                    onJoin: { email in
+                        guard let backend = container.backend else { throw RemoteError.notAvailable }
+                        try await backend.joinWaitlist(email: email)
+                    },
+                    onContinue: { showAuth = true },
+                    onBack: { step = .summary }
+                )
             }
         }
         // Auth gates the dashboard (Android parity): every onboarding exit routes through Auth,
@@ -54,11 +64,25 @@ private struct SplashView: View {
 
     var body: some View {
         ZStack {
-            // Decorative orbs (stand-in for the floating egg artwork)
-            BrandOrb(size: 150).offset(x: -120, y: -260).opacity(0.9)
-            BrandOrb(size: 120).offset(x: 130, y: -180).opacity(0.8)
-            BrandOrb(size: 90).offset(x: -130, y: 200).opacity(0.7)
-            BrandOrb(size: 130).offset(x: 130, y: 280).opacity(0.85)
+            // The floating egg motif, at the four positions the stand-in orbs held — that
+            // composition was already tuned against the copy, so only the shapes changed.
+            //
+            // Three deliberate departures from the orbs' numbers:
+            //
+            // Sizes are up ~15% — a crescent fills less of its frame than a circle, so a 150pt egg
+            // reads smaller than a 150pt orb did.
+            //
+            // Fades are roughly half the orbs' 0.7–0.9. Those were near-white and these are fully
+            // saturated, so carrying the old values across put colour behind the headline rather
+            // than behind the screen.
+            //
+            // The fourth moved out of the bottom-right corner into the gap above the button. That
+            // corner is where the "not medical advice" line wraps, and the line staying legible on
+            // a first run matters more than the wallpaper being symmetrical.
+            BrandEgg(.warm, size: 170, fade: 0.55).rotationEffect(.degrees(-20)).offset(x: -118, y: -262)
+            BrandEgg(.cool, size: 140, fade: 0.45).rotationEffect(.degrees(155)).offset(x: 116, y: -168)
+            BrandEgg(.cool, size: 110, fade: 0.38).rotationEffect(.degrees(-150)).offset(x: -132, y: 196)
+            BrandEgg(.warm, size: 124, fade: 0.42).rotationEffect(.degrees(30)).offset(x: 142, y: 84)
 
             VStack(spacing: 0) {
                 Text("GENESYX").font(.gxTitle).tracking(2).foregroundStyle(GenesyxColor.foreground)
@@ -297,16 +321,33 @@ private struct ReadinessSummaryView: View {
 // MARK: - Waitlist
 
 private struct WaitlistView: View {
+    /// Stores the address on the waiting list. Throws when it can't — the confirmation below is
+    /// shown only after this returns, so the screen never claims a place it didn't secure.
+    let onJoin: (String) async throws -> Void
     let onContinue: () -> Void
     let onBack: () -> Void
 
     @State private var email = ""
+    @State private var submitting = false
     @State private var submitted = false
     @State private var error: String?
 
-    private func isValidEmail(_ s: String) -> Bool {
-        let t = s.trimmingCharacters(in: .whitespaces)
-        return t.range(of: #"^[^@\s]+@[^@\s]+\.[^@\s]+$"#, options: .regularExpression) != nil
+    private func submit() {
+        let trimmed = email.trimmingCharacters(in: .whitespaces)
+        guard EmailValidator.isValid(trimmed) else {
+            error = "Please enter a valid email address."
+            return
+        }
+        submitting = true
+        Task {
+            do {
+                try await onJoin(trimmed)
+                submitted = true
+            } catch {
+                self.error = "We couldn't add you to the list just now. Please check your connection and try again."
+            }
+            submitting = false
+        }
     }
 
     var body: some View {
@@ -320,7 +361,7 @@ private struct WaitlistView: View {
                     Spacer().frame(height: 20)
                     Text("You're on the list").font(.gxTitle).foregroundStyle(GenesyxColor.foreground)
                     Spacer().frame(height: 8)
-                    Text("We'll send your free fertility nutrition guide to \(email) shortly.")
+                    Text("Thanks — you're on the Genesyx early-access list. Register to open your fertility nutrition guidance inside the app.")
                         .font(.gxBody).foregroundStyle(GenesyxColor.mutedForeground).multilineTextAlignment(.center)
                     Spacer().frame(height: 28)
                     GxPrimaryButton(title: "Register / Login to continue", action: onContinue)
@@ -331,7 +372,7 @@ private struct WaitlistView: View {
                     Text("A gentle guide to fertility nutrition")
                         .font(.gxTitle).foregroundStyle(GenesyxColor.foreground).multilineTextAlignment(.center)
                     Spacer().frame(height: 8)
-                    Text("Sent straight to your inbox when you join the Genesyx waiting list.")
+                    Text("Join the Genesyx early-access list — your fertility nutrition guidance is waiting inside the app once you register.")
                         .font(.gxBody).foregroundStyle(GenesyxColor.mutedForeground).multilineTextAlignment(.center)
                     Spacer().frame(height: 20)
                     TextField("your@email.com", text: $email)
@@ -349,10 +390,7 @@ private struct WaitlistView: View {
                             .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 6)
                     }
                     Spacer().frame(height: 16)
-                    GxPrimaryButton(title: "Join the Waiting List") {
-                        if isValidEmail(email) { submitted = true }
-                        else { error = "Please enter a valid email address." }
-                    }
+                    GxPrimaryButton(title: "Join the Waiting List", enabled: !submitting, action: submit)
                     GxGhostButton(title: "Register / Login to continue", action: onContinue)
                 }
             }

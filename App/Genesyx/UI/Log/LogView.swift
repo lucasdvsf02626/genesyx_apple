@@ -59,6 +59,10 @@ struct LogView: View {
                     Button("Close") { dismiss() }.tint(GenesyxColor.mutedForeground)
                 }
             }
+            // On the hierarchy, not on either field: the note and "Add symptom" both wrap to a second
+            // line, where Return types a newline instead of dismissing. One toolbar covers both, and
+            // a second one added lower down would render a second Done beside this one.
+            .gxKeyboardDoneToolbar()
         }
         .onAppear(perform: populate)
         .sheet(isPresented: $sleepOpen) {
@@ -247,6 +251,7 @@ struct LogView: View {
             HStack(spacing: 12) {
                 miniCard("bed.double.fill", "Sleep", sleepValue, GenesyxColor.primary) { sleepOpen = true }
                 miniCard("drop.fill", "Water", String(format: "%.1fL", Double(waterMl) / 1000), GenesyxColor.electricBlue) { waterOpen = true }
+                    .accessibilityIdentifier("log.waterCard")
             }
             HStack(spacing: 12) {
                 miniCard("pills.fill", "Supplements", "\(selectedSupplements.count) of \(Self.supplements.count)", GenesyxColor.primary) { suppOpen = true }
@@ -281,6 +286,7 @@ struct LogView: View {
             sectionLabel("Notes")
             TextField("A short note for future you…", text: $notes, axis: .vertical)
                 .lineLimit(3...6)
+                .accessibilityIdentifier("log.notesField")
                 .padding(12)
                 .background(GenesyxColor.card)
                 .clipShape(RoundedRectangle(cornerRadius: 16))
@@ -345,6 +351,8 @@ private struct WaterSheet: View {
             VStack(spacing: 16) {
                 TextField("0", text: $input)
                     .keyboardType(.numberPad).multilineTextAlignment(.center)
+                    .gxKeyboardDoneToolbar()
+                    .accessibilityIdentifier("log.waterMlField")
                     .font(.gxPhValue)
                     .onChange(of: input) { input = String($0.filter(\.isNumber).prefix(5)) }
                 Text("millilitres").font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)

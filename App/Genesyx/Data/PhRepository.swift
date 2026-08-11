@@ -63,8 +63,10 @@ final class PhRepository: ObservableObject {
         await drainPending()
     }
 
-    /// Push every record the server is still owed, oldest edit first. Stops at the first failure —
-    /// if one push fails we're almost certainly offline, so the rest stay queued for next time.
+    /// Push every record the server is still owed, oldest edit first. A failure of the connection —
+    /// offline, or no session yet — is the same answer for every record behind it, so we stop and
+    /// leave the queue for next time. A server-side rejection is specific to that one record —
+    /// stepping over it keeps a single poisoned write from starving every newer reading behind it.
     /// Called on launch/sign-in (via `refresh`) and on app foreground.
     func drainPending() async {
         guard let backend else { return }
@@ -73,7 +75,8 @@ final class PhRepository: ObservableObject {
                 try await backend.upsert(record)
                 clearPending(record)
             } catch {
-                break
+                if SyncError.shouldHaltDrain(error) { break }
+                continue
             }
         }
         persist()

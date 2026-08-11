@@ -17,8 +17,10 @@ struct NutritionView: View {
     @State private var whyExpanded = false
     @EnvironmentObject private var router: TabRouter
     @State private var articlePath: [String] = []
-    @AppStorage("hydration_unit") private var hydrationUnitRaw = HydrationUnit.glasses.rawValue
+    @AppStorage(HydrationPrefs.unitKey) private var hydrationUnitRaw = HydrationUnit.glasses.rawValue
+    @AppStorage(HydrationPrefs.glassMlKey) private var hydrationGlassMlRaw = 0
     private var hydrationUnit: HydrationUnit { HydrationUnit(rawValue: hydrationUnitRaw) ?? .glasses }
+    private var hydrationGlassMl: Int { HydrationPrefs.glassMl(from: hydrationGlassMlRaw) }
 
     /// The last phase she was told about. Device-local and wiped on sign-out, like the other
     /// `@AppStorage` health state — see `AppContainer.clearLocalState`.
@@ -118,7 +120,8 @@ struct NutritionView: View {
                 .buttonStyle(.plain)
             }
             HStack(alignment: .bottom) {
-                Text(HydrationFormat.progress(ml: waterMl, goalMl: waterGoalMl, unit: hydrationUnit))
+                Text(HydrationFormat.progress(ml: waterMl, goalMl: waterGoalMl, unit: hydrationUnit,
+                                              glassMl: hydrationGlassMl))
                     .font(.system(size: 28, weight: .semibold)).foregroundStyle(GenesyxColor.foreground)
                 Spacer()
                 Text(HydrationCoach.streakLabel(streak))
@@ -149,7 +152,7 @@ struct NutritionView: View {
             }
             HStack(spacing: 6) {
                 Image(systemName: "drop").font(.system(size: 13)).foregroundStyle(GenesyxColor.mutedForeground)
-                Text(remaining > 0 ? "\(HydrationFormat.amount(ml: remaining, unit: hydrationUnit)) to go" : "Target reached — nice work")
+                Text(remaining > 0 ? "\(HydrationFormat.amount(ml: remaining, unit: hydrationUnit, glassMl: hydrationGlassMl)) to go" : "Target reached — nice work")
                     .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
             }
             Text("Daily target based on general adequate-intake guidance for women (from all food and drink).")

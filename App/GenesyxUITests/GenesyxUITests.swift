@@ -61,6 +61,48 @@ final class GenesyxUITests: XCTestCase {
                       "answering every question should land on the readiness summary")
     }
 
+    /// Drives the quiz from the splash to the readiness summary, for tests that need what follows it.
+    private func advanceToReadinessSummary(_ app: XCUIApplication) {
+        XCTAssertTrue(app.buttons["Start Your Personalised Quiz"].waitForExistence(timeout: 10))
+        app.buttons["Start Your Personalised Quiz"].tap()
+        app.buttons["Continue"].tap()               // intro
+        for question in 1...5 {
+            XCTAssertTrue(app.staticTexts["\(question)/5"].waitForExistence(timeout: 5))
+            let option = app.buttons.matching(identifier: "quiz.option").firstMatch
+            XCTAssertTrue(option.exists)
+            option.tap()
+            if app.buttons["Continue"].exists { app.buttons["Continue"].tap() }
+            if app.alerts.buttons["Continue"].exists { app.alerts.buttons["Continue"].tap() }
+            if app.buttons["See My Summary"].exists { app.buttons["See My Summary"].tap() }
+        }
+        XCTAssertTrue(app.staticTexts["A thoughtful starting point"].waitForExistence(timeout: 10))
+    }
+
+    /// The waiting-list screen used to promise "We'll send your free fertility nutrition guide to
+    /// <email> shortly" — mail that no code ever sends. It must never make an unsendable promise
+    /// again, and it must still reject a bad address before claiming anything.
+    func testWaitlistMakesNoUnsendablePromise() {
+        let app = launchOnboarding()
+        advanceToReadinessSummary(app)
+
+        app.buttons["Unlock My Free Guide"].tap()
+        XCTAssertTrue(app.staticTexts["A gentle guide to fertility nutrition"].waitForExistence(timeout: 5),
+                      "Unlock should open the waiting-list screen")
+
+        XCTAssertEqual(app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", "inbox")).count, 0,
+                       "the waiting-list screen must not claim it emails anything")
+        XCTAssertEqual(app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", "we'll send")).count, 0,
+                       "the 'we'll send your guide' promise must not come back")
+
+        let field = app.textFields.firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.tap()
+        field.typeText("not-an-email")
+        app.buttons["Join the Waiting List"].tap()
+        XCTAssertTrue(app.staticTexts["Please enter a valid email address."].waitForExistence(timeout: 5),
+                      "a bad address is rejected before anything is claimed")
+    }
+
     func testMainTabsPresent() {
         let app = launchSeeded()
         // Custom six-icon bottom bar (all tabs visible, no "More" overflow).
@@ -296,6 +338,107 @@ final class GenesyxUITests: XCTestCase {
 
         app.buttons["Remove 1 glass"].tap()
         XCTAssertTrue(app.staticTexts["3 / 9.6 glasses"].waitForExistence(timeout: 5), "After +1 then −1 glass, the total must be unchanged")
+    }
+
+    // MARK: - Keyboard dismissal
+    //
+    // Five fields raise a keyboard she cannot put away: the three `.numberPad` ones have no return
+    // key at all, and the two wrapping note fields have one that types a newline. Either way the
+    // keyboard sits over what she is editing until she finds somewhere blank to tap. One shared
+    // toolbar serves them all; one test each, so a surface that loses it names itself instead of
+    // hiding behind the others.
+
+    /// The field that shares a hierarchy with the partner-email field, so a Done bound to one
+    /// field's `@FocusState` would have rendered here and done nothing.
+    func testProfileGlassSizeFieldOffersAKeyboardDismiss() {
+        let app = launchSeeded(tab: 5)   // Profile
+        let glassSize = app.textFields["hydrationGlassSizeField"]
+        for _ in 0..<6 where !glassSize.exists { app.swipeUp() }
+        XCTAssertTrue(glassSize.waitForExistence(timeout: 10), "Profile should show the glass-size field")
+        assertDoneDismissesKeyboard(app, field: glassSize)
+    }
+
+    /// Nested in a ScrollView inside a sheet, which is where a keyboard toolbar is least reliable.
+    func testTrackManualHydrationFieldOffersAKeyboardDismiss() {
+        let app = launchSeeded(tab: 0)   // Home
+        let summary = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Hydration,")).firstMatch
+        XCTAssertTrue(summary.waitForExistence(timeout: 15), "Home should show the hydration summary")
+        summary.tap()
+        XCTAssertTrue(app.navigationBars["Hydration"].waitForExistence(timeout: 10))
+
+        let manualMl = app.textFields["hydrationManualMlField"]
+        XCTAssertTrue(manualMl.waitForExistence(timeout: 10), "The hydration sheet should offer manual ml entry")
+        assertDoneDismissesKeyboard(app, field: manualMl)
+    }
+
+    /// A plain VStack in a short sheet — no ScrollView to dismiss the keyboard into.
+    func testLogWaterFieldOffersAKeyboardDismiss() {
+        let app = launchSeeded(tab: 0)   // Home
+        XCTAssertTrue(app.buttons["Log today"].waitForExistence(timeout: 15), "Home should show the Log today button")
+        app.buttons["Log today"].tap()
+
+        // By identifier, not by label: the log sheet also carries an EFSA citation whose label ends
+        // in "water", and it matched first.
+        let waterCard = app.buttons["log.waterCard"]
+        XCTAssertTrue(waterCard.waitForExistence(timeout: 10), "The log sheet should offer a Water card")
+        waterCard.tap()
+
+        let waterMl = app.textFields["log.waterMlField"]
+        XCTAssertTrue(waterMl.waitForExistence(timeout: 10), "The water sheet should offer a millilitre field")
+        assertDoneDismissesKeyboard(app, field: waterMl)
+    }
+
+    /// A wrapping note field: it has a return key, but Return types a newline, so there is still no
+    /// way out. Shares its toolbar with the "Add symptom" field further up the same ScrollView.
+    func testLogNotesFieldOffersAKeyboardDismiss() {
+        let app = launchSeeded(tab: 0)   // Home
+        XCTAssertTrue(app.buttons["Log today"].waitForExistence(timeout: 15), "Home should show the Log today button")
+        app.buttons["Log today"].tap()
+
+        let notes = app.textFields["log.notesField"]
+        for _ in 0..<6 where !notes.exists { app.swipeUp() }
+        XCTAssertTrue(notes.waitForExistence(timeout: 10), "The log sheet should offer a notes field")
+        assertDoneDismissesKeyboard(app, field: notes)
+    }
+
+    /// The other wrapping note field, and the one where it matters most: the keyboard comes up over
+    /// the Save button, so without a Done the reading cannot be filed.
+    func testPhNotesFieldOffersAKeyboardDismiss() {
+        // Nutrition, not Track: Track reaches the pH section only through a detail sheet, whereas
+        // Nutrition embeds it straight into the scroll.
+        let app = launchSeeded(tab: 2)
+
+        // The pH section raises a one-time notice, which persists once dismissed — so on a simulator
+        // that has been here before there is nothing to dismiss and this falls straight through.
+        let gotIt = app.buttons["Got it"]
+        if gotIt.waitForExistence(timeout: 3) { gotIt.tap() }
+
+        // Scroll on isHittable, not on exists: Track renders its whole scroll eagerly, so the button
+        // is in the tree from launch and an exists-guard scrolls nowhere and then taps nothing.
+        let logPh = app.buttons["Log pH"]
+        XCTAssertTrue(logPh.waitForExistence(timeout: 10), "Track should offer a Log pH button")
+        for _ in 0..<10 where !logPh.isHittable { app.swipeUp() }
+        XCTAssertTrue(logPh.isHittable, "Log pH should scroll into reach")
+        logPh.tap()
+
+        let notes = app.textFields["ph.notesField"]
+        XCTAssertTrue(notes.waitForExistence(timeout: 10), "The pH sheet should offer a notes field")
+        assertDoneDismissesKeyboard(app, field: notes)
+    }
+
+    private func assertDoneDismissesKeyboard(
+        _ app: XCUIApplication, field: XCUIElement, file: StaticString = #filePath, line: UInt = #line
+    ) {
+        field.tap()
+        XCTAssertTrue(app.keyboards.element.waitForExistence(timeout: 10),
+                      "tapping the field should raise the keyboard", file: file, line: line)
+        let done = app.buttons["keyboardDone"]
+        XCTAssertTrue(done.waitForExistence(timeout: 10),
+                      "a field with no dismissing return key must offer a Done above the keyboard",
+                      file: file, line: line)
+        done.tap()
+        XCTAssertTrue(app.keyboards.element.waitForNonExistence(timeout: 10),
+                      "Done must put the keyboard away", file: file, line: line)
     }
 
     func testHomeHydrationSummaryOpensTrackHydrationControls() {

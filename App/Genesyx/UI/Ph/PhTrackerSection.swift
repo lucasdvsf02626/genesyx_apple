@@ -355,6 +355,7 @@ private struct PhLogSheet: View {
 
                     TextField("Notes (optional)", text: $notes, axis: .vertical)
                         .lineLimit(2...4).padding(12)
+                        .accessibilityIdentifier("ph.notesField")
                         .background(GenesyxColor.card).clipShape(RoundedRectangle(cornerRadius: 12))
                         .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(GenesyxColor.border, lineWidth: 1))
                         .onChange(of: notes) { if $0.count > 500 { notes = String($0.prefix(500)) } }
@@ -364,6 +365,9 @@ private struct PhLogSheet: View {
             .background(GenesyxColor.background)
             .navigationTitle(existing == nil ? "Log pH reading" : "Edit pH reading")
             .navigationBarTitleDisplayMode(.inline)
+            // The notes field wraps, so Return types a newline rather than dismissing, and the
+            // keyboard then covers the Save button she is reaching for.
+            .gxKeyboardDoneToolbar()
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {

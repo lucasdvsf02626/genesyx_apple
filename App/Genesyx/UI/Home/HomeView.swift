@@ -22,6 +22,15 @@ struct HomeView: View {
     @State private var showCycleSetup = false
     private static let hydrationGoalMl = TrackingEngine.defaultWaterGoalMl
 
+    /// `@AppStorage` rather than the bare `UserDefaults` read this card used before T23: that read
+    /// was not observed, so changing the unit in Profile left this card stale until Home was rebuilt.
+    @AppStorage(HydrationPrefs.unitKey) private var hydrationUnitRaw = HydrationUnit.glasses.rawValue
+    @AppStorage(HydrationPrefs.glassMlKey) private var hydrationGlassMlRaw = 0
+    private var hydration: (unit: HydrationUnit, glassMl: Int) {
+        (HydrationUnit(rawValue: hydrationUnitRaw) ?? .glasses,
+         HydrationPrefs.glassMl(from: hydrationGlassMlRaw))
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -201,7 +210,7 @@ struct HomeView: View {
                 hydrationRing(pct: pct)
                 VStack(alignment: .leading, spacing: 6) {
                     Text(HydrationFormat.progress(ml: todayMl, goalMl: goal,
-                        unit: HydrationUnit(rawValue: UserDefaults.standard.string(forKey: "hydration_unit") ?? "") ?? .glasses))
+                        unit: hydration.unit, glassMl: hydration.glassMl))
                         .font(.gxCardHeadingSmall).foregroundStyle(GenesyxColor.foreground)
                         .fixedSize(horizontal: false, vertical: true)
                     statusChip(status)

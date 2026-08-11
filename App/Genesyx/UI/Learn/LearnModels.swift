@@ -1,3 +1,4 @@
+import GenesyxCore
 import SwiftUI
 
 /// Compile-time feature gates (parity with Android `FeatureFlags`).
@@ -91,6 +92,14 @@ struct LearnArticle: Identifiable {
     let relatedArticleIds: [String]
     let cta: ArticleCta?
     let disclaimerRequired: Bool
+
+    /// The day this article becomes visible, or `nil` for one that always has been.
+    ///
+    /// The weekly series is compiled into the app like everything else and revealed on a date
+    /// rather than by an update: twelve articles would otherwise mean twelve App Store
+    /// submissions, and one rejected review would break the run. `var` with a default so the
+    /// articles that predate the series need no edit.
+    var publishedAt: CalendarDate? = nil
 }
 
 /// Exact medical-disclaimer string (parity with Android `MEDICAL_DISCLAIMER`),
@@ -100,8 +109,25 @@ let MEDICAL_DISCLAIMER = "This is educational content, not medical advice. It ca
 // MARK: - Library helpers
 
 enum LearnLibrary {
-    /// Compile-time constant article set (bundled, not fetched).
-    static let articles: [LearnArticle] = learnArticles
+    /// Every article compiled into the app, whether or not it has been released yet.
+    ///
+    /// Integrity checks scan this — slugs and ids must be unique across the whole set, not just
+    /// the visible part. No reader-facing surface should use it; they all use `articles`.
+    static let allArticles: [LearnArticle] = learnArticles
+
+    /// What a reader can see today. An article dated in the future is shipped but withheld.
+    ///
+    /// Every Learn surface — the tab list, search, the Home card, the Sunday nudge, related
+    /// links, deep links — resolves through this, so a withheld article is invisible everywhere
+    /// at once. That matters most for the deep link: a notification or share URL naming an
+    /// article that hasn't landed yet resolves to nil and is ignored, rather than opening a
+    /// piece the rest of the app is pretending not to have.
+    static var articles: [LearnArticle] { published(asOf: .today()) }
+
+    /// The visible set on a given day. `nil` means an article that has always been here.
+    static func published(asOf today: CalendarDate) -> [LearnArticle] {
+        allArticles.filter { $0.publishedAt.map { $0 <= today } ?? true }
+    }
 
     static func articleBySlug(_ slug: String) -> LearnArticle? { articles.first { $0.slug == slug } }
     static func articleById(_ id: String) -> LearnArticle? { articles.first { $0.id == id } }

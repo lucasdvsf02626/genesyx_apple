@@ -109,8 +109,10 @@ final class DailyLogRepository: ObservableObject {
         persist()
     }
 
-    /// Retry the writes the server never received, oldest day first. Stops at the first failure —
-    /// if one push fails we're almost certainly offline, so the rest stay queued.
+    /// Retry the writes the server never received, oldest day first. A failure of the connection —
+    /// offline, or no session yet — is the same answer for every day behind it, so we stop and
+    /// leave the queue for next time. A server-side rejection, though, is specific to that one day
+    /// — stepping over it keeps a single poisoned write from starving every newer day behind it.
     func drainPending() async {
         guard let backend else { return }
         for date in pendingDates.sorted() {
@@ -119,7 +121,8 @@ final class DailyLogRepository: ObservableObject {
                 try await backend.upsert(log, on: date)
                 if logByDate[date] == log { pendingDates.remove(date) }   // unless re-edited meanwhile
             } catch {
-                break
+                if SyncError.shouldHaltDrain(error) { break }
+                continue
             }
         }
     }

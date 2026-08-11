@@ -14,6 +14,21 @@ enum LearnSourceMap {
         "guide-nutrition-focus": ["nhs-periods", "nhs-eatwell"],
         "guide-how-hydration-works": ["nhs-water", "armstrong-2012"],
         "guide-track-ph-in-nutrition": ["vaginal-ph", "statpearls-vaginitis"],
+
+        // The twelve-week series. Every piece states external health facts, so every piece is
+        // cited — they are withheld by date, not by readiness, and the citation must be in
+        // place in the build that ships them, not added later.
+        "fertile-window": ["nhs-conception", "nhs-periods"],
+        "vaginal-ph-explained": ["vaginal-ph", "statpearls-vaginitis"],
+        "nutrition-before-conception": ["nhs-preconception", "nhs-vitamin-b", "nhs-vitamin-d", "nhs-eatwell"],
+        "cervical-mucus": ["nhs-conception", "nhs-periods"],
+        "hydration-and-reproductive-health": ["nhs-water", "efsa-water", "armstrong-2012"],
+        "timing-sex-when-ttc": ["nhs-conception"],
+        "sleep-stress-and-your-cycle": ["nhs-sleep", "nhs-stress"],
+        "understanding-ovulation-tests": ["nhs-conception", "nhs-periods"],
+        "supporting-sperm-health": ["nhs-infertility", "nhs-preconception"],
+        "fertility-supplements-explained": ["nhs-preconception", "nhs-vitamin-b", "nhs-vitamin-d", "nhs-vitamins"],
+        "when-to-ask-for-support": ["nhs-infertility", "nhs-conception"],
     ]
 
     /// Sources for a slug, or nil when the article carries no external health-fact claims.

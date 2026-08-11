@@ -24,7 +24,14 @@ struct ProfileView: View {
     @State private var showReminderPrompt = false
 
     /// Hydration display unit (local, display-only — stored water values are always ml).
-    @AppStorage("hydration_unit") private var hydrationUnitRaw = HydrationUnit.glasses.rawValue
+    @AppStorage(HydrationPrefs.unitKey) private var hydrationUnitRaw = HydrationUnit.glasses.rawValue
+
+    /// Her own glass size in ml (T23). 0 means she never set one, which resolves to the 250 ml
+    /// default. Display-only, exactly like the unit above: resizing the glass re-describes her
+    /// logged water, it never rewrites it.
+    @AppStorage(HydrationPrefs.glassMlKey) private var hydrationGlassMlRaw = 0
+    /// Held as text so a half-typed "3" is not read as a 3 ml glass on the way to 300.
+    @State private var glassSizeField = ""
 
     private var name: String { session.displayName ?? "Guest" }
 
@@ -285,8 +292,42 @@ struct ProfileView: View {
             }
             .padding(.horizontal, 16).frame(minHeight: 52)
             .background(GenesyxColor.card).clipShape(RoundedRectangle(cornerRadius: 16))
-            Text("1 glass = 250 ml, 1 cup = 240 ml. This changes how amounts are shown; your logged totals are unchanged.")
+
+            // Only glasses. A cup is a recipe measure at a fixed 240 ml, and millilitres are the
+            // storage unit itself — neither is hers to resize, so offering it there would be a
+            // control that does nothing.
+            if HydrationUnit(rawValue: hydrationUnitRaw) == .glasses {
+                HStack {
+                    Text("Glass size").font(.system(size: 14.5)).foregroundStyle(GenesyxColor.foreground)
+                    Spacer()
+                    TextField(String(HydrationUnit.mlPerGlass), text: $glassSizeField)
+                        .keyboardType(.numberPad)
+                        .gxKeyboardDoneToolbar()
+                        .multilineTextAlignment(.trailing)
+                        .font(.system(size: 14.5, weight: .medium))
+                        .foregroundStyle(GenesyxColor.primary)
+                        .frame(width: 56)
+                        .accessibilityIdentifier("hydrationGlassSizeField")
+                        .accessibilityLabel("Glass size in millilitres")
+                    Text("ml").font(.system(size: 14.5)).foregroundStyle(GenesyxColor.mutedForeground)
+                }
+                .padding(.horizontal, 16).frame(minHeight: 52)
+                .background(GenesyxColor.card).clipShape(RoundedRectangle(cornerRadius: 16))
+            }
+
+            Text("A glass is yours to size — anything from \(HydrationUnit.glassRangeMl.lowerBound) to \(HydrationUnit.glassRangeMl.upperBound) ml. A cup stays 240 ml. This changes how amounts are shown; your logged totals are unchanged.")
                 .font(.caption2).foregroundStyle(GenesyxColor.mutedForeground)
+        }
+        .onAppear { glassSizeField = String(HydrationPrefs.glassMl(from: hydrationGlassMlRaw)) }
+        // Stored only once what she has typed is a usable size, so a half-typed "3" on the way to
+        // "300" leaves her previous glass in place rather than briefly redefining it.
+        .onChange(of: glassSizeField) { new in
+            if let ml = Int(new), HydrationUnit.glassRangeMl.contains(ml) { hydrationGlassMlRaw = ml }
+        }
+        // Put the field back to what was actually saved, so an abandoned "3000" does not sit on
+        // screen looking like the setting took.
+        .onChange(of: hydrationUnitRaw) { _ in
+            glassSizeField = String(HydrationPrefs.glassMl(from: hydrationGlassMlRaw))
         }
     }
 

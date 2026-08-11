@@ -236,6 +236,36 @@ final class NotificationTests: XCTestCase {
         XCTAssertEqual(progress.unreadNewCount, 0)
     }
 
+    // MARK: - The weekly drop, end to end
+
+    /// One article a week, announced in-app, is three pieces meeting: the date gate makes it
+    /// visible, `LearnLibraryLog` notices it is newly visible, and the Home card names it. None of
+    /// the three knows about the other two — the gate was added long after the log — so this is the
+    /// only place the chain is checked end to end. A break in it is silent precisely because every
+    /// piece goes on working perfectly well by itself.
+    @MainActor
+    func testAWeeklyDropBadgesAndIsOfferedOnTheHomeCard() {
+        guard let drop = LearnLibrary.allArticles.compactMap(\.publishedAt).min() else {
+            return XCTFail("expected a dated article")
+        }
+        let defaults = isolatedDefaults()
+
+        // Saturday: she opens the app and sees the library as it stands. Nothing is new.
+        let saturday = LearnProgress(articles: LearnLibrary.published(asOf: drop.minusDays(1)),
+                                     defaults: defaults)
+        XCTAssertEqual(saturday.unreadNewCount, 0)
+
+        // Sunday: the article reveals itself — no update, no network call.
+        let sunday = LearnProgress(articles: LearnLibrary.published(asOf: drop), defaults: defaults)
+        XCTAssertEqual(sunday.unreadNewCount, 1, "exactly the week's article should badge")
+        XCTAssertEqual(sunday.nextRead?.article.slug, "fertile-window")
+        XCTAssertEqual(sunday.nextRead?.headline, "New this week",
+                       "the Home card must announce the drop as the week's, not as a stock read")
+
+        sunday.markRead("fertile-window")
+        XCTAssertEqual(sunday.unreadNewCount, 0, "reading it clears the badge")
+    }
+
     /// The badge is the *persistent* half of the pair. If it tracked `markAnnounced` live it would
     /// vanish the instant the Sunday nudge delivered — she dismisses the banner and the article is
     /// gone from both surfaces at once, with nothing left pointing at it.

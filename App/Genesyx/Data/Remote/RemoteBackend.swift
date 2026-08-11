@@ -19,6 +19,41 @@ enum RemoteError: Error {
     /// Sign-up succeeded but produced no session, because the project requires the user to confirm
     /// her email address first. She is NOT signed in — she has to click the link, then sign in.
     case emailConfirmationRequired
+    /// No remote backend is configured, so there is no list to join / nothing to store. Surfaced
+    /// (never swallowed) so the UI cannot claim a write happened when it did not.
+    case notAvailable
+}
+
+/// Classifies a sync failure so the queue drains know whether to stop or step over one item.
+enum SyncError {
+    /// True when the failure is about the *connection*, not about this one row: stop the drain and
+    /// keep everything queued for next time. False means the server reached us and rejected this
+    /// specific write — step over it, so one poisoned item can't starve every newer one behind it.
+    ///
+    /// Two cases qualify, and the second is easy to miss. `URLError` is the obvious one: offline,
+    /// timed out, DNS. `notAuthenticated` is thrown by `requireUID` *before any request leaves the
+    /// device*, when the session hasn't been restored yet or the token has expired — so it says
+    /// nothing about the row and everything about the connection.
+    ///
+    /// It has to be named explicitly because it is not a `URLError`, and the drains used to stop on
+    /// *any* failure, so it was covered for free. Stepping over rejections is what made it visible:
+    /// a missing session would otherwise be read as "this one row is poison", and a signed-out
+    /// foreground would walk the entire backlog, one doomed call per owed day, to learn what the
+    /// first call already established. Nothing would be lost — it would just do N times the work,
+    /// where N is however many days she logged offline.
+    ///
+    /// Foundation-only by design: the repositories live in the app module and compile even when the
+    /// Supabase package is absent, so they cannot reason about `PostgrestError`. That is also why
+    /// the "rejected" branch retries forever rather than dropping the row. From here a 400 the
+    /// server will never accept and a 503 it would accept in a minute look identical, and the two
+    /// mistakes are not symmetric: retrying a dead row costs one background call per foreground,
+    /// while dropping a live one silently loses a day she logged. Until a rejection can carry its
+    /// status code up to this layer, the queue keeps it.
+    static func shouldHaltDrain(_ error: Error) -> Bool {
+        if error is URLError { return true }
+        if let remote = error as? RemoteError { return remote == .notAuthenticated }
+        return false
+    }
 }
 
 /// Social identity providers the app can exchange an ID token for a Supabase session.
@@ -120,4 +155,8 @@ protocol GenesyxBackend {
     var dailyLog: DailyLogBackend { get }
     var profile: ProfileBackend { get }
     var partner: PartnerBackend { get }
+    /// Adds an email to the pre-account waiting list. Called from onboarding *before* sign-in, so it
+    /// runs under the anon key and must not require a session. Throws on failure so the UI only
+    /// confirms once the address is actually stored.
+    func joinWaitlist(email: String) async throws
 }

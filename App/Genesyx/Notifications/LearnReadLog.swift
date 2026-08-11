@@ -29,13 +29,14 @@ enum LearnReadLog {
     }
 }
 
-/// Which articles this device has already told her about. Articles are bundled at compile time and
-/// carry no publish date, so "new" can only mean "arrived in an update she has just installed" —
-/// this set is what that is measured against.
+/// Which articles this device has already told her about. "New" means "visible now and not the last
+/// time this device looked" — which covers both an article that arrived in an update she has just
+/// installed and one the weekly drip revealed on its publish date. This set is what that is
+/// measured against, and it needs no knowledge of which of the two happened.
 ///
-/// On a genuinely first run the whole library is recorded at once: nothing is new to someone who is
-/// only just starting, and sixteen consecutive "new this week" Sundays would be a lie. Only articles
-/// that show up in a *later* build are announced.
+/// On a genuinely first run whatever is visible is recorded at once: nothing is new to someone who
+/// is only just starting, and a run of consecutive "new this week" Sundays would be a lie. Only
+/// articles that appear *later* are announced.
 enum LearnLibraryLog {
     private static let key = "genesyx.learn_known_slugs"
 
@@ -64,7 +65,7 @@ final class LearnProgress: ObservableObject {
 
     @Published private(set) var readSlugs: Set<String>
 
-    /// Which slugs arrived in an update she has just installed — fixed at launch, deliberately.
+    /// Which slugs became visible since this device last looked — fixed at launch, deliberately.
     ///
     /// `LearnLibraryLog.markAnnounced` fires when the Sunday nudge *delivers*, so a badge that
     /// re-read that set live would vanish the moment the notification arrived: dismiss the banner
@@ -81,9 +82,9 @@ final class LearnProgress: ObservableObject {
         self.readSlugs = LearnReadLog.readSlugs(defaults: defaults)
     }
 
-    /// New since her last update and still unread — what the Learn tab badges. Zero on a first
-    /// install, because nothing is new to someone only just starting: badging all sixteen would be
-    /// a chore list, not a nudge.
+    /// Newly visible and still unread — what the Learn tab badges. Zero on a first install, because
+    /// nothing is new to someone only just starting: badging the whole library would be a chore
+    /// list, not a nudge.
     var unreadNewCount: Int { arrived.subtracting(readSlugs).count }
 
     /// The article to point her at next, with the headline to put above it — nil once she's read

@@ -1,8 +1,31 @@
 import SwiftUI
+import UIKit
 
 extension Color {
     /// Tints a brand color for overlay on a card (approximates the web `color-mix(... white)`).
     func tintOnWhite(_ fraction: Double) -> Color { opacity(fraction) }
+}
+
+/// A "Done" button above the keyboard, for the fields whose keyboard has no way out: `.numberPad`
+/// carries no return key, and a wrapping (`axis: .vertical`) field's return key types a newline.
+/// Without this the only escape is to find somewhere blank to tap, and until she does the keyboard
+/// covers what she is editing. Resigns first responder rather than clearing a `@FocusState` because
+/// a keyboard toolbar is scoped to the hierarchy and not to one field: on Profile the partner-email
+/// field shares this one, and a button bound to the glass size alone would render there and do
+/// nothing. That scoping cuts both ways — apply this once per hierarchy, or you get two Dones.
+extension View {
+    func gxKeyboardDoneToolbar() -> some View {
+        toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    UIApplication.shared.sendAction(
+                        #selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                }
+                .accessibilityIdentifier("keyboardDone")
+            }
+        }
+    }
 }
 
 /// An hour of the day in her locale's own format — "9 AM" or "09:00" depending on the phone. Shared
@@ -143,5 +166,52 @@ struct BrandOrb: View {
                 )
             )
             .frame(width: size, height: size)
+    }
+}
+
+/// The brand egg motif — the crescent form the onboarding screens were always meant to float,
+/// which `BrandOrb` stood in for while the artwork was outstanding.
+///
+/// The two tints are named for their colour, not for the asset files behind them. The files are
+/// `egg_female`/`egg_male`, but nothing decorative should carry that meaning: these are background
+/// texture, and a reader who inferred the app was sorting her by sex would be reading something
+/// into the wallpaper that the app does not say anywhere.
+struct BrandEgg: View {
+    enum Tint {
+        case warm, cool
+        fileprivate var asset: String {
+            switch self {
+            case .warm: return "egg_female"
+            case .cool: return "egg_male"
+            }
+        }
+    }
+
+    /// Dark mode is not reachable on the splash today — the theme defaults to `.light` and can only
+    /// be changed in Profile, which is behind onboarding. But the fade has to know about the scheme
+    /// anyway, because the artwork is pale: a partly-transparent pale crescent over `#F2F2F2` is a
+    /// soft tint, and the same value over `#000000` composites toward black and reads as a grey
+    /// smudge on the glass. Flipping the default would otherwise make that smudge the first thing
+    /// a new user sees, with nothing in the diff to suggest the splash was involved.
+    @Environment(\.colorScheme) private var scheme
+
+    let tint: Tint
+    var size: CGFloat = 96
+    var fade: Double = 0.5
+
+    init(_ tint: Tint, size: CGFloat = 96, fade: Double = 0.5) {
+        self.tint = tint
+        self.size = size
+        self.fade = fade
+    }
+
+    var body: some View {
+        Image(tint.asset)
+            .resizable()
+            .scaledToFit()
+            .frame(width: size, height: size)
+            .opacity(scheme == .dark ? min(1, fade * 1.7) : fade)
+            // Decoration only — VoiceOver should reach the headline, not four unnamed shapes.
+            .accessibilityHidden(true)
     }
 }

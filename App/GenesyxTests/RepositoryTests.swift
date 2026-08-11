@@ -128,6 +128,108 @@ final class RepositoryTests: XCTestCase {
         XCTAssertEqual(repo.syncState(on: today), .synced)
     }
 
+    /// Seed days into the store already marked owed, without any backend push — so `drainPending`
+    /// is the only thing that talks to the backend and there is no fire-and-forget race to fight.
+    private func seedPendingDailyLogs(store: LocalStore, _ logs: [CalendarDate: DailyLog]) {
+        let seeder = DailyLogRepository(store: store, backend: nil)
+        for (date, log) in logs { seeder.upsert(log, on: date) }
+    }
+
+    /// Offline stops the drain at the first owed day and keeps the rest queued, so a reconnect isn't
+    /// spent firing writes that will all fail the same way.
+    func testATransportFailureStopsTheDrainAndKeepsTheQueue() async {
+        let store = makeStore()
+        let older = CalendarDate.today().minusDays(1)
+        let newer = CalendarDate.today()
+        seedPendingDailyLogs(store: store, [older: DailyLog(waterMl: 100), newer: DailyLog(waterMl: 200)])
+
+        let backend = DrainProbeDailyLogBackend()
+        backend.transportFail = true
+        let repo = DailyLogRepository(store: store, backend: backend)
+        await repo.drainPending()
+
+        XCTAssertEqual(backend.attempts, 1, "offline should stop after the first owed day, not walk the whole queue")
+        XCTAssertEqual(repo.syncState(on: older), .willSyncWhenOnline)
+        XCTAssertEqual(repo.syncState(on: newer), .willSyncWhenOnline)
+
+        backend.transportFail = false
+        await repo.drainPending()
+        XCTAssertEqual(repo.syncState(on: older), .synced)
+        XCTAssertEqual(repo.syncState(on: newer), .synced)
+    }
+
+    /// No session is the same answer for every day in the queue, so it must stop the drain like
+    /// being offline does — not be mistaken for the server rejecting each day in turn.
+    ///
+    /// `requireUID` throws `notAuthenticated` before a request ever leaves the device, and that is
+    /// not a `URLError` — so the first cut of the step-over-a-rejection change read it as "this one
+    /// day is poison" and stepped over it. The drain then walked the whole backlog making one
+    /// doomed call per owed day, every foreground, for as long as the session was missing. Two days
+    /// here; it would have been however many she logged offline.
+    ///
+    /// Caught before release: the shipped build stops the drain on any failure at all, so this case
+    /// was covered for free until stepping over rejections stopped covering it.
+    func testAMissingSessionStopsTheDrainInsteadOfWalkingTheWholeQueue() async {
+        let store = makeStore()
+        let older = CalendarDate.today().minusDays(1)
+        let newer = CalendarDate.today()
+        seedPendingDailyLogs(store: store, [older: DailyLog(waterMl: 100), newer: DailyLog(waterMl: 200)])
+
+        let backend = DrainProbeDailyLogBackend()
+        backend.authFail = true
+        let repo = DailyLogRepository(store: store, backend: backend)
+        await repo.drainPending()
+
+        XCTAssertEqual(backend.attempts, 1, "no session should stop after the first owed day, not walk the whole queue")
+        XCTAssertEqual(repo.syncState(on: older), .willSyncWhenOnline)
+        XCTAssertEqual(repo.syncState(on: newer), .willSyncWhenOnline)
+
+        // And nothing was lost by stopping: once she is signed in, the same queue drains whole.
+        backend.authFail = false
+        await repo.drainPending()
+        XCTAssertEqual(repo.syncState(on: older), .synced)
+        XCTAssertEqual(repo.syncState(on: newer), .synced)
+        XCTAssertEqual(backend.remote[older]?.waterMl, 100)
+        XCTAssertEqual(backend.remote[newer]?.waterMl, 200)
+    }
+
+    /// The regression guard: a day the server permanently rejects must not wall off the newer days
+    /// queued behind it. Under the old break-on-any-failure it did, stalling every future sync.
+    func testAServerRejectedDayIsSteppedOverSoNewerDaysStillSync() async {
+        let store = makeStore()
+        let poisoned = CalendarDate.today().minusDays(1)   // sorts first — the head of the queue
+        let good = CalendarDate.today()
+        seedPendingDailyLogs(store: store, [poisoned: DailyLog(waterMl: 100), good: DailyLog(waterMl: 200)])
+
+        let backend = DrainProbeDailyLogBackend()
+        backend.reject = poisoned
+        let repo = DailyLogRepository(store: store, backend: backend)
+        await repo.drainPending()
+
+        XCTAssertEqual(backend.attempts, 2, "both days must be attempted — the poisoned one can't short-circuit the drain")
+        XCTAssertEqual(repo.syncState(on: good), .synced)
+        XCTAssertEqual(backend.remote[good]?.waterMl, 200)
+        XCTAssertEqual(repo.syncState(on: poisoned), .willSyncWhenOnline, "the rejected day stays owed for a later retry")
+        XCTAssertNil(backend.remote[poisoned])
+    }
+
+    /// Same guard on the pH queue: a rejected reading is stepped over so the newer ones still land.
+    func testAServerRejectedPhReadingIsSteppedOverSoNewerOnesStillSync() async {
+        let store = makeStore()
+        // Seed two owed readings with no backend push. `PhSync.pending` sorts on (updatedAt, id);
+        // the "aaaa" id makes the poisoned one the head even if the two timestamps tie.
+        let seeder = PhRepository(store: store, backend: nil)
+        seeder.create(PhReading(id: "aaaa-poison", phValue: 6.0, recordedAt: Date().addingTimeInterval(-100)))
+        seeder.create(PhReading(id: "bbbb-good", phValue: 6.5, recordedAt: Date()))
+
+        let backend = ProbePhBackend(reject: "aaaa-poison")
+        let repo = PhRepository(store: store, backend: backend)
+        await repo.drainPending()
+
+        XCTAssertTrue(backend.remote.contains { $0.id == "bbbb-good" }, "the good reading must get past the poisoned one")
+        XCTAssertFalse(backend.remote.contains { $0.id == "aaaa-poison" }, "the rejected reading is not stored")
+    }
+
     func testSexualActivitySurvivesARelaunch() {
         let store = makeStore()
         let today = CalendarDate.today()
@@ -601,6 +703,48 @@ private final class FakePhBackend: PhBackend {
 
     func upsert(_ record: PhRecord) async throws {
         guard online else { throw RemoteError.notConfigured }
+        remote = remote.filter { $0.id != record.id } + [record.marking(pendingSync: false)]
+    }
+}
+
+/// A distinct, non-transport error so a rejection is classified as poison rather than "offline".
+private enum DrainProbeError: Error { case serverRejected }
+
+/// Lets a drain test choose, per call, between an offline-style transport failure (`URLError`), a
+/// missing session (`RemoteError.notAuthenticated`, what `requireUID` throws) and a server-side
+/// rejection of one specific day, and counts how many upserts the drain actually made.
+@MainActor
+private final class DrainProbeDailyLogBackend: DailyLogBackend {
+    var remote: [CalendarDate: DailyLog] = [:]
+    var transportFail = false
+    var authFail = false
+    var reject: CalendarDate?
+    private(set) var attempts = 0
+
+    func fetch(date: CalendarDate) async throws -> DailyLog? { remote[date] }
+    func list() async throws -> [CalendarDate: DailyLog] { remote }
+
+    func upsert(_ log: DailyLog, on date: CalendarDate) async throws {
+        attempts += 1
+        if transportFail { throw URLError(.notConnectedToInternet) }
+        if authFail { throw RemoteError.notAuthenticated }
+        if date == reject { throw DrainProbeError.serverRejected }
+        remote[date] = log
+    }
+}
+
+/// Rejects one reading id with a non-transport error; stores every other reading.
+@MainActor
+private final class ProbePhBackend: PhBackend {
+    var remote: [PhRecord] = []
+    var reject: String?
+
+    init(reject: String? = nil) { self.reject = reject }
+
+    func list(sinceDays: Int?) async throws -> [PhRecord] { remote }
+
+    func upsert(_ record: PhRecord) async throws {
+        if record.id == reject { throw DrainProbeError.serverRejected }
         remote = remote.filter { $0.id != record.id } + [record.marking(pendingSync: false)]
     }
 }
