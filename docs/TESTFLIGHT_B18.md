@@ -1,0 +1,143 @@
+# TestFlight — Genesyx 1.2.0 (18)
+
+The client change list, end to end. 1.2.0 rather than 1.1.2 because this is a feature batch, not a
+fix pass — a weekly article series, intimacy logging, a fertile-window notification, and
+per-supplement reminder times are all new surface.
+
+---
+
+## Pre-flight — do these before uploading
+
+All three are Supabase, and Supabase leaves no trace in this repo, so nothing here can check them for
+you. The first two fail **silently** — the app keeps working, the data just never lands. The third
+is a decision rather than a check.
+
+| # | Check | Why it matters | Where |
+|---|---|---|---|
+| 1 | `daily_logs.sexual_activity` column exists | Intimacy logging (T10–T13) is a headline feature of this build. The decoders tolerate the column being absent, so if it was never applied she can log intimacy all week, see the calendar dots, and sync nothing. No error, no warning. | SQL Editor: `select column_name from information_schema.columns where table_name = 'daily_logs' and column_name = 'sexual_activity';` — expect one row |
+| 2 | `join_waitlist` RPC + `waitlist_emails` table exist | The onboarding waitlist screen calls this RPC under the anon key. Neither object was ever in this repo's migrations — the schema existed only in whatever was typed into the dashboard, if it was typed at all. | Apply `supabase/migrations/20260811_waitlist_emails.sql` (idempotent — a no-op if they already exist), then run its step-5 verify block |
+| 3 | What `profiles.theme` says for existing users | T20 made light the *local* default (`PreferencesRepository.swift:101`), but `apply(remote)` at `:170` overwrites it from the server on sign-in. Anyone whose row already says `system` gets `system` back, and T20 looks like it never shipped for exactly the people who have been here longest. | SQL Editor: `select theme, count(*) from public.profiles group by theme;` |
+
+**Do NOT run** `alter table public.profiles drop column quiz_answers` as part of this release. It is
+task 23, and it is gated on task 18 (whether a live web client reads that column) — not on this
+build. See `HANDOFF.md` for why the old "blocked by build 18" note was wrong.
+
+Pre-flight 3 is a decision, not just a check. The server cannot tell "she chose system" from "she
+was defaulted to system before T20", so there is no safe automatic answer — only a count, and a call
+to make once you can see it.
+
+---
+
+## "What to Test" (paste into TestFlight → Build 18 → Test Details)
+
+This build works through the whole change list. Please focus on:
+
+1. **A new article every week** — Learn now carries eleven new pieces that arrive one at a time
+   rather than all at once. You should see a badge on the Learn tab when one is waiting, a card on
+   Home pointing at it, and (if notifications are on) a Sunday nudge. Open the article and confirm
+   the badge and the Home card both clear.
+2. **Intimacy logging** — Track → Log has an Intimacy chip between Symptoms and Notes. It is private
+   and the screen says so. Log it and check the day gets a dot on the calendar. Please confirm it
+   survives closing and reopening the app.
+3. **Calendar markers** — days you have recorded something now carry small dots underneath: a pH
+   test, symptoms or notes, and intimacy. Check they match what you actually logged.
+4. **Fertile-window notification** — you should get one on the morning your predicted window opens.
+   This needs a cycle set up and a day to arrive, so it is the slowest item here to confirm.
+5. **Choosing which reminders you get** — Profile → Notifications now has a switch per kind
+   (hydration, weekly summary, fertile window, supplements) instead of one all-or-nothing toggle.
+   Turn one off and confirm the others still arrive.
+6. **A time per supplement** — Nutrition → Review Plan. Each supplement now carries its own reminder
+   time rather than sharing one. Set two to different times and confirm both fire.
+7. **Your own glass size** — Profile → Hydration. With the unit set to glasses you can now set what
+   a glass means to you (50–1000 ml, default 250). Change it and check Home, Track and Nutrition all
+   agree on the new count. Your totals should not move — only how they are described.
+8. **Light theme by default** — a fresh install should open light. Dark is still there under
+   Profile → Appearance.
+9. **The onboarding splash** — now carries the brand egg artwork rather than the plain shapes that
+   stood in for it. Please check the "not medical advice" line at the bottom is still fully legible.
+10. **Nutrition** — when your cycle moves to a new phase, a card says so and links to the article
+    about eating for it. Appears once per phase change.
+11. **pH tracker** — the safety note is now a panel you can expand rather than a permanent block of
+    text, and the old urine-test wording is gone throughout.
+12. **General** — sign in, complete cycle setup, and sanity-check Home, Insights and Learn.
+
+Please report anything that looks wrong with a screenshot and the steps to reproduce. Thank you!
+
+---
+
+## Beta App Review Information (for the External test submission)
+
+- **Sign-in required:** Yes.
+- **Demo account:** `demo@genesyx.co.uk` / (password — from the password manager; do NOT paste into logs)
+- **Verify path for reviewers:** Nutrition → expand "Why hydration?" → Sources footer; and
+  Settings → Medical Sources & Disclaimer.
+- **Notes:** Educational fertility/wellness app. All health statements carry inline citations
+  (NHS / EFSA / NCBI-StatPearls / PubMed). The pH tracker records vaginal pH for personal wellness
+  tracking only; it is not a medical device and not for contraception. Intimacy logging is a private
+  on-device-and-account record with no sharing surface.
+
+## What's NOT in this build (say so if asked)
+
+- **Custom-supplement cloud sync** — still local-only, as in 17.
+- **Hydration display preferences** (unit and glass size) — device-local, not synced to the account.
+  A new phone starts at millilitres with a 250 ml glass. Tracked as task 25; it is one coordinated
+  change with Android, because storage is always `waterMl` and only the description differs.
+- **Meal suggestions / food preferences** — placeholder "coming soon" only.
+- **Articles behind a medical sign-off** (Shettles, and the girl/boy framing) — held pending written
+  client and medical-reviewer approval to relax the banned-phrase guards. Calendar time, not
+  engineering time.
+- **A pH tab of its own** — six tabs is already tight on an SE; placement is an open design call.
+
+## Build facts
+
+- Version **1.2.0 (18)**.
+- Contains build 17 plus the client change list: T3–T6, T8, T10–T15, T20, T21, T23, T25, T28, T30,
+  the waitlist wiring, and the privacy/security batch (quiz answers moved off the partner-readable
+  `profiles` row; a user can no longer declare themselves someone else's partner).
+- **Green baseline:** 179 domain · 186 app · 39 UI (38 + 1 skipped on a simulator that has already
+  answered the notification prompt). Do not pass `-quiet` — it has returned exit 0 with no summary
+  and hidden a real result.
+
+---
+
+## Release checklist
+
+This list lived only in conversation until now, which is why it is written down here.
+
+| # | Item | State |
+|---|---|---|
+| P0-1 | Waitlist: copy fix + a migration for the objects it calls | ✅ Copy and backend wiring were already in the tree; `supabase/migrations/20260811_waitlist_emails.sql` written. **Still needs applying** — pre-flight 2 |
+| P0-2 | Commit the working tree | ⬜ |
+| P0-3 | Version bump 1.1.1 (17) → 1.2.0 (18) + this document | ✅ `project.yml` bumped, `xcodegen generate` run — pbxproj delta was exactly the 4 version lines plus the 8 for two new Swift files, no collateral churn |
+| P0-4 | `drainPending()` — stop the drain on a missing session | ✅ See below |
+| P0-5 | Correct the docs that were wrong | ✅ `CHANGE_LIST_PLAN.md` test baseline; `HANDOFF.md` task 23's fictional dependency on build 18 |
+| P0-6 | Full green regression | ⬜ |
+| P0-7 | Verify the live `theme` default | ⬜ Needs the dashboard — pre-flight 3 |
+
+### What P0-4 was
+
+**A regression in unreleased work, caught before it shipped.** Build 17 stops the drain on *any*
+failure (`catch { break }`), and `SyncError` does not exist in it at all. So no user was ever
+affected, and nothing needs saying to anyone.
+
+What happened: this batch introduced stepping over a row the server rejects, so one poisoned write
+could not starve every newer one behind it. That is right. But `requireUID` throws
+`RemoteError.notAuthenticated` before any request leaves the device — session not restored yet, or
+token expired — and that is not a `URLError`, so the new classifier read it as "the server rejected
+this one row" and stepped over it, then over the next, and the next. A signed-out foreground would
+have walked the entire backlog making one doomed call per owed day, to learn what the first call had
+already established. Nothing lost, just N times the work, N being however many days she logged
+offline. The old blanket `break` had covered this case for free; stepping over rejections stopped
+covering it.
+
+`SyncError.isTransport` is now `SyncError.shouldHaltDrain` and returns true for both cases, and
+`RepositoryTests.testAMissingSessionStopsTheDrainInsteadOfWalkingTheWholeQueue` pins it — verified
+failing (`2` attempts, expected `1`) against the old predicate before the fix went in.
+
+The other half of that question — telling a *permanent* rejection from a transient one, so a row the
+server will never accept can be dropped instead of retried forever — was deliberately left alone.
+The repositories are Foundation-only by design so they compile without the Supabase package, which
+means a 400 and a 503 are indistinguishable from where the decision is made. The two mistakes are
+not symmetric: retrying a dead row costs one background call per foreground, while dropping a live
+one silently loses a day she logged. Until a rejection can carry its status code up to that layer,
+the queue keeps it.

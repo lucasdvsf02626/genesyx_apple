@@ -26,7 +26,7 @@
 
 ### 1. Screens to translate (build order from `ARCHITECTURE.md`)
 - ✅ **Onboarding (full)** — Splash, Intro, Quiz (5 Q + DidYouKnow), ReadinessSummary, Waitlist
-  (egg artwork approximated with `BrandOrb` until image assets are bundled)
+  (splash carries the real egg artwork via `BrandEgg`; the summary emblem is still a `BrandOrb`)
 - ✅ **Track** — month calendar (phase colors) + day detail + **CycleSettings** edit sheet
 - ✅ **Nutrition** — phase foods (expandable) + hydration + supplement plan + articles
 - ✅ **Insights** — cycle regularity, symptom heatmap, nutrition consistency, pH insights

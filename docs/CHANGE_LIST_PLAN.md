@@ -64,9 +64,8 @@ reintroduce that exact territory. Raise this directly with the client.
       Insights into Home/Track. *Blocks T2.*
 - [ ] ⚠️ **G3 — Offline symbol.** Request build number + screenshot from client. No code path exists;
       likely an older build or the Android client. *Blocks T9.*
-- [ ] ⚠️ **G4 — Egg artwork.** Request original design files. `egg_female`/`egg_male` are orphaned
-      (zero code references) and onboarding orbs are a self-described stand-in
-      (`OnboardingFlowView.swift:49`). *Blocks T21.*
+- [x] ✅ **G4 — Egg artwork.** Resolved: the files were already in the catalog (dated 10 July), so
+      the blocker was stale, not outstanding — nothing was ever waiting on the client. Wired in T21.
 
 ---
 
@@ -181,14 +180,36 @@ T1 inherits G2's block. Do not ship T1 alone.
 
 - [x] ✅ **T20 — Light mode default.** One line at `PreferencesRepository.swift:66`
       (`.system` → `.light`). Toggle already existed in Profile.
-- [ ] ⬜ **T21 — Restore egg artwork.** Replace orbs at `OnboardingFlowView.swift:49`; wire
-      `egg_female`/`egg_male`; add background motifs. *Needs G4.*
+- [x] ✅ **T21 — Restore egg artwork.** `BrandEgg` (`GenesyxControls.swift`) draws the crescent at
+      two tints; the four splash `BrandOrb` stand-ins are now eggs at the same tuned positions.
+      Re-exported 1024px → 512px first (**1.4MB → 222KB**; 512 is 1:1 for the largest 170pt use at
+      3x). Guarded by `BrandAssetTests`. The summary-screen `BrandOrb(size: 80)` at
+      `OnboardingFlowView.swift:261` is a centred emblem, not background texture — left as an orb
+      pending a design call.
 - [ ] ⬜ **T22 — Warm/premium visual pass.** Open-ended — require a design spec or this will sprawl.
 
 ## 5. Phase 4 — nutrition (15–20d)
 
-- [ ] ⬜ **T23 — Custom glass size.** `Sources/GenesyxCore/Insights/HydrationUnit.swift:14` is 3
-      fixed presets (glasses 250ml / cups 240ml / ml).
+- [x] ✅ **T23 — Custom glass size.** A glass is now hers to size (50–1000 ml, default 250); a cup
+      stays fixed at 240 ml because it is a recipe measure, not an object she owns, and millilitres
+      are the storage unit itself. Out-of-range values fall back to 250 rather than clamping, so a
+      corrupted store shows the familiar default instead of a number she never picked —
+      `HydrationUnit.resolvedGlassMl` is the single place that decision is made.
+
+      `mlPerUnit` became a method taking `glassMl` specifically so the compiler had to be satisfied
+      at every existing call site; a defaulted property would have let a surface keep reading 250
+      silently. Storage is untouched (`DailyLog.waterMl` is always ml), so resizing the glass
+      re-describes her logged water and can never rewrite it.
+
+      **Device-local, deliberately.** `hydration_unit` already was — read straight from
+      `UserDefaults` at four call sites — so syncing the glass size alone would strand her on a new
+      phone with a 300 ml glass honoured but the unit reset to millilitres, where glass size means
+      nothing. New `HydrationPrefs` reads both keys in one place. *Owed: move **both** hydration
+      display prefs to `profiles`, as one change with Android — see `HANDOFF.md`.*
+
+      **Android parity note:** 250/240 were documented as shared constants. A custom size on iOS
+      alone means the two clients describe identical water as different glass counts. Display-only —
+      no data divergence, unlike the `isMeaningfulLog` case — but it is a visible difference.
 - [ ] ⬜ **T24 — Nutrition text pass.** Smaller than the client thinks; disclosures already exist.
 - [x] ✅ **T25 — Phase-change card** linking to the `eating-with-your-cycle` article. Announced once
       per transition, never on a first install — she is mid-phase then, not crossing into one, and
@@ -280,10 +301,11 @@ start today and finish inside one sprint. Ordered so each day ships something de
 **Sprint 1 is complete** — all eleven rows shipped, `71567c8` … `148e754`. Two things it leaves
 behind for whoever picks up next:
 
-1. **One migration is not applied.** `20260810_daily_logs_sexual_activity.sql` and
-   `20260810_profiles_quiz_answers.sql` both need running by hand in the Supabase SQL Editor; this
-   repo never pushes schema. Until then those two columns exist only in the app's decoders, which
-   tolerate their absence — so nothing breaks, and nothing syncs either.
+1. **Migrations need running by hand** in the Supabase SQL Editor; this repo never pushes schema.
+   Until then a column exists only in the app's decoders, which tolerate its absence — so nothing
+   breaks, and nothing syncs either. *Superseded 2026-08-11: `profiles_quiz_answers` was replaced by
+   the owner-only table in `9d08d82` and has been applied; `daily_logs_sexual_activity` is still
+   unconfirmed. **See `HANDOFF.md` §2 for current Supabase state** — that is the live record.*
 2. **An Android coordination item.** `sexualActivity` is deliberately *not* counted by
    `TrackingEngine.isMeaningfulLog` or `StreakEngine.hasAnyEntry`. Those two predicates are mirrored
    in the Android client and driven by a byte-for-byte shared `tracking_test_vectors.json`, so
@@ -317,14 +339,19 @@ nutrition items while the context is warm.
 |---|---|---|---|
 | 12 | T28 (remaining half) — Learn unread badge + Home dashboard card | 1d | ✅ |
 | 13 | T25 — phase-change card linking to the cycle-eating article | 1d | ✅ |
-| 14 | T23 — custom glass size | 1d | ⬜ |
+| 14 | T23 — custom glass size | 1d | ✅ |
 
 ---
 
 ## 10. Verification gate
 
-Green baseline is **174 domain + 169 app tests** (was 125 + 139 before Sprint 1), plus **33 UI tests**
-(1 skipped) behind the `-uiTestSeed` harness. Run after every task:
+Green baseline is **179 domain + 186 app tests** (was 125 + 139 before Sprint 1; T23 added 5 domain;
+the app figure was 169 until the uncommitted `RepositoryTests` work took it to 172, the weekly
+Learn series added 11 — 6 drip-gate, 3 citation-integrity, 1 hero-asset, 1 end-to-end drop — T21
+added 2 brand-asset guards, and the build-18 `drainPending` fix added 1),
+plus **39 UI tests** behind the `-uiTestSeed` harness — the notification opt-in test skips itself once
+that permission has been answered, so it counts 38 + 1 skipped on a simulator you have already run
+against, and 39 on a freshly erased one. Run after every task:
 
 ```bash
 swift test && xcodebuild test -project Genesyx.xcodeproj -scheme Genesyx \
@@ -334,3 +361,10 @@ swift test && xcodebuild test -project Genesyx.xcodeproj -scheme Genesyx \
 - **Do not use `-quiet`** — it returned exit 0 with no summary and hid the result.
 - If the simulator reports `Application failed preflight checks` / `Busy`:
   `xcrun simctl shutdown all`, then re-boot and retry. That is a simulator flake, not a code failure.
+  If it survives that (it has, twice in a row), go heavier —
+  `killall -9 com.apple.CoreSimulator.CoreSimulatorService`, `xcrun simctl erase <device-id>`, then
+  `xcrun simctl bootstatus <device-id> -b` to wait for ready before handing the device to `xcodebuild`.
+- **Never run two `xcodebuild test` processes at once.** They contend for the one simulator and the
+  loser dies with `Test crashed with signal kill` — which reads exactly like a real crash, and cost a
+  full afternoon of chasing a UI bug that did not exist. `ps aux | grep "xcodebuild test"` before you
+  start; a run abandoned by a killed shell keeps its child alive.
