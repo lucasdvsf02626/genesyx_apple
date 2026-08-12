@@ -4,9 +4,9 @@
 > before this could be saved). Companion to `CHANGE_LIST_PLAN.md`, which tracks the client's
 > change list task-by-task. This file tracks **what is in flight right now**.
 
-**Branch:** `main` · **HEAD:** `24f8255`, plus a large uncommitted tree (§4b) · **Version:** 1.2.0 (18)
-· **Test baseline:** 179 domain + 186 app + 39 UI (38 + 1 skipped on a simulator that has already
-answered the notification prompt) — all three verified green 2026-08-11
+**Branch:** `main` · **HEAD:** `510d43e`, plus an uncommitted tree (§4c) · **Version:** 1.2.0 (18)
+· **Test baseline:** 180 domain + 198 app + 45 UI (44 + 1 skipped on a simulator that has already
+answered the notification prompt) — all three verified green 2026-08-12
 
 ```bash
 swift test && xcodebuild test -project Genesyx.xcodeproj -scheme Genesyx \
@@ -99,7 +99,11 @@ change with Android, which also closes the display-parity gap T23 opens (iOS can
 same water as a different number of glasses than Android). No data divergence either way: storage
 is always `waterMl`.
 
-## 4b. Shipped 2026-08-11 (uncommitted)
+## 4b. Shipped 2026-08-11 — committed as `185b99e`
+
+> Landed as one commit because the tree could not be untangled into commits that each still build:
+> `mlPerUnit` became a method taking `glassMl`, so `HomeView` cannot be split from `HydrationUnit`;
+> and `OnboardingFlowView` carries both the egg artwork and the waitlist wiring.
 
 **T23 — custom glass size.** The last gate-free item on the client change list.
 - `Sources/GenesyxCore/Insights/HydrationUnit.swift` — `glassRangeMl` (50–1000), `resolvedGlassMl`,
@@ -141,15 +145,87 @@ stopping at the first. Full reasoning in `TESTFLIGHT_B18.md`.
 **Version.** `project.yml` → 1.2.0 (18), `xcodegen generate` run. The pbxproj delta was exactly the
 four version lines plus eight for `HydrationPrefs.swift` and `BrandAssetTests.swift`.
 
-> **This file is untracked in git** (`git log -- docs/HANDOFF.md` is empty; it is not ignored).
-> Pre-existing, not deliberate as far as anyone has recorded. Worth adding in the next commit.
+## 4c. Shipped 2026-08-11, later session (uncommitted)
+
+Five items, none of which needed `xcodegen generate` — every new type was added to a file the
+project already knows about, deliberately, to keep the pbxproj out of the diff.
+
+**Past-day logging and editing.** `LogView` takes a `date` (defaulting to `.today()`) instead of
+hard-coding it, and the calendar's day sheet offers "Add a log" or "Edit this day" according to what
+is already there. Future days keep the close-only sheet.
+- `TrackView` — `showLog: Bool` → `logTarget: LogTarget?`, because a bool plus a separate "which
+  date" flag can be read before it is written. The day sheet hands over **on dismiss**: SwiftUI drops
+  the second sheet if it is raised while the first is still going down.
+- `LogView` — titles itself with the day when it is not today. Without that, a back-filled entry
+  looks identical to today's and she cannot tell which she is about to overwrite.
+- +2 `RepositoryTests` (a backfill leaves today alone; a re-edit replaces rather than duplicates),
+  +2 UI tests. The repository always supported this — until the sheet took a date, nothing reached it.
+
+**T16 / T17 / T18 — the three inert Profile rows.** Each raised a paragraph of text and changed
+nothing. Now: *Personal Details* (display name editable, sign-in address shown but not), *Health
+Profile* (the existing `CycleSettingsSheet`), *Tracking Preferences* (the five onboarding answers,
+through the existing `recordQuizAnswers` sync path). No new copy strings, so the banned-phrase guards
+are untouched. **No DOB field** — see `CHANGE_LIST_PLAN.md` T18 for why. +2 UI tests, one of which
+asserts the answer *persists*, since a picker that forgets on dismiss looks identical to the alert it
+replaced.
+
+**`page_background`.** One `gxPageBackground()` modifier on the seven tab-screen roots; sheets keep the
+flat fill. Light mode only — the art's field matches the light background exactly, which is what
+makes it read as a backdrop rather than a picture. One opacity constant is the dial.
+- The asset shipped as a single 1323×2868 file **declared 1x**, i.e. a 3x export that SwiftUI would
+  have laid out at three times its intended size. Re-exported at proper 1x/2x/3x.
+- +2 `BrandAssetTests`. The resolution one asserts the laid-out **point** width (441), not the file's
+  pixel size — that is the number SwiftUI uses and the one that catches this class of bug.
+
+**T1 + T2 — pH becomes a tab.** Item 1 of the client's recommended order. `PhTabView` was added to
+`PhTrackerSection.swift` rather than its own file, again to keep `xcodegen generate` and the pbxproj
+out of the diff.
+
+- **Seven tabs, index 2** (Home, Track, pH, Nutrition, Insights, Learn, Profile). G2 asked whether an
+  SE could take a seventh; it can. The objection assumed the 320pt SE 1, which iOS 16 does not run.
+  375pt is the floor, giving ~53pt a tab against ~48pt for "Nutrition". Checked on an SE (3rd gen)
+  simulator, not by arithmetic alone.
+- **The renumbering is the risky part, not the tab.** Three structures encode tab order with no
+  runtime linkage: `MainTabView`'s raw ints, `NotificationTab`, `NotificationTarget`. Inserting at 2
+  shifts all five above it in each. `NotificationTests` now asserts them **pairwise** — the previous
+  `NotificationTab(rawValue:) != nil` check passes perfectly well while every nudge lands one tab off,
+  which is exactly the failure an insertion causes.
+- **Accepted edge:** `userInfo["tab"]` stores the raw Int, so a notification scheduled before the
+  update fires into the old index and misroutes by one. Self-healing at the next replan; not worth a
+  migration.
+- **`guide-track-ph-in-nutrition` kept its slug** while being rewritten around the trend chart. Slugs
+  are routes *and* read-history keys, and although `LearnReadLog.renamed` maps old→new,
+  `LearnLibraryLog.newSlugs` does not consult it — a rename would have badged the article as new and
+  pushed it in the Sunday nudge to everyone who had already read it.
+- `PhSpineVariant` is gone. `.compact` existed only to hide the educational spine on Nutrition's
+  version of the card; with Nutrition no longer carrying one, `.full` is unconditional.
+- Copy that pointed at the old location moved with it: Home's pH card, Insights' empty state,
+  Profile's Help & Support text, and three Learn CTAs (new `CtaType.openPh`).
+
+**T29c — three how-to guides** (`guide-cycle-and-phases`, `guide-sleep-tracking`,
+`guide-logging-symptoms`). The ask was seven, covering cycle, pH, nutrition, symptoms, sleep and
+hydration. Four existed already — pH three times over — so three were written and the audit is the
+deliverable for the rest.
+
+- **Check every claim against the code, not against the docs.** Two errors survived a careful draft
+  and died on inspection: the Insights sleep chart is the ISO week (Mon–Sun, four empty bars on a
+  Wednesday), *not* the trailing seven nights the Track sparkline draws; and the symptom-pattern card
+  holds back until seven **days carrying symptoms**, not seven calendar days. Both read as true.
+- **`.bulletList` items do not render markdown.** `LearnViews.swift:355` is `Text(item)` with a
+  `String`, and only `Text(LocalizedStringKey)` string literals parse. `**bold**` ships as asterisks.
+- Adding an article moves four test invariants in `LearnContentTests`, none of which is the article
+  itself: `articles.count`, both uniqueness counts, `undated.count` (16 → 19), and — if it carries a
+  disclaimer — the pinned slug set. `guide-cycle-and-phases` does, so it also needed a
+  `LearnSourceMap` entry; a disclaimer without sources is a claim with nothing behind it.
+- The other two are `disclaimerRequired: false` on purpose: they describe what the app does and state
+  no external health fact, which is the line `guide-how-the-log-works` already drew.
 
 ## 5. Still gated on the client (unchanged)
 
 | Gate | Needs | Blocks |
 |---|---|---|
 | G1 | Written client + medical-reviewer sign-off to relax banned-phrase guards | T7, T29b (Shettles, Girl/Boy) |
-| G2 | pH tab placement decision — 6 tabs already, a 7th is cramped on an SE | T1 + T2 |
+| ~~G2~~ | ~~pH tab placement~~ — resolved 11 Aug: 7 tabs, Insights stays. The SE objection was based on the 320pt SE 1, which iOS 16 drops; 375pt leaves ~53pt a tab. T1 + T2 shipped. | — |
 | G3 | Build number + screenshot for the "offline symbol" — no such code path exists | T9 |
 | ~~G4~~ | ~~Original egg artwork files~~ — never actually blocked; the files had been in the catalog since 10 Jul. T21 shipped. | — |
 

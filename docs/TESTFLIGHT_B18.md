@@ -36,30 +36,38 @@ This build works through the whole change list. Please focus on:
    rather than all at once. You should see a badge on the Learn tab when one is waiting, a card on
    Home pointing at it, and (if notifications are on) a Sunday nudge. Open the article and confirm
    the badge and the Home card both clear.
-2. **Intimacy logging** — Track → Log has an Intimacy chip between Symptoms and Notes. It is private
+2. **Three new how-to guides** — Learn → Guides now explains your cycle and its phases, sleep
+   tracking, and logging how you feel. They describe the app screen by screen, so please tell us
+   anywhere the article and the app disagree — that is the most useful bug you can file here.
+3. **Intimacy logging** — Track → Log has an Intimacy chip between Symptoms and Notes. It is private
    and the screen says so. Log it and check the day gets a dot on the calendar. Please confirm it
    survives closing and reopening the app.
-3. **Calendar markers** — days you have recorded something now carry small dots underneath: a pH
+4. **Calendar markers** — days you have recorded something now carry small dots underneath: a pH
    test, symptoms or notes, and intimacy. Check they match what you actually logged.
-4. **Fertile-window notification** — you should get one on the morning your predicted window opens.
+5. **Fertile-window notification** — you should get one on the morning your predicted window opens.
    This needs a cycle set up and a day to arrive, so it is the slowest item here to confirm.
-5. **Choosing which reminders you get** — Profile → Notifications now has a switch per kind
+6. **Choosing which reminders you get** — Profile → Notifications now has a switch per kind
    (hydration, weekly summary, fertile window, supplements) instead of one all-or-nothing toggle.
    Turn one off and confirm the others still arrive.
-6. **A time per supplement** — Nutrition → Review Plan. Each supplement now carries its own reminder
+7. **A time per supplement** — Nutrition → Review Plan. Each supplement now carries its own reminder
    time rather than sharing one. Set two to different times and confirm both fire.
-7. **Your own glass size** — Profile → Hydration. With the unit set to glasses you can now set what
+8. **Your own glass size** — Profile → Hydration. With the unit set to glasses you can now set what
    a glass means to you (50–1000 ml, default 250). Change it and check Home, Track and Nutrition all
    agree on the new count. Your totals should not move — only how they are described.
-8. **Light theme by default** — a fresh install should open light. Dark is still there under
+9. **Light theme by default** — a fresh install should open light. Dark is still there under
    Profile → Appearance.
-9. **The onboarding splash** — now carries the brand egg artwork rather than the plain shapes that
-   stood in for it. Please check the "not medical advice" line at the bottom is still fully legible.
-10. **Nutrition** — when your cycle moves to a new phase, a card says so and links to the article
+10. **The onboarding splash** — now carries the brand egg artwork rather than the plain shapes that
+    stood in for it. Please check the "not medical advice" line at the bottom is still fully legible.
+11. **Nutrition** — when your cycle moves to a new phase, a card says so and links to the article
     about eating for it. Appears once per phase change.
-11. **pH tracker** — the safety note is now a panel you can expand rather than a permanent block of
+12. **pH has its own tab** — it used to be a card partway down Nutrition, under supplements. It is
+    now the third tab along, and Nutrition opens straight into your focus foods. Please check the
+    seven tabs all fit and read clearly on your device, especially if you have a smaller iPhone.
+    Everything that pointed at the old location (the Home card, Insights, the Learn articles) should
+    now take you to the tab.
+13. **pH tracker** — the safety note is now a panel you can expand rather than a permanent block of
     text, and the old urine-test wording is gone throughout.
-12. **General** — sign in, complete cycle setup, and sanity-check Home, Insights and Learn.
+14. **General** — sign in, complete cycle setup, and sanity-check Home, Insights and Learn.
 
 Please report anything that looks wrong with a screenshot and the steps to reproduce. Thank you!
 
@@ -86,15 +94,14 @@ Please report anything that looks wrong with a screenshot and the steps to repro
 - **Articles behind a medical sign-off** (Shettles, and the girl/boy framing) — held pending written
   client and medical-reviewer approval to relax the banned-phrase guards. Calendar time, not
   engineering time.
-- **A pH tab of its own** — six tabs is already tight on an SE; placement is an open design call.
 
 ## Build facts
 
 - Version **1.2.0 (18)**.
-- Contains build 17 plus the client change list: T3–T6, T8, T10–T15, T20, T21, T23, T25, T28, T30,
-  the waitlist wiring, and the privacy/security batch (quiz answers moved off the partner-readable
-  `profiles` row; a user can no longer declare themselves someone else's partner).
-- **Green baseline:** 179 domain · 186 app · 39 UI (38 + 1 skipped on a simulator that has already
+- Contains build 17 plus the client change list: T1–T6, T8, T10–T18, T20, T21, T23, T25, T28,
+  T29a/T29c, T30, the waitlist wiring, and the privacy/security batch (quiz answers moved off the
+  partner-readable `profiles` row; a user can no longer declare themselves someone else's partner).
+- **Green baseline:** 179 domain · 190 app · 44 UI (43 + 1 skipped on a simulator that has already
   answered the notification prompt). Do not pass `-quiet` — it has returned exit 0 with no summary
   and hidden a real result.
 

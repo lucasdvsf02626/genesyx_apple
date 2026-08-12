@@ -2,6 +2,235 @@
 
 All notable changes to Genesyx (iOS) are recorded here.
 
+## 1.2.0 (18) — in flight (main, `9d08d82` … working tree, 10–11 Aug 2026)
+
+Version 1.2.0 rather than 1.1.2: this is new surface, not a fix pass. Pre-flight checks and release
+checklist in `docs/TESTFLIGHT_B18.md`; current state of play in `docs/HANDOFF.md`.
+
+### Privacy & security
+- **Quiz answers moved off the partner-readable `profiles` row** (`9d08d82`). The RLS audit that
+  Sprint 1 asked for came back badly: `profiles_select` is a bare row-level clause, and Postgres RLS
+  filters *rows*, never columns — so a linked partner read the whole profile row, including what she
+  said about her baby's sex on a screen that promises the answer is just for her. Narrowing the
+  policy cannot fix that; only moving the data can. The answers now live in their own owner-only
+  table. `ProfileBackend` and the domain shape are unchanged — only the Supabase implementation
+  differs, reading and writing two tables behind the same two methods. No backfill: the column
+  landed the same day and has never shipped, so this is a pure move while there is nothing to move.
+- **A user can no longer declare themselves someone else's partner** (`1e6ec6f`, `e9a5518`).
+  `profiles_update` permitted a self-row write with no column restriction and nothing guarding
+  `partner_id`, so anyone could point their own `partner_id` at any UUID and have `profiles_select`
+  hand them that person's whole row — no reciprocation, and nothing the victim could observe or
+  refuse. Fixed by revoking the `UPDATE` privilege on the column rather than adding a trigger: the
+  service role bypasses RLS but *not* triggers, so a trigger would have raised on the Edge Functions
+  that legitimately write it. Consent already exists in the right form —
+  `accept_partner_invite` matches a pending invite against the caller's own email — it was just in
+  the wrong place. Revoked from `anon` as well as `authenticated`, because the privilege audit found
+  all four roles holding the stock full table grant.
+  Held back deliberately: taking `created_at`/`updated_at` off the same grant is also right, but it
+  is a second change with a different blast radius and only the iOS client is in this repo to verify
+  against.
+- `ProfileRow` is now documented select-only (`a61d571`). It carries `partnerId` and is `Codable`, so
+  it looks upsertable; a write through it now fails with `42501`, which is a confusing error to meet
+  without knowing the column is deliberately out of reach of every client role.
+
+### Features
+- **Vaginal pH is its own tab** (T1 + T2). It used to be a card most of the way down Nutrition, filed
+  under supplements — which is where the client's "I can't find pH" came from, and also a category
+  error: vaginal pH is not something you eat. It is now the third tab, and Nutrition opens straight
+  into focus foods.
+  Shipped as one change, not two: removing the card without the tab would have left pH reachable only
+  from Track, strictly *less* discoverable than before.
+  Seven tabs, and the SE worry that gated this (G2) did not survive measurement — iOS 16 drops the
+  320pt SE 1, so the narrowest supported device is 375pt: ~53pt a tab against a ~48pt widest label.
+  Verified on an SE (3rd gen) simulator, nothing truncated.
+  Inserting a tab mid-order shifts every raw value above it, and three structures encode that order
+  with no runtime linkage between them (`MainTabView`, `NotificationTab`, `NotificationTarget`). They
+  moved together, and `NotificationTests` now compares them **pairwise**: the old
+  `NotificationTab(rawValue:) != nil` check passes happily while a nudge lands one tab off. One
+  accepted edge — a notification queued before the update carries the old raw `tab` and misroutes by
+  one until the next replan.
+  `guide-track-ph-in-nutrition` was rewritten around the trend chart, **slug intact**. A slug is a
+  route and a read-history key; and while `LearnReadLog` carries a rename map, `LearnLibraryLog`
+  does not, so renaming it would have re-announced a year-old article as new.
+- **A Learn article a week** (T28, `185b99e`). Eleven pieces drip-released on `CalendarDate` with no
+  server involved, an unread badge, a Home card and an opt-in-gated Sunday nudge. The badge reads
+  zero on a first run rather than eleven.
+- **Three more how-to guides** (T29a): cycle & phases, sleep, symptoms. The client asked for seven
+  covering cycle, pH, nutrition, symptoms, sleep and hydration; an audit of the existing library
+  found four of those already written — pH three times over (`guide-vaginal-ph-tracker`,
+  `guide-how-to-log-ph`, `guide-track-ph-in-nutrition`), plus nutrition, hydration and general
+  logging. Writing the other four would have been duplication filed as delivery, so only the three
+  genuine gaps were written.
+  Every claim was checked against the code rather than against how the feature is described
+  elsewhere, which caught two: the Insights sleep chart is the ISO week Mon–Sun, not the trailing
+  seven nights the Track sparkline uses (the draft conflated them), and the symptom-pattern card
+  waits for seven *days carrying symptoms*, not seven calendar days. Both would have read as true.
+  Only the cycle guide carries a disclaimer and a Sources footer; the other two describe what the app
+  does and state no external health fact, matching the precedent set by `guide-how-the-log-works`.
+  Watch for markdown here: `.bulletList` items render through `Text(String)`, which does *not* parse
+  it, so `**bold**` ships as literal asterisks.
+- **A glass is hers to size** (T23, `185b99e`) — 50–1,000 ml, default 250. A cup stays fixed at 240:
+  that is a recipe measure, not an object she owns. Out-of-range falls back to 250 rather than
+  clamping, so a corrupted store shows the familiar default and not a number she never picked.
+  Storage is untouched (`DailyLog.waterMl` is always ml), so resizing re-describes her water and can
+  never rewrite it. Device-local for now, deliberately: `hydration_unit` already was, and syncing one
+  without the other would strand her on a new phone with a 300 ml glass and the unit reset to
+  millilitres, where a glass size means nothing.
+- **The real egg artwork on the splash** (T21, `185b99e`). The change list said to request the design
+  files from the client; they had been in the asset catalog since 10 July with zero code references,
+  so nobody was ever waiting on anyone. Re-exported 1024px → 512px (1.4 MB → 222 KB; 512 is exactly
+  1:1 for the largest 170pt use at 3x). `BrandAssetTests` guards existence *and* resolution, because
+  `Image("egg_female")` renders nothing when the asset is missing and says so nowhere.
+- **The waitlist screen actually calls the backend** (`185b99e`), and only says "you're on the list"
+  once the write returns. The old copy promised a guide "sent straight to your inbox"; nothing sent
+  it. `supabase/migrations/20260811_waitlist_emails.sql` is new not because the schema changed but
+  because it had never been written down — the client has called `join_waitlist` since the screen was
+  wired up and no migration in this repo ever created it. RLS on with no policies as the lock, one
+  `SECURITY DEFINER` function as the only door.
+- **Nutrition announces a phase change** (T25, `24f8255`), linking to the cycle-eating article. Her
+  focus foods change the day her phase does and nothing on screen said so — the list simply looked
+  different. Silent on a first install: a fresh device is mid-phase, not crossing into one, so
+  announcing would report something that happened days before she opened the app. Dismissable, or it
+  would sit there for the rest of the phase for anyone who didn't want to read the article. Carries
+  no nutrition claim of its own, so it needs no medical sign-off.
+- **Logging and editing a past day** (working tree). `LogView` takes a date instead of hard-coding
+  `.today()`, and a calendar day sheet offers "Add a log" or "Edit this day" depending on what is
+  already there. Future days keep the old close-only sheet — there is nothing to record about a day
+  that has not happened. The sheet titles itself with the day it is on, because a back-filled entry
+  otherwise looks identical to today's and she has no way to tell which she is about to overwrite.
+  The repository always supported this; until the sheet took a date, nothing could reach it.
+- **The three inert Profile rows are now real editors** (T16/T17/T18, working tree). *Personal
+  Details*, *Health Profile* and *Tracking Preferences* each raised a paragraph of text and changed
+  nothing. They now open, respectively: her display name (with the sign-in address shown but not
+  editable — changing it is a re-verification flow, not a text field, and leaving it off the screen
+  entirely meant "which account am I in?" had no answer anywhere in the app); the existing cycle
+  editor, which until now could only be reached from a Home setup card that disappears once filled
+  in; and her five onboarding answers, which were captured once and then frozen — someone who
+  answered "just starting to think about it" a year ago had no way to say she is trying now, and kept
+  being guided as if she weren't.
+  No DOB field, despite the change-list wording: nothing in the app consumes age, and a date of birth
+  is PII in a row this release has just spent a batch of work moving PII *out* of.
+- **The brand backdrop is drawn on the seven tab screens** (working tree), via one `gxPageBackground()`
+  modifier. Sheets keep the flat fill — a card raised over a backdrop should not repeat it — and the
+  art is light-mode only, because its field matches the light background exactly, which is what makes
+  it read as a backdrop rather than a picture. One opacity constant is the dial if the client wants
+  it fainter or stronger.
+  The asset shipped as a single 1323×2868 file *declared 1x*, which is how a 3x export ends up laid
+  out at three times its intended size; re-exported at proper 1x/2x/3x. `BrandAssetTests` asserts the
+  laid-out **point** width, since that is the number SwiftUI actually uses and the one that catches
+  this class of bug.
+
+- **The Home pH card names the measurement site** (working tree): "Check your pH" → "Check your
+  Vaginal pH", in the visible text and the accessibility label. `CitationE2ETests` pins that label to
+  keep the card a navigational nudge with no health claim; the pinned string moved with it, since
+  naming where a reading is taken is not a claim about what it means.
+
+### Fixes
+- **Hydration's Save button only worked if you hit the word** (working tree). Manual entry drew an
+  88×48 capsule but sized it from *outside* the `Button`, so only the four letters of "Save" took the
+  tap; every miss was swallowed by the background. She types a figure, presses what is plainly a
+  button, and nothing happens. The same shape was on the sleep sheet's Save and Clear, where the
+  capsule runs the full width of the sheet and the dead area is most of it. Fixed by moving size and
+  fill into the label — which is what the quick-add buttons a few lines above already did, and why
+  quick-add worked while Save did not.
+  The guard took two attempts to be worth having, and the discarded one is the instructive part:
+  `XCUIElement.tap()` hits an element's *centre*, which is over the glyphs, so it fires against the
+  broken button too — and XCUITest reports the outer 88×48 frame either way, so asserting the frame
+  proves nothing either. Both were confirmed green against the *unfixed* button before the test was
+  changed to tap near the capsule's edge, which fails against it and passes after. The existing sleep
+  smoke test was moved to an edge tap for the same reason.
+
+### Reliability
+- **A rejected row no longer starves the queue** (`185b99e`). Sync drains now step over a row the
+  server refuses, so one poisoned write cannot block every newer one behind it. This needed a second
+  look before landing: `requireUID` throws `notAuthenticated` before any request leaves the device
+  and it is not a `URLError`, so a missing session would have read as "this one row is poison" and a
+  signed-out foreground would have walked the whole backlog one doomed call at a time.
+  `shouldHaltDrain` stops on both, which is what the old blanket `break` did for free.
+- **The offline symbol that would not go away — G3, and the client was right** (working tree). The
+  earlier "cannot reproduce, no such code path" reading searched for `NWPathMonitor` and
+  `Reachability`; the badge has nothing to do with reachability. `DailyLogRepository.syncState(on:)`
+  answers purely from the owed-days set, and that set was a plain `private var` — so saving a day
+  published `logByDate`, drew `icloud.slash` "Will sync when online", and then the push that removed
+  the day from the set a moment later published nothing at all. The icon sat over a day the server
+  already had until some unrelated edit happened to redraw the row. One `@Published`.
+- **A cycle correction made mid-sync was thrown away** (working tree). `drainPending` read the
+  settings, awaited the server, then cleared the owed flag unconditionally — so correcting her period
+  date inside that window marked a value synced that the server had never been sent, and the next
+  pull replaced her correction with the copy the drain had just uploaded. It now re-checks that the
+  settings still match what it sent, which is the guard `push` and the other three repositories were
+  already using.
+- **Her name and address survive a relaunch** (working tree). The Supabase SDK restores the session
+  itself, but `SessionRepository` held the email and display name in memory only. A returning user
+  was therefore greeted as "Guest" — and Personal Details opened prefilled with that literal word,
+  ready to be saved over her real name. Both are now stored, and a sign-in that carries no name (all
+  of them do — the sign-in screen never asks) no longer renames her to the part before the `@`.
+- **One account's data can no longer follow another into the app** (working tree). Sign-out wipes,
+  but the app stays usable signed out: onboarding does not re-run, the tabs are still there, and
+  every write queues. Those writes belonged to whoever last held the session and were hydrated into
+  whoever signed in next. Sign-in now compares the stored owner against the incoming user id and
+  wipes first when they differ. A device that has never held a session is *not* treated as having a
+  previous owner — onboarding runs before the account exists, so a first sign-in is carrying her own
+  quiz answers and cycle dates in with her. Getting that wrong took out 21 UI tests, which is exactly
+  what the seeded harness is for.
+- **An owed profile write no longer lands in the next account's row** (working tree). The flag
+  outlived the session that owed it, so the next user's first refresh pushed the previous user's
+  theme, focus mode and push setting up into their `profiles` row, then pulled the clobbered values
+  back down. Sign-out now drops it.
+
+### Fixes — Profile and Track
+- **The calendar exists before the cycle does** (working tree). Cycle setup is skippable, and
+  skipping it took the entire month grid away — no cells, so nothing to tap, so no way to record or
+  review any day at all. The calendar is *where logging happens*; gating it on a period date she
+  had not given us made the app unusable for exactly the user who most needed to ease into it.
+  `CalendarCell.day` and `DayInfo` now carry an optional `CyclePhaseInfo`, and `buildMonthGrid`
+  takes optional settings: a full month of tappable days, none of them tinted, none of them claiming
+  a phase. The phase key hides itself rather than explaining four colours that appear nowhere, the
+  day sheet heads itself with the date instead of a cycle day that doesn't exist, and "Add your
+  cycle" moves below the grid — still asked, no longer at the cost of the calendar.
+  ⚠️ **Android parity:** `CalendarCell` mirrors a Kotlin sealed interface. The same nullability has
+  to reach the Android client or the two calendars will disagree about whether a day can exist
+  without a cycle.
+- **Personal Details no longer offers to save the word "Guest"** (working tree). The sheet was handed
+  the Profile card's display fallback rather than the stored name. Save is now disabled on an empty
+  field instead of silently closing the sheet with no error and no change, which read as the app
+  having lost the edit.
+- **Change password tells her when it cannot help** (working tree). A social sign-in can leave us
+  without an email address; offering to send a reset link there anyway ended in "please try again" on
+  a call that could never succeed. It now says so and points at Help & Support.
+- **A mis-entered pH reading can be corrected or deleted** (working tree). `PhLogSheet` had both an
+  update path and a Delete button, and nothing could reach either: the state driving them was only
+  ever assigned `nil`. The latest-reading panel is now tappable.
+- **The Cycle row no longer draws a week she did not log** (working tree). It passed
+  `Array(repeating: 1, count: 7)` as its sparkline, so seven fully saturated dots appeared the moment
+  cycle settings existed — in a column where every other row's dots are seven days of her own data.
+  Removed rather than faked. Relatedly, a pH reading of exactly 3.8 scaled to 0.0 and drew
+  identically to a day with no reading at all; it now has a floor.
+- **"About 0 days until your next period"** (working tree) now reads "Your next period is due today."
+- **The day-detail sheet fits its contents** (working tree). A fully logged day's summary runs to nine
+  clauses, and at the larger Dynamic Type sizes the fixed 280pt sheet pushed its buttons off-screen.
+
+### Docs
+- `docs/TESTFLIGHT_B18.md` (`510d43e`) follows the build-17 convention and adds a **pre-flight**,
+  because two of this build's features depend on Supabase objects that nothing in this repo can check
+  and that fail silently when absent. It also carries the P0 release checklist, which until now
+  existed only in conversation and in nobody's notes.
+- `docs/HANDOFF.md` was untracked — `git log` knew nothing about it and it was not ignored. Now
+  tracked, and corrected: task 23 (`drop column quiz_answers`) was recorded as blocked on build 18
+  being live because "build 17 users still select that column". They do not — build 17 was cut on
+  29 July, and `quiz_answers` first entered the client's `profiles` select on 10 August and was moved
+  off the row again the same day. The stale test baseline (169 app, 33 UI) was corrected to 186/39
+  there, and stands at **179 domain + 198 app + 44 UI** with the working tree above.
+
+### Owed
+- ⚠️ **`daily_logs.sexual_activity` is unconfirmed.** The migration was written and never recorded as
+  applied, and the decoders tolerate the column's absence — so she would log intimacy all week, see
+  the calendar dots, and sync nothing. Pre-flight 1 in `docs/TESTFLIGHT_B18.md`.
+- T20 made light the local default, but `apply(remote)` overwrites it on sign-in, and the server
+  cannot tell "she chose system" from "she was defaulted to it before T20". A decision, not a check.
+- `alter table public.profiles drop column quiz_answers` (task 23) is **not** part of this release.
+  It now waits on the web client alone; do not run it as part of shipping 18.
+
 ## Unreleased — client change list, Sprint 1 (main, `71567c8` … `998b5c2`, 10 Aug 2026)
 
 Twelve items from the client's "Simplified Consolidated Changes" list, all chosen because they need
@@ -46,13 +275,13 @@ no client or medical-reviewer sign-off. Audit and plan in `docs/CHANGE_LIST_PLAN
   badge counts *new-and-unread* only: zero on a first install, because badging all sixteen articles
   would read as a backlog rather than an invitation.
 
-### Owed
-- Two migrations are **not applied** — `20260810_daily_logs_sexual_activity.sql` and
-  `20260810_profiles_quiz_answers.sql` need running by hand in the Supabase SQL Editor. Until then
-  those columns exist only in the app's decoders, which tolerate their absence.
-- `profiles` carries a partner-read policy, and her answer to the baby's-sex question now lives in
-  that row. If the policy selects whole rows rather than named columns, the "just for you" promise is
-  false. The check is written into the migration §2 and must run before production.
+### Owed — resolved since, see 1.2.0 (18) above
+- `20260810_daily_logs_sexual_activity.sql` is still unconfirmed against production; it is now
+  pre-flight 1 for build 18.
+- The partner-read check **came back badly**: `profiles_select` selects whole rows, so the "just for
+  you" promise was false as written. `20260810_profiles_quiz_answers.sql` is therefore superseded and
+  must not be applied to a fresh database — the answers moved to their own owner-only table in
+  `9d08d82`.
 
 ## Unreleased — database & docs (main, build 16 source `547d2d4`)
 

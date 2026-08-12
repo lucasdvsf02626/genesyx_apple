@@ -43,7 +43,9 @@ Supabase; data is wiped locally on sign-out.
 - **My Logs** — full history of daily entries.
 
 ## Learn
-- ~16 bundled articles and guides across Getting started, Tracking, Nutrition, Insights, Wellness.
+- 30 bundled articles and guides across Getting started, Tracking, Nutrition, Insights, Wellness and
+  Guides. 19 are readable from day one; the other 11 are a weekly series, shipped in the same build
+  and revealed one Sunday at a time with an unread badge and a Home card.
 - Search over titles/excerpts/tags, per-article **medical disclaimers**, and **cited Sources** on
   articles that make health claims.
 

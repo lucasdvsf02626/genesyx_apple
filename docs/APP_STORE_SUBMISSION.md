@@ -131,7 +131,7 @@ email-confirmed, and we have verified a fresh password sign-in against the produ
 
 The credentials in App Review Information have been updated. They do not require an OTP, email
 access, or any additional setup. The account also contains fictional sample cycle, hydration, pH,
-sleep, symptom, and supplement entries so all six tabs and Insights can be reviewed immediately.
+sleep, symptom, and supplement entries so all seven tabs and Insights can be reviewed immediately.
 
 Please retry the sign-in using the updated App Review Information credentials. Thank you.
 ```
@@ -146,7 +146,7 @@ Demo account:
 Email: [REVIEWER EMAIL]
 Password: [REVIEWER PASSWORD]
 
-After signing in, the six tabs are Home, Track, Nutrition, Insights, Learn, and Profile. Sample
+After signing in, the seven tabs are Home, Track, pH, Nutrition, Insights, Learn, and Profile. Sample
 cycle, hydration, pH, sleep, symptom, and supplement entries should already be present in the demo
 account so Insights can be reviewed. Partner linking only shows the linked relationship; personal
 logs and health readings remain private. Account deletion is in Profile → Delete account. The

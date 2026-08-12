@@ -59,11 +59,17 @@ reintroduce that exact territory. Raise this directly with the client.
 
 - [ ] ⚠️ **G1 — Shettles + Girl/Boy sign-off.** Written client + medical-reviewer approval to relax
       the banned-phrase guards. *Blocks T7, T29b, all Shettles copy.*
-- [ ] ⚠️ **G2 — pH tab placement.** 6 tabs exist today (`MainTabView.swift:12`) via a **custom** bar,
-      because iOS collapses past five. A 7th is cramped on an iPhone SE. Decide: 7 tabs, or demote
-      Insights into Home/Track. *Blocks T2.*
-- [ ] ⚠️ **G3 — Offline symbol.** Request build number + screenshot from client. No code path exists;
-      likely an older build or the Android client. *Blocks T9.*
+- [x] ✅ **G2 — pH tab placement.** Resolved 11 Aug 2026: **7 tabs**, Insights stays. The SE worry did
+      not survive measurement — iOS 16 drops the 320pt SE 1, so the narrowest supported device is
+      375pt, giving ~53pt a tab against a ~48pt widest label ("Nutrition"). Verified on an
+      iPhone SE (3rd gen) simulator: no truncation, all seven tappable. Unblocked T1/T2.
+- [x] ✅ **G3 — Offline symbol.** Resolved 11 Aug 2026, and the client was right. The earlier "no code
+      path exists" finding searched for `NWPathMonitor`/`Reachability`; the symbol is not reachability
+      at all. `DailyLogRepository.syncState(on:)` reads the owed-days set, and that set was not
+      `@Published` — so the save drew `icloud.slash` "Will sync when online" and the push that cleared
+      it a moment later published nothing. The icon then sat over a day the server already had until
+      some unrelated edit happened to redraw the row. Fixed in Phase 2; no client screenshot needed.
+      Unblocked T9.
 - [x] ✅ **G4 — Egg artwork.** Resolved: the files were already in the catalog (dated 10 July), so
       the blocker was stale, not outstanding — nothing was ever waiting on the client. Wired in T21.
 
@@ -77,11 +83,19 @@ T3–T5 are independent of every gate. Cleanest starting point — **all three s
 pH reachable only from Track — strictly *less* discoverable, the opposite of the client's goal. So
 T1 inherits G2's block. Do not ship T1 alone.
 
-- [ ] ⬜ **T1 — Remove pH from Nutrition.** Delete `PhTrackerSection()` at `NutritionView.swift:50`.
-      Also update the `guide-track-ph-in-nutrition` article, which documents the behaviour removed.
-      *Needs G2 — ship with T2.*
-- [ ] ⬜ **T2 — Dedicated pH tab.** Add to `MainTabView.swift:12`, pointing at
-      `PhTrackerSection(variant: .full)`. *Needs G2.*
+- [x] ✅ **T1 — Remove pH from Nutrition.** The card is gone from `NutritionView`; the tab now opens
+      straight into focus foods. `guide-track-ph-in-nutrition` was rewritten around the trend chart —
+      **slug kept**, because it is a route and a read-history key, and `LearnLibraryLog.newSlugs`
+      (unlike `LearnReadLog.renamed`) has no rename map, so a rename would re-announce the article as
+      new. Home's pH card and Insights' empty state now point at the tab, as does Profile's help copy.
+- [x] ✅ **T2 — Dedicated pH tab.** Seventh tab at index 2 (Home, Track, **pH**, Nutrition, Insights,
+      Learn, Profile). Inserting mid-order shifted every raw value above it, so three structures moved
+      in lockstep: `MainTabView`'s ordering, `NotificationTab`, and `NotificationTarget`. They have no
+      runtime linkage, so `NotificationTests` now asserts them **pairwise** — the old
+      `NotificationTab(rawValue:) != nil` check still passed while a nudge landed one tab off.
+      Known and accepted: a notification queued before the update carries the old raw `tab` in its
+      `userInfo` and lands one tab off until the next replan. `PhSpineVariant` went with it — `.full`
+      is now unconditional, `.compact` had no consumer left once Nutrition dropped the card.
 - [x] ✅ **T3 — Rename the urine slug.** `guide-urine-tracker-with-stick` → `guide-vaginal-ph-tracker`.
       Touched `LearnContent.swift:314`, `LearnSourceMap.swift:12`, `LearnContentTests.swift:57`,
       `PhContentGuardTests.swift:10`. `LearnReadLog` now carries an old→new slug map, so the rename
@@ -118,7 +132,10 @@ T1 inherits G2's block. Do not ship T1 alone.
       for you." If that policy selects whole rows rather than named columns, the promise is false.
       The check is written into `supabase/migrations/20260810_profiles_quiz_answers.sql` §2 and must
       be run before this reaches production.
-- [ ] ⬜ **T9 — Connectivity write-up** for the client. *Needs G3.*
+- [x] ✅ **T9 — Connectivity.** G3 turned out to be a real defect rather than a question, so this is a
+      fix and not a write-up. Shipped with the Phase 2 reliability batch: the stuck "Will sync when
+      online" badge, a cycle correction lost when it was made mid-drain, and an owed profile write
+      that followed one account into the next one's row.
 
 ## 3. Phase 2 — the real gaps (15–18d)
 
@@ -170,9 +187,22 @@ T1 inherits G2's block. Do not ship T1 alone.
       visible to anyone holding the phone).
 - [x] ✅ **T15 — Per-category notification toggles.** `ProfileView.swift:176`. One global switch would
       not hold 8 categories.
-- [ ] ⬜ **T16 — Health Profile editor.** `ProfileView.swift:167` currently opens a static alert only.
-- [ ] ⬜ **T17 — Tracking Preferences editor.** `ProfileView.swift:169`, same problem.
-- [ ] ⬜ **T18 — Personal details editor** (email, DOB). Currently read-only.
+- [x] ✅ **T16 — Health Profile editor.** Opens the existing `CycleSettingsSheet`. Her cycle *is* the
+      health profile the app holds, and until now it could only be reached from the Home setup card,
+      which disappears once it has been filled in — so a wrong period date was uncorrectable.
+- [x] ✅ **T17 — Tracking Preferences editor.** Re-opens the five onboarding answers through the
+      existing `recordQuizAnswers` sync path. They shape her plan and guidance but were asked once and
+      then frozen: someone who answered "just starting to think about it" a year ago had no way to say
+      she is trying now, and kept being guided as if she weren't. All five are editable, including the
+      baby's-sex question — an answer she cannot change is worse than one she was never asked.
+      The Hydration and Notification controls stay where they are: they are already live on this
+      screen, and duplicating them into a sheet would give the same setting two homes.
+- [x] ✅ **T18 — Personal details editor.** Display name is editable; the sign-in address is shown but
+      not. **No DOB field, deliberately** — the doc says "email, DOB", but nothing in the app consumes
+      age, and a date of birth is PII in a row this release has just spent a batch of work moving PII
+      out of. Raise it with the client if a real consumer for it appears.
+      Email is display-only because changing it is a re-verification flow, not a text field; leaving
+      it off the screen entirely meant "which account am I in?" had no answer anywhere in the app.
 - [ ] ⬜ **T19 — Password change.** `SessionRepository.swift:99` throws in local mode and surfaces an
       error. Either gate the row or wire the backend.
 
@@ -225,9 +255,19 @@ T1 inherits G2's block. Do not ship T1 alone.
 - [x] ✅ **T28 — Weekly article drop + unread badge/dashboard card.** The Sunday nudge, the Learn tab
       badge and the Home card all pick through one rule (`NotificationPlanner.nextRead`), so they can
       never name different articles. The badge counts *new-and-unread* only — zero on a first install,
-      because badging all 16 would read as a backlog. 16 articles ship today; adding one is ~30 min in
-      `LearnContent.swift`.
-- [ ] ⬜ **T29 — Write and wire the 12 articles** (~0.5d each). **T29b (Shettles) needs G1.**
+      because badging all 19 would read as a backlog. 19 undated articles ship today; adding one is
+      ~30 min in `LearnContent.swift`.
+- [x] ✅ **T29a — The eleven weekly pieces, written and cited.** Shipped in one build, revealed one
+      Sunday at a time. Every piece states external health facts, so every piece carries a disclaimer
+      and a Sources footer *in the build that ships it* — they are withheld by date, not by
+      readiness, and there is no later pass. `testEveryWeeklyArticleIsCited` pins that.
+- [x] ✅ **T29c — The three missing how-to guides** (cycle & phases, sleep, symptoms). A separate ask
+      from the twelve-week series: seven in-app how-tos covering cycle, pH, nutrition, symptoms,
+      sleep and hydration. Four already existed — pH three times over — so only the genuine gaps were
+      written. See `CHANGELOG.md` for the two factual errors that checking against the code caught.
+- [ ] ⬜ **T29b — Shettles.** Needs G1 (written client + medical-reviewer sign-off). Not engineering
+      time. `testShettlesArticleIsAbsent` fails the day it lands, which is the intended reminder that
+      the banned-phrase guards have to be revisited first.
 - [x] ✅ **T30 — Per-supplement reminders.** Each supplement carries its own time, the Genesyx
       essentials included; "No reminder" stays a first-class choice in the menu.
 
@@ -321,7 +361,8 @@ their hand, and it closes the one item they raised that was genuinely missing.
 
 - **T1 · T2** (pH tab) — G2. Shipping T1 alone makes pH *harder* to find.
 - **T7 · T29b** (Girl/Boy, Shettles) — G1. Blocked on written sign-off, not on engineering.
-- **T9** (offline symbol) — G3. Cannot reproduce; no such code path exists.
+- **T9** (offline symbol) — G3. *Superseded 11 Aug 2026: reproduced and fixed. The original "no such
+  code path" reading looked for reachability monitoring; the badge is driven by the owed-days set.*
 - **T21 · T22** (artwork, visual pass) — G4 / no design spec. T22 will sprawl without one.
 - **T16–T19** (profile editors) — real work, but no defect; they are unbuilt features.
 - **T23–T27** (nutrition) and **Phase 6** — separate scope.
@@ -341,17 +382,46 @@ nutrition items while the context is warm.
 | 13 | T25 — phase-change card linking to the cycle-eating article | 1d | ✅ |
 | 14 | T23 — custom glass size | 1d | ✅ |
 
+### 9.4 Sprint 2 — 11 Aug 2026
+
+| # | Task | Effort | Status |
+|---|---|---|---|
+| 15 | Past-day logging + editing (§1B on the client list) | 1d | ✅ |
+| 16 | T16 · T17 · T18 — the three inert Profile rows | 1d | ✅ |
+| 17 | `page_background` — the brand backdrop on the seven tab screens | 0.5d | ✅ |
+| 18 | T1 · T2 — dedicated pH tab, pH out of Nutrition (G2 resolved) | 1.5d | ✅ |
+| 19 | Phase 2 reliability — G3 badge, mid-drain correction, identity bleed | 1.5d | ✅ |
+| 20 | The calendar with no cycle set up | 0.5d | ✅ |
+
+T19 (password change) is the one Profile row still unbuilt: `SessionRepository.swift:99` throws in
+local mode. It is a backend decision, not a UI one, so it did not belong in the same batch.
+
+**Row 20 — the calendar existed only after the cycle did.** Cycle setup is skippable, and skipping
+it took the whole month grid away: no cells, so nothing to tap, so no way to record or review any
+day at all — including the past days row 15 had just made loggable. `CalendarCell.day` and
+`buildMonthGrid` now carry an *optional* `CyclePhaseInfo`, so a day exists without a phase; the grid
+draws untinted, the phase key is hidden rather than pointing at four colours that appear nowhere,
+and the day sheet heads itself with the date and declines to predict. The "Add your cycle" prompt
+moved below the grid rather than replacing it.
+
+⚠️ **Android coordination item.** `CalendarCell` mirrors a Kotlin sealed interface. The same
+nullability has to reach the Android client, or the two calendars will disagree about whether a day
+can exist without a cycle. Nothing shared enforces this — there is no `tracking_test_vectors.json`
+equivalent for the grid — so it travels by this note alone.
+
 ---
 
 ## 10. Verification gate
 
-Green baseline is **179 domain + 186 app tests** (was 125 + 139 before Sprint 1; T23 added 5 domain;
+Green baseline is **180 domain + 198 app tests** (was 125 + 139 before Sprint 1; T23 added 5 domain;
 the app figure was 169 until the uncommitted `RepositoryTests` work took it to 172, the weekly
 Learn series added 11 — 6 drip-gate, 3 citation-integrity, 1 hero-asset, 1 end-to-end drop — T21
-added 2 brand-asset guards, and the build-18 `drainPending` fix added 1),
-plus **39 UI tests** behind the `-uiTestSeed` harness — the notification opt-in test skips itself once
-that permission has been answered, so it counts 38 + 1 skipped on a simulator you have already run
-against, and 39 on a freshly erased one. Run after every task:
+added 2 brand-asset guards, the build-18 `drainPending` fix added 1, past-day logging added 2
+`RepositoryTests`, and `page_background` added 2 more brand-asset guards; Sprint 2 then added 8 app
+tests for the Phase 2 reliability batch and 1 domain test for the no-cycle grid),
+plus **45 UI tests** behind the `-uiTestSeed` harness — the notification opt-in test skips itself once
+that permission has been answered, so it counts 44 + 1 skipped on a simulator you have already run
+against, and 45 on a freshly erased one. Run after every task:
 
 ```bash
 swift test && xcodebuild test -project Genesyx.xcodeproj -scheme Genesyx \
