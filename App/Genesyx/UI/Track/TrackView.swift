@@ -151,6 +151,11 @@ struct TrackView: View {
         case let .day(date, info, isToday):
             let type = info.map(CycleEngine.dayType(for:))
             let markers = DayMarkers.markers(log: dailyLog.log(on: date), hasPhReading: phDays.contains(date))
+            // Driven by the window itself rather than by `type`, which reports only one thing per
+            // day: on a short cycle the fertile window opens while she is still bleeding, and
+            // `dayType` gives period precedence, so the fill alone erases the overlap.
+            let isFertile = info.map { $0.fertileWindow.contains($0.dayOfCycle) } ?? false
+            let isSolid = type == .ovulation
             Button { selectedDay = DayInfo(date: date, info: info) } label: {
                 // The square comes from `Color.clear`, which is flexible in both axes — the same
                 // shape `.empty` above already uses. Squaring the *number* instead collapses the
@@ -160,44 +165,74 @@ struct TrackView: View {
                     .overlay {
                         Text("\(date.day)")
                             .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(type == .ovulation ? .white : GenesyxColor.foreground)
+                            .foregroundStyle(isSolid ? GenesyxColor.onPrimary : GenesyxColor.foreground)
                     }
-                    .overlay(alignment: .bottom) { markerRow(markers) }
+                    .overlay(alignment: .bottom) { markerRow(markers, onSolidFill: isSolid) }
                     .background(cellBackground(type))
                     .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .overlay(fertileRing(isFertile: isFertile, onSolidFill: isSolid, isToday: isToday))
                     .overlay(cellBorder(type: type, isToday: isToday))
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(cellLabel(date: date, type: type, isToday: isToday, markers: markers))
+            .accessibilityLabel(
+                cellLabel(date: date, type: type, isFertile: isFertile, isToday: isToday, markers: markers))
         }
     }
 
-    /// The dots. Colors stay constant across all five cell backgrounds — going white on the solid
-    /// ovulation cell would cost the marker its identity on the one day it matters most.
+    /// The ring that turns the fertile days from six tinted squares into one visible stage: a shared
+    /// outline with a start and an end, carried by every day in the window including ovulation, so
+    /// the run reads as a band rather than as a solid day with pale ones near it.
+    ///
+    /// Inset behind today's stroke rather than fighting it — today is the worst day to lose the
+    /// window on, so the two are drawn as concentric rings instead of one replacing the other.
     @ViewBuilder
-    private func markerRow(_ markers: [DayMarker]) -> some View {
+    private func fertileRing(isFertile: Bool, onSolidFill: Bool, isToday: Bool,
+                             cornerRadius: CGFloat = 12) -> some View {
+        if isFertile {
+            let inset: CGFloat = isToday ? 3 : 0
+            RoundedRectangle(cornerRadius: cornerRadius - inset)
+                .strokeBorder(onSolidFill ? GenesyxColor.fertileRingBright : GenesyxColor.fertileRing,
+                              lineWidth: 1.5)
+                .padding(inset)
+        }
+    }
+
+    /// The dots, in the deep variant everywhere except the solid ovulation cell — where they take
+    /// the bright one, the same flip the day number makes to white. Hue is what carries a marker's
+    /// identity, and no one colour clears 3:1 against both a white card and a #4D4DAA fill: held
+    /// constant, these measured 2.5–2.9 on white and 1.2–1.4 on ovulation, which is a dot you
+    /// cannot see on the day you most want to check.
+    @ViewBuilder
+    private func markerRow(_ markers: [DayMarker], onSolidFill: Bool) -> some View {
         if !markers.isEmpty {
             HStack(spacing: 3) {
-                ForEach(markers, id: \.self) { Circle().fill(markerColor($0)).frame(width: 4, height: 4) }
+                ForEach(markers, id: \.self) {
+                    Circle().fill(markerColor($0, onSolidFill: onSolidFill)).frame(width: 5, height: 5)
+                }
             }
             .padding(.bottom, 4)
         }
     }
 
-    private func markerColor(_ marker: DayMarker) -> Color {
+    private func markerColor(_ marker: DayMarker, onSolidFill: Bool) -> Color {
         switch marker {
-        case .ph: return GenesyxColor.electricBlue
-        case .symptoms: return GenesyxColor.phElevated
-        case .intimacy: return GenesyxColor.electricPink
+        case .ph: return onSolidFill ? GenesyxColor.markerPhBright : GenesyxColor.markerPh
+        case .symptoms: return onSolidFill ? GenesyxColor.markerSymptomsBright : GenesyxColor.markerSymptoms
+        case .intimacy: return onSolidFill ? GenesyxColor.markerIntimacyBright : GenesyxColor.markerIntimacy
         }
     }
 
     /// Dots carry meaning no screen reader can see, so the cell says it instead of reading out a
     /// bare number.
-    private func cellLabel(date: CalendarDate, type: DayType?, isToday: Bool, markers: [DayMarker]) -> String {
+    private func cellLabel(date: CalendarDate, type: DayType?, isFertile: Bool,
+                           isToday: Bool, markers: [DayMarker]) -> String {
         var parts = ["\(date.day)"]
         if isToday { parts.append("today") }
         if let type { parts.append(legendLabel(for: type)) }
+        // Only where the fill has already said it: "fertile window" after "Fertile window" or
+        // "Ovulation" is noise, but on a short cycle's overlapping period day it is the ring's
+        // whole meaning, and a ring is the one thing a screen reader cannot see.
+        if isFertile, type == .period { parts.append("also in your fertile window") }
         parts.append(contentsOf: markers.map { markerLabel($0) })
         return parts.joined(separator: ", ")
     }
@@ -214,10 +249,10 @@ struct TrackView: View {
     /// untinted one, so an unconfigured month reads as a plain calendar rather than a phase claim.
     private func cellBackground(_ type: DayType?) -> Color {
         switch type {
-        case .period: return GenesyxColor.powderPink.tintOnWhite(0.55)
-        case .fertile: return GenesyxColor.powderBlue.tintOnWhite(0.55)
-        case .ovulation: return GenesyxColor.primary
-        case .luteal: return GenesyxColor.babyLavender.tintOnWhite(0.25)
+        case .period: return GenesyxColor.calendarPeriod
+        case .fertile: return GenesyxColor.calendarFertile
+        case .ovulation: return GenesyxColor.calendarOvulation
+        case .luteal: return GenesyxColor.calendarLuteal
         case .follicular, nil: return GenesyxColor.card
         }
     }
@@ -257,7 +292,15 @@ struct TrackView: View {
                 LazyVGrid(columns: key, alignment: .leading, spacing: 6) {
                     ForEach(phases, id: \.self) { type in
                         legendRow(label: legendLabel(for: type)) {
-                            RoundedRectangle(cornerRadius: 4).fill(cellBackground(type)).frame(width: 14, height: 14)
+                            // Fertile and ovulation carry the ring here too, because the ring is
+                            // what marks the window on the grid — including on a period day, where
+                            // there is no fertile fill for the key to point at.
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(cellBackground(type))
+                                .overlay(fertileRing(isFertile: type == .fertile || type == .ovulation,
+                                                     onSolidFill: type == .ovulation,
+                                                     isToday: false, cornerRadius: 4))
+                                .frame(width: 14, height: 14)
                         }
                     }
                 }
@@ -265,7 +308,8 @@ struct TrackView: View {
             LazyVGrid(columns: key, alignment: .leading, spacing: 6) {
                 ForEach(DayMarker.allCases, id: \.self) { marker in
                     legendRow(label: legendLabel(for: marker)) {
-                        Circle().fill(markerColor(marker)).frame(width: 6, height: 6).frame(width: 14)
+                        Circle().fill(markerColor(marker, onSolidFill: false))
+                            .frame(width: 6, height: 6).frame(width: 14)
                     }
                 }
             }
@@ -318,10 +362,24 @@ struct TrackView: View {
 
     private var currentPhaseCard: some View {
         let info = cycle.settings.map { CycleEngine.cyclePhase(settings: $0, target: today) }
+        let isFertile = info.map { $0.fertileWindow.contains($0.dayOfCycle) } ?? false
         return VStack(alignment: .leading, spacing: 8) {
             Eyebrow("Current phase", color: GenesyxColor.primary)
-            Text(info.map { CycleContent.phaseLabel[$0.phase]! } ?? "—")
-                .font(.gxTitle).foregroundStyle(GenesyxColor.foreground)
+            // The window and the phase are different facts and both are true at once — the card
+            // headlined "Follicular Phase" directly above a line reading "You're in your fertile
+            // window", which asks her to reconcile them. The badge carries the calendar's own
+            // fertile accent up here so the two screens say it the same way.
+            HStack(spacing: 8) {
+                Text(info.map { CycleContent.phaseLabel[$0.phase]! } ?? "—")
+                    .font(.gxTitle).foregroundStyle(GenesyxColor.foreground)
+                if isFertile {
+                    Text("Fertile window")
+                        .font(.gxBodySmall.weight(.semibold))
+                        .foregroundStyle(GenesyxColor.fertileRing)
+                        .padding(.horizontal, 10).padding(.vertical, 4)
+                        .background(GenesyxColor.calendarFertile, in: Capsule())
+                }
+            }
             Text(phaseBlurb(info))
                 .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
         }

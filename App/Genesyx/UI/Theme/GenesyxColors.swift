@@ -55,6 +55,38 @@ public enum GenesyxColor {
     public static let phHealthy = Color(hex: 0x3FA37A)   // green — 3.8–4.5
     public static let phElevated = Color(hex: 0xE0952B)  // amber — above 4.5
 
+    // Calendar — phase fills.
+    //
+    // The light values are the exact composites `tintOnWhite(0.55 / 0.25)` produced over a white
+    // card, so light mode is pixel-unchanged. Dark is deliberately not the same trick: mixing a
+    // pastel into a #1F1F1F card lands mid-grey, and the day number measured 4.2:1 on the fertile
+    // fill — under the 4.5 floor, on the one run of days a conception app exists to show her. These
+    // take the same hues *down* instead of up, which keeps the hue and returns the contrast
+    // (8.8–10.9:1) while still reading as a tint against the card rather than a block.
+    public static let calendarPeriod = Color.adaptive(light: Color(hex: 0xECCDE7), dark: Color(hex: 0x5A3A54))
+    public static let calendarFertile = Color.adaptive(light: Color(hex: 0xC0E6EF), dark: Color(hex: 0x24505C))
+    public static let calendarLuteal = Color.adaptive(light: Color(hex: 0xE1E1F4), dark: Color(hex: 0x3A3A57))
+    /// Ovulation is the one solid cell and carries white text, so it has to stay dark in both
+    /// schemes. `primary` cannot do that job: it goes *light* in dark mode (#9B7BD8), where white
+    /// on it is 3.4:1.
+    public static let calendarOvulation = Color.adaptive(light: Color(hex: 0x4D4DAA), dark: Color(hex: 0x6B4FB8))
+
+    // Marks drawn *on* those fills: the fertile-window ring and the three logging dots.
+    //
+    // Each needs two variants because no single colour clears 3:1 against both a white card and the
+    // solid ovulation fill — the two extremes it has to survive. The bright variant is used on the
+    // ovulation cell in both schemes, which is the same flip the day number already makes to white,
+    // and doubles as the dark-mode half of each pair below.
+    public static let fertileRingBright = Color(hex: 0x8FD3E4)
+    public static let markerPhBright = Color(hex: 0x86D2EC)
+    public static let markerSymptomsBright = Color(hex: 0xF3C173)
+    public static let markerIntimacyBright = Color(hex: 0xEBA9F2)
+
+    public static let fertileRing = Color.adaptive(light: Color(hex: 0x1B6C80), dark: fertileRingBright)
+    public static let markerPh = Color.adaptive(light: Color(hex: 0x1F6E93), dark: markerPhBright)
+    public static let markerSymptoms = Color.adaptive(light: Color(hex: 0x9A5B12), dark: markerSymptomsBright)
+    public static let markerIntimacy = Color.adaptive(light: Color(hex: 0x8E3FA3), dark: markerIntimacyBright)
+
     // Nutrition focus-food accents (per phase)
     public static let foodPeriod = Color(hex: 0xF48FB1)
     public static let foodFollicular = Color(hex: 0xA5D6A7)
