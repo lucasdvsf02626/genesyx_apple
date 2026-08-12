@@ -1,20 +1,23 @@
 import SwiftUI
 
-/// The 6-tab main surface (Home, Track, Nutrition, Insights, Learn, Profile).
+/// The 7-tab main surface (Home, Track, pH, Nutrition, Insights, Learn, Profile).
 ///
 /// iOS's native `TabView` only shows five tabs before collapsing the rest into a "More" list,
-/// which would bury Learn and Profile. Android shows all six, so we use a custom bottom bar to
+/// which would bury Learn and Profile. Android shows all of them, so we use a custom bottom bar to
 /// match: every tab stays visible, and each screen is kept alive (state preserved) via a ZStack.
+/// Seven fit because the narrowest device this app supports is 375pt wide (iOS 16 drops the 320pt
+/// SE 1), leaving ~53pt a tab against a ~48pt widest label.
 struct MainTabView: View {
     @StateObject private var router = TabRouter(selection: MainTabView.initialSelection)
     @EnvironmentObject private var notifications: NotificationService
     @EnvironmentObject private var learn: LearnProgress
 
-    private static let learnTab = 4
+    private static let learnTab = 5
 
     private static let items: [(title: String, icon: String)] = [
         ("Home", "house"),
         ("Track", "calendar"),
+        ("pH", "drop"),
         ("Nutrition", "leaf"),
         ("Insights", "chart.bar"),
         ("Learn", "book"),
@@ -26,10 +29,11 @@ struct MainTabView: View {
             ZStack {
                 tabContent(0, HomeView())
                 tabContent(1, TrackView())
-                tabContent(2, NutritionView())
-                tabContent(3, InsightsView())
-                tabContent(4, LearnLandingView())
-                tabContent(5, ProfileView())
+                tabContent(2, PhTabView())
+                tabContent(3, NutritionView())
+                tabContent(4, InsightsView())
+                tabContent(5, LearnLandingView())
+                tabContent(6, ProfileView())
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             tabBar

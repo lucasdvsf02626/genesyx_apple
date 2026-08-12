@@ -14,6 +14,7 @@ enum LearnSourceMap {
         "guide-nutrition-focus": ["nhs-periods", "nhs-eatwell"],
         "guide-how-hydration-works": ["nhs-water", "armstrong-2012"],
         "guide-track-ph-in-nutrition": ["vaginal-ph", "statpearls-vaginitis"],
+        "guide-cycle-and-phases": ["nhs-periods", "nhs-conception"],
 
         // The twelve-week series. Every piece states external health facts, so every piece is
         // cited — they are withheld by date, not by readiness, and the citation must be in

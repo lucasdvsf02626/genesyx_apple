@@ -108,7 +108,7 @@ public enum NotificationSlot: String, CaseIterable, Sendable {
 
 /// Where a tap lands. Raw values match the app's tab order.
 public enum NotificationTarget: Int, Sendable {
-    case home = 0, track = 1, nutrition = 2, insights = 3, learn = 4, profile = 5
+    case home = 0, track = 1, ph = 2, nutrition = 3, insights = 4, learn = 5, profile = 6
 }
 
 public struct PlannedNotification: Equatable, Sendable {
@@ -295,7 +295,7 @@ public enum NotificationPlanner {
         }
 
         return PlannedNotification(slot: .ph, title: title, body: body,
-                                   target: .track, weekday: phWeekday, hour: phHour)
+                                   target: .ph, weekday: phWeekday, hour: phHour)
     }
 
     // MARK: Insights — only when her data has crossed into saying something new

@@ -154,8 +154,15 @@ final class NotificationTests: XCTestCase {
 
     /// The planner's target and the app's tab are two enums that must not drift apart.
     func testPlannerTargetsMapOntoRealTabs() {
-        for target in [NotificationTarget.home, .track, .nutrition, .insights, .learn, .profile] {
-            XCTAssertNotNil(NotificationTab(rawValue: target.rawValue))
+        // Pairwise, not just "resolves to something": inserting a tab shifts every raw value above
+        // it, and a bare `NotificationTab(rawValue:) != nil` still passes when a nudge starts
+        // landing one tab off.
+        let pairs: [(NotificationTarget, NotificationTab)] = [
+            (.home, .home), (.track, .track), (.ph, .ph), (.nutrition, .nutrition),
+            (.insights, .insights), (.learn, .learn), (.profile, .profile),
+        ]
+        for (target, tab) in pairs {
+            XCTAssertEqual(target.rawValue, tab.rawValue, "\(target) and its tab drifted apart")
         }
     }
 

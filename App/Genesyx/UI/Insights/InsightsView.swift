@@ -146,7 +146,7 @@ struct InsightsView: View {
                 .padding(.horizontal, 20).padding(.bottom, 24)
             }
             .frame(maxWidth: .infinity)
-            .background(GenesyxColor.background)
+            .gxPageBackground()
             .navigationBarTitleDisplayMode(.inline)
         }
     }
@@ -274,7 +274,7 @@ private struct PhInsightsCard: View {
                 .buttonStyle(.plain)
             }
             if !ph.hasReadings {
-                Text("No pH readings yet. Log your first one on Track or Nutrition.")
+                Text("No pH readings yet. Log your first one on the pH tab.")
                     .font(.gxBody).foregroundStyle(GenesyxColor.mutedForeground).padding(.top, 12)
             } else {
                 // Never invent a reading: a missing value/status renders nothing rather than
@@ -769,7 +769,7 @@ private struct OvulationCard: View {
 private struct PhTrackerScreen: View {
     var body: some View {
         ScrollView {
-            PhTrackerSection(variant: .full)
+            PhTrackerSection()
                 .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 24)
         }
         .frame(maxWidth: .infinity)

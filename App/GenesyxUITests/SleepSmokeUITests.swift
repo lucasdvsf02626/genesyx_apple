@@ -21,9 +21,12 @@ final class SleepSmokeUITests: XCTestCase {
         sleepRow.tap()
 
         // The sleep sheet defaults to 7h 0m for an unlogged day; save it as-is.
-        let save = app.buttons["Save"]
+        let save = app.buttons["sleepSaveButton"]
         XCTAssertTrue(save.waitForExistence(timeout: 10), "Sleep sheet should offer Save")
-        save.tap()
+        // Near the edge, not the centre: this capsule runs the width of the sheet, so a Button sized
+        // from outside its label leaves everything but the four letters of "Save" dead to the touch.
+        // A centre tap lands on those letters and passes either way.
+        save.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
         app.buttons["Done"].tap()
 
         let sleep7h = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Sleep, 7h")).firstMatch

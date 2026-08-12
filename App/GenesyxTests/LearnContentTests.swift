@@ -60,11 +60,12 @@ final class LearnContentTests: XCTestCase {
             "reading-your-trends",
             "small-habits-that-hold",
             "using-what-you-learn",
-            // Health-adjacent guides (A, C, D, F) also carry the disclaimer.
+            // Health-adjacent guides (A, C, D, F, G) also carry the disclaimer.
             "guide-vaginal-ph-tracker",
             "guide-how-to-log-ph",
             "guide-nutrition-focus",
             "guide-track-ph-in-nutrition",
+            "guide-cycle-and-phases",
             // The weekly series: every piece states external health facts, so every piece carries it.
             "fertile-window",
             "vaginal-ph-explained",
@@ -79,7 +80,7 @@ final class LearnContentTests: XCTestCase {
             "when-to-ask-for-support",
         ]
         let actual = Set(LearnLibrary.allArticles.filter { $0.disclaimerRequired }.map { $0.slug })
-        XCTAssertEqual(actual, expected, "Medical disclaimer must be pinned to exactly these slugs (6 articles + 4 guides + 11 weekly)")
+        XCTAssertEqual(actual, expected, "Medical disclaimer must be pinned to exactly these slugs (6 articles + 5 guides + 11 weekly)")
     }
 
     func testArticleCtaRequiresTarget() {
@@ -93,10 +94,10 @@ final class LearnContentTests: XCTestCase {
 
     func testLibraryIntegrity() {
         let articles = LearnLibrary.allArticles
-        XCTAssertEqual(articles.count, 27, "Ten articles + six guides + eleven weekly")
+        XCTAssertEqual(articles.count, 30, "Ten articles + nine guides + eleven weekly")
         XCTAssertEqual(articles.filter { $0.featured }.count, 1, "Exactly one featured article")
-        XCTAssertEqual(Set(articles.map { $0.slug }).count, 27, "Slugs must be unique")
-        XCTAssertEqual(Set(articles.map { $0.id }).count, 27, "Ids must be unique")
+        XCTAssertEqual(Set(articles.map { $0.slug }).count, 30, "Slugs must be unique")
+        XCTAssertEqual(Set(articles.map { $0.id }).count, 30, "Ids must be unique")
         let byId = Dictionary(uniqueKeysWithValues: articles.map { ($0.id, $0) })
         for a in articles {
             for id in a.relatedArticleIds {
@@ -167,7 +168,7 @@ final class LearnContentTests: XCTestCase {
         let visible = Set(LearnLibrary.published(asOf: longAgo).map(\.slug))
         let undated = Set(LearnLibrary.allArticles.filter { $0.publishedAt == nil }.map(\.slug))
         XCTAssertEqual(visible, undated, "Before the series starts, only the original library shows")
-        XCTAssertEqual(undated.count, 16, "The original library is the sixteen that predate the series")
+        XCTAssertEqual(undated.count, 19, "The original library is the nineteen that predate the series")
     }
 
     func testSeriesRevealsOneArticlePerWeek() {

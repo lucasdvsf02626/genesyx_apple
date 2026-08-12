@@ -60,7 +60,6 @@ struct NutritionView: View {
                         supplementPlanCard
                     }
                     hydrationCard
-                    PhTrackerSection()
                     if let phase {
                         articlesSection
                     }
@@ -69,7 +68,7 @@ struct NutritionView: View {
                 .padding(.bottom, 24)
             }
             .frame(maxWidth: .infinity)
-            .background(GenesyxColor.background)
+            .gxPageBackground()
             .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(for: String.self) { slug in
                 ArticleDetailView(slug: slug, path: $articlePath)
@@ -348,7 +347,7 @@ struct NutritionView: View {
             HStack {
                 Eyebrow("Learn more", color: GenesyxColor.mutedForeground).padding(.leading, 4)
                 Spacer()
-                Button("See all articles") { router.selection = 4 }   // 4 = Learn tab
+                Button("See all articles") { router.selection = 5 }   // 5 = Learn tab
                     .font(.gxBodySmall.weight(.medium)).foregroundStyle(GenesyxColor.primary)
             }
             .padding(.bottom, 2)

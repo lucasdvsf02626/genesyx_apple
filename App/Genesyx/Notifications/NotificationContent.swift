@@ -43,7 +43,7 @@ enum NotificationKind: String, CaseIterable {
 
 /// Tab a notification tap lands on (matches the `MainTabView` order, and `NotificationTarget`).
 enum NotificationTab: Int {
-    case home = 0, track = 1, nutrition = 2, insights = 3, learn = 4, profile = 5
+    case home = 0, track = 1, ph = 2, nutrition = 3, insights = 4, learn = 5, profile = 6
 }
 
 /// The celebrations. Every *other* sentence the app can send is written by `NotificationPlanner`

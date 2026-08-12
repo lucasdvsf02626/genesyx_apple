@@ -16,7 +16,7 @@ final class LifecycleE2ETests: XCTestCase {
 
     /// Background → foreground keeps the citation screen intact.
     func testBackgroundForegroundKeepsCitations() {
-        let app = launch(tab: 2)
+        let app = launch(tab: 3)
         XCTAssertTrue(app.buttons["citation.efsa-water"].waitForExistence(timeout: 15))
         XCUIDevice.shared.press(.home)
         // Best-effort background wait: the iPad simulator can skip straight past .runningBackground,
@@ -30,14 +30,14 @@ final class LifecycleE2ETests: XCTestCase {
 
     /// Terminate → relaunch re-renders the Medical Sources screen (no blank view).
     func testRelaunchRerendersMedicalSources() {
-        let app = launch(tab: 5)
+        let app = launch(tab: 6)
         let row = app.buttons["Medical Sources & Disclaimer"]
         XCTAssertTrue(row.waitForExistence(timeout: 15))
         row.tap()
         XCTAssertTrue(app.buttons["medSource.nhs-water"].waitForExistence(timeout: 10))
         app.terminate()
 
-        let app2 = launch(tab: 5)
+        let app2 = launch(tab: 6)
         let row2 = app2.buttons["Medical Sources & Disclaimer"]
         XCTAssertTrue(row2.waitForExistence(timeout: 15))
         row2.tap()
@@ -48,7 +48,7 @@ final class LifecycleE2ETests: XCTestCase {
     /// The privacy data-wipe (sign-out clears local health data) must NOT blank the citation
     /// screens — sources are bundle-sourced, not user data.
     func testSignOutDoesNotBlankMedicalSources() {
-        let app = launch(tab: 5)
+        let app = launch(tab: 6)
         let logout = app.buttons["Log out"]
         XCTAssertTrue(logout.waitForExistence(timeout: 15))
         logout.tap()

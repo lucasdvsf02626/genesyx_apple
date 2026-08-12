@@ -32,5 +32,23 @@ final class BrandAssetTests: XCTestCase {
                 "\(name) is \(Int(image.size.width))px; BrandEgg draws up to 170pt, which needs 510px at 3x")
         }
     }
+
+    /// The lookup `gxPageBackground()` performs on all seven tab screens.
+    func testPageBackgroundArtworkExists() {
+        XCTAssertNotNil(UIImage(named: "page_background"),
+            "Missing brand asset \"page_background\" — the tab screens would fall back to a flat "
+            + "fill, which is what they looked like before, so nobody would read it as a regression")
+    }
+
+    /// The asset shipped as one 1323×2868 file *declared 1x*, which is how a 3x export ends up laid
+    /// out at three times its intended size. The point size is the tell: it should be one phone
+    /// screen, not three. Asserted here rather than against the files, because this is the number
+    /// SwiftUI actually lays out against.
+    func testPageBackgroundIsDeclaredAtTheRightScale() {
+        guard let image = UIImage(named: "page_background") else { return }   // covered above
+        XCTAssertEqual(image.size.width, 441, accuracy: 1,
+            "page_background lays out \(Int(image.size.width))pt wide; a phone is ~440pt, so the "
+            + "scale declarations in Contents.json are wrong")
+    }
     #endif
 }

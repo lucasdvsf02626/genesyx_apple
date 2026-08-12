@@ -57,7 +57,7 @@ enum ArticleBlock {
 
 /// CTA destinations an article can jump to.
 enum CtaType {
-    case openLog, openTrack, openNutrition, openInsights, openArticle
+    case openLog, openTrack, openPh, openNutrition, openInsights, openArticle
 }
 
 /// A CTA button. Construction guard: an `.openArticle` CTA MUST carry a non-empty

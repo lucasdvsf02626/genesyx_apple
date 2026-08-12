@@ -11,8 +11,6 @@ final class TabRouter: ObservableObject {
     @Published var pendingLearnSlug: String?
     /// Set by the Home hydration card tap; consumed by `TrackView`, which opens the hydration detail.
     @Published var pendingHydration = false
-    /// Set by the Home pH card tap; consumed by `TrackView`, which opens the pH detail.
-    @Published var pendingPh = false
     init(selection: Int = 0) { self.selection = selection }
 }
 
@@ -85,7 +83,7 @@ struct LearnLandingView: View {
                 .padding(.horizontal, 20).padding(.bottom, 24)
             }
             .frame(maxWidth: .infinity)
-            .background(GenesyxColor.background)
+            .gxPageBackground()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -379,8 +377,9 @@ struct ArticleDetailView: View {
             switch cta.type {
             case .openLog: showLog = true
             case .openTrack: tabs.selection = 1
-            case .openNutrition: tabs.selection = 2
-            case .openInsights: tabs.selection = 3
+            case .openPh: tabs.selection = 2
+            case .openNutrition: tabs.selection = 3
+            case .openInsights: tabs.selection = 4
             case .openArticle:
                 if let target = cta.targetSlug, !path.isEmpty { path[path.count - 1] = target }
             }

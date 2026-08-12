@@ -2,20 +2,39 @@ import SwiftUI
 import Charts
 import GenesyxCore
 
-/// Self-contained vaginal-pH card + log sheet, embedded on Track and Nutrition.
-/// Ported from the Android `PhTrackerSection` / `PhTrackerCard` / `PhLogDialog`.
-/// Whether the pH view shows the full "product spine" (the four educational sections) or just the
-/// compact tracker card. The full spine belongs on the pH *detail* view (Track / Insights); the
-/// compact card is embedded on Nutrition where supplements already live on-screen.
-enum PhSpineVariant { case compact, full }
+/// The pH tab. pH used to be a card buried under Nutrition's supplements; it is a top-level
+/// destination now.
+struct PhTabView: View {
+    @EnvironmentObject private var router: TabRouter
 
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                PhTrackerSection(onOpenSupplements: { router.selection = 3 })
+                    .padding(.horizontal, 20)
+                    .padding(.top, 8)
+                    .padding(.bottom, 24)
+            }
+            .frame(maxWidth: .infinity)
+            .gxPageBackground()
+            .navigationTitle("Vaginal pH")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+}
+
+/// Self-contained vaginal-pH card + log sheet: the tracker, the chart, and the "product spine"
+/// (the four educational sections). The pH tab's body, and the detail views pushed from Track and
+/// Insights. Ported from the Android `PhTrackerSection` / `PhTrackerCard` / `PhLogDialog`.
 struct PhTrackerSection: View {
-    var variant: PhSpineVariant = .compact
     /// Optional navigation into the supplements area (only wired where a router is available).
     var onOpenSupplements: (() -> Void)? = nil
 
     @EnvironmentObject private var ph: PhRepository
     @State private var showSheet = false
+    /// The reading the sheet is open on, or nil for a new one. Until the latest-reading panel
+    /// became tappable this was only ever nil, which left `PhLogSheet`'s Delete button and the
+    /// update path unreachable — a reading entered wrongly could not be corrected or removed.
     @State private var editing: PhReading?
 
     /// One-time vaginal-pH migration notice: shown on the first visit to the pH section (not app
@@ -24,7 +43,11 @@ struct PhTrackerSection: View {
     @State private var showNotice = false
 
     var body: some View {
-        PhTrackerCard(readings: ph.readings, variant: variant, onOpenSupplements: onOpenSupplements) { editing = nil; showSheet = true }
+        PhTrackerCard(
+            readings: ph.readings,
+            onOpenSupplements: onOpenSupplements,
+            onLog: { editing = nil; showSheet = true },
+            onEdit: { editing = $0; showSheet = true })
             .sheet(isPresented: $showSheet) {
                 PhLogSheet(
                     existing: editing,
@@ -59,9 +82,9 @@ private enum PhRange: String, CaseIterable, Identifiable {
 
 private struct PhTrackerCard: View {
     let readings: [PhReading]
-    var variant: PhSpineVariant = .compact
     var onOpenSupplements: (() -> Void)? = nil
     let onLog: () -> Void
+    let onEdit: (PhReading) -> Void
     @State private var range: PhRange = .month
     @State private var disclaimerExpanded = false
 
@@ -118,7 +141,9 @@ private struct PhTrackerCard: View {
             }
 
             if let latest = readings.last {
-                latestPanel(latest)
+                Button { onEdit(latest) } label: { latestPanel(latest) }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Edit or delete this reading")
                 rangeSelector
                 if filtered.count >= 2 {
                     PhChart(readings: filtered).frame(height: 180)
@@ -129,9 +154,7 @@ private struct PhTrackerCard: View {
                 emptyState
             }
 
-            if variant == .full {
-                PhSpine(latest: readings.last, onOpenSupplements: onOpenSupplements)
-            }
+            PhSpine(latest: readings.last, onOpenSupplements: onOpenSupplements)
         }
         .padding(20)
         .background(GenesyxColor.card)

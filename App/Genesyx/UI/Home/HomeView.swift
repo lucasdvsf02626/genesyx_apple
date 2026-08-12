@@ -52,7 +52,7 @@ struct HomeView: View {
                 .padding(20)
             }
             .frame(maxWidth: .infinity)
-            .background(GenesyxColor.background)
+            .gxPageBackground()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $showLog) { LogView() }
@@ -298,10 +298,10 @@ struct HomeView: View {
         router.selection = 1             // Track tab
     }
 
-    // MARK: - pH nudge (compact prompt — Track owns logging)
+    // MARK: - pH nudge (compact prompt — the pH tab owns logging)
 
     /// A small tap-through card inviting her to check her vaginal pH. Shows the last reading when one
-    /// exists, otherwise a gentle first-log prompt. Tapping jumps to the pH tracker in Track.
+    /// exists, otherwise a gentle first-log prompt. Tapping jumps to the pH tab.
     private var phNudgeCard: some View {
         let latest = ph.readings.last
         return Button { openPhDetail() } label: {
@@ -313,7 +313,7 @@ struct HomeView: View {
                     .background(GenesyxColor.primary.opacity(0.12))
                     .clipShape(RoundedRectangle(cornerRadius: 14))
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Check your pH").font(.gxCardHeadingSmall).foregroundStyle(GenesyxColor.foreground)
+                    Text("Check your Vaginal pH").font(.gxCardHeadingSmall).foregroundStyle(GenesyxColor.foreground)
                     Text(latest.map { String(format: "Last reading %.1f — tap to log again", $0.phValue) }
                          ?? "Log today's reading in the pH tracker")
                         .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
@@ -331,14 +331,13 @@ struct HomeView: View {
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Check your pH")
-        .accessibilityHint("Opens the pH tracker in Track")
+        .accessibilityLabel("Check your Vaginal pH")
+        .accessibilityHint("Opens the pH tab")
         .accessibilityIdentifier("home.phCard")
     }
 
     private func openPhDetail() {
-        router.pendingPh = true   // consumed by TrackView
-        router.selection = 1      // Track tab
+        router.selection = 2      // pH tab
     }
 
     // MARK: - Learn (one read, chosen the same way the Sunday nudge chooses)
@@ -388,7 +387,7 @@ struct HomeView: View {
 
     private func openLearnArticle(_ slug: String) {
         router.pendingLearnSlug = slug   // consumed by LearnLandingView, which pushes the article
-        router.selection = 4             // Learn tab
+        router.selection = 5             // Learn tab
     }
 
     // MARK: - First-run setup

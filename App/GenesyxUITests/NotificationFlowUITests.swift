@@ -16,7 +16,7 @@ final class NotificationFlowUITests: XCTestCase {
 
     func testTurningOnRemindersExplainsFirstThenAsksPermission() throws {
         let app = XCUIApplication()
-        app.launchArguments += ["-uiTestSeed", "YES", "-uiTestTab", "5"]   // Profile
+        app.launchArguments += ["-uiTestSeed", "YES", "-uiTestTab", "6"]   // Profile
 
         // iOS owns the permission alert, so it has to be tapped through SpringBoard.
         addUIInterruptionMonitor(withDescription: "Notification permission") { alert in

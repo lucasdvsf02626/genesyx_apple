@@ -8,7 +8,15 @@ struct LogView: View {
     @EnvironmentObject private var dailyLog: DailyLogRepository
     @Environment(\.dismiss) private var dismiss
 
-    private let date = CalendarDate.today()
+    /// The day being logged. Defaults to today, but the calendar passes a past date so a day she
+    /// missed — or got wrong — can still be filled in. Never a future date: the callers gate that,
+    /// because there is nothing to record about a day that has not happened.
+    private let date: CalendarDate
+
+    init(date: CalendarDate = .today()) {
+        self.date = date
+    }
+
     private static let defaultSymptoms = ["Headache", "Fatigue", "Cramps", "Nausea", "Bloating", "Acne", "Backache", "Tender breasts"]
     static let supplements = ["Folic acid", "Vitamin D", "Iron", "Omega-3"]
 
@@ -52,7 +60,7 @@ struct LogView: View {
                 .padding(.top, 8)
             }
             .background(GenesyxColor.background)
-            .navigationTitle("Log Today")
+            .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -74,6 +82,15 @@ struct LogView: View {
         .sheet(isPresented: $suppOpen) {
             SupplementsSheet(selected: $selectedSupplements).presentationDetents([.medium])
         }
+    }
+
+    /// Naming the day matters once the sheet can open on more than one: without it a back-filled
+    /// entry looks identical to today's, and she has no way to tell which she is about to overwrite.
+    private var navigationTitle: String {
+        guard date != CalendarDate.today() else { return "Log Today" }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEE d MMM"
+        return formatter.string(from: date.toDate())
     }
 
     private func populate() {

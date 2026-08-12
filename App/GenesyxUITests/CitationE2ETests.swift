@@ -17,7 +17,7 @@ final class CitationE2ETests: XCTestCase {
 
     /// Insights: the vaginal-pH card shows its cycle caveat, and no dietary advice anywhere.
     func testInsightsCitationsPresent() {
-        let app = launch(tab: 3)
+        let app = launch(tab: 4)
         XCTAssertTrue(app.buttons["Insights"].waitForExistence(timeout: 15))
         XCTAssertTrue(app.staticTexts["phCaveat"].firstMatch.waitForExistence(timeout: 10), "Insights pH card should show the vaginal-pH caveat")
         assertNoDietaryAdvice(app)
@@ -25,7 +25,7 @@ final class CitationE2ETests: XCTestCase {
 
     /// Nutrition: water-goal EFSA citation + the expandable "Why hydration?" Sources footer.
     func testNutritionGoalAndWhyHydrationSources() {
-        let app = launch(tab: 2)
+        let app = launch(tab: 3)
         XCTAssertTrue(app.buttons["Nutrition"].waitForExistence(timeout: 15))
         XCTAssertTrue(app.buttons["citation.efsa-water"].waitForExistence(timeout: 10), "Water goal should show an EFSA citation")
 
@@ -56,7 +56,7 @@ final class CitationE2ETests: XCTestCase {
 
         // Leave the pH section and return — the notice must not re-fire (flag persisted).
         app.buttons.matching(identifier: "Home").firstMatch.tap()
-        app.buttons.matching(identifier: "Nutrition").firstMatch.tap()
+        app.buttons.matching(identifier: "pH").firstMatch.tap()
         XCTAssertFalse(app.alerts.buttons["Got it"].waitForExistence(timeout: 3), "notice must not re-fire after dismissal")
     }
 
@@ -69,7 +69,7 @@ final class CitationE2ETests: XCTestCase {
 
     /// A Learn article (reached from the Nutrition articles list) ends with a Sources footer.
     func testLearnArticleHasSourcesFooter() {
-        let app = launch(tab: 2)
+        let app = launch(tab: 3)
         // Two buttons now name this article: this list row, and Home's "a read for your week" card.
         // The tab ZStack keeps every tab's elements in the tree (see `testHomePhCardHasNoUncitedClaim`),
         // so the Home card has to be excluded by name or `firstMatch` lands on it.
@@ -85,7 +85,7 @@ final class CitationE2ETests: XCTestCase {
 
     /// Settings → Medical Sources & Disclaimer lists all 11 sources (first + last render) plus the disclaimer.
     func testMedicalSourcesScreenListsAllEleven() {
-        let app = launch(tab: 5)
+        let app = launch(tab: 6)
         let row = app.buttons["Medical Sources & Disclaimer"]
         XCTAssertTrue(row.waitForExistence(timeout: 15))
         row.tap()
@@ -97,8 +97,8 @@ final class CitationE2ETests: XCTestCase {
         XCTAssertTrue(last.exists, "All 11 sources should render — last row reached after scrolling")
     }
 
-    /// Regression guard: the Home "Check your pH" card is a navigational nudge — no health claim,
-    /// therefore no citation, and none required.
+    /// Regression guard: the Home "Check your Vaginal pH" card is a navigational nudge — no health
+    /// claim, therefore no citation, and none required. Naming the measurement site is not a claim.
     func testHomePhCardHasNoUncitedClaim() {
         let app = launch(tab: 0)
         // The card sets .accessibilityElement(children:.ignore), so it isn't exposed as a .button —
@@ -106,16 +106,16 @@ final class CitationE2ETests: XCTestCase {
         let card = app.descendants(matching: .any).matching(identifier: "home.phCard").firstMatch
         XCTAssertTrue(card.waitForExistence(timeout: 15))
         // Guard: the card is a pure navigational nudge — its accessibility label carries no health
-        // claim (only "Check your pH"). A future edit adding a claim here would change this label.
+        // claim (only "Check your Vaginal pH"). A future edit adding a claim would change this label.
         // (An app-wide citation count is not used: the tab ZStack keeps other tabs' citations
         // queryable even while Home is active.)
-        XCTAssertEqual(card.label, "Check your pH", "Home pH card must stay a navigational nudge, no health claim")
+        XCTAssertEqual(card.label, "Check your Vaginal pH", "Home pH card must stay a navigational nudge, no health claim")
         assertNoDietaryAdvice(app)
     }
 
     /// Tapping a source leaves the app for the browser. URL validity is verified manually, not here.
     func testCitationTapOpensBrowser() {
-        let app = launch(tab: 2)
+        let app = launch(tab: 3)
         let efsa = app.buttons["citation.efsa-water"]
         XCTAssertTrue(efsa.waitForExistence(timeout: 15))
         efsa.tap()

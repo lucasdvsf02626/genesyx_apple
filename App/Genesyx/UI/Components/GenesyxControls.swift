@@ -28,6 +28,42 @@ extension View {
     }
 }
 
+/// The page backdrop: the flat background colour with the brand artwork over it. Replaces a plain
+/// `.background(GenesyxColor.background)` on the seven tab screens; sheets keep the flat fill, because
+/// a card raised over a backdrop should not repeat it.
+extension View {
+    func gxPageBackground() -> some View { background(GxPageBackground()) }
+}
+
+private struct GxPageBackground: View {
+    /// The artwork is painted on a near-white field. At full strength its blobs reach in far enough
+    /// to sit under body text at the margins, so it is held back to where `mutedForeground` still
+    /// reads over the deepest of them. One number, deliberately: this is the dial to turn if the
+    /// client wants the art fainter or stronger.
+    private static let artOpacity: Double = 0.55
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        ZStack {
+            GenesyxColor.background
+            // Light only. The art's field matches the light background exactly, which is what makes
+            // it read as a backdrop rather than a picture; over the dark palette the same image is a
+            // lit panel with a hard edge.
+            if colorScheme == .light {
+                Image("page_background")
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)   // phone-shaped art; fitting it letterboxes
+                    .opacity(Self.artOpacity)
+            }
+        }
+        .ignoresSafeArea()
+        .clipped()
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
 /// An hour of the day in her locale's own format — "9 AM" or "09:00" depending on the phone. Shared
 /// so the reminder-time pickers in Profile and in the supplement plan can't drift apart.
 func gxHourLabel(_ hour: Int) -> String {
