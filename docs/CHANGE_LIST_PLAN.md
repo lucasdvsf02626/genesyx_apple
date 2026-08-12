@@ -392,6 +392,7 @@ nutrition items while the context is warm.
 | 18 | T1 · T2 — dedicated pH tab, pH out of Nutrition (G2 resolved) | 1.5d | ✅ |
 | 19 | Phase 2 reliability — G3 badge, mid-drain correction, identity bleed | 1.5d | ✅ |
 | 20 | The calendar with no cycle set up | 0.5d | ✅ |
+| 21 | Phase 3 — tracking markers, fertile-stage highlight, dark-mode contrast | 1d | ✅ |
 
 T19 (password change) is the one Profile row still unbuilt: `SessionRepository.swift:99` throws in
 local mode. It is a backend decision, not a UI one, so it did not belong in the same batch.
@@ -409,16 +410,31 @@ nullability has to reach the Android client, or the two calendars will disagree 
 can exist without a cycle. Nothing shared enforces this — there is no `tracking_test_vectors.json`
 equivalent for the grid — so it travels by this note alone.
 
+**Row 21 — the markers were already colour-coded; what was missing was that they were only legible
+in one scheme.** The client asked for colour-coded tracking markers and a fertile-stage highlight.
+The dots existed and the fills existed, but both were built on `tintOnWhite`, which is `.opacity()`
+and therefore silently wrong over a dark card: the day number fell to 4.23:1 on the fertile fill and
+the dots to 1.19–1.37 on the ovulation cell. So the task was two-thirds a contrast fix wearing a
+feature request's clothes. The four fills became adaptive tokens (light pixel-unchanged), the dots
+grew to 5pt and gained a bright variant for the one solid cell, and the fertile window gained a ring
+that spans the whole run — driven by the window rather than by the day's phase, so a short cycle's
+period ∩ fertile overlap is still shown. `CalendarContrastTests` pins all of it in both schemes.
+
+⚠️ **Android parity, lower stakes.** The same `tintOnWhite` pattern is the obvious way to have built
+the Android grid, and it fails the same way. Worth a look before Android's own dark mode ships;
+nothing in this repo can check it.
+
 ---
 
 ## 10. Verification gate
 
-Green baseline is **180 domain + 198 app tests** (was 125 + 139 before Sprint 1; T23 added 5 domain;
+Green baseline is **180 domain + 202 app tests** (was 125 + 139 before Sprint 1; T23 added 5 domain;
 the app figure was 169 until the uncommitted `RepositoryTests` work took it to 172, the weekly
 Learn series added 11 — 6 drip-gate, 3 citation-integrity, 1 hero-asset, 1 end-to-end drop — T21
 added 2 brand-asset guards, the build-18 `drainPending` fix added 1, past-day logging added 2
 `RepositoryTests`, and `page_background` added 2 more brand-asset guards; Sprint 2 then added 8 app
-tests for the Phase 2 reliability batch and 1 domain test for the no-cycle grid),
+tests for the Phase 2 reliability batch, 1 domain test for the no-cycle grid, and 4 app tests for
+the Phase 3 calendar contrast floors),
 plus **45 UI tests** behind the `-uiTestSeed` harness — the notification opt-in test skips itself once
 that permission has been answered, so it counts 44 + 1 skipped on a simulator you have already run
 against, and 45 on a freshly erased one. Run after every task:

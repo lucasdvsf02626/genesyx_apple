@@ -210,6 +210,43 @@ checklist in `docs/TESTFLIGHT_B18.md`; current state of play in `docs/HANDOFF.md
 - **The day-detail sheet fits its contents** (working tree). A fully logged day's summary runs to nine
   clauses, and at the larger Dynamic Type sizes the fixed 280pt sheet pushed its buttons off-screen.
 
+### Tracking — the calendar in both schemes
+- **The dark calendar was unreadable, and only in dark** (working tree). Every phase fill was built by
+  `tintOnWhite`, which is just `.opacity()` — over a white card that yields the intended pastel, but
+  over the `#1F1F1F` dark card the same call composites to mid-grey. The day number measured 4.23:1
+  on the dark fertile fill, under the 4.5 floor, on the one run of days a conception app exists to
+  show her; the luteal tint sat at 1.46:1 against its own card, so the phase it was drawing was
+  invisible; and every logging dot failed the 3.0 graphical floor on white (2.47–2.84) before
+  collapsing to 1.19–1.37 on the ovulation cell. The four fills are now named tokens that adapt.
+  Light mode is pixel-unchanged: the light halves are the exact composites the old call produced, so
+  the approved appearance does not churn. Dark takes the same hues *down* rather than up, which keeps
+  the hue and returns the contrast (8.8–10.9:1) while still reading as a tint rather than a block.
+- **The fertile window reads as a stage, not as six separate tinted days** (working tree). A shared
+  ring now outlines every day in the window — including ovulation — so the run has a visible start and
+  end instead of one solid day with pale ones near it. The ring is driven by the window itself rather
+  than by the day's phase, which matters on a short cycle: the window can open while she is still
+  bleeding, `dayType` gives period precedence, and the fill alone therefore erased the overlap. Where
+  today falls inside the window the two are drawn as concentric rings rather than one replacing the
+  other — today is the worst day to lose the window on. VoiceOver gains "also in your fertile window"
+  on exactly that overlapping day and nowhere else, since elsewhere the fill has already said it.
+- **The Current phase card no longer contradicts itself** (working tree). It headlined "Follicular
+  Phase" directly above a line reading "You're in your fertile window", leaving her to reconcile them.
+  A badge in the calendar's own fertile accent now carries the window up beside the phase name, so the
+  two facts sit together and the two screens say it the same way.
+- **Marks on the solid ovulation cell flip to a bright variant** (working tree). No single colour
+  clears 3:1 against both a white card and a `#4D4DAA` fill — the two extremes a dot has to survive —
+  so the ring and the three dots each carry two variants. This is not a new rule: it is the flip the
+  day number already makes to white, stated once and applied in three places. Dots also grew 4pt → 5pt.
+  ⚠️ The three marker hues are near-equiluminant (1.02–1.14 between them), so they are separated by
+  hue alone and a user with colour-vision deficiency cannot tell them apart by the dot. Mitigated, not
+  solved: the VoiceOver cell label names each marker and the day sheet accounts for every dot in words.
+- `CalendarContrastTests` pins the whole argument — day number ≥ 4.5:1, ring and dots ≥ 3.0:1, against
+  every fill each can land on, resolved separately for both schemes. The numbers were the entire
+  justification for this change and nothing guarded them; one adjusted hex could have put the grid
+  back where it started, invisibly, in the scheme nobody screenshots. Fills are deliberately *not*
+  checked against the card: the light tints sit at 1.3–1.5:1 by design, and the legend, not the fill,
+  is what names a phase.
+
 ### Docs
 - `docs/TESTFLIGHT_B18.md` (`510d43e`) follows the build-17 convention and adds a **pre-flight**,
   because two of this build's features depend on Supabase objects that nothing in this repo can check
@@ -220,7 +257,7 @@ checklist in `docs/TESTFLIGHT_B18.md`; current state of play in `docs/HANDOFF.md
   being live because "build 17 users still select that column". They do not — build 17 was cut on
   29 July, and `quiz_answers` first entered the client's `profiles` select on 10 August and was moved
   off the row again the same day. The stale test baseline (169 app, 33 UI) was corrected to 186/39
-  there, and stands at **179 domain + 198 app + 44 UI** with the working tree above.
+  there, and stands at **180 domain + 202 app + 45 UI** with the working tree above.
 
 ### Owed
 - ⚠️ **`daily_logs.sexual_activity` is unconfirmed.** The migration was written and never recorded as

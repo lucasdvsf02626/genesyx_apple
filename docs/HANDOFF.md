@@ -4,8 +4,8 @@
 > before this could be saved). Companion to `CHANGE_LIST_PLAN.md`, which tracks the client's
 > change list task-by-task. This file tracks **what is in flight right now**.
 
-**Branch:** `main` · **HEAD:** `510d43e`, plus an uncommitted tree (§4c) · **Version:** 1.2.0 (18)
-· **Test baseline:** 180 domain + 198 app + 45 UI (44 + 1 skipped on a simulator that has already
+**Branch:** `main` · **HEAD:** `74c17bb` (plus the docs commit carrying this line) · **Version:** 1.2.0 (18)
+· **Test baseline:** 180 domain + 202 app + 45 UI (44 + 1 skipped on a simulator that has already
 answered the notification prompt) — all three verified green 2026-08-12
 
 ```bash
@@ -145,7 +145,7 @@ stopping at the first. Full reasoning in `TESTFLIGHT_B18.md`.
 **Version.** `project.yml` → 1.2.0 (18), `xcodegen generate` run. The pbxproj delta was exactly the
 four version lines plus eight for `HydrationPrefs.swift` and `BrandAssetTests.swift`.
 
-## 4c. Shipped 2026-08-11, later session (uncommitted)
+## 4c. Shipped 2026-08-11, later session — committed as `5b507a3` · `b08a9d9`
 
 Five items, none of which needed `xcodegen generate` — every new type was added to a file the
 project already knows about, deliberately, to keep the pbxproj out of the diff.
@@ -219,6 +219,38 @@ deliverable for the rest.
   `LearnSourceMap` entry; a disclaimer without sources is a claim with nothing behind it.
 - The other two are `disclaimerRequired: false` on purpose: they describe what the app does and state
   no external health fact, which is the line `guide-how-the-log-works` already drew.
+
+## 4d. Phase 3 — the calendar in both schemes (2026-08-12)
+
+The client asked for colour-coded tracking markers and a fertile-stage highlight. The markers were
+already colour-coded; what they were not was *visible*. Both the fills and the dots ran through
+`tintOnWhite`, which is `.opacity()` — correct over a white card, mid-grey over `#1F1F1F`. Measured
+before touching anything: day number **4.23:1** on the dark fertile fill (floor 4.5), luteal tint
+**1.46:1** against its own card, dots **1.19–1.37** on the ovulation cell.
+
+- Four adaptive fill tokens in `GenesyxColors.swift`. The light halves are the exact composites the
+  old call produced, so light mode is pixel-unchanged and the approved appearance does not churn.
+- A fertile ring spanning the whole window, driven by `fertileWindow.contains(dayOfCycle)` rather
+  than by `dayType` — on a short cycle the window opens while she is still bleeding and `dayType`
+  gives period precedence, so the fill alone erases the overlap. Concentric with today's stroke.
+- Ring and dots each carry a **bright variant used on the solid ovulation cell**, in both schemes.
+  Not a new rule: it is the flip the day number already makes to white. No single colour clears 3:1
+  against both a white card and a `#4D4DAA` fill, so two variants is the floor, not a preference.
+- The Current phase card gained a "Fertile window" badge, because it headlined "Follicular Phase"
+  directly above a line saying she was in her fertile window.
+- `CalendarContrastTests` (+4 app) resolves each token per trait collection and asserts the floors.
+  Verified it can actually fail — forcing the floor to 99 reported dark fertile at 8.83 against
+  light's 12.41, which proves the resolution is real and not silently reading light twice.
+
+⚠️ **The one thing not fixed.** The three marker hues are near-equiluminant (1.02–1.14 between
+them), so they are distinguished by hue alone. The VoiceOver cell label names each marker and the
+day sheet accounts for every dot in words, so the information is never *only* in the colour — but a
+sighted user with a colour-vision deficiency still cannot tell two dots apart at a glance. Fixing it
+properly means shape, not colour, which is a design decision rather than a token change.
+
+Verified on screen in both schemes; the one combination the seed cannot produce is a dot on the
+ovulation cell, since ovulation is in the future and future days cannot be logged. That pair is
+proven numerically only (3.34–4.29:1).
 
 ## 5. Still gated on the client (unchanged)
 
