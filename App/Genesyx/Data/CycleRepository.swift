@@ -49,9 +49,9 @@ final class CycleRepository: ObservableObject {
 
     /// Retry the write the server never received. Called on launch/sign-in and app foreground.
     func drainPending() async {
-        guard let backend, pendingPush, let settings else { return }
-        guard (try? await backend.upsert(settings)) != nil else { return }
-        pendingPush = false
+        guard let backend, pendingPush, let snapshot = settings else { return }
+        guard (try? await backend.upsert(snapshot)) != nil else { return }
+        if settings == snapshot { pendingPush = false }   // unless she re-edited meanwhile
     }
 
     private func push(_ settings: CycleSettings) {

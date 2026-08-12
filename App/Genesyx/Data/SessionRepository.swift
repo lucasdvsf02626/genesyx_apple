@@ -10,6 +10,11 @@ final class SessionRepository: ObservableObject {
     @Published private(set) var displayName: String?
 
     private let auth: AuthBackend?
+    private let store: LocalStore
+    private let emailKey = "session_email"
+    private let nameKey = "session_display_name"
+    /// Who the store's contents belong to. Outlives sign-out on purpose — see `applySignIn`.
+    private let identityKey = "session_identity"
 
     /// Auth-transition hooks wired by `AppContainer`: wipe on-device health data on sign-out /
     /// account deletion, and rehydrate from the backend on sign-in. No-ops in isolation.
@@ -18,9 +23,17 @@ final class SessionRepository: ObservableObject {
     /// Mirrors a renamed display name to her `profiles` row.
     var onDisplayNameChanged: ((String) -> Void)?
 
-    init(auth: AuthBackend? = nil) {
+    init(store: LocalStore, auth: AuthBackend? = nil) {
+        self.store = store
         self.auth = auth
-        if auth?.currentUserId != nil { isSignedIn = true }
+        // The Supabase SDK restores the session itself, but her name and address lived only in
+        // memory — so every relaunch greeted a signed-in user as "Guest", and Personal Details
+        // opened prefilled with the word "Guest" ready to be saved over her real name.
+        if auth?.currentUserId != nil {
+            isSignedIn = true
+            email = store.string(forKey: emailKey)
+            displayName = store.string(forKey: nameKey)
+        }
     }
 
     /// Unified entry used by the Auth screen. Calls the backend when present, then updates state.
@@ -70,9 +83,32 @@ final class SessionRepository: ObservableObject {
     #endif
 
     private func applySignIn(email: String, name: String?) {
+        let identity = auth?.currentUserId ?? email
+        let previous = store.string(forKey: identityKey)
+        // Sign-out wipes, but the app stays usable signed out — onboarding does not re-run, so the
+        // tabs are still there and every write queues. Whatever was logged in that window belongs
+        // to whoever last held the session; handing it to a different account on hydrate would file
+        // one person's cycle and logs into another person's history.
+        //
+        // Only when there *was* a previous owner. Onboarding runs before the account exists, so a
+        // device that has never held a session is carrying her own quiz answers, cycle and logs into
+        // her first sign-in — wiping those would throw away everything she just entered.
+        if let previous, previous != identity { onClearLocalState?() }
+        let sameUser = previous == identity
+        store.setString(identity, forKey: identityKey)
+
         self.email = email
-        let trimmed = name?.trimmingCharacters(in: .whitespacesAndNewlines)
-        self.displayName = (trimmed?.isEmpty == false ? trimmed : String(email.prefix(while: { $0 != "@" })))
+        store.setString(email, forKey: emailKey)
+        // Sign-in never asks for a name, so falling straight through to the address would rename
+        // her on every sign-in. Her own name wins where we still hold it for this account.
+        let typed = name?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let remembered = sameUser ? store.string(forKey: nameKey) : nil
+        let resolved = (typed?.isEmpty == false ? typed! : nil)
+            ?? remembered
+            ?? String(email.prefix(while: { $0 != "@" }))
+        self.displayName = resolved
+        store.setString(resolved, forKey: nameKey)
+
         self.isSignedIn = true
         // Any sign-in path: pull the signing-in user's data from the backend (no-op when local-only).
         if let onHydrate { Task { await onHydrate() } }
@@ -82,6 +118,7 @@ final class SessionRepository: ObservableObject {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         displayName = trimmed
+        store.setString(trimmed, forKey: nameKey)
         onDisplayNameChanged?(trimmed)
     }
 
@@ -89,6 +126,8 @@ final class SessionRepository: ObservableObject {
         isSignedIn = false
         email = nil
         displayName = nil
+        store.remove(forKey: emailKey)
+        store.remove(forKey: nameKey)
         if let auth { Task { try? await auth.signOut() } }
         // Wipe the previous user's on-device health data so a next sign-in starts clean.
         onClearLocalState?()
@@ -117,6 +156,9 @@ final class SessionRepository: ObservableObject {
         email = nil
         displayName = nil
         isSignedIn = false
+        store.remove(forKey: emailKey)
+        store.remove(forKey: nameKey)
+        store.remove(forKey: identityKey)
         // Deletion succeeded — wipe the on-device health data too.
         onClearLocalState?()
     }

@@ -148,11 +148,12 @@ final class CycleEngineTests: XCTestCase {
 
         XCTAssertEqual(cells.count % 7, 0, "grid is whole weeks")
 
-        let dayCells: [(date: CalendarDate, info: CyclePhaseInfo, isToday: Bool)] = cells.compactMap {
+        let dayCells: [(date: CalendarDate, info: CyclePhaseInfo?, isToday: Bool)] = cells.compactMap {
             if case let .day(date, info, isToday) = $0 { return (date, info, isToday) }
             return nil
         }
         XCTAssertEqual(dayCells.count, 30, "30 day cells for June")
+        XCTAssertTrue(dayCells.allSatisfy { $0.info != nil }, "with settings, every day is placed in the cycle")
 
         // Monday -> one leading empty (Sunday-first).
         if case .empty = cells.first { } else { XCTFail("first cell should be empty") }
@@ -160,5 +161,24 @@ final class CycleEngineTests: XCTestCase {
 
         XCTAssertEqual(dayCells.filter { $0.isToday }.count, 1)
         XCTAssertEqual(dayCells.first { $0.isToday }?.date, today)
+    }
+
+    /// A day exists whether or not she has told us when her last period was. The grid used to
+    /// require settings, so a user who skipped cycle setup got no cells at all — and with no cells
+    /// there was nothing to tap, and no way to back-fill anything she had already lived through.
+    func testMonthGridIsStillAFullMonthWithNoCycleSetUp() {
+        let anchor = YearMonth(2026, 6)
+        let today = CalendarDate(2026, 6, 15)
+
+        let cells = CycleEngine.buildMonthGrid(monthAnchor: anchor, settings: nil, today: today)
+
+        let dayCells: [(date: CalendarDate, info: CyclePhaseInfo?, isToday: Bool)] = cells.compactMap {
+            if case let .day(date, info, isToday) = $0 { return (date, info, isToday) }
+            return nil
+        }
+        XCTAssertEqual(cells.count % 7, 0, "still whole weeks")
+        XCTAssertEqual(dayCells.count, 30, "still every day of June")
+        XCTAssertTrue(dayCells.allSatisfy { $0.info == nil }, "and not one of them claims a phase")
+        XCTAssertEqual(dayCells.first { $0.isToday }?.date, today, "today is still today")
     }
 }

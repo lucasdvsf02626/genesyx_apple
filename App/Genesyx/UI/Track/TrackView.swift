@@ -13,8 +13,11 @@ struct TrackView: View {
     @State private var monthAnchor = YearMonth.current
     @State private var showCycleSheet = false
     @State private var showCycleDetail = false
+    @State private var pendingEditDate: CalendarDate?
     @State private var selectedDay: DayInfo?
-    @State private var showLog = false
+    /// Which day the log sheet is open on. An item rather than a bool because the sheet now opens on
+    /// any past day, and a separate "which date" flag could be read before it was written.
+    @State private var logTarget: LogTarget?
     @State private var showHydration = false
     @State private var showPhDetail = false
     @State private var showSleepDetail = false
@@ -37,14 +40,16 @@ struct TrackView: View {
                     header
                     calendarCard
                     currentPhaseCard
-                    GxPrimaryButton(title: "Add to today's log", leadingSystemImage: "plus") { showLog = true }
+                    GxPrimaryButton(title: "Add to today's log", leadingSystemImage: "plus") {
+                        logTarget = LogTarget(date: today)
+                    }
                     trackersSection
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 16)
             }
             .frame(maxWidth: .infinity)
-            .background(GenesyxColor.background)
+            .gxPageBackground()
         }
         .sheet(isPresented: $showCycleSheet) {
             CycleSettingsSheet(current: cycle.settings) { cycle.upsert($0) }
@@ -52,20 +57,26 @@ struct TrackView: View {
         .sheet(isPresented: $showCycleDetail) {
             CycleDetailView(settings: cycle.settings) { showCycleSheet = true }
         }
-        .sheet(isPresented: $showLog) { LogView() }
+        .sheet(item: $logTarget) { LogView(date: $0.date) }
         .sheet(isPresented: $showHydration) { HydrationDetailSheet() }
-        .sheet(isPresented: $showPhDetail) { PhDetailView(onOpenSupplements: { showPhDetail = false; router.selection = 2 }) }
+        .sheet(isPresented: $showPhDetail) { PhDetailView(onOpenSupplements: { showPhDetail = false; router.selection = 3 }) }
         .sheet(isPresented: $showSleepDetail) { SleepDetailView() }
         .sheet(isPresented: $showSymptomsDetail) { SymptomsDetailView() }
         .sheet(isPresented: $showNutritionDetail) { NutritionDetailView() }
-        .sheet(item: $selectedDay) { day in
+        // Handed over on dismiss rather than presented from inside the day sheet: SwiftUI drops the
+        // second sheet if it is raised while the first is still going down.
+        .sheet(item: $selectedDay, onDismiss: {
+            guard let date = pendingEditDate else { return }
+            pendingEditDate = nil
+            logTarget = LogTarget(date: date)
+        }) { day in
             DayDetailSheet(day: day, today: today,
                            log: dailyLog.log(on: day.date),
-                           hasPhReading: phDays.contains(day.date))
+                           hasPhReading: phDays.contains(day.date),
+                           onEdit: { pendingEditDate = day.date })
         }
-        .onAppear { consumePendingHydration(); consumePendingPh() }
+        .onAppear { consumePendingHydration() }
         .onChange(of: router.pendingHydration) { _ in consumePendingHydration() }
-        .onChange(of: router.pendingPh) { _ in consumePendingPh() }
     }
 
     // MARK: Header
@@ -101,11 +112,11 @@ struct TrackView: View {
     private var calendarCard: some View {
         VStack(spacing: 12) {
             HStack {
-                monthNav("chevron.left") { monthAnchor = monthAnchor.adding(months: -1) }
+                monthNav("chevron.left", label: "Previous month") { monthAnchor = monthAnchor.adding(months: -1) }
                 Spacer()
                 Text(monthAnchor.shortTitle).font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
                 Spacer()
-                monthNav("chevron.right") { monthAnchor = monthAnchor.adding(months: 1) }
+                monthNav("chevron.right", label: "Next month") { monthAnchor = monthAnchor.adding(months: 1) }
             }
 
             LazyVGrid(columns: columns, spacing: 4) {
@@ -115,17 +126,17 @@ struct TrackView: View {
                 }
             }
 
-            if let settings = cycle.settings {
-                let cells = CycleEngine.buildMonthGrid(monthAnchor: monthAnchor, settings: settings, today: today)
-                LazyVGrid(columns: columns, spacing: 4) {
-                    ForEach(cells.indices, id: \.self) { i in
-                        cellView(cells[i])
-                    }
+            // Drawn whether or not she has set her cycle up. Without it the days carry no phase, but
+            // they are still days: gating the whole grid on a period date left a user who skipped
+            // setup with no way to reach — or back-fill — any day at all.
+            let cells = CycleEngine.buildMonthGrid(monthAnchor: monthAnchor, settings: cycle.settings, today: today)
+            LazyVGrid(columns: columns, spacing: 4) {
+                ForEach(cells.indices, id: \.self) { i in
+                    cellView(cells[i])
                 }
-                legend
-            } else {
-                emptyCalendar
             }
+            legend
+            if cycle.settings == nil { setUpCyclePrompt }
         }
         .padding(20)
         .background(GenesyxColor.card)
@@ -138,7 +149,7 @@ struct TrackView: View {
         case .empty:
             Color.clear.aspectRatio(1, contentMode: .fit)
         case let .day(date, info, isToday):
-            let type = CycleEngine.dayType(for: info)
+            let type = info.map(CycleEngine.dayType(for:))
             let markers = DayMarkers.markers(log: dailyLog.log(on: date), hasPhReading: phDays.contains(date))
             Button { selectedDay = DayInfo(date: date, info: info) } label: {
                 // The square comes from `Color.clear`, which is flexible in both axes — the same
@@ -183,10 +194,10 @@ struct TrackView: View {
 
     /// Dots carry meaning no screen reader can see, so the cell says it instead of reading out a
     /// bare number.
-    private func cellLabel(date: CalendarDate, type: DayType, isToday: Bool, markers: [DayMarker]) -> String {
+    private func cellLabel(date: CalendarDate, type: DayType?, isToday: Bool, markers: [DayMarker]) -> String {
         var parts = ["\(date.day)"]
         if isToday { parts.append("today") }
-        parts.append(legendLabel(for: type))
+        if let type { parts.append(legendLabel(for: type)) }
         parts.append(contentsOf: markers.map { markerLabel($0) })
         return parts.joined(separator: ", ")
     }
@@ -199,26 +210,28 @@ struct TrackView: View {
         }
     }
 
-    private func cellBackground(_ type: DayType) -> Color {
+    /// nil is a day with no cycle to place it in — drawn like a follicular day, which is the
+    /// untinted one, so an unconfigured month reads as a plain calendar rather than a phase claim.
+    private func cellBackground(_ type: DayType?) -> Color {
         switch type {
         case .period: return GenesyxColor.powderPink.tintOnWhite(0.55)
         case .fertile: return GenesyxColor.powderBlue.tintOnWhite(0.55)
         case .ovulation: return GenesyxColor.primary
         case .luteal: return GenesyxColor.babyLavender.tintOnWhite(0.25)
-        case .follicular: return GenesyxColor.card
+        case .follicular, nil: return GenesyxColor.card
         }
     }
 
     @ViewBuilder
-    private func cellBorder(type: DayType, isToday: Bool) -> some View {
+    private func cellBorder(type: DayType?, isToday: Bool) -> some View {
         if isToday {
             RoundedRectangle(cornerRadius: 12).strokeBorder(GenesyxColor.foreground, lineWidth: 2)
-        } else if type == .follicular {
+        } else if type == .follicular || type == nil {
             RoundedRectangle(cornerRadius: 12).strokeBorder(GenesyxColor.border, lineWidth: 1)
         }
     }
 
-    private func monthNav(_ symbol: String, action: @escaping () -> Void) -> some View {
+    private func monthNav(_ symbol: String, label: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.system(size: 16))
@@ -228,6 +241,7 @@ struct TrackView: View {
                 .clipShape(Circle())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(label)
     }
 
     /// Two halves, and the split is the point: tinted squares are the *predicted* cycle, dots are
@@ -237,10 +251,14 @@ struct TrackView: View {
         let phases: [DayType] = [.period, .fertile, .ovulation, .luteal]
         let key = [GridItem(.flexible()), GridItem(.flexible())]
         return VStack(alignment: .leading, spacing: 8) {
-            LazyVGrid(columns: key, alignment: .leading, spacing: 6) {
-                ForEach(phases, id: \.self) { type in
-                    legendRow(label: legendLabel(for: type)) {
-                        RoundedRectangle(cornerRadius: 4).fill(cellBackground(type)).frame(width: 14, height: 14)
+            // The phase key only when there are phases. With no cycle set up nothing in the grid is
+            // tinted, and a key to four colours that appear nowhere is just noise.
+            if cycle.settings != nil {
+                LazyVGrid(columns: key, alignment: .leading, spacing: 6) {
+                    ForEach(phases, id: \.self) { type in
+                        legendRow(label: legendLabel(for: type)) {
+                            RoundedRectangle(cornerRadius: 4).fill(cellBackground(type)).frame(width: 14, height: 14)
+                        }
                     }
                 }
             }
@@ -279,7 +297,9 @@ struct TrackView: View {
         }
     }
 
-    private var emptyCalendar: some View {
+    /// Sits under the grid rather than replacing it. The invitation is still worth making — without
+    /// a period date there are no phases to show — but it is not worth taking the calendar away for.
+    private var setUpCyclePrompt: some View {
         Button { showCycleSheet = true } label: {
             VStack(spacing: 4) {
                 Text("Add your cycle").font(.gxCardHeadingSmall).foregroundStyle(GenesyxColor.foreground)
@@ -288,7 +308,7 @@ struct TrackView: View {
                     .multilineTextAlignment(.center)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 28).padding(.horizontal, 16)
+            .padding(.vertical, 16).padding(.horizontal, 16)
             .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(GenesyxColor.border, lineWidth: 1))
         }
         .buttonStyle(.plain)
@@ -316,7 +336,11 @@ struct TrackView: View {
         if info.fertileWindow.contains(info.dayOfCycle) {
             return "You're in your fertile window. Stay hydrated and prioritise rest."
         }
-        return "About \(info.daysUntilNextPeriod) days until your next period."
+        switch info.daysUntilNextPeriod {
+        case 0: return "Your next period is due today."
+        case 1: return "About a day until your next period."
+        default: return "About \(info.daysUntilNextPeriod) days until your next period."
+        }
     }
 
     // MARK: Trackers
@@ -440,12 +464,6 @@ struct TrackView: View {
         router.pendingHydration = false
         showHydration = true
     }
-
-    private func consumePendingPh() {
-        guard router.pendingPh else { return }
-        router.pendingPh = false
-        showPhDetail = true
-    }
 }
 
 struct TrackSignalSummary: Equatable {
@@ -471,7 +489,9 @@ struct TrackSignalSummary: Equatable {
             title: "Cycle",
             icon: "calendar",
             value: copy,
-            sparkValues: Array(repeating: 1, count: 7),
+            // No dots, not seven full ones. Every other row's dots are seven days of her own data,
+            // so a hard-coded row of solid marks read as a perfect week she had not logged.
+            sparkValues: [],
             tint: GenesyxColor.primary)
     }
 
@@ -502,7 +522,11 @@ struct TrackSignalSummary: Equatable {
             } ?? emptyValue,
             sparkValues: trailingSeven(today: today).map { date in
                 guard let value = valuesByDate[date] else { return 0 }
-                return min(max((value - PhStatus.min) / (PhStatus.max - PhStatus.min), 0), 1)
+                let scaled = min(max((value - PhStatus.min) / (PhStatus.max - PhStatus.min), 0), 1)
+                // 0 is how the row draws a day with no reading, and a reading of exactly 3.8 — the
+                // bottom of the scale and the slider's leftmost stop — scaled to it. The floor
+                // keeps "she tested and it was low" distinguishable from "she never tested".
+                return max(scaled, 0.12)
             },
             tint: GenesyxColor.primary)
     }
@@ -769,7 +793,7 @@ private struct PhDetailView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                PhTrackerSection(variant: .full, onOpenSupplements: onOpenSupplements)
+                PhTrackerSection(onOpenSupplements: onOpenSupplements)
                     .padding(.horizontal, 20)
                     .padding(.top, 8)
                     .padding(.bottom, 24)
@@ -870,13 +894,20 @@ private struct HydrationDetailSheet: View {
                     .frame(height: 48)
                     .background(GenesyxColor.muted.opacity(0.55))
                     .clipShape(RoundedRectangle(cornerRadius: 14))
-                Button("Save") { saveManualEntry() }
-                    .font(.gxLabel)
-                    .foregroundStyle(.white)
-                    .frame(width: 88, height: 48)
-                    .background(manualValue == nil ? GenesyxColor.mutedForeground.opacity(0.45) : GenesyxColor.primary)
-                    .clipShape(Capsule())
-                    .disabled(manualValue == nil)
+                // Size and fill belong to the label, not to the Button: applied outside, they draw a
+                // capsule that is not part of the tap target, and every tap that misses the four
+                // letters of "Save" is swallowed by the background.
+                Button { saveManualEntry() } label: {
+                    Text("Save")
+                        .font(.gxLabel)
+                        .foregroundStyle(.white)
+                        .frame(width: 88, height: 48)
+                        .background(manualValue == nil ? GenesyxColor.mutedForeground.opacity(0.45) : GenesyxColor.primary)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .disabled(manualValue == nil)
+                .accessibilityIdentifier("hydrationSaveButton")
             }
         }
         .padding(16)
@@ -1123,19 +1154,26 @@ private struct SleepDetailView: View {
                 }
             }
             HStack(spacing: 8) {
-                Button("Save") { saveSleep() }
-                    .font(.gxLabel)
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity, minHeight: 44)
-                    .background(GenesyxColor.primary)
-                    .clipShape(Capsule())
-                if todayMinutes != nil {
-                    Button("Clear") { clearSleep() }
+                Button { saveSleep() } label: {
+                    Text("Save")
                         .font(.gxLabel)
-                        .foregroundStyle(GenesyxColor.foreground)
+                        .foregroundStyle(.white)
                         .frame(maxWidth: .infinity, minHeight: 44)
-                        .background(GenesyxColor.muted)
+                        .background(GenesyxColor.primary)
                         .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("sleepSaveButton")
+                if todayMinutes != nil {
+                    Button { clearSleep() } label: {
+                        Text("Clear")
+                            .font(.gxLabel)
+                            .foregroundStyle(GenesyxColor.foreground)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .background(GenesyxColor.muted)
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
                 }
             }
             HStack(spacing: 6) {
@@ -1357,10 +1395,17 @@ private func insightCard(_ text: String) -> some View {
         .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
 }
 
-/// Identifiable wrapper so a tapped day can drive a `.sheet(item:)`.
+/// Identifiable wrapper so a tapped day can drive a `.sheet(item:)`. `info` is nil when she has not
+/// set her cycle up — the day is still hers to open and log, it just has no phase to name.
 struct DayInfo: Identifiable {
     let date: CalendarDate
-    let info: CyclePhaseInfo
+    let info: CyclePhaseInfo?
+    var id: Int { date.dayNumber }
+}
+
+/// The day the log sheet is open on, as a `.sheet(item:)` can carry it.
+struct LogTarget: Identifiable {
+    let date: CalendarDate
     var id: Int { date.dayNumber }
 }
 
@@ -1371,29 +1416,57 @@ private struct DayDetailSheet: View {
     /// Carried so the sheet can account for every dot on the cell that opened it — a day marked on
     /// the grid and then described as empty here reads as the app having lost what she entered.
     let hasPhReading: Bool
+    /// Raised before dismissing; `TrackView` opens the log sheet once this one is down.
+    let onEdit: () -> Void
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        let phase = day.info.phase
         let isFuture = day.date > today
-        let isFertile = day.info.fertileWindow.contains(day.info.dayOfCycle)
         VStack(alignment: .leading, spacing: 12) {
-            Eyebrow("Day \(day.info.dayOfCycle) · \(CycleContent.phaseLabel[phase]!)", color: GenesyxColor.primary)
-            Text(detail(isFuture: isFuture, isFertile: isFertile, phase: phase))
+            Eyebrow(eyebrow, color: GenesyxColor.primary)
+            Text(detail(isFuture: isFuture))
                 .font(.gxBody).foregroundStyle(GenesyxColor.mutedForeground)
             Spacer()
-            GxPrimaryButton(title: "Close") { dismiss() }
+            // Offered on any day that has happened. A future day has nothing to record, and an empty
+            // past day needs adding rather than editing — so the verb follows what is actually there.
+            if isFuture {
+                GxPrimaryButton(title: "Close") { dismiss() }
+            } else {
+                GxPrimaryButton(title: loggedSummary == nil ? "Add a log" : "Edit this day") {
+                    onEdit()
+                    dismiss()
+                }
+                GxGhostButton(title: "Close") { dismiss() }
+            }
         }
         .padding(24)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(GenesyxColor.background)
-        .presentationDetents([.height(220)])
+        // `.medium` rather than a fixed height: a fully logged day's summary runs to nine clauses,
+        // and at the larger Dynamic Type sizes a 280pt box pushed the buttons off the sheet.
+        .presentationDetents([isFuture ? .height(220) : .medium])
     }
 
-    private func detail(isFuture: Bool, isFertile: Bool, phase: Phase) -> String {
-        if isFuture && phase == .ovulatory { return "Predicted: ovulation day — peak fertility." }
-        if isFuture && isFertile { return "Predicted: fertile window." }
-        if isFuture { return "Predicted: \(CycleContent.phaseLabel[phase]!.lowercased())." }
+    /// The cycle day where we know it, and the date where we don't — a sheet headed only "Day 14"
+    /// says nothing about *which* day she tapped, and with no cycle set up there is no day 14.
+    private var eyebrow: String {
+        guard let info = day.info else {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "EEEE d MMMM"
+            return formatter.string(from: day.date.toDate())
+        }
+        return "Day \(info.dayOfCycle) · \(CycleContent.phaseLabel[info.phase]!)"
+    }
+
+    private func detail(isFuture: Bool) -> String {
+        // No cycle, no prediction. Saying nothing is the honest answer; inventing a phase from a
+        // period date she never gave us would be a guess presented as a forecast.
+        if let info = day.info, isFuture {
+            if info.phase == .ovulatory { return "Predicted: ovulation day — peak fertility." }
+            if info.fertileWindow.contains(info.dayOfCycle) { return "Predicted: fertile window." }
+            return "Predicted: \(CycleContent.phaseLabel[info.phase]!.lowercased())."
+        }
+        if isFuture { return "Nothing to record on a day that hasn't happened yet." }
         if let summary = loggedSummary { return summary }
         return day.date == today ? "Nothing logged yet today." : "No log for this day."
     }

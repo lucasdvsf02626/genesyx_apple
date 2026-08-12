@@ -35,7 +35,11 @@ final class DailyLogRepository: ObservableObject {
 
     /// The days the server hasn't got yet. A v1.0 install has logs but no record of any push, so
     /// every logged day counts as owed.
-    private var pendingDates: Set<CalendarDate> {
+    ///
+    /// `@Published` because `syncState` reads it: a push lands after the save that queued it, and
+    /// without the notification the row kept showing "Will sync when online" over a day the server
+    /// already had, until some unrelated edit redrew it.
+    @Published private var pendingDates: Set<CalendarDate> {
         didSet { store.save(Array(pendingDates), forKey: pendingKey) }
     }
 
@@ -64,8 +68,11 @@ final class DailyLogRepository: ObservableObject {
 
     func upsert(_ log: DailyLog, on date: CalendarDate) {
         logByDate[date] = log
-        persist()
+        // Owed before saved, deliberately: these are two separate writes to disk, and a kill
+        // between them must leave a day queued that the server already has (harmless re-push)
+        // rather than a day on disk that nothing will ever send.
         pendingDates.insert(date)
+        persist()
         push(log, on: date)
     }
 

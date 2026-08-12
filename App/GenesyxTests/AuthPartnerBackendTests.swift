@@ -7,6 +7,10 @@ import GenesyxCore
 @MainActor
 final class AuthPartnerBackendTests: XCTestCase {
 
+    private func makeStore() -> LocalStore {
+        LocalStore(defaults: UserDefaults(suiteName: "test.\(UUID().uuidString)")!)
+    }
+
     private final class FakeAuth: AuthBackend {
         var userId: String?
         private(set) var signInCount = 0
@@ -36,7 +40,7 @@ final class AuthPartnerBackendTests: XCTestCase {
 
     func testAuthenticateRoutesThroughBackend() async throws {
         let auth = FakeAuth()
-        let session = SessionRepository(auth: auth)
+        let session = SessionRepository(store: makeStore(), auth: auth)
         try await session.authenticate(email: "a@b.com", password: "password1", name: "A", signUp: false)
         XCTAssertTrue(session.isSignedIn)
         XCTAssertEqual(session.displayName, "A")
@@ -45,8 +49,8 @@ final class AuthPartnerBackendTests: XCTestCase {
 
     func testSessionRestoresFromExistingBackendUser() {
         let auth = FakeAuth(); auth.userId = "u1"
-        XCTAssertTrue(SessionRepository(auth: auth).isSignedIn)
-        XCTAssertFalse(SessionRepository(auth: nil).isSignedIn)
+        XCTAssertTrue(SessionRepository(store: makeStore(), auth: auth).isSignedIn)
+        XCTAssertFalse(SessionRepository(store: makeStore(), auth: nil).isSignedIn)
     }
 
     func testPartnerRefreshPullsFromBackend() async {

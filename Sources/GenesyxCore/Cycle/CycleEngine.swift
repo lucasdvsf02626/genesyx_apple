@@ -98,9 +98,12 @@ public enum CycleEngine {
     }
 
     /// Sunday-first month grid with leading/trailing empty cells.
+    ///
+    /// `settings` is optional: with none, the grid is still a full month of tappable days, each
+    /// carrying no phase. She can log and review without having told us when her last period was.
     public static func buildMonthGrid(
         monthAnchor: YearMonth,
-        settings: CycleSettings,
+        settings: CycleSettings?,
         today: CalendarDate = .today()
     ) -> [CalendarCell] {
         let first = monthAnchor.atDay(1)
@@ -115,7 +118,7 @@ public enum CycleEngine {
             cells.append(
                 .day(
                     date: date,
-                    info: cyclePhase(settings: settings, target: date),
+                    info: settings.map { cyclePhase(settings: $0, target: date) },
                     isToday: date == today
                 )
             )

@@ -12,8 +12,11 @@ struct ProfileView: View {
     @EnvironmentObject private var prefs: PreferencesRepository
     @EnvironmentObject private var partner: PartnerRepository
     @EnvironmentObject private var notifications: NotificationService
+    @EnvironmentObject private var cycle: CycleRepository
 
-    @State private var nameOpen = false
+    @State private var personalOpen = false
+    @State private var healthOpen = false
+    @State private var trackingPrefsOpen = false
     @State private var detail: String?
     @State private var deleteOpen = false
     @State private var deleteError: String?
@@ -36,11 +39,8 @@ struct ProfileView: View {
     private var name: String { session.displayName ?? "Guest" }
 
     private static let detailCopy: [String: String] = [
-        "Personal Details": "Manage your display name, email sign-in, and account details from this screen.",
-        "Health Profile": "Your cycle settings, daily logs, pH readings, and partner connection shape your personalised guidance.",
-        "Tracking Preferences": "Keep notifications on and update your cycle settings any time your rhythm changes.",
         "Privacy & Data": "Your saved data is private to your account. You can log out or delete your account from Profile.",
-        "Help & Support": "For best results, complete cycle setup, log today, and use the Track or Nutrition tabs to add pH readings.",
+        "Help & Support": "For best results, complete cycle setup, log today, and use the pH tab to add pH readings.",
         "Medical Disclaimer": "Genesyx provides educational fertility and wellness information only. It is not a medical device and does not provide medical advice, diagnosis, or treatment. Always consult a qualified healthcare professional about your health, fertility, or any medical concerns. Do not rely on this app for contraception.",
     ]
 
@@ -63,13 +63,23 @@ struct ProfileView: View {
                 .padding(.horizontal, 20).padding(.vertical, 16)
             }
             .frame(maxWidth: .infinity)
-            .background(GenesyxColor.background)
+            .gxPageBackground()
             .navigationTitle("Profile")
         }
         .sheet(isPresented: $showReminderPrompt) { reminderPromptSheet }
         .sheet(isPresented: $showAuth) { AuthView() }
         .sheet(isPresented: $showPregnancy) { PregnancyView() }
-        .sheet(isPresented: $nameOpen) { EditNameSheet(initial: name) { session.updateDisplayName($0) } }
+        .sheet(isPresented: $personalOpen) {
+            PersonalDetailsSheet(initial: session.displayName, email: session.email) { session.updateDisplayName($0) }
+        }
+        // Her cycle is the health profile the app actually holds, and until now it could only be
+        // changed from the Home setup card — which disappears once it has been filled in.
+        .sheet(isPresented: $healthOpen) {
+            CycleSettingsSheet(current: cycle.settings) { cycle.upsert($0) }
+        }
+        .sheet(isPresented: $trackingPrefsOpen) {
+            TrackingPreferencesSheet(current: prefs.quizAnswers) { prefs.recordQuizAnswers($0) }
+        }
         .alert(detail ?? "", isPresented: Binding(get: { detail != nil }, set: { if !$0 { detail = nil } })) {
             Button("Done") { detail = nil }
         } message: {
@@ -158,9 +168,18 @@ struct ProfileView: View {
         VStack(alignment: .leading, spacing: 8) {
             groupLabel("Account")
             cardGroup {
-                rowItem("Edit name") { session.isSignedIn ? (nameOpen = true) : (showAuth = true) }
+                rowItem("Personal Details") { session.isSignedIn ? (personalOpen = true) : (showAuth = true) }
                 divider
-                rowItem("Change password") { session.isSignedIn ? (resetConfirm = true) : (showAuth = true) }
+                rowItem("Change password") {
+                    guard session.isSignedIn else { showAuth = true; return }
+                    // A social sign-in can leave us without an address. Offering to email a link
+                    // there anyway ended in "please try again" on a call that could never succeed.
+                    if session.email?.isEmpty == false {
+                        resetConfirm = true
+                    } else {
+                        resetResult = "We don't have an email address for this account. Get in touch through Help & Support and we'll reset your password for you."
+                    }
+                }
             }
         }
     }
@@ -169,11 +188,9 @@ struct ProfileView: View {
         VStack(alignment: .leading, spacing: 8) {
             groupLabel("Tracking")
             cardGroup {
-                rowItem("Personal Details") { detail = "Personal Details" }
+                rowItem("Health Profile") { healthOpen = true }
                 divider
-                rowItem("Health Profile") { detail = "Health Profile" }
-                divider
-                rowItem("Tracking Preferences") { detail = "Tracking Preferences" }
+                rowItem("Tracking Preferences") { trackingPrefsOpen = true }
             }
         }
     }
@@ -610,18 +627,24 @@ private struct PartnerSectionView: View {
     }
 }
 
-// MARK: - Edit name sheet
+// MARK: - Personal details sheet
 
-private struct EditNameSheet: View {
-    let initial: String
+private struct PersonalDetailsSheet: View {
+    /// Her stored name, not the "Guest" placeholder the Profile card falls back to for display —
+    /// prefilling that made Save write the literal word "Guest" over her real name.
+    let initial: String?
+    let email: String?
     let onSave: (String) -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var name: String
 
-    init(initial: String, onSave: @escaping (String) -> Void) {
+    private var trimmedName: String { name.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+    init(initial: String?, email: String?, onSave: @escaping (String) -> Void) {
         self.initial = initial
+        self.email = email
         self.onSave = onSave
-        _name = State(initialValue: initial)
+        _name = State(initialValue: initial ?? "")
     }
 
     var body: some View {
@@ -633,21 +656,115 @@ private struct EditNameSheet: View {
                     .padding(.horizontal, 14).frame(height: 52)
                     .background(GenesyxColor.card).clipShape(RoundedRectangle(cornerRadius: 12))
                     .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(GenesyxColor.border, lineWidth: 1))
+                    .accessibilityIdentifier("displayNameField")
                     .onChange(of: name) { if $0.count > 80 { name = String($0.prefix(80)) } }
+
+                // Shown but not editable: the address is the credential she signs in with, so
+                // changing it is a re-verification flow rather than a text field. Left off the
+                // screen entirely, "which account am I in?" had no answer anywhere in the app.
+                if let email {
+                    Eyebrow("Email", color: GenesyxColor.mutedForeground).padding(.top, 12)
+                    Text(email).font(.gxBody).foregroundStyle(GenesyxColor.foreground)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 14).frame(height: 52)
+                        .background(GenesyxColor.muted).clipShape(RoundedRectangle(cornerRadius: 12))
+                    Text("You sign in with this address. Get in touch through Help & Support to change it.")
+                        .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+                }
                 Spacer()
             }
             .padding(20)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .background(GenesyxColor.background)
-            .navigationTitle("Edit name").navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("Personal details").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        if !name.trimmingCharacters(in: .whitespaces).isEmpty { onSave(name.trimmingCharacters(in: .whitespaces)) }
+                        onSave(trimmedName)
                         dismiss()
-                    }.fontWeight(.semibold)
+                    }
+                    .fontWeight(.semibold)
+                    // Disabled rather than silently ignored: the old guard closed the sheet with no
+                    // error and no change, which reads as the app having lost the edit.
+                    .disabled(trimmedName.isEmpty)
                 }
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
             }
         }
+    }
+}
+
+// MARK: - Tracking preferences sheet
+
+/// The onboarding answers, re-opened. They shape her plan, guidance and insights, but were asked
+/// once and then frozen — someone who answered "just starting to think about it" a year ago had no
+/// way to say she is trying now, and kept being guided as if she weren't.
+private struct TrackingPreferencesSheet: View {
+    let current: [String: String]
+    let onSave: ([String: String]) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var answers: [String: String]
+
+    init(current: [String: String], onSave: @escaping ([String: String]) -> Void) {
+        self.current = current
+        self.onSave = onSave
+        _answers = State(initialValue: current)
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    Text("These are the answers you gave when you joined. They shape your plan and the guidance you see — change them whenever things change.")
+                        .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+
+                    ForEach(QuizContent.questions, id: \.id) { question in
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(question.question)
+                                .font(.gxCardHeadingSmall).foregroundStyle(GenesyxColor.foreground)
+                            VStack(spacing: 0) {
+                                ForEach(Array(question.options.enumerated()), id: \.element.id) { index, option in
+                                    if index > 0 {
+                                        Rectangle().fill(GenesyxColor.border.opacity(0.5))
+                                            .frame(height: 1).padding(.horizontal, 16)
+                                    }
+                                    optionRow(question: question.id, option: option)
+                                }
+                            }
+                            .background(GenesyxColor.card).clipShape(RoundedRectangle(cornerRadius: 16))
+                        }
+                    }
+                }
+                .padding(20)
+            }
+            .background(GenesyxColor.background)
+            .navigationTitle("Tracking preferences").navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") { onSave(answers); dismiss() }.fontWeight(.semibold)
+                }
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+            }
+        }
+    }
+
+    private func optionRow(question: String, option: QuizOption) -> some View {
+        let selected = answers[question] == option.id
+        return Button { answers[question] = option.id } label: {
+            HStack {
+                Text(option.label).font(.system(size: 14.5)).foregroundStyle(GenesyxColor.foreground)
+                    .multilineTextAlignment(.leading)
+                Spacer()
+                if selected {
+                    Image(systemName: "checkmark").font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(GenesyxColor.primary)
+                }
+            }
+            .padding(.horizontal, 16).frame(minHeight: 52)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("quizOption.\(question).\(option.id)")
+        .accessibilityAddTraits(selected ? [.isSelected] : [])
     }
 }

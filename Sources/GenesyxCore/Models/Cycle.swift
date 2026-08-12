@@ -50,9 +50,13 @@ public struct CyclePhaseInfo: Hashable, Sendable {
 }
 
 /// A single calendar cell in the month grid (Kotlin sealed interface `CalendarCell`).
+///
+/// `info` is nil when she has not set her cycle up. A day still exists without a phase prediction —
+/// it can be tapped, logged and marked — and requiring one meant the grid could not be drawn at all
+/// until she supplied a period date, which left no way to record anything on any past day.
 public enum CalendarCell: Hashable, Sendable {
     case empty
-    case day(date: CalendarDate, info: CyclePhaseInfo, isToday: Bool)
+    case day(date: CalendarDate, info: CyclePhaseInfo?, isToday: Bool)
 }
 
 /// User cycle configuration (`cycle_settings`).

@@ -10,7 +10,7 @@ final class GenesyxUITests: XCTestCase {
     }
 
     /// Launches the app seeded, starting on the given tab index
-    /// (0=Home, 1=Track, 2=Nutrition, 3=Insights, 4=Learn, 5=Profile).
+    /// (0=Home, 1=Track, 2=pH, 3=Nutrition, 4=Insights, 5=Learn, 6=Profile).
     private func launchSeeded(tab: Int = 0) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments += ["-uiTestSeed", "YES", "-uiTestTab", "\(tab)"]
@@ -105,9 +105,9 @@ final class GenesyxUITests: XCTestCase {
 
     func testMainTabsPresent() {
         let app = launchSeeded()
-        // Custom six-icon bottom bar (all tabs visible, no "More" overflow).
+        // Custom seven-icon bottom bar (all tabs visible, no "More" overflow).
         XCTAssertTrue(app.buttons["Home"].waitForExistence(timeout: 10), "Tab bar should appear on seeded launch")
-        for label in ["Home", "Track", "Nutrition", "Insights", "Learn", "Profile"] {
+        for label in ["Home", "Track", "pH", "Nutrition", "Insights", "Learn", "Profile"] {
             XCTAssertTrue(app.buttons[label].exists, "Missing tab: \(label)")
         }
     }
@@ -116,7 +116,7 @@ final class GenesyxUITests: XCTestCase {
     /// fresh install, forever. The seeded user logs water today but no supplements, so the only
     /// honest thing the card can say is that none are logged.
     func testSupplementCountReflectsTodaysLog() {
-        let app = launchSeeded(tab: 2)   // Nutrition
+        let app = launchSeeded(tab: 3)   // Nutrition
         XCTAssertTrue(app.staticTexts["None logged yet today"].waitForExistence(timeout: 10),
                       "Supplement count must come from today's log, not a placeholder")
         XCTAssertFalse(app.staticTexts["3 of 4 taken today"].exists,
@@ -129,7 +129,7 @@ final class GenesyxUITests: XCTestCase {
     /// of the environment, and a sheet that doesn't inherit them crashes on open rather than
     /// failing a unit test.
     func testEachSupplementCanBeGivenItsOwnReminderTime() {
-        let app = launchSeeded(tab: 2)   // Nutrition
+        let app = launchSeeded(tab: 3)   // Nutrition
 
         let review = app.buttons["Review Plan"]
         XCTAssertTrue(review.waitForExistence(timeout: 10))
@@ -228,8 +228,109 @@ final class GenesyxUITests: XCTestCase {
                                     "most of the month is untouched and must stay bare")
     }
 
+    /// Cycle setup is skippable, and skipping it used to take the entire month grid away — no cells,
+    /// so nothing to tap, so no way to record or review any day at all. The calendar is where logging
+    /// happens; it cannot be gated on a period date she has not given us.
+    func testTheCalendarWorksWithoutACycleSetUp() {
+        let app = XCUIApplication()
+        app.launchArguments += ["-uiTestSeed", "YES", "-uiTestNoCycle", "YES", "-uiTestTab", "1"]
+        app.launch()
+
+        // No phase in the label now, so the cells are bare day numbers with markers appended.
+        let cells = app.buttons.matching(NSPredicate(format: "label MATCHES %@", "^[0-9]+(,.*)?$"))
+        XCTAssertTrue(cells.firstMatch.waitForExistence(timeout: 10), "the month grid should render anyway")
+        XCTAssertGreaterThanOrEqual(cells.count, 28, "a full month of days, not a setup prompt")
+
+        // The invitation to set the cycle up is still made — it just no longer costs her the grid.
+        XCTAssertTrue(app.staticTexts["Add your cycle"].exists)
+        // And nothing claims a phase it cannot know.
+        XCTAssertFalse(app.staticTexts["Fertile window"].exists, "no cycle, no phase key")
+
+        // A whole month back, so every cell is in the past whatever date the suite runs on.
+        app.buttons["Previous month"].tap()
+        guard let day = cells.allElementsBoundByIndex.first(where: { !$0.label.contains("logged") }) else {
+            return XCTFail("needed one unlogged day to back-fill")
+        }
+        let dayNumber = String(day.label.prefix(while: { $0.isNumber }))
+        day.tap()
+
+        let add = app.buttons["Add a log"]
+        XCTAssertTrue(add.waitForExistence(timeout: 5), "an empty day should still offer to take a log")
+        add.tap()
+
+        let chip = app.buttons["log.sexualActivity"]
+        XCTAssertTrue(chip.waitForExistence(timeout: 10), "the log sheet should open on the day she tapped")
+        chip.tap()
+        app.buttons["Save log"].tap()
+
+        let marked = app.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH %@ AND label CONTAINS %@", "\(dayNumber), ", "intimacy logged")
+        ).firstMatch
+        XCTAssertTrue(marked.waitForExistence(timeout: 10), "the day she logged should carry the marker")
+    }
+
+    /// The client's "entries don't stay on the right date". The store was never the problem — the log
+    /// sheet was pinned to today, so a day she missed could not be filled in and a mistake could not
+    /// be corrected. Steps back a whole month so every cell is in the past regardless of the date the
+    /// suite runs on, and finishes by proving the entry landed *there* and not on today.
+    func testAPastDayCanBeLoggedAndTheEntryStaysOnIt() {
+        let app = launchSeeded(tab: 1)   // Track
+
+        app.buttons["Previous month"].tap()
+
+        let cells = app.buttons.matching(NSPredicate(format: "label MATCHES %@", "^[0-9]+, .*"))
+        XCTAssertTrue(cells.firstMatch.waitForExistence(timeout: 10), "the month grid should render")
+        guard let pastDay = cells.allElementsBoundByIndex.first(where: { !$0.label.contains("logged") }) else {
+            return XCTFail("needed one unlogged day in the previous month to back-fill")
+        }
+        let pastDayNumber = String(pastDay.label.prefix(while: { $0.isNumber }))
+
+        pastDay.tap()
+        let edit = app.buttons["Add a log"]
+        XCTAssertTrue(edit.waitForExistence(timeout: 5), "an empty past day should offer to take a log")
+        edit.tap()
+
+        let chip = app.buttons["log.sexualActivity"]
+        XCTAssertTrue(chip.waitForExistence(timeout: 10), "the log sheet should open on the day she tapped")
+        XCTAssertFalse(app.navigationBars["Log Today"].exists,
+                       "a back-filled day must not present itself as today")
+        chip.tap()
+        app.buttons["Save log"].tap()
+
+        // Back on the grid: the day she chose now carries the marker.
+        let marked = app.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH %@ AND label CONTAINS %@", "\(pastDayNumber), ", "intimacy logged")
+        ).firstMatch
+        XCTAssertTrue(marked.waitForExistence(timeout: 10),
+                      "the entry belongs to the day she opened, not the day she typed it")
+
+        // And today did not quietly receive it instead — the defect this test exists for.
+        app.buttons["Next month"].tap()
+        let todayCell = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS %@", "today")
+        ).firstMatch
+        XCTAssertTrue(todayCell.waitForExistence(timeout: 10))
+        XCTAssertFalse(todayCell.label.contains("intimacy logged"),
+                       "logging a past day must not write to today: \(todayCell.label)")
+    }
+
+    /// A day that has not happened has nothing to record, so the sheet stays read-only there.
+    func testAFutureDayIsNotOfferedALog() {
+        let app = launchSeeded(tab: 1)   // Track
+
+        app.buttons["Next month"].tap()
+
+        let cells = app.buttons.matching(NSPredicate(format: "label MATCHES %@", "^[0-9]+, .*"))
+        XCTAssertTrue(cells.firstMatch.waitForExistence(timeout: 10), "the month grid should render")
+        cells.element(boundBy: 14).tap()
+
+        XCTAssertTrue(app.buttons["Close"].waitForExistence(timeout: 5), "the day sheet should open")
+        XCTAssertFalse(app.buttons["Add a log"].exists, "a future day must not invite a log")
+        XCTAssertFalse(app.buttons["Edit this day"].exists, "nor offer to edit one")
+    }
+
     func testLearnTabShowsArticles() {
-        let app = launchSeeded(tab: 4)   // Learn
+        let app = launchSeeded(tab: 5)   // Learn
         XCTAssertTrue(app.staticTexts["Your first week with Genesyx"].waitForExistence(timeout: 10),
                       "Learn should show the featured article")
     }
@@ -271,7 +372,7 @@ final class GenesyxUITests: XCTestCase {
     /// away. This is the case that actually ships to a new user, and it is the one an over-eager
     /// `lastSeen == nil` check would get wrong by announcing a transition that never happened.
     func testNutritionShowsNoPhaseChangeCardOnAFreshInstall() {
-        let app = launchSeeded(tab: 2)
+        let app = launchSeeded(tab: 3)
 
         XCTAssertTrue(app.staticTexts["Your nutrition focus"].waitForExistence(timeout: 10))
         XCTAssertFalse(app.buttons["nutrition.phaseChangeCard"].exists,
@@ -283,7 +384,7 @@ final class GenesyxUITests: XCTestCase {
     /// leave her on a blank screen.
     func testPhaseChangeCardOpensTheCycleEatingArticle() {
         let app = XCUIApplication()
-        app.launchArguments += ["-uiTestSeed", "YES", "-uiTestTab", "2", "-uiTestPhaseChange", "YES"]
+        app.launchArguments += ["-uiTestSeed", "YES", "-uiTestTab", "3", "-uiTestPhaseChange", "YES"]
         app.launch()
 
         let card = app.buttons["nutrition.phaseChangeCard"]
@@ -299,7 +400,7 @@ final class GenesyxUITests: XCTestCase {
     /// she closed comes straight back and the × is decoration.
     func testDismissingThePhaseChangeCardKeepsItAway() {
         let app = XCUIApplication()
-        app.launchArguments += ["-uiTestSeed", "YES", "-uiTestTab", "2", "-uiTestPhaseChange", "YES"]
+        app.launchArguments += ["-uiTestSeed", "YES", "-uiTestTab", "3", "-uiTestPhaseChange", "YES"]
         app.launch()
 
         let card = app.buttons["nutrition.phaseChangeCard"]
@@ -340,6 +441,44 @@ final class GenesyxUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["3 / 9.6 glasses"].waitForExistence(timeout: 5), "After +1 then −1 glass, the total must be unchanged")
     }
 
+    /// Manual entry files an exact figure, and the whole capsule takes the tap.
+    ///
+    /// The size check is the point. `tap()` hits an element's centre, so it lands on the "Save"
+    /// glyphs whether or not the capsule around them is live — a tap-only test passes against the
+    /// bug this guards. Sizing the Button from outside its label (`.frame`/`.background` after
+    /// `Button("Save")`) draws a capsule that is not part of the tap target, and every miss is
+    /// swallowed by the background, which is what "the save button does nothing" was.
+    func testTrackHydrationManualEntrySavesAndTakesTapsAcrossTheCapsule() {
+        let app = launchSeeded(tab: 0)
+
+        let summary = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Hydration,")).firstMatch
+        XCTAssertTrue(summary.waitForExistence(timeout: 15), "Home should show the hydration summary")
+        summary.tap()
+        XCTAssertTrue(app.navigationBars["Hydration"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["3 / 9.6 glasses"].waitForExistence(timeout: 5), "Sheet should open on the seeded 750 ml")
+
+        let field = app.textFields["hydrationManualMlField"]
+        XCTAssertTrue(field.waitForExistence(timeout: 10), "The hydration sheet should offer manual ml entry")
+        field.tap()
+        // Prefilled with today's total, so clear it before typing rather than appending to it.
+        field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 6))
+        field.typeText("2000")
+
+        let save = app.buttons["hydrationSaveButton"]
+        XCTAssertTrue(save.waitForExistence(timeout: 5), "Manual entry should offer a Save button")
+
+        // The number pad covers Save, so put it away the only way this field offers.
+        app.buttons["keyboardDone"].tap()
+
+        // Near the right edge, NOT the centre. `tap()` hits an element's centre, which is over the
+        // "Save" glyphs and fires even when the capsule around them is dead — so a centre tap passes
+        // against the bug this guards. XCUITest reports the outer 88x48 frame either way, so the
+        // frame is no help either; only a tap that lands off the text tells the two apart.
+        save.coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.5)).tap()
+        XCTAssertTrue(app.staticTexts["8 / 9.6 glasses"].waitForExistence(timeout: 5),
+                      "A tap near the edge of the Save capsule must file the reading — 2000 / 250 = 8 glasses")
+    }
+
     // MARK: - Keyboard dismissal
     //
     // Five fields raise a keyboard she cannot put away: the three `.numberPad` ones have no return
@@ -351,7 +490,7 @@ final class GenesyxUITests: XCTestCase {
     /// The field that shares a hierarchy with the partner-email field, so a Done bound to one
     /// field's `@FocusState` would have rendered here and done nothing.
     func testProfileGlassSizeFieldOffersAKeyboardDismiss() {
-        let app = launchSeeded(tab: 5)   // Profile
+        let app = launchSeeded(tab: 6)   // Profile
         let glassSize = app.textFields["hydrationGlassSizeField"]
         for _ in 0..<6 where !glassSize.exists { app.swipeUp() }
         XCTAssertTrue(glassSize.waitForExistence(timeout: 10), "Profile should show the glass-size field")
@@ -404,8 +543,8 @@ final class GenesyxUITests: XCTestCase {
     /// The other wrapping note field, and the one where it matters most: the keyboard comes up over
     /// the Save button, so without a Done the reading cannot be filed.
     func testPhNotesFieldOffersAKeyboardDismiss() {
-        // Nutrition, not Track: Track reaches the pH section only through a detail sheet, whereas
-        // Nutrition embeds it straight into the scroll.
+        // The pH tab, not Track: Track reaches the pH section only through a detail sheet, whereas
+        // the tab is the section.
         let app = launchSeeded(tab: 2)
 
         // The pH section raises a one-time notice, which persists once dismissed — so on a simulator
@@ -416,7 +555,7 @@ final class GenesyxUITests: XCTestCase {
         // Scroll on isHittable, not on exists: Track renders its whole scroll eagerly, so the button
         // is in the tree from launch and an exists-guard scrolls nowhere and then taps nothing.
         let logPh = app.buttons["Log pH"]
-        XCTAssertTrue(logPh.waitForExistence(timeout: 10), "Track should offer a Log pH button")
+        XCTAssertTrue(logPh.waitForExistence(timeout: 10), "The pH tab should offer a Log pH button")
         for _ in 0..<10 where !logPh.isHittable { app.swipeUp() }
         XCTAssertTrue(logPh.isHittable, "Log pH should scroll into reach")
         logPh.tap()
@@ -458,7 +597,7 @@ final class GenesyxUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Home"].waitForExistence(timeout: 10))
         // The Home hydration card shows a label-only "Track" affordance, so match the tab-bar
         // buttons by their accessibility identifier to avoid a duplicate-"Track" collision.
-        for label in ["Track", "Nutrition", "Insights", "Learn", "Profile", "Home"] {
+        for label in ["Track", "pH", "Nutrition", "Insights", "Learn", "Profile", "Home"] {
             let tab = app.buttons.matching(identifier: label).firstMatch
             tab.tap()
             XCTAssertTrue(tab.exists, "Should switch to \(label)")
@@ -466,7 +605,7 @@ final class GenesyxUITests: XCTestCase {
     }
 
     func testInsightsOpensLogHistory() {
-        let app = launchSeeded(tab: 3)   // Insights
+        let app = launchSeeded(tab: 4)   // Insights
         let logsCard = app.staticTexts["My logs"]
         XCTAssertTrue(logsCard.waitForExistence(timeout: 10), "Insights should show the 'My logs' card")
         logsCard.tap()
@@ -474,8 +613,8 @@ final class GenesyxUITests: XCTestCase {
     }
 
     func testProfileShowsAccountActions() {
-        let app = launchSeeded(tab: 5)   // Profile
-        XCTAssertTrue(app.staticTexts["Edit name"].waitForExistence(timeout: 10), "Profile should show account rows")
+        let app = launchSeeded(tab: 6)   // Profile
+        XCTAssertTrue(app.staticTexts["Personal Details"].waitForExistence(timeout: 10), "Profile should show account rows")
         XCTAssertTrue(app.staticTexts["Delete account"].exists || app.buttons["Delete account"].exists,
                       "Profile should offer account deletion (App Store requirement)")
 
@@ -485,6 +624,50 @@ final class GenesyxUITests: XCTestCase {
         for _ in 0..<4 where !privacyPolicy.exists { app.swipeUp() }
         XCTAssertTrue(privacyPolicy.waitForExistence(timeout: 5),
                       "Profile should provide an accessible in-app privacy-policy link")
+    }
+
+    /// The three Profile rows used to raise a paragraph of text and change nothing. An alert and an
+    /// editor are indistinguishable from the outside, so the assertion is on what each one opens.
+    func testTheProfileRowsOpenRealEditors() {
+        let app = launchSeeded(tab: 6)   // Profile
+
+        XCTAssertTrue(app.staticTexts["Personal Details"].waitForExistence(timeout: 10))
+        app.staticTexts["Personal Details"].tap()
+        XCTAssertTrue(app.navigationBars["Personal details"].waitForExistence(timeout: 5),
+                      "Personal Details should open an editor, not an alert")
+        XCTAssertTrue(app.textFields["displayNameField"].exists, "her name should be editable there")
+        app.buttons["Cancel"].tap()
+
+        app.staticTexts["Health Profile"].tap()
+        XCTAssertTrue(app.navigationBars["Your cycle"].waitForExistence(timeout: 5),
+                      "Health Profile should open the cycle editor")
+        app.buttons["Cancel"].tap()
+
+        app.staticTexts["Tracking Preferences"].tap()
+        XCTAssertTrue(app.navigationBars["Tracking preferences"].waitForExistence(timeout: 5),
+                      "Tracking Preferences should open an editor")
+        app.buttons["Cancel"].tap()
+    }
+
+    /// Her onboarding answers were captured once and then frozen. Proving the editor *saves* is the
+    /// whole point — a picker that forgets on dismiss looks identical to the alert it replaced.
+    func testAChangedTrackingPreferenceIsStillThereWhenSheComesBack() {
+        let app = launchSeeded(tab: 6)   // Profile
+
+        XCTAssertTrue(app.staticTexts["Tracking Preferences"].waitForExistence(timeout: 10))
+        app.staticTexts["Tracking Preferences"].tap()
+
+        let trying = app.buttons["quizOption.stage.trying"]
+        XCTAssertTrue(trying.waitForExistence(timeout: 5), "the journey-stage options should be offered")
+        // States the premise: a seeded launch answers no quiz, so the assertion at the end is about
+        // the save and not about what happened to be there already.
+        XCTAssertFalse(trying.isSelected, "a seeded launch should start with no answer chosen")
+        trying.tap()
+        app.buttons["Save"].tap()
+
+        app.staticTexts["Tracking Preferences"].tap()
+        XCTAssertTrue(trying.waitForExistence(timeout: 5))
+        XCTAssertTrue(trying.isSelected, "the answer she saved should be the one selected on her return")
     }
 
     /// Device-side data-isolation guard: seeded (User A) health data must be gone after sign-out,
@@ -510,7 +693,7 @@ final class GenesyxUITests: XCTestCase {
 
         // Insights pH is empty too.
         app.buttons["Insights"].tap()
-        XCTAssertTrue(app.staticTexts["No pH readings yet. Log your first one on Track or Nutrition."].waitForExistence(timeout: 5),
+        XCTAssertTrue(app.staticTexts["No pH readings yet. Log your first one on the pH tab."].waitForExistence(timeout: 5),
                       "After sign-out, pH readings must be cleared")
     }
 }

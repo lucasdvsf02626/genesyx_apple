@@ -132,6 +132,14 @@ final class PreferencesRepository: ObservableObject {
         store.remove(forKey: quizAnswersKey)
     }
 
+    /// Drop a profile write the server never received. Sign-out only: the flag outlived the session
+    /// that owed it, so the next account's first refresh drained *her* theme, focus mode and push
+    /// flag up into *their* row, then pulled the clobbered values back down.
+    func clearOwedProfileWrite() {
+        pendingPush = false
+        store.remove(forKey: pendingKey)
+    }
+
     private var prefs: ProfilePrefs {
         ProfilePrefs(focusMode: focusMode, themeMode: themeMode, pushEnabled: pushEnabled,
                      quizAnswers: quizAnswers)

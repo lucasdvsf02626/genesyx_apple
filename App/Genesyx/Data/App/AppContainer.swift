@@ -29,7 +29,7 @@ final class AppContainer: ObservableObject {
         self.dailyLog = DailyLogRepository(store: store, backend: backend?.dailyLog)
         self.ph = PhRepository(store: store, backend: backend?.ph)
         self.prefs = PreferencesRepository(store: store, backend: backend?.profile)
-        self.session = SessionRepository(auth: backend?.auth)
+        self.session = SessionRepository(store: store, auth: backend?.auth)
         self.partner = PartnerRepository(backend: backend?.partner)
         self.learn = LearnProgress()
 
@@ -86,6 +86,9 @@ final class AppContainer: ObservableObject {
         // Onboarding does not re-run on sign-out — that flag is device-local and stays set — so
         // without this the next user on the phone would silently inherit her quiz answers.
         prefs.clearQuizAnswers()
+        // A profile write she owed the server outlives the session that owed it, so the next
+        // account's first refresh pushed her theme and focus mode into their row.
+        prefs.clearOwedProfileWrite()
         learn.clear()
         // Nor may the next account inherit her partner link or her pending invites.
         partner.clearLocalState()
@@ -111,7 +114,11 @@ final class AppContainer: ObservableObject {
             UserDefaults.standard.removePersistentDomain(forName: bundleID)
         }
         let container = AppContainer(store: LocalStore(), backend: nil)
-        container.cycle.upsert(CycleSettings(lastPeriodDate: CalendarDate.today().minusDays(8), cycleLength: 28, periodLength: 5))
+        // `-uiTestNoCycle YES` is the user who skipped cycle setup: everything else seeded, no
+        // period date. The calendar has to work for her too, and used not to exist at all.
+        if !UserDefaults.standard.bool(forKey: "uiTestNoCycle") {
+            container.cycle.upsert(CycleSettings(lastPeriodDate: CalendarDate.today().minusDays(8), cycleLength: 28, periodLength: 5))
+        }
         container.dailyLog.setWater(750)
         container.dailyLog.upsert(
             DailyLog(mood: .good, energy: .normal, symptoms: ["Fatigue", "Cramps"],

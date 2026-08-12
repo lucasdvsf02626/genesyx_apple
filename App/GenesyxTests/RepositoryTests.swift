@@ -1,3 +1,4 @@
+import Combine
 import XCTest
 @testable import Genesyx
 import GenesyxCore
@@ -27,6 +28,41 @@ final class RepositoryTests: XCTestCase {
         XCTAssertEqual(repo.waterMl(on: .today()), 750)
         repo.adjustWater(-50_000)             // clamp low
         XCTAssertEqual(repo.waterMl(on: .today()), 0)
+    }
+
+    /// A day she missed has to stay fillable, and filling it must not disturb today. The repository
+    /// always supported this; until the log sheet took a date, nothing could reach it.
+    func testBackfillingAPastDayLeavesTodayAlone() {
+        let store = makeStore()
+        let today = CalendarDate.today()
+        let threeDaysAgo = today.minusDays(3)
+
+        let repo = DailyLogRepository(store: store)
+        repo.upsert(DailyLog(mood: .good, waterMl: 500), on: today)
+        repo.upsert(DailyLog(symptoms: ["Cramps"], sexualActivity: true), on: threeDaysAgo)
+
+        let reloaded = DailyLogRepository(store: store)
+        XCTAssertEqual(reloaded.log(on: threeDaysAgo).symptoms, ["Cramps"])
+        XCTAssertTrue(reloaded.log(on: threeDaysAgo).sexualActivity)
+        XCTAssertEqual(reloaded.log(on: today).mood, .good, "today must survive a backfill three days back")
+        XCTAssertEqual(reloaded.log(on: today).waterMl, 500)
+        XCTAssertFalse(reloaded.log(on: today).sexualActivity, "the past day's entry must not bleed forward")
+    }
+
+    /// Correcting a past day replaces that day rather than stacking a second entry beside it.
+    func testEditingAPastDayReplacesItRatherThanDuplicating() {
+        let store = makeStore()
+        let yesterday = CalendarDate.today().minusDays(1)
+
+        let repo = DailyLogRepository(store: store)
+        repo.upsert(DailyLog(mood: .low, symptoms: ["Headache"], waterMl: 250), on: yesterday)
+        repo.upsert(DailyLog(mood: .great, symptoms: ["Cramps"], waterMl: 1_000), on: yesterday)
+
+        let reloaded = DailyLogRepository(store: store)
+        XCTAssertEqual(reloaded.logByDate.keys.filter { $0 == yesterday }.count, 1, "one entry per day, always")
+        XCTAssertEqual(reloaded.log(on: yesterday).mood, .great)
+        XCTAssertEqual(reloaded.log(on: yesterday).symptoms, ["Cramps"])
+        XCTAssertEqual(reloaded.log(on: yesterday).waterMl, 1_000)
     }
 
     func testHydrationPersistsAcrossRepositoryReload() {
@@ -420,6 +456,25 @@ final class RepositoryTests: XCTestCase {
         XCTAssertTrue(repo.readings.isEmpty, "a pull must not resurrect a deleted reading")
     }
 
+    /// The client's "offline symbol appears and stays". `syncState` reads the owed-days set, so the
+    /// save draws "Will sync when online" and the push that clears it a moment later has to announce
+    /// itself — otherwise the icon sits over a day the server already has until some unrelated edit
+    /// happens to redraw the row.
+    func testDrainingTheLastOwedDayRedrawsTheRow() async {
+        let store = makeStore()
+        DailyLogRepository(store: store).setWater(500)     // local-only: owed, and no push in flight
+        let repo = DailyLogRepository(store: store, backend: FakeDailyLogBackend())
+        XCTAssertEqual(repo.syncState(on: .today()), .willSyncWhenOnline)
+
+        var redraws = 0
+        let watch = repo.objectWillChange.sink { _ in redraws += 1 }
+        await repo.drainPending()
+        watch.cancel()
+
+        XCTAssertEqual(repo.syncState(on: .today()), .synced)
+        XCTAssertGreaterThan(redraws, 0, "nothing told the row its day had landed")
+    }
+
     // MARK: - Auth
 
     /// With "Confirm email" on, Supabase's sign-up returns a user but no session. She is not signed
@@ -428,7 +483,7 @@ final class RepositoryTests: XCTestCase {
     func testSignUpWithoutASessionDoesNotSignHerIn() async {
         let auth = FakeAuthBackend()
         auth.grantsSessionOnSignUp = false          // the project requires email confirmation
-        let session = SessionRepository(auth: auth)
+        let session = SessionRepository(store: makeStore(), auth: auth)
 
         do {
             try await session.authenticate(email: "a@b.com", password: "password123", name: nil, signUp: true)
@@ -443,12 +498,89 @@ final class RepositoryTests: XCTestCase {
     }
 
     func testSignUpWithASessionSignsHerIn() async throws {
-        let session = SessionRepository(auth: FakeAuthBackend())   // confirmation off: session granted
+        let session = SessionRepository(store: makeStore(), auth: FakeAuthBackend())   // confirmation off: session granted
 
         try await session.authenticate(email: "a@b.com", password: "password123", name: "Ada", signUp: true)
 
         XCTAssertTrue(session.isSignedIn)
         XCTAssertEqual(session.displayName, "Ada")
+    }
+
+    /// The Supabase SDK restores the session across a relaunch, but her name and address were only
+    /// ever held in memory — so a returning user was greeted as "Guest", and Personal Details
+    /// opened prefilled with that word ready to be saved over her real name.
+    func testHerNameAndAddressSurviveARelaunch() async throws {
+        let store = makeStore()
+        let auth = FakeAuthBackend()
+        try await SessionRepository(store: store, auth: auth)
+            .authenticate(email: "ada@x.com", password: "password123", name: "Ada", signUp: false)
+
+        let relaunched = SessionRepository(store: store, auth: auth)   // SDK restored the session
+
+        XCTAssertTrue(relaunched.isSignedIn)
+        XCTAssertEqual(relaunched.displayName, "Ada")
+        XCTAssertEqual(relaunched.email, "ada@x.com")
+    }
+
+    /// Sign-in never asks for a name, so a re-authentication carries none. Falling straight through
+    /// to the address renamed her to the part before the @ every time her session was refreshed.
+    func testSigningInAgainDoesNotRenameHerToHerEmail() async throws {
+        let session = SessionRepository(store: makeStore(), auth: FakeAuthBackend())
+        try await session.authenticate(email: "ada@x.com", password: "password123", name: "Ada", signUp: false)
+
+        try await session.authenticate(email: "ada@x.com", password: "password123", name: nil, signUp: false)
+
+        XCTAssertEqual(session.displayName, "Ada")
+    }
+
+    /// Sign-out leaves the app usable — onboarding does not re-run, so the tabs are still there and
+    /// every write queues. Those writes belong to whoever last held the session, and hydrating them
+    /// into the next account files one person's cycle and logs into another person's history.
+    func testADifferentAccountSigningInWipesTheDeviceFirst() async throws {
+        let store = makeStore()
+        let auth = FakeAuthBackend()
+        var wipes = 0
+
+        let first = SessionRepository(store: store, auth: auth)
+        first.onClearLocalState = { wipes += 1 }
+        try await first.authenticate(email: "ada@x.com", password: "password123", name: "Ada", signUp: false)
+        let afterFirstSignIn = wipes                       // a fresh device has no identity yet
+
+        auth.signInUserId = "user-2"
+        let second = SessionRepository(store: store, auth: auth)
+        second.onClearLocalState = { wipes += 1 }
+        try await second.authenticate(email: "bea@x.com", password: "password123", name: "Bea", signUp: false)
+
+        XCTAssertEqual(wipes, afterFirstSignIn + 1, "a second account must not inherit the first one's data")
+        XCTAssertEqual(second.displayName, "Bea", "and must not inherit her name either")
+    }
+
+    /// Onboarding runs before the account exists — the quiz, her cycle dates and anything she logged
+    /// while deciding are all on the device before she ever signs up. A device that has never held a
+    /// session has no previous owner, so there is nothing to protect anyone from by wiping it.
+    func testHerFirstEverSignInKeepsWhatSheEnteredDuringOnboarding() async throws {
+        let container = AppContainer(store: makeStore(), backend: nil)
+        container.prefs.recordQuizAnswers(["stage": "trying"])
+        container.cycle.upsert(CycleSettings(lastPeriodDate: CalendarDate(2026, 6, 1), cycleLength: 28, periodLength: 5))
+
+        try await container.session.authenticate(email: "ada@x.com", password: "password123", name: "Ada", signUp: true)
+
+        XCTAssertEqual(container.prefs.quizAnswers, ["stage": "trying"])
+        XCTAssertNotNil(container.cycle.settings, "her first sign-in must not throw away her onboarding")
+    }
+
+    func testTheSameAccountSigningInAgainKeepsHerData() async throws {
+        let store = makeStore()
+        let auth = FakeAuthBackend()
+        try await SessionRepository(store: store, auth: auth)
+            .authenticate(email: "ada@x.com", password: "password123", name: "Ada", signUp: false)
+
+        var wipes = 0
+        let again = SessionRepository(store: store, auth: auth)
+        again.onClearLocalState = { wipes += 1 }
+        try await again.authenticate(email: "ada@x.com", password: "password123", name: nil, signUp: false)
+
+        XCTAssertEqual(wipes, 0, "signing back in as yourself must not wipe your own logs")
     }
 
     // MARK: - Cycle, daily-log and profile sync (same contract: a stale cloud never wins)
@@ -470,6 +602,28 @@ final class RepositoryTests: XCTestCase {
 
         XCTAssertEqual(backend.remote, edited, "the owed write lands once we're back online")
         XCTAssertEqual(repo.settings, edited)
+    }
+
+    /// A drain reads the settings, awaits the server, then marks them synced. Correcting the date in
+    /// that window used to clear the flag for a value the server had never been sent — so the next
+    /// pull quietly replaced her correction with the copy the drain had just uploaded.
+    func testACorrectionMadeDuringADrainIsStillOwed() async {
+        let store = makeStore()
+        let first = CycleSettings(lastPeriodDate: CalendarDate(2026, 6, 1), cycleLength: 28, periodLength: 5)
+        let corrected = CycleSettings(lastPeriodDate: CalendarDate(2026, 6, 3), cycleLength: 28, periodLength: 5)
+        CycleRepository(store: store).upsert(first)          // local-only: owed, and no push in flight
+
+        let backend = MidDrainCycleBackend()
+        backend.refuse = corrected                           // her correction's own push can't get out
+        let repo = CycleRepository(store: store, backend: backend)
+        backend.duringUpsert = { repo.upsert(corrected) }
+        await repo.drainPending()
+
+        XCTAssertEqual(backend.remote, first, "the server only ever received the value the drain sent")
+
+        await repo.refresh()
+
+        XCTAssertEqual(repo.settings, corrected, "a correction the server never got must not be pulled away")
     }
 
     func testDailyLogOfflineEditIsNotOverwrittenByAStalePull() async {
@@ -571,6 +725,25 @@ final class RepositoryTests: XCTestCase {
 
         XCTAssertTrue(container.prefs.quizAnswers.isEmpty,
                       "her intake answers are as personal as a log and must leave with her")
+    }
+
+    /// The owed-write flag outlived the session that owed it. Left set, the next account's first
+    /// refresh pushed *her* theme, focus mode and push setting into *their* profile row, then pulled
+    /// the clobbered values straight back down.
+    func testAProfileWriteSheOwedDoesNotFollowHerOutOfTheApp() async {
+        let backend = FakeProfileBackend()
+        backend.online = false                             // her push fails and stays owed
+        let prefs = PreferencesRepository(store: makeStore(), backend: backend)
+        prefs.focusMode = .pregnancy
+
+        prefs.clearOwedProfileWrite()                      // what sign-out now does
+
+        backend.online = true
+        backend.remote = ProfilePrefs(focusMode: .prep, themeMode: .light, pushEnabled: true)
+        await prefs.refresh()                              // the next account's first hydrate
+
+        XCTAssertEqual(backend.remote?.focusMode, .prep, "the previous user's setting must not land in this row")
+        XCTAssertEqual(prefs.focusMode, .prep)
     }
 
     /// `profiles` is partner-readable — `profiles_select` grants a linked partner the whole row —
@@ -755,12 +928,14 @@ private final class ProbePhBackend: PhBackend {
 private final class FakeAuthBackend: AuthBackend {
     var currentUserId: String?
     var grantsSessionOnSignUp = true
+    /// Who the next sign-in lands as, so a second account on the same device can be exercised.
+    var signInUserId = "user-1"
 
     func signUp(email: String, password: String) async throws {
-        if grantsSessionOnSignUp { currentUserId = "user-1" }
+        if grantsSessionOnSignUp { currentUserId = signInUserId }
     }
 
-    func signIn(email: String, password: String) async throws { currentUserId = "user-1" }
+    func signIn(email: String, password: String) async throws { currentUserId = signInUserId }
     func signOut() async throws { currentUserId = nil }
 }
 
@@ -777,6 +952,25 @@ private final class FakeCycleBackend: CycleBackend {
     func upsert(_ settings: CycleSettings) async throws {
         guard online else { throw RemoteError.notConfigured }
         remote = settings
+    }
+}
+
+/// Runs `duringUpsert` while an upsert is in flight, so a test can reproduce her correcting the
+/// date in the window between the drain reading the settings and the server accepting them.
+/// `refuse` stands in for that correction's own push failing while she is still offline.
+@MainActor
+private final class MidDrainCycleBackend: CycleBackend {
+    var remote: CycleSettings?
+    var refuse: CycleSettings?
+    var duringUpsert: (() -> Void)?
+
+    func fetch() async throws -> CycleSettings? { remote }
+
+    func upsert(_ settings: CycleSettings) async throws {
+        if settings == refuse { throw URLError(.notConnectedToInternet) }
+        remote = settings
+        duringUpsert?()
+        duringUpsert = nil
     }
 }
 
