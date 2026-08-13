@@ -14,7 +14,7 @@ Bundle ID `com.genesyx.app` · Category **Health & Fitness**.
 `Cycle, pH & nutrition support`
 
 **Promotional text (170 char, editable anytime)**
-`Track your cycle, urine pH, and nutrition in one calm, private companion — with gentle, phase-aware guidance for your fertility journey.`
+`Track your cycle, vaginal pH, and nutrition in one calm, private companion — with gentle, phase-aware guidance for your fertility journey.`
 
 **Description**
 ```
@@ -24,8 +24,8 @@ CYCLE TRACKING
 See your current phase (period, fertile window, ovulation, luteal), your day in the
 cycle, and your predicted next period — with calm, phase-aware guidance.
 
-URINE pH TRACKING
-Log your urine pH and review recent trends with clear acidic, optimal, and alkaline
+VAGINAL pH TRACKING
+Log your vaginal pH and review recent trends with clear acidic, optimal, and alkaline
 guidance.
 
 PHASE-AWARE NUTRITION
@@ -48,7 +48,7 @@ contraception. Always consult a qualified healthcare professional about your hea
 ```
 
 **Keywords (100 char, comma-sep, no spaces)**
-`cycle,period,fertility,ovulation,ph,urine,nutrition,supplements,hydration,women,health,tracker,ttc`
+`cycle,period,fertility,ovulation,ph,vaginal,nutrition,supplements,hydration,women,health,tracker,ttc`
 
 **Support URL**: `https://genesyx.co.uk` (must resolve)
 **Marketing URL** (optional): `https://genesyx.co.uk`
@@ -72,6 +72,13 @@ Notes:
 - We do **not** use third-party analytics/ads → no Tracking, no Data Used to Track You.
 - This matches the on-device `PrivacyInfo.xcprivacy` (already updated to declare Email, Health, User ID).
 - Account deletion is in-app (Profile → Delete account) — required by Guideline 5.1.1(v). ✅ built.
+- ⚠️ **These answers and `PRIVACY_POLICY.md` must say the same thing.** App Review reads both. Until
+  13 Aug 2026 they flatly contradicted each other: this table declared Health + Email + User ID
+  while the policy said the app collected nothing, had no accounts and no servers. The policy has
+  been rewritten to match the code and **still needs sign-off before it is published** — it is the
+  document that goes at the public URL below, so a mismatch here is both a 5.1.1 rejection risk and
+  a UK GDPR Article 13 problem, health data being special-category under Article 9.
+- Keywords are at **exactly** the 100-character cap — adding anything means removing something.
 
 ---
 

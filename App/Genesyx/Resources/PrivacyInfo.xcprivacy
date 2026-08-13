@@ -23,7 +23,7 @@
                 <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
             </array>
         </dict>
-        <!-- Health data (menstrual cycle, urine pH, symptoms, daily logs) -->
+        <!-- Health data (menstrual cycle, vaginal pH, symptoms, daily logs) -->
         <dict>
             <key>NSPrivacyCollectedDataType</key>
             <string>NSPrivacyCollectedDataTypeHealth</string>
