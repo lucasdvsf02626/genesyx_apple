@@ -18,19 +18,26 @@ public struct SupplementReminder: Identifiable, Equatable, Sendable {
     public let name: String
     public let dose: String
     public let hour: Int
+    /// One personalised sentence appended to the body, or nil for the plain reminder. Only
+    /// `SupplementPersonalisation` ever sets it, and only when its feature flag is on — so the
+    /// manual path this type was written for produces exactly the string it always did.
+    public let context: String?
 
-    public init(id: String, name: String, dose: String, hour: Int) {
+    public init(id: String, name: String, dose: String, hour: Int, context: String? = nil) {
         self.id = id
         self.name = name
         self.dose = dose
         self.hour = hour
+        self.context = context
     }
 
     public var title: String { "Time for \(name)" }
 
     /// Says where it came from, because a notification whose origin isn't obvious reads as spam.
     public var body: String {
-        dose.isEmpty ? "From your supplement plan." : "\(dose). From your supplement plan."
+        let base = dose.isEmpty ? "From your supplement plan." : "\(dose). From your supplement plan."
+        guard let context else { return base }
+        return "\(base) \(context)"
     }
 
     /// The fixed Genesyx plan has no record of its own to hang an id on, so one is derived. Keyed on
@@ -58,9 +65,16 @@ public struct SupplementReminder: Identifiable, Equatable, Sendable {
     }
 
     /// Both branches of the body, plus a title — the surface the banned-phrase and guilt scans walk.
+    ///
+    /// Includes every personalised variant even while the feature is dormant. Copy that ships in the
+    /// binary is copy that can reach her the day the flag flips, and a scan that only walked the
+    /// live path would clear it the day before and fail nobody.
     public static var allPossibleCopy: [String] {
-        [SupplementReminder(id: "x", name: "Magnesium", dose: "200 mg", hour: 8),
-         SupplementReminder(id: "y", name: "Folate", dose: "", hour: 20)]
-            .flatMap { [$0.title, $0.body] }
+        let plain = [SupplementReminder(id: "x", name: "Magnesium", dose: "200 mg", hour: 8),
+                     SupplementReminder(id: "y", name: "Folate", dose: "", hour: 20)]
+        let personalised = SupplementPersonalisation.allContexts.map {
+            SupplementReminder(id: "z", name: "Zinc", dose: "15 mg", hour: 9, context: $0)
+        }
+        return (plain + personalised).flatMap { [$0.title, $0.body] }
     }
 }

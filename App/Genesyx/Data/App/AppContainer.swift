@@ -19,11 +19,14 @@ final class AppContainer: ObservableObject {
     let session: SessionRepository
     let partner: PartnerRepository
     let learn: LearnProgress
+    let reachability: Reachability
 
     /// Designated init. Allows an injected store (used by previews/tests for isolation).
-    init(store: LocalStore, backend: GenesyxBackend?) {
+    /// `monitorNetwork: false` keeps tests off the host's real connectivity.
+    init(store: LocalStore, backend: GenesyxBackend?, monitorNetwork: Bool = true) {
         self.store = store
         self.backend = backend
+        self.reachability = Reachability(monitoring: monitorNetwork)
 
         self.cycle = CycleRepository(store: store, backend: backend?.cycle)
         self.dailyLog = DailyLogRepository(store: store, backend: backend?.dailyLog)
@@ -44,6 +47,10 @@ final class AppContainer: ObservableObject {
 
         // Online-first hydration when a backend is present (no-op when local-only).
         if backend != nil {
+            // A reconnect is the other moment the queues can move, and until now the app slept
+            // through it: the only trigger was foregrounding, so a phone that stayed in her hand
+            // through a tunnel or a dead-spot kept its backlog until she next switched apps.
+            reachability.onReconnect = { [weak self] in await self?.drainPending() }
             Task { @MainActor in await self.hydrate() }
         }
     }
@@ -139,10 +146,6 @@ final class AppContainer: ObservableObject {
         // leaves it un-run so the quiz itself can be driven.
         UserDefaults.standard.set(!UserDefaults.standard.bool(forKey: "uiTestOnboarding"),
                                   forKey: "genesyx.onboardingComplete")
-        // Suppress the one-time vaginal-pH notice in seeded tests/screenshots so it can't intercept
-        // the UI. A test that wants to exercise it passes `-uiTestPhNotice YES`.
-        let wantsPhNotice = UserDefaults.standard.bool(forKey: "uiTestPhNotice")
-        UserDefaults.standard.set(!wantsPhNotice, forKey: "ph_vaginal_notice_seen")
         // The wipe above makes every seeded launch a first install, which by design shows no
         // phase-change card. `-uiTestPhaseChange YES` backdates the last phase she was told about
         // to the one before the seeded cycle day (day 9 → follicular), so the card is due.

@@ -167,4 +167,63 @@ final class CalendarContrastTests: XCTestCase {
         return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b)
     }
 }
+
+/// The pregnancy teaser draws a bare icon inside a translucent chip — no label inside the chip, so
+/// the icon is the whole of the content and takes the graphical floor on its own.
+///
+/// Unlike the calendar, the fill here is translucent, so the test has to composite it against what
+/// is actually behind it: the page background for the hero, the card for the feature rows. It reads
+/// the real `tintOnWhite` output rather than re-deriving the blend, so if that function is ever
+/// corrected the numbers here move with it instead of quietly going stale.
+final class PregnancyContrastTests: XCTestCase {
+
+    private let graphicFloor = 3.0
+    private let schemes: [(UIUserInterfaceStyle, String)] = [(.light, "light"), (.dark, "dark")]
+
+    func testTeaserChipIconsClearTheGraphicalFloorInBothSchemes() {
+        let chips: [(fill: Color, behind: Color, what: String)] = [
+            (GenesyxColor.powderPink.tintOnWhite(0.30), GenesyxColor.background, "hero heart"),
+            (GenesyxColor.powderPink.tintOnWhite(0.25), GenesyxColor.card, "feature icon"),
+        ]
+        for (style, scheme) in schemes {
+            for chip in chips {
+                let fill = composite(chip.fill, over: chip.behind, style)
+                let ratio = contrast(rgb(GenesyxColor.pregnancyAccent, style), fill)
+                XCTAssertGreaterThanOrEqual(ratio, graphicFloor, String(
+                    format: "%@ measures %.2f:1 in %@, under the %.1f:1 floor",
+                    chip.what, ratio, scheme, graphicFloor))
+            }
+        }
+    }
+
+    private func composite(_ fg: Color, over bg: Color, _ style: UIUserInterfaceStyle) -> (Double, Double, Double) {
+        let f = rgba(fg, style), b = rgba(bg, style)
+        return (f.3 * f.0 + (1 - f.3) * b.0,
+                f.3 * f.1 + (1 - f.3) * b.1,
+                f.3 * f.2 + (1 - f.3) * b.2)
+    }
+
+    private func rgb(_ c: Color, _ style: UIUserInterfaceStyle) -> (Double, Double, Double) {
+        let v = rgba(c, style); return (v.0, v.1, v.2)
+    }
+
+    private func rgba(_ color: Color, _ style: UIUserInterfaceStyle) -> (Double, Double, Double, Double) {
+        let resolved = UIColor(color).resolvedColor(with: UITraitCollection(userInterfaceStyle: style))
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        resolved.getRed(&r, green: &g, blue: &b, alpha: &a)
+        return (Double(r), Double(g), Double(b), Double(a))
+    }
+
+    private func contrast(_ a: (Double, Double, Double), _ b: (Double, Double, Double)) -> Double {
+        let (la, lb) = (luminance(a), luminance(b))
+        return (max(la, lb) + 0.05) / (min(la, lb) + 0.05)
+    }
+
+    private func luminance(_ c: (Double, Double, Double)) -> Double {
+        func channel(_ v: Double) -> Double {
+            v <= 0.03928 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4)
+        }
+        return 0.2126 * channel(c.0) + 0.7152 * channel(c.1) + 0.0722 * channel(c.2)
+    }
+}
 #endif

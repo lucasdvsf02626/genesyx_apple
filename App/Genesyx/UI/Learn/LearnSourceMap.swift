@@ -15,6 +15,7 @@ enum LearnSourceMap {
         "guide-how-hydration-works": ["nhs-water", "armstrong-2012"],
         "guide-track-ph-in-nutrition": ["vaginal-ph", "statpearls-vaginitis"],
         "guide-cycle-and-phases": ["nhs-periods", "nhs-conception"],
+        "guide-understanding-vaginal-ph": ["vaginal-ph", "statpearls-vaginitis"],
 
         // The twelve-week series. Every piece states external health facts, so every piece is
         // cited — they are withheld by date, not by readiness, and the citation must be in
@@ -30,6 +31,11 @@ enum LearnSourceMap {
         "supporting-sperm-health": ["nhs-infertility", "nhs-preconception"],
         "fertility-supplements-explained": ["nhs-preconception", "nhs-vitamin-b", "nhs-vitamin-d", "nhs-vitamins"],
         "when-to-ask-for-support": ["nhs-infertility", "nhs-conception"],
+        // The piece that says a widely-repeated theory is not supported needs its citation more
+        // than any of the others, not less: "there is no good evidence for this" is itself a claim
+        // about the literature, and a reader who has been told the opposite for years is owed the
+        // study rather than our word for it.
+        "shettles-method": ["wilcox-1995", "nhs-conception"],
     ]
 
     /// Sources for a slug, or nil when the article carries no external health-fact claims.

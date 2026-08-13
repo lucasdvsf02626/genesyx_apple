@@ -114,6 +114,7 @@ final class PhInsightLogicTests: XCTestCase {
         XCTAssertEqual(PhCopy.elevated, "Your recent readings are above the typical healthy range.")
         XCTAssertEqual(PhCopy.elevatedSignpost, "If readings stay above the usual range over several days, a GP or pharmacist can talk it through with you.")
         XCTAssertEqual(PhCopy.disclaimer, "This tracker is for your own record and isn't medical advice. If a reading worries you, or a pattern persists, please speak to a GP, nurse, or pharmacist.")
+        XCTAssertEqual(PhCopy.accuracyCaveat, "For an accurate reading, test away from your period and at least 24 hours after sex. Lubricants, douches, and recent antibiotics can also shift the result.")
         XCTAssertEqual(PhCopy.oneTimeNotice, "This tracker now records vaginal pH. Your earlier readings are kept and marked 'urine (legacy)'. New readings are saved as vaginal pH, on a different scale.")
         XCTAssertEqual(PhCopy.legacyMarker, "urine (legacy)")
         XCTAssertEqual(PhCopy.spineWhyTitle, "Why pH matters")
@@ -129,7 +130,7 @@ final class PhInsightLogicTests: XCTestCase {
 
     func testPhCopyHasNoBannedClinicalOrDietTerms() {
         let banned = ["bv", "thrush", "infection", "candida", "vaginosis", "leafy greens", "whole grains", "mineral water"]
-        let surfaces = [PhCopy.healthy, PhCopy.elevated, PhCopy.elevatedSignpost, PhCopy.disclaimer, PhCopy.oneTimeNotice, PhCopy.legacyMarker,
+        let surfaces = [PhCopy.healthy, PhCopy.elevated, PhCopy.elevatedSignpost, PhCopy.disclaimer, PhCopy.accuracyCaveat, PhCopy.oneTimeNotice, PhCopy.legacyMarker,
                         PhCopy.spineWhyTitle, PhCopy.spineWhyBody, PhCopy.spineMeaningTitle, PhCopy.spineNextTitle, PhCopy.spineNextHealthy, PhCopy.spineSupplementsTitle, PhCopy.spineSupplementsBody]
         for s in surfaces {
             let lower = s.lowercased()

@@ -37,11 +37,6 @@ struct PhTrackerSection: View {
     /// update path unreachable — a reading entered wrongly could not be corrected or removed.
     @State private var editing: PhReading?
 
-    /// One-time vaginal-pH migration notice: shown on the first visit to the pH section (not app
-    /// launch), dismiss sets the flag, never re-fires.
-    @AppStorage("ph_vaginal_notice_seen") private var noticeSeen = false
-    @State private var showNotice = false
-
     var body: some View {
         PhTrackerCard(
             readings: ph.readings,
@@ -57,12 +52,6 @@ struct PhTrackerSection: View {
                     },
                     onDelete: { id in ph.delete(id: id); showSheet = false }
                 )
-            }
-            .onAppear { if !noticeSeen { showNotice = true } }
-            .alert("Vaginal pH tracking", isPresented: $showNotice) {
-                Button("Got it") { noticeSeen = true }
-            } message: {
-                Text(PhCopy.oneTimeNotice)
             }
     }
 }
@@ -118,6 +107,10 @@ private struct PhTrackerCard: View {
                 .font(.caption2).foregroundStyle(GenesyxColor.mutedForeground)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("phCaveat")
+            Text(PhCopy.accuracyCaveat)
+                .font(.caption2).foregroundStyle(GenesyxColor.mutedForeground)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("phAccuracyCaveat")
             // Collapsed on the card so the small print stops crowding the tracker itself. The log
             // sheet keeps it pinned and always visible — that is the surface where she records a
             // reading, and there the disclaimer must never be a tap away.
@@ -162,9 +155,7 @@ private struct PhTrackerCard: View {
     }
 
     private func latestPanel(_ latest: PhReading) -> some View {
-        // Legacy urine readings are never classified into a band — show the neutral marker instead.
-        let isLegacy = latest.measurementType == .urine
-        let color = isLegacy ? GenesyxColor.mutedForeground : Theme.color(for: PhStatus.classify(latest.phValue))
+        let color = Theme.color(for: PhStatus.classify(latest.phValue))
         return HStack(spacing: 14) {
             Image(systemName: "drop.fill").foregroundStyle(color)
                 .frame(width: 48, height: 48).background(color.opacity(0.18))
@@ -177,7 +168,7 @@ private struct PhTrackerCard: View {
                     .font(.system(size: 11.5)).foregroundStyle(GenesyxColor.mutedForeground)
             }
             Spacer()
-            Text(isLegacy ? PhCopy.legacyMarker : PhStatus.classify(latest.phValue).label.uppercased())
+            Text(PhStatus.classify(latest.phValue).label.uppercased())
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(color)
                 .padding(.horizontal, 12).padding(.vertical, 4)
@@ -228,8 +219,7 @@ private struct PhChart: View {
     var body: some View {
         Chart {
             ForEach(Array(readings.enumerated()), id: \.element.id) { index, reading in
-                // Clamp to the 3.5–7.0 axis so legacy urine readings on the old scale stay on-chart
-                // without being classified.
+                // Defensive clamp to the 3.5–7.0 axis so a stray out-of-range value stays on-chart.
                 let y = Swift.min(Swift.max(reading.phValue, PhStatus.min), PhStatus.max)
                 LineMark(x: .value("i", index), y: .value("pH", y))
                     .foregroundStyle(GenesyxColor.primary)
@@ -282,8 +272,8 @@ private struct PhSpine: View {
                 SourcesFooter(sourceIDs: PhSpine.sourceIDs)
             }
 
-            // b + c. Interpretation and next-steps only when there's a current, classifiable reading.
-            if let latest, latest.measurementType != .urine {
+            // b + c. Interpretation and next-steps only when there's a current reading.
+            if let latest {
                 let status = PhStatus.classify(latest.phValue)
                 section(PhCopy.spineMeaningTitle, status == .elevated ? PhCopy.elevated : PhCopy.healthy)
                 section(PhCopy.spineNextTitle, status == .elevated ? PhCopy.elevatedSignpost : PhCopy.spineNextHealthy)
@@ -353,6 +343,10 @@ private struct PhLogSheet: View {
                 VStack(alignment: .leading, spacing: 16) {
                     Text("Track your vaginal pH from 3.8 to 7.0.")
                         .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+                    Text(PhCopy.accuracyCaveat)
+                        .font(.caption2).foregroundStyle(GenesyxColor.mutedForeground)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("phLogAccuracyCaveat")
                     Text(PhCopy.disclaimer)
                         .font(.caption2).foregroundStyle(GenesyxColor.mutedForeground)
                         .fixedSize(horizontal: false, vertical: true)

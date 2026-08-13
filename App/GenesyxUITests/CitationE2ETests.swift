@@ -43,23 +43,6 @@ final class CitationE2ETests: XCTestCase {
         }
     }
 
-    /// The one-time vaginal-pH migration notice fires on the first pH-section visit, and does not
-    /// re-fire after it's dismissed. Opt into it with `-uiTestPhNotice YES` (seeds suppress it otherwise).
-    func testOneTimeVaginalNoticeFiresOnceThenPersists() {
-        let app = XCUIApplication()
-        app.launchArguments += ["-uiTestSeed", "YES", "-uiTestTab", "2", "-uiTestPhNotice", "YES"]
-        app.launch()
-
-        let gotIt = app.alerts.buttons["Got it"]
-        XCTAssertTrue(gotIt.waitForExistence(timeout: 15), "one-time vaginal-pH notice should appear on first pH-section visit")
-        gotIt.tap()
-
-        // Leave the pH section and return — the notice must not re-fire (flag persisted).
-        app.buttons.matching(identifier: "Home").firstMatch.tap()
-        app.buttons.matching(identifier: "pH").firstMatch.tap()
-        XCTAssertFalse(app.alerts.buttons["Got it"].waitForExistence(timeout: 3), "notice must not re-fire after dismissal")
-    }
-
     /// pH tracker: the vaginal-pH caveat is present, and NO leftover dietary-recommendation strings.
     func testPhTrackerCaveatAndNoDietaryAdvice() {
         let app = launch(tab: 2)

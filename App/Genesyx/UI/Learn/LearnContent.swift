@@ -676,13 +676,49 @@ let learnArticles: [LearnArticle] = [
         disclaimerRequired: false
     ),
 
+    LearnArticle(
+        id: "g10",
+        slug: "guide-understanding-vaginal-ph",
+        title: "Understanding your vaginal pH",
+        excerpt: "What vaginal pH is, what a typical healthy range looks like, and how to take a reading you can trust.",
+        body: [
+            .heading("What vaginal pH is"),
+            .paragraph("Vaginal pH is a simple, everyday signal of intimate wellbeing. For most adults it typically sits within a healthy range of about 3.8 to 4.5. It shifts naturally across your cycle, so your own pattern over time tells you more than any single reading."),
+            .heading("How this tracker reads it"),
+            .paragraph("You log each reading from 3.8 to 7.0, to one decimal place. Readings at or below 4.5 are shown as within the typical healthy range; readings above 4.5 are shown as above it. That's all it does — it records your trend, it doesn't interpret it for you."),
+            .heading("Why timing matters"),
+            .paragraph("A few everyday things can temporarily shift a reading and make it less representative of your usual pattern."),
+            .bulletList([
+                "During or just after your period",
+                "Within 24 hours of sex",
+                "After using lubricants or douches",
+                "During or soon after a course of antibiotics",
+            ]),
+            .paragraph("For the most reliable picture, take your reading away from these times. If one reading looks unusual, log a few more over the following days and watch the trend rather than the one number."),
+            .heading("Tracking, not diagnosis"),
+            .paragraph("This is a wellness tracker to help you notice your own patterns — it isn't medical advice and doesn't diagnose anything. If your readings stay above the typical range over several days and you also notice symptoms that concern you, a GP, nurse, or pharmacist can talk it through with you."),
+        ],
+        category: .guides,
+        tags: ["ph"],
+        readingTime: "3 min read",
+        heroImage: nil,
+        featured: false,
+        relatedArticleIds: [],
+        cta: ArticleCta(type: .openPh, label: "Open the pH tracker")!,
+        disclaimerRequired: true
+    ),
+
     // MARK: - The twelve-week series (shipped now, revealed weekly)
     //
-    // Week 7 of the client's plan — the Shettles method — is deliberately absent. Its subject
-    // cannot be written without the claim language `LearnContentTests.bannedPhrases` exists to
-    // keep out of this app, and relaxing that guard is a client and medical-reviewer decision.
-    // The remaining eleven run on consecutive Sundays so there is no silent week; 2026-11-08 is
-    // held free for it if it is ever cleared.
+    // Twelve consecutive Sundays, 2026-08-23 to 2026-11-08, so there is no silent week.
+    //
+    // Week 12 is the Shettles piece, held back through the whole of build 18 on the assumption
+    // that its subject could not be written without the claim language `bannedPhrases` exists to
+    // keep out. That assumption was wrong. The guard bans *claims* — "choose the sex", "gender
+    // sway" — not the topic, and it was written deliberately narrow so that debunking prose does
+    // not trip it. An honest piece that says the theory is not supported by controlled evidence
+    // clears every guard untouched, and is the only version of it that is legal to publish here
+    // anyway: the CAP Code requires substantiation for the claim, and there is none to give.
 
     LearnArticle(
         id: "w1",
@@ -1033,5 +1069,43 @@ let learnArticles: [LearnArticle] = [
         cta: ArticleCta(type: .openInsights, label: "Open Insights")!,
         disclaimerRequired: true,
         publishedAt: CalendarDate(2026, 11, 1)
+    ),
+
+    LearnArticle(
+        id: "w12",
+        slug: "shettles-method",
+        title: "The Shettles method, and what the evidence shows",
+        excerpt: "A timing theory from the 1960s that did not survive being tested properly — and the quiet cost of following it anyway.",
+        body: [
+            .paragraph("If you have read anything at all about trying to conceive, you have probably met this one. It is a timing theory published in the 1960s by an American doctor, Landrum Shettles, and it has outlived almost everything else from that era of fertility advice. It gets asked about constantly, so it is worth setting out what it claims and what happened when people went and checked."),
+            .heading("What the theory claims"),
+            .paragraph("It rests on a proposed difference between the two kinds of sperm — those carrying an X chromosome and those carrying a Y. Shettles argued that Y-carrying sperm swim faster but die sooner, while X-carrying sperm are slower and hardier. From that he built a set of rules about exactly when to have sex relative to ovulation, plus some further instructions about positions and acidity."),
+            .paragraph("It is a persuasive theory because it comes with a mechanism you can picture. That is not the same thing as it being true, and the proposed difference between the two kinds of sperm has never actually been demonstrated."),
+            .heading("What happened when it was tested"),
+            .paragraph("The most careful test followed 221 women trying to conceive, measuring hormones in daily urine samples so that ovulation could be pinned down properly rather than guessed from a calendar. It found a large, clear effect of timing on whether a pregnancy started at all — and no effect whatsoever on the sex of the baby."),
+            .paragraph("That is the shape of the wider literature too. Where an association turns up in one dataset it fails to reappear in the next, and the direction is not even consistent between them. No controlled evidence supports timing intercourse to a particular day in order to influence this."),
+            .heading("The part that actually matters"),
+            .paragraph("Following the method is not cost-free. Its rules push you toward a narrow, precisely-timed schedule: abstain now, aim at this one day, avoid that stretch. Narrow timing is the single worst strategy for conceiving, because ovulation is the most movable part of the cycle and a prediction two days out means the month is gone."),
+            .paragraph("So the trade is a real, measurable chance of pregnancy given up for an effect that has not been shown to exist. That is the honest arithmetic of it, and it is the reason this is in the Learn library rather than left unsaid."),
+            .heading("If you have been following it"),
+            .bulletList([
+                "Nothing has gone wrong. It is a mainstream idea repeated in good faith by a great many people, and believing it says nothing about you.",
+                "Sex every two to three days across the cycle gives you the best chance of conceiving and requires no calculation at all.",
+                "The odds are close to even either way, and always were. Nothing you can schedule has been shown to move them.",
+            ]),
+            .paragraph("Genesyx does not offer anything of this kind, and nothing you log here is used to attempt it. What the app can do is show you where your fertile window actually falls, which is the question underneath all of this."),
+            .callout("Any method that makes your timing narrower is working against the thing you came here for. The advice with evidence behind it is duller and much easier to follow: regular sex across the whole window, and no arithmetic."),
+        ],
+        category: .tracking,
+        tags: ["timing", "ovulation", "evidence", "cycle"],
+        readingTime: "4 min read",
+        heroImage: nil,
+        featured: false,
+        relatedArticleIds: ["w6", "w1", "w4"],
+        cta: ArticleCta(type: .openArticle,
+                        label: "Read: timing sex when trying to conceive",
+                        targetSlug: "timing-sex-when-ttc")!,
+        disclaimerRequired: true,
+        publishedAt: CalendarDate(2026, 11, 8)
     ),
 ]

@@ -5,12 +5,16 @@ import XCTest
 
 final class ConsistencyInsightLogicTests: XCTestCase {
 
+    /// Hydration and logging are separate arguments on purpose: this card reads only the logging
+    /// pair, and a fixture that set both at once could not tell the two apart.
     private func state(
-        daily: Int = 0, weekly: Int = 0, thisWeek: Int = 0, best: Int = 0,
+        logging: Int = 0, weekly: Int = 0, thisWeek: Int = 0, bestLogging: Int = 0,
+        hydration: Int = 0, bestHydration: Int = 0,
         dots: [Bool] = Array(repeating: false, count: 7)
     ) -> StreakState {
-        StreakState(dailyHydration: daily, weeklyStreak: weekly,
-                    daysLoggedThisWeek: thisWeek, bestDailyStreak: best,
+        StreakState(dailyHydration: hydration, dailyLogging: logging, weeklyStreak: weekly,
+                    daysLoggedThisWeek: thisWeek, bestDailyStreak: bestHydration,
+                    bestLoggingStreak: bestLogging,
                     milestones: [], lapsedCelebrations: [], weekDots: dots)
     }
 
@@ -23,7 +27,7 @@ final class ConsistencyInsightLogicTests: XCTestCase {
     }
 
     func testInsightNamesWeeklyStreakWhenPresent() {
-        let m = ConsistencyInsightLogic.model(from: state(daily: 3, weekly: 2, thisWeek: 4))
+        let m = ConsistencyInsightLogic.model(from: state(logging: 3, weekly: 2, thisWeek: 4))
         XCTAssertEqual(m.insight, "You've logged 4 of 7 days this week — 2 steady weeks.")
     }
 
@@ -33,8 +37,28 @@ final class ConsistencyInsightLogicTests: XCTestCase {
     }
 
     func testNoWeeklyStreakFallbackNeverGuilts() {
-        let m = ConsistencyInsightLogic.model(from: state(daily: 2, thisWeek: 2))
+        let m = ConsistencyInsightLogic.model(from: state(logging: 2, thisWeek: 2))
         XCTAssertTrue(m.insight.contains("steady counts more than perfect"))
+    }
+
+    /// The card's tiles are labelled "Daily streak" and "Best daily streak" and sit directly above a
+    /// row counting logged days, so both must be the logging numbers.
+    func testDailyTilesReadTheLoggingStreakNotHydration() {
+        let m = ConsistencyInsightLogic.model(
+            from: state(logging: 12, weekly: 1, thisWeek: 7, bestLogging: 20))
+        XCTAssertEqual(m.dailyStreak, 12)
+        XCTAssertEqual(m.bestDailyStreak, 20)
+        XCTAssertFalse(m.isEmpty)
+    }
+
+    /// `compute` can never produce this state — every watered day is also a logged day — which is
+    /// precisely what makes it a clean detector: it fails, and only fails, if the card is wired back
+    /// onto the hydration pair.
+    func testHydrationNumbersNeverReachTheCard() {
+        let m = ConsistencyInsightLogic.model(from: state(hydration: 9, bestHydration: 30))
+        XCTAssertEqual(m.dailyStreak, 0)
+        XCTAssertEqual(m.bestDailyStreak, 0)
+        XCTAssertTrue(m.isEmpty, "nothing logged is an empty card, whatever the water says")
     }
 
     // Hydration delta (§5.2)

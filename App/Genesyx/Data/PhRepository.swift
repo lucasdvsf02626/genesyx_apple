@@ -13,11 +13,19 @@ import GenesyxCore
 @MainActor
 final class PhRepository: ObservableObject {
 
-    /// What the UI sees: tombstones hidden, oldest first.
+    /// What the UI sees: tombstones hidden, oldest first, and legacy urine-scale readings dropped.
+    /// The tracker records vaginal pH now; the old urine readings are a different scale, so the app
+    /// no longer surfaces them anywhere (Track row + calendar, the pH tab, Home). They stay in
+    /// `records` — persisted and synced, and still excluded from insights by `PhInsightLogic` — so
+    /// nothing is deleted; they are only hidden from view.
     @Published private(set) var readings: [PhReading] = []
 
     private var records: [PhRecord] = [] {
-        didSet { readings = PhSync.visible(records) }
+        didSet { readings = Self.displayReadings(records) }
+    }
+
+    private static func displayReadings(_ records: [PhRecord]) -> [PhReading] {
+        PhSync.visible(records).filter { $0.measurementType != .urine }
     }
 
     private let store: LocalStore
@@ -29,7 +37,7 @@ final class PhRepository: ObservableObject {
         self.backend = backend
         if let stored = store.load([PhReadingDTO].self, forKey: key) {
             records = stored.map(\.record)
-            readings = PhSync.visible(records)
+            readings = Self.displayReadings(records)
         }
     }
 

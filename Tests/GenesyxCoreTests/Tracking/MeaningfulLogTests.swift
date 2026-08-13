@@ -45,4 +45,25 @@ final class MeaningfulLogTests: XCTestCase {
                        "coordinate with Android and the shared vectors before changing this")
         XCTAssertTrue(DailyLog(mood: .good, sexualActivity: true).hasAnyEntry)
     }
+
+    /// ⚠️ The same contract guard, for the same reason, over the food groups added with meal
+    /// logging. Ticking off what she ate plainly *is* a meaningful log — and here that costs
+    /// something visible, because a day she logs only her meals will not extend her streak. That is
+    /// the price of the two clients agreeing, and it is paid until Android carries `food_groups`
+    /// and the shared vectors move with it.
+    ///
+    /// The notification layer already folds food groups in separately
+    /// (`NotificationService.snapshot`), so she is not nudged to log on a day she logged. That is
+    /// safe precisely because notifications are iOS-only and mirror nothing.
+    func testStreakContractIgnoresFoodGroups() {
+        XCTAssertFalse(DailyLog(foodGroups: ["vegetables", "protein"]).isMeaningfulLog,
+                       "coordinate with Android and the shared vectors before changing this")
+        XCTAssertFalse(DailyLog(foodGroups: ["vegetables"]).hasAnyEntry,
+                       "coordinate with Android and the shared vectors before changing this")
+    }
+
+    func testFoodGroupsNeverSuppressADayThatCountsForAnotherReason() {
+        XCTAssertTrue(DailyLog(waterMl: 250, foodGroups: ["fruit"]).isMeaningfulLog)
+        XCTAssertTrue(DailyLog(mood: .good, foodGroups: ["fruit"]).hasAnyEntry)
+    }
 }

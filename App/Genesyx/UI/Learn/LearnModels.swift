@@ -8,6 +8,10 @@ enum FeatureFlags {
     static let adminClients = false
     static let partnerInvites = true
     static let pushNotifications = true
+    /// Off: supplement reminders fire at the hour she set, with the plain body. On: the hour may
+    /// shift by up to two hours toward when she actually logs, and a personalised sentence is
+    /// appended. Never changes WHICH supplements are reminded — see `SupplementPersonalisation`.
+    static let personalisedSupplementTiming = false
 }
 
 // MARK: - Learn content model (parity with Android LearnContent.kt)

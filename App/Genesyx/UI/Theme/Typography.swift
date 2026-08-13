@@ -1,9 +1,14 @@
 import SwiftUI
 
 /// Genesyx type scale, ported from the Android `ui/theme/Type.kt`.
-/// The shipping app intentionally uses Apple's system font so every declared font exists in the
-/// bundle and Dynamic Type rendering remains reliable. If brand fonts are added later, bundle and
-/// register them first, then change this extension in one place.
+///
+/// These are fixed point sizes. `Font.system(size:)` takes no part in Dynamic Type, so Larger Text
+/// in iOS Settings changes nothing here, nor at the ~150 other places that size their own text.
+/// Supporting it means `@ScaledMetric` behind these nine names, and the two screens that lay
+/// themselves out with flexible spacers — the splash and the quiz — learning to scroll, which today
+/// they have no need to do.
+///
+/// If brand fonts are added later, bundle and register them first, then change this in one place.
 extension Font {
     static let gxDisplayLarge = Font.system(size: 32, weight: .semibold) // splash CTA / nutrition title
     static let gxTitle = Font.system(size: 26, weight: .semibold)        // screen title / quiz question

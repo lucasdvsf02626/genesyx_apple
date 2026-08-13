@@ -11,7 +11,7 @@ extension AppContainer {
     @MainActor
     static func previewSeeded(signedIn: Bool = true) -> AppContainer {
         let store = LocalStore(defaults: UserDefaults(suiteName: "preview.\(UUID().uuidString)")!)
-        let container = AppContainer(store: store, backend: nil)
+        let container = AppContainer(store: store, backend: nil, monitorNetwork: false)
         container.cycle.upsert(CycleSettings(lastPeriodDate: CalendarDate.today().minusDays(8), cycleLength: 28, periodLength: 5))
         container.dailyLog.setWater(750)
         container.dailyLog.upsert(
@@ -46,6 +46,7 @@ extension View {
             .environmentObject(container.session)
             .environmentObject(container.partner)
             .environmentObject(container.learn)
+            .environmentObject(container.reachability)
             .tint(GenesyxColor.primary)
     }
 }

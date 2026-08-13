@@ -366,6 +366,23 @@ final class GenesyxUITests: XCTestCase {
         XCTAssertEqual(learn.label, "Learn", "a first install has no new articles to announce")
     }
 
+    /// Only the phase-change card and the focus foods read the phase. The supplement plan and the
+    /// articles were gated on it too, so skipping cycle setup took the plan — and every
+    /// per-supplement reminder, which has no other entry point — out of reach entirely.
+    func testNutritionKeepsWhatDoesNotNeedACycle() {
+        let app = XCUIApplication()
+        app.launchArguments += ["-uiTestSeed", "YES", "-uiTestNoCycle", "YES", "-uiTestTab", "3"]
+        app.launch()
+
+        XCTAssertTrue(app.buttons["Review Plan"].waitForExistence(timeout: 10),
+                      "the supplement plan is the only route to per-supplement reminders")
+        XCTAssertTrue(app.buttons["See all articles"].exists, "nutrition articles need no phase")
+
+        // And nothing claims a phase it cannot know.
+        XCTAssertFalse(app.staticTexts["Your focus foods this phase"].exists,
+                       "focus foods are per-phase and must stay gated")
+    }
+
     // MARK: - The phase-change card
 
     /// Seeded launches wipe defaults, so every one of them is a first install — the card must stay
@@ -413,6 +430,57 @@ final class GenesyxUITests: XCTestCase {
         app.buttons["Home"].tap()
         app.buttons["Nutrition"].tap()
         XCTAssertFalse(card.waitForExistence(timeout: 3), "and it must not return on the next visit")
+    }
+
+    // MARK: - Recipe cards
+
+    /// The whole path a reader takes: see a card, open it, read the method, log what she cooked.
+    ///
+    /// Worth an end-to-end test because each half fails silently in a different way. The row is a
+    /// horizontal scroller pulled back out of the page's own 20pt gutter with a negative pad, which
+    /// compiles identically whether the first card lands on the gutter or off the screen edge. And
+    /// the log button calls `logFoodGroups`, whose whole reason for existing — being additive, not a
+    /// toggle — is invisible from the view: wire it to `toggleFoodGroup` per group instead and this
+    /// screen looks exactly the same until it quietly *un*-ticks a group she logged by hand.
+    ///
+    /// Phase-agnostic on purpose. The seed puts her mid-follicular today, but a recipe exists for
+    /// every phase and this test should not start failing on the day the seed date moves.
+    func testARecipeCardOpensAndLogsWhatSheCooked() {
+        let app = launchSeeded(tab: 3)
+
+        XCTAssertTrue(app.staticTexts["Something to cook"].waitForExistence(timeout: 10),
+                      "every phase ships recipes, so the section should be on the screen")
+
+        let cards = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH 'nutrition.recipe.'"))
+        XCTAssertGreaterThan(cards.count, 0, "the recipe row rendered no reachable cards")
+
+        let loggedChips = NSPredicate(format: "label ENDSWITH ', logged'")
+        let loggedBefore = app.buttons.matching(loggedChips).count
+
+        cards.element(boundBy: 0).tap()
+
+        // Uppercased because both headings render through `Eyebrow`, which uppercases what it is
+        // given — this asserts the string on the screen, not the one in `RecipeCopy`.
+        XCTAssertTrue(app.staticTexts["YOU'LL NEED"].waitForExistence(timeout: 5),
+                      "the sheet should list the ingredients")
+        XCTAssertTrue(app.staticTexts["METHOD"].exists, "and the method to cook them")
+
+        let logButton = app.buttons["recipe.logGroups"]
+        XCTAssertTrue(logButton.exists, "she should be able to record that she cooked it")
+        logButton.tap()
+
+        // Confirms in place. Dismissing here would read as the sheet closing on her, and she may
+        // well still be cooking from it.
+        wait(for: [expectation(for: NSPredicate(format: "label CONTAINS 'Added to today'"),
+                               evaluatedWith: logButton)], timeout: 5)
+
+        app.buttons["Done"].tap()
+
+        // And the write actually reached the day, not just the button's own state.
+        XCTAssertTrue(app.staticTexts["Something to cook"].waitForExistence(timeout: 5))
+        XCTAssertGreaterThan(app.buttons.matching(loggedChips).count, loggedBefore,
+                             "cooking a recipe should tick its food groups on the log above")
     }
 
     func testHomeShowsLogToday() {
@@ -546,11 +614,6 @@ final class GenesyxUITests: XCTestCase {
         // The pH tab, not Track: Track reaches the pH section only through a detail sheet, whereas
         // the tab is the section.
         let app = launchSeeded(tab: 2)
-
-        // The pH section raises a one-time notice, which persists once dismissed — so on a simulator
-        // that has been here before there is nothing to dismiss and this falls straight through.
-        let gotIt = app.buttons["Got it"]
-        if gotIt.waitForExistence(timeout: 3) { gotIt.tap() }
 
         // Scroll on isHittable, not on exists: Track renders its whole scroll eagerly, so the button
         // is in the tree from launch and an exists-guard scrolls nowhere and then taps nothing.

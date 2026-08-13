@@ -194,14 +194,27 @@ private struct SupabasePartner: PartnerBackend {
         return response.sent
     }
 
+    /// The inviter withdrawing her own invite. No longer a direct UPDATE: `authenticated` lost
+    /// UPDATE on `partner_invites` in `20260812_partner_invites_write_lockdown.sql`, because a
+    /// row-scoped RLS policy governs which ROWS may be written and says nothing about which VALUES
+    /// — so the owner could write `status` back to 'pending' and undo a recipient's decline. Every
+    /// status transition is now a service-role function: accept, decline, revoke.
     func revoke(id: String) async throws {
         _ = try requireUID(auth)
-        try await client.from("partner_invites").update(["status": "revoked"]).eq("id", value: id).execute()
+        try await client.functions.invoke("revoke_partner_invite", options: .init(body: ["id": id]))
     }
 
     // Privileged (bidirectional link / service role on web) → Supabase Edge Functions.
     func accept(code: String) async throws {
         try await client.functions.invoke("accept_partner_invite", options: .init(body: ["code": code]))
+    }
+
+    /// Also an Edge Function, though it writes only a status. `partner_invites_owner` is
+    /// `using (inviter_id = auth.uid())`, so the recipient cannot see — let alone update — the
+    /// invite addressed to her. Giving her a policy would open a read on the whole row; the
+    /// function gives her the one verb and no read.
+    func decline(code: String) async throws {
+        try await client.functions.invoke("decline_partner_invite", options: .init(body: ["code": code]))
     }
 
     func unlink() async throws {

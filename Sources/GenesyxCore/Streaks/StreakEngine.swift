@@ -45,10 +45,10 @@ public protocol StreakLoggable {
 
 /// Conform the existing DailyLog model to the engine's input protocol (§3).
 extension DailyLog: StreakLoggable {
-    /// ⚠️ `sexualActivity` is deliberately absent, for the same reason it is absent from
-    /// `TrackingEngine.isMeaningfulLog` — see the note there. Widening either one alone gives iOS
-    /// and Android different streaks for identical data. The notification layer folds it in
-    /// separately (`NotificationService.snapshot`), which is safe because notifications are
+    /// ⚠️ `sexualActivity` and `foodGroups` are deliberately absent, for the same reason they are
+    /// absent from `TrackingEngine.isMeaningfulLog` — see the note there. Widening either one alone
+    /// gives iOS and Android different streaks for identical data. The notification layer folds
+    /// them in separately (`NotificationService.snapshot`), which is safe because notifications are
     /// iOS-only and mirror nothing.
     public var hasAnyEntry: Bool {
         waterMl > 0 || mood != nil || energy != nil || !symptoms.isEmpty
@@ -73,6 +73,14 @@ public struct StreakState: Equatable {
     /// when today has no water YET (morning grace: the streak isn't zeroed at 8am
     /// before she's had a chance to log; a genuinely missed day still breaks it).
     public let dailyHydration: Int
+    /// Consecutive days with ANY entry — water, mood, energy, a symptom, sleep, a supplement, a
+    /// note, or a pH reading — under the same morning grace.
+    ///
+    /// This is what "daily streak" means everywhere it is shown to her. It was hydration-only
+    /// before, which produced a card that contradicted itself: someone who logged her mood and
+    /// symptoms every day for a fortnight read "Daily streak 0" directly above "You've logged 7 of
+    /// 7 days this week". Hydration still has its own streak (`dailyHydration`) and its own flame.
+    public let dailyLogging: Int
     /// Consecutive COMPLETE weeks (≥4 of 7 days with any activity, Mon–Sun, per the canonical
     /// `TrackingEngine` rule), ending with the current week (if already complete) or the previous
     /// week (a current week still in progress never breaks the streak).
@@ -81,6 +89,9 @@ public struct StreakState: Equatable {
     public let daysLoggedThisWeek: Int
     /// All-time best daily hydration streak found in the provided history.
     public let bestDailyStreak: Int
+    /// All-time best *logging* streak — the companion to `dailyLogging`, so a "best" line can sit
+    /// beside a current-streak tile without the two measuring different things.
+    public let bestLoggingStreak: Int
     /// Milestones newly crossed and not yet celebrated — fire these, then persist
     /// their flags.
     public let milestones: [Milestone]
@@ -91,19 +102,25 @@ public struct StreakState: Equatable {
     /// Consistency card's 7-dot row.
     public let weekDots: [Bool]
 
+    /// The two logging fields default to 0 so the several fixtures that only care about hydration
+    /// and weeks stay short. `compute` always supplies them.
     public init(
         dailyHydration: Int,
+        dailyLogging: Int = 0,
         weeklyStreak: Int,
         daysLoggedThisWeek: Int,
         bestDailyStreak: Int,
+        bestLoggingStreak: Int = 0,
         milestones: [Milestone],
         lapsedCelebrations: Set<String>,
         weekDots: [Bool]
     ) {
         self.dailyHydration = dailyHydration
+        self.dailyLogging = dailyLogging
         self.weeklyStreak = weeklyStreak
         self.daysLoggedThisWeek = daysLoggedThisWeek
         self.bestDailyStreak = bestDailyStreak
+        self.bestLoggingStreak = bestLoggingStreak
         self.milestones = milestones
         self.lapsedCelebrations = lapsedCelebrations
         self.weekDots = weekDots
@@ -128,6 +145,10 @@ public enum StreakEngine {
 
         let daily = TrackingEngine.streak(days: hydrationDays, today: today)
         let best = TrackingEngine.bestStreak(days: hydrationDays)
+        // Same day-set as the weekly streak and the week dots, so every number on the Consistency
+        // card is answering the same question about the same days.
+        let logging = TrackingEngine.streak(days: activityDays, today: today)
+        let bestLogging = TrackingEngine.bestStreak(days: activityDays)
         let weekly = TrackingEngine.weeklyStreak(
             days: activityDays, today: today, minDays: TrackingEngine.defaultWeeklyMinDays)
 
@@ -152,9 +173,11 @@ public enum StreakEngine {
 
         return StreakState(
             dailyHydration: daily,
+            dailyLogging: logging,
             weeklyStreak: weekly,
             daysLoggedThisWeek: thisWeekCount,
             bestDailyStreak: best,
+            bestLoggingStreak: bestLogging,
             milestones: newlyCrossed,
             lapsedCelebrations: lapsed,
             weekDots: dots

@@ -30,9 +30,11 @@ final class StreakEngineTests: XCTestCase {
     func testEmptyHistoryIsAllZeros() {
         let s = compute(logs: [:], today: monday)
         XCTAssertEqual(s.dailyHydration, 0)
+        XCTAssertEqual(s.dailyLogging, 0)
         XCTAssertEqual(s.weeklyStreak, 0)
         XCTAssertEqual(s.daysLoggedThisWeek, 0)
         XCTAssertEqual(s.bestDailyStreak, 0)
+        XCTAssertEqual(s.bestLoggingStreak, 0)
         XCTAssertTrue(s.milestones.isEmpty)
         XCTAssertEqual(s.weekDots, Array(repeating: false, count: 7))
     }
@@ -70,6 +72,50 @@ final class StreakEngineTests: XCTestCase {
         let s = compute(logs: logs, today: monday)
         XCTAssertEqual(s.bestDailyStreak, 10)
         XCTAssertEqual(s.dailyHydration, 1)
+    }
+
+    // MARK: daily logging streak
+
+    /// The distinction the two streaks exist for. Someone who logs mood and symptoms daily and
+    /// never records a glass of water has a real streak; hydration's is legitimately 0. Reading one
+    /// number as the other is what put "Daily streak 0" above "You've logged 7 of 7 days".
+    func testMoodOnlyDaysBuildTheLoggingStreakButNotTheHydrationOne() {
+        var logs: [CalendarDate: FakeLog] = [:]
+        for i in 0..<5 { logs[monday.addingDays(-i)] = .moodOnly() }
+        let s = compute(logs: logs, today: monday)
+        XCTAssertEqual(s.dailyLogging, 5)
+        XCTAssertEqual(s.dailyHydration, 0)
+    }
+
+    /// A pH reading is the whole of some days' logging — the weekly streak has always counted it,
+    /// and the daily one has to agree or the same card contradicts itself again.
+    func testPhOnlyDaysExtendTheLoggingStreak() {
+        let ph = Set((0..<4).map { monday.addingDays(-$0) })
+        XCTAssertEqual(compute(logs: [:], ph: ph, today: monday).dailyLogging, 4)
+    }
+
+    func testLoggingStreakGetsTheSameMorningGrace() {
+        var logs: [CalendarDate: FakeLog] = [:]
+        for i in 1...3 { logs[monday.addingDays(-i)] = .moodOnly() }
+        XCTAssertEqual(compute(logs: logs, today: monday).dailyLogging, 3)
+    }
+
+    func testFullyMissedDayBreaksTheLoggingStreak() {
+        var logs: [CalendarDate: FakeLog] = [:]
+        logs[monday.addingDays(-2)] = .moodOnly()   // gap at -1 and today
+        XCTAssertEqual(compute(logs: logs, today: monday).dailyLogging, 0)
+    }
+
+    /// Hydration's best and logging's best are different numbers over the same history, so a card
+    /// showing one beside the other's current streak would compare unlike things.
+    func testBestLoggingStreakIsCountedSeparatelyFromBestHydration() {
+        var logs: [CalendarDate: FakeLog] = [:]
+        for i in 30..<40 { logs[monday.addingDays(-i)] = .moodOnly() }   // 10 logged, 0 watered
+        for i in 50..<53 { logs[monday.addingDays(-i)] = .water() }      // 3 watered
+        logs[monday] = .moodOnly()
+        let s = compute(logs: logs, today: monday)
+        XCTAssertEqual(s.bestLoggingStreak, 10)
+        XCTAssertEqual(s.bestDailyStreak, 3)
     }
 
     // MARK: weekly streak — canonical 4-of-7 boundary (TrackingEngine.defaultWeeklyMinDays)

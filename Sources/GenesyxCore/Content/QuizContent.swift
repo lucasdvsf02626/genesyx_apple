@@ -84,10 +84,20 @@ public enum QuizContent {
             question: "When it comes to your baby's sex, what feels right for you?",
             helper: "This is just for you — we keep it gentle and private.",
             options: [
-                QuizOption("hope", "I have a hope in mind"),
-                QuizOption("either", "I'm happy either way"),
-                QuizOption("private", "I'd rather not say"),
+                QuizOption("girl", "Girl"),
+                QuizOption("boy", "Boy"),
+                QuizOption("either", "No preference"),
+                QuizOption("private", "Prefer not to say"),
             ]
+            // `either` and `private` keep their ids on purpose: these are storage keys for
+            // `quiz_answers.answers`, and the two labels changed wording without changing meaning,
+            // so reusing them carries every stored answer across intact.
+            //
+            // `hope` ("I have a hope in mind") is retired rather than remapped. It cannot be
+            // migrated because it never recorded WHICH sex she hoped for — that is precisely the
+            // distinction this change introduces. Stored `hope` values stay readable and simply
+            // render unselected in Tracking Preferences until she picks again.
+            //
             // No "Did you know?" fact: the previous claim that diet/pH can influence a baby's sex
             // is unsupported and contradicts the Learn content. Removed for Android parity.
         ),

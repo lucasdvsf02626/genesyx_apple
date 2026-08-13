@@ -214,7 +214,8 @@ RootView
 - **Tab bar hidden** on splash/onboarding/auth/invite and full-screen sheets (these
   live outside `MainTabView`, so it's automatic).
 - **Deep link:** `genesyx://invite/{code}` (URL scheme) **and** a Universal Link
-  (`...lovable.app/invite/:code`) → `InviteAcceptView` (sign-in required; email must match).
+  (`https://genesyx.co.uk/invite/:code`) → `InviteAcceptView` (sign-in required; email must match).
+  Both are host-checked — no other domain redeems.
 
 | Tab | SF Symbol |
 |---|---|

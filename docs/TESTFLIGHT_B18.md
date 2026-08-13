@@ -8,21 +8,23 @@ per-supplement reminder times are all new surface.
 
 ## Pre-flight — do these before uploading
 
-All three are Supabase, and Supabase leaves no trace in this repo, so nothing here can check them for
-you. The first two fail **silently** — the app keeps working, the data just never lands. The third
+All four are Supabase, and Supabase leaves no trace in this repo, so nothing here can check them for
+you. Three of them fail **silently** — the app keeps working, the data just never lands. The other
 is a decision rather than a check.
 
 | # | Check | Why it matters | Where |
 |---|---|---|---|
-| 1 | `daily_logs.sexual_activity` column exists | Intimacy logging (T10–T13) is a headline feature of this build. The decoders tolerate the column being absent, so if it was never applied she can log intimacy all week, see the calendar dots, and sync nothing. No error, no warning. | SQL Editor: `select column_name from information_schema.columns where table_name = 'daily_logs' and column_name = 'sexual_activity';` — expect one row |
+| 1 | ✅ **Verified present 12 Aug 2026** — `daily_logs.sexual_activity` column exists | Intimacy logging (T10–T13) is a headline feature of this build. The decoders tolerate the column being absent, so if it was never applied she can log intimacy all week, see the calendar dots, and sync nothing. No error, no warning. | SQL Editor: `select column_name from information_schema.columns where table_name = 'daily_logs' and column_name = 'sexual_activity';` — expect one row |
 | 2 | `join_waitlist` RPC + `waitlist_emails` table exist | The onboarding waitlist screen calls this RPC under the anon key. Neither object was ever in this repo's migrations — the schema existed only in whatever was typed into the dashboard, if it was typed at all. | Apply `supabase/migrations/20260811_waitlist_emails.sql` (idempotent — a no-op if they already exist), then run its step-5 verify block |
-| 3 | What `profiles.theme` says for existing users | T20 made light the *local* default (`PreferencesRepository.swift:101`), but `apply(remote)` at `:170` overwrites it from the server on sign-in. Anyone whose row already says `system` gets `system` back, and T20 looks like it never shipped for exactly the people who have been here longest. | SQL Editor: `select theme, count(*) from public.profiles group by theme;` |
+| 3 | ✅ **APPLIED 13 Aug 2026.** Was verified missing on 12 Aug. `food_groups` now reads `ARRAY / NO / '{}'::text[]` — identical to `symptoms` and `supplements`, which is what the migration's own verify block demanded. `daily_logs` RLS re-checked after: still the single `daily_logs_owner` policy, `ALL`, `(user_id = auth.uid())`. `daily_logs.food_groups` column | Meal logging (T26) is new in this build and fails in exactly the same silent way as row 1: `DailyLogRow.foodGroups` is optional on decode, so without the column she ticks off six groups a day, sees them persist locally, and syncs none of it. A new phone shows an empty history and nothing anywhere says why. | Apply `supabase/migrations/20260812_daily_logs_food_groups.sql` (idempotent; one `add column if not exists`, no policy changes). The type caveat in its verify block is already cleared — `symptoms` and `supplements` were confirmed `text[] NOT NULL DEFAULT '{}'::text[]` on the live project, which is exactly what the migration writes |
+| 4 | ✅ **DEPLOYED 13 Aug 2026** — all six, each carrying the updated `_shared/client.ts`. **The deploy turned `verify_jwt` ON** (no `config.toml`, so the CLI default of `true` applies); re-probed straight after and all six now answer an anonymous POST with the gateway's `{"code":"UNAUTHORIZED_NO_AUTH_HEADER"}` instead of their own `{"error":"Not authenticated"}`. See `HANDOFF.md` §4i. **All six Edge Functions** | Until this ran, the 13 Aug backend batch was in this repo and in none of production: account deletion reported success over data it had failed to delete, invites addressed to a deleted user kept her email address, and an expired token came back as a 500. All three are now live. Nothing here changes the client, so the order against the app upload did not matter. | `supabase functions deploy accept_partner_invite decline_partner_invite revoke_partner_invite send_partner_invite unlink_partner delete_account` — or one at a time; the list is in `supabase/functions/README.md`. `decline_partner_invite` additionally needs `20260812_partner_invite_hardening.sql` applied first, which it is |
+| 5 | What `profiles.theme` says for existing users | T20 made light the *local* default (`PreferencesRepository.swift:101`), but `apply(remote)` at `:170` overwrites it from the server on sign-in. Anyone whose row already says `system` gets `system` back, and T20 looks like it never shipped for exactly the people who have been here longest. | SQL Editor: `select theme, count(*) from public.profiles group by theme;` |
 
 **Do NOT run** `alter table public.profiles drop column quiz_answers` as part of this release. It is
 task 23, and it is gated on task 18 (whether a live web client reads that column) — not on this
 build. See `HANDOFF.md` for why the old "blocked by build 18" note was wrong.
 
-Pre-flight 3 is a decision, not just a check. The server cannot tell "she chose system" from "she
+Pre-flight 5 is a decision, not just a check. The server cannot tell "she chose system" from "she
 was defaulted to system before T20", so there is no safe automatic answer — only a count, and a call
 to make once you can see it.
 
@@ -67,7 +69,17 @@ This build works through the whole change list. Please focus on:
     now take you to the tab.
 13. **pH tracker** — the safety note is now a panel you can expand rather than a permanent block of
     text, and the old urine-test wording is gone throughout.
-14. **General** — sign in, complete cycle setup, and sanity-check Home, Insights and Learn.
+14. **Logging what you ate** — Nutrition now has "What you ate today" where the "coming soon" card
+    used to be. Tap a group when you have eaten something from it; "What counts as what?" expands if
+    you are unsure which is which. Please check it survives closing and reopening the app, and — the
+    one we most want testing — tick a couple of groups, then open Track → Log, add a note and save.
+    Your groups should still be there afterwards.
+15. **Recipes** — under your focus foods, "Something to cook" holds two recipes for the phase you are
+    in. Swipe the row sideways, open one, and check the ingredients and steps read clearly. At the
+    bottom is a button that logs the food groups the recipe covers: tap it, close the recipe, and the
+    groups should now be ticked in "What you ate today" further down the same screen. Tapping it
+    twice must not un-tick anything.
+16. **General** — sign in, complete cycle setup, and sanity-check Home, Insights and Learn.
 
 Please report anything that looks wrong with a screenshot and the steps to reproduce. Thank you!
 
@@ -90,20 +102,31 @@ Please report anything that looks wrong with a screenshot and the steps to repro
 - **Hydration display preferences** (unit and glass size) — device-local, not synced to the account.
   A new phone starts at millilitres with a 250 ml glass. Tracked as task 25; it is one coordinated
   change with Android, because storage is always `waterMl` and only the description differs.
-- **Meal suggestions / food preferences** — placeholder "coming soon" only.
-- **Articles behind a medical sign-off** (Shettles, and the girl/boy framing) — held pending written
-  client and medical-reviewer approval to relax the banned-phrase guards. Calendar time, not
-  engineering time.
+- **Food photography** — the recipe cards ship, but on a coloured gradient rather than a photograph.
+  The asset catalogue holds no food imagery at all and stock placeholder art is an App Store
+  rejection risk, so the cards were built with a seam for real photography to drop into later.
+- **Nutrient counting** — meal logging records food *groups*, not calories, macros or micronutrients.
+  Counting needs a food database, which is the deferred barcode/photo work.
+- **Food groups on Android, and in your streak** — the column is iOS-only for now, and a day where
+  meals are the only thing you log will not extend the daily streak. Both platforms compute streaks
+  from one shared rule, and it moves when Android ships the same field.
+- **The girl/boy quiz framing** — still held pending written client and medical-reviewer approval to
+  remove `"boy or girl"` from `QuizContentTests`. Calendar time, not engineering time.
+  *(The Shettles article is no longer on this list: it shipped 12 Aug as week 12 of the series,
+  revealed 2026-11-08, and needed no guard relaxed. See G1 in `docs/CHANGE_LIST_PLAN.md`.)*
 
 ## Build facts
 
 - Version **1.2.0 (18)**.
-- Contains build 17 plus the client change list: T1–T6, T8, T10–T18, T20, T21, T23, T25, T28,
+- Contains build 17 plus the client change list: T1–T6, T8, T10–T18, T20, T21, T23–T27, T28,
   T29a/T29c, T30, the waitlist wiring, and the privacy/security batch (quiz answers moved off the
   partner-readable `profiles` row; a user can no longer declare themselves someone else's partner).
-- **Green baseline:** 179 domain · 190 app · 44 UI (43 + 1 skipped on a simulator that has already
-  answered the notification prompt). Do not pass `-quiet` — it has returned exit 0 with no summary
-  and hidden a real result.
+- **Green baseline:** 236 domain · 233 app · 46 UI (45 + 1 skipped on a simulator that has already
+  answered the notification prompt). Verified 12–13 Aug 2026. Do not pass `-quiet` — it has returned
+  exit 0 with no summary and hidden a real result.
+- **A UI test that reports thousands of seconds is a sleeping Mac, not a failure.** An overnight run
+  had `SleepSmokeUITests` "take" 33,189 seconds and fail; the same test passes in 13 on a machine
+  that is awake. Check the elapsed time before chasing the assertion.
 
 ---
 
@@ -118,8 +141,10 @@ This list lived only in conversation until now, which is why it is written down 
 | P0-3 | Version bump 1.1.1 (17) → 1.2.0 (18) + this document | ✅ `project.yml` bumped, `xcodegen generate` run — pbxproj delta was exactly the 4 version lines plus the 8 for two new Swift files, no collateral churn |
 | P0-4 | `drainPending()` — stop the drain on a missing session | ✅ See below |
 | P0-5 | Correct the docs that were wrong | ✅ `CHANGE_LIST_PLAN.md` test baseline; `HANDOFF.md` task 23's fictional dependency on build 18 |
-| P0-6 | Full green regression | ⬜ |
-| P0-7 | Verify the live `theme` default | ⬜ Needs the dashboard — pre-flight 3 |
+| P0-6 | Full green regression | ✅ 13 Aug, after the backend batch and the sign-in fix. **236 domain · 233 app · 46 UI** (45 + 1 skipped), 0 failures, both exit codes 0 — exactly the recorded baseline, so nothing this batch touched moved it. UI suite took 505s, which is normal for it |
+| P0-7 | Verify the live `theme` default | ⬜ Needs the dashboard — pre-flight 5 |
+| P0-8 | Backend batch: `delete_account` retention gaps, `unlink_partner` half-clear, auth status codes | ✅ Written and typechecked (`deno check`, all six clean). **Still needs deploying** — pre-flight 4. See `HANDOFF.md` §4i |
+| P0-9 | Google sign-in: the `-5` swallow that could hide the failure entirely | ✅ `AuthView.swift` domain-checks `GIDSignInError` now. Do the console read *after* this, not before — see `to do list.md` §1 |
 
 ### What P0-4 was
 

@@ -139,12 +139,21 @@ protocol PartnerBackend {
     func emailInvite(code: String) async throws -> Bool
     func revoke(id: String) async throws
     func accept(code: String) async throws
+    /// The recipient refusing. Distinct from `revoke`, which is the inviter withdrawing — that one
+    /// takes an `id` because the inviter can see her own rows; this one takes the `code`, because
+    /// the recipient cannot see the invite at all and the code is the only handle she holds.
+    func decline(code: String) async throws
     func unlink() async throws
 }
 
 extension PartnerBackend {
     /// Local/mock backends don't send mail. Defaulted so no existing conformer has to change.
     func emailInvite(code: String) async throws -> Bool { false }
+
+    /// Defaulted to a THROW, not a no-op. Declining is a claim about a row on the server; a backend
+    /// that cannot make that call must fail loudly rather than let the UI report a refusal that
+    /// never reached the database and leave the invite quietly redeemable.
+    func decline(code: String) async throws { throw RemoteError.notConfigured }
 }
 
 /// Aggregate entry point the app resolves at startup.

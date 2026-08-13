@@ -27,7 +27,15 @@ final class QuizContentTests: XCTestCase {
         let gender = QuizContent.questions.first { $0.id == "gender" }
         XCTAssertNotNil(gender, "Gender question must exist")
         XCTAssertNil(gender?.fact, "Gender question must not carry a 'Did you know?' claim")
-        XCTAssertEqual(gender?.options.count, 3, "Gender question has three options (Android parity)")
+        XCTAssertEqual(gender?.options.count, 4, "Gender question has four options — ANDROID MUST MATCH")
+    }
+
+    /// `either` and `private` predate the Girl/Boy change and must keep their ids: they are storage
+    /// keys for `quiz_answers.answers`, so renaming either one orphans every answer already given.
+    /// `hope` is deliberately absent — retired, not remapped, because it never recorded which sex.
+    func testGenderOptionIdsPreserveStoredAnswers() {
+        let gender = QuizContent.questions.first { $0.id == "gender" }
+        XCTAssertEqual(gender?.options.map { $0.id }, ["girl", "boy", "either", "private"])
     }
 
     /// These ids are storage keys, not just array order: her answers persist to `quiz_answers.answers`

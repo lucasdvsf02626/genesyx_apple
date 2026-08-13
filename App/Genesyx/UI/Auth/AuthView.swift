@@ -134,7 +134,11 @@ struct AuthView: View {
                 onSignedIn?(); dismiss()
             } catch {
                 print("[GoogleSignIn] SDK sign-in FAILED: \(error)")
-                if (error as NSError).code == -5 { return }   // GIDSignInError.canceled — she backed out
+                // Domain-checked, like the Apple path above. This was `(error as NSError).code == -5`,
+                // which matches -5 in ANY error domain — and -5 is a common value, so an unrelated
+                // failure was silently treated as "she backed out": no error shown, no state change,
+                // nothing but a tap that did nothing.
+                if (error as? GIDSignInError)?.code == .canceled { return }
                 self.error = "Couldn't complete Google sign-in. Please try again."
             }
         }

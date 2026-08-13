@@ -574,10 +574,7 @@ struct TrackSignalSummary: Equatable {
         return TrackSignalSummary(
             title: "Vaginal pH",
             icon: "testtube.2",
-            value: latest.map { r in
-                let base = String(format: "Latest %.1f", r.phValue)
-                return r.measurementType == .urine ? "\(base) · \(PhCopy.legacyMarker)" : base
-            } ?? emptyValue,
+            value: latest.map { String(format: "Latest %.1f", $0.phValue) } ?? emptyValue,
             sparkValues: trailingSeven(today: today).map { date in
                 guard let value = valuesByDate[date] else { return 0 }
                 let scaled = min(max((value - PhStatus.min) / (PhStatus.max - PhStatus.min), 0), 1)
@@ -868,6 +865,7 @@ private struct PhDetailView: View {
 /// Nutrition, Insights, streaks, and notification planning without a second view-owned total.
 private struct HydrationDetailSheet: View {
     @EnvironmentObject private var dailyLog: DailyLogRepository
+    @EnvironmentObject private var reachability: Reachability
     @Environment(\.dismiss) private var dismiss
 
     private let today = CalendarDate.today()
@@ -903,7 +901,7 @@ private struct HydrationDetailSheet: View {
                         ProgressView(value: progress).tint(GenesyxColor.electricBlue)
                         HStack(spacing: 6) {
                             syncIcon(syncState)
-                            Text(syncState.label)
+                            Text(syncState.label(online: reachability.isOnline))
                         }
                         .font(.gxBodySmall.weight(.medium))
                         .foregroundStyle(syncColor(syncState))
@@ -1108,18 +1106,21 @@ private struct HydrationDetailSheet: View {
         }
     }
 
+    /// `icloud.slash` is reserved for actually being offline. An unsynced row on a working
+    /// connection gets the hollow upload cloud — headed to the server, not cut off from it.
     private func syncIcon(_ state: DailyLogSyncState) -> Image {
         switch state {
         case .saved: return Image(systemName: "checkmark.circle.fill")
         case .synced: return Image(systemName: "icloud.and.arrow.up.fill")
-        case .willSyncWhenOnline: return Image(systemName: "icloud.slash")
+        case .pendingSync:
+            return Image(systemName: reachability.isOnline ? "icloud.and.arrow.up" : "icloud.slash")
         }
     }
 
     private func syncColor(_ state: DailyLogSyncState) -> Color {
         switch state {
         case .saved, .synced: return GenesyxColor.primary
-        case .willSyncWhenOnline: return GenesyxColor.mutedForeground
+        case .pendingSync: return GenesyxColor.mutedForeground
         }
     }
 
@@ -1153,6 +1154,7 @@ struct HydrationHistoryRow: Equatable {
 
 private struct SleepDetailView: View {
     @EnvironmentObject private var dailyLog: DailyLogRepository
+    @EnvironmentObject private var reachability: Reachability
     @Environment(\.dismiss) private var dismiss
 
     private let today = CalendarDate.today()
@@ -1236,7 +1238,7 @@ private struct SleepDetailView: View {
             }
             HStack(spacing: 6) {
                 syncIcon(syncState)
-                Text(syncState.label)
+                Text(syncState.label(online: reachability.isOnline))
             }
             .font(.gxBodySmall.weight(.medium))
             .foregroundStyle(syncColor(syncState))
@@ -1273,14 +1275,15 @@ private struct SleepDetailView: View {
         switch state {
         case .saved: return Image(systemName: "checkmark.circle.fill")
         case .synced: return Image(systemName: "icloud.and.arrow.up.fill")
-        case .willSyncWhenOnline: return Image(systemName: "icloud.slash")
+        case .pendingSync:
+            return Image(systemName: reachability.isOnline ? "icloud.and.arrow.up" : "icloud.slash")
         }
     }
 
     private func syncColor(_ state: DailyLogSyncState) -> Color {
         switch state {
         case .saved, .synced: return GenesyxColor.primary
-        case .willSyncWhenOnline: return GenesyxColor.mutedForeground
+        case .pendingSync: return GenesyxColor.mutedForeground
         }
     }
 }

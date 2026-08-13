@@ -10,14 +10,49 @@ final class DeepLinkTests: XCTestCase {
 
     func testUniversalLink() {
         XCTAssertEqual(
-            DeepLink.inviteCode(from: URL(string: "https://genesis-cycle-guide.lovable.app/invite/CODE1234")!),
+            DeepLink.inviteCode(from: URL(string: "https://genesyx.co.uk/invite/CODE1234")!),
             "CODE1234"
         )
+    }
+
+    /// Host case is not normalised by Foundation, but Universal Link matching IS case-insensitive,
+    /// so iOS can hand us this and it must still redeem.
+    func testOurDomainIsMatchedCaseInsensitively() {
+        XCTAssertEqual(
+            DeepLink.inviteCode(from: URL(string: "https://GENESYX.CO.UK/invite/CODE1234")!),
+            "CODE1234"
+        )
+    }
+
+    /// This used to return "ATTACKER": the host was unchecked, so any https URL with an `/invite/`
+    /// path parsed. It was there to keep the retired `…lovable.app` prototype's links working. That
+    /// domain is dead, so the only honoured host is ours.
+    func testAForeignHttpsHostIsNotAnInvite() {
+        XCTAssertNil(DeepLink.inviteCode(from: URL(string: "https://evil.example.com/invite/ATTACKER")!))
+        XCTAssertNil(DeepLink.inviteCode(from: URL(string: "https://genesis-cycle-guide.lovable.app/invite/CODE1234")!),
+                     "the retired prototype domain must no longer redeem")
     }
 
     func testNonInviteReturnsNil() {
         XCTAssertNil(DeepLink.inviteCode(from: URL(string: "genesyx://home")!))
         XCTAssertNil(DeepLink.inviteCode(from: URL(string: "https://example.com/about")!))
+    }
+
+    /// `genesyx://` is openable by any app or web page on the device. A URL on our scheme whose host
+    /// is not `invite` used to fail the host check and then get parsed by the Universal-Link branch
+    /// anyway, so an arbitrary page could raise the invite sheet with a code it chose. The server
+    /// still refused the code, so the ceiling was a spoofed sheet — but only a link we issued should
+    /// produce one, and we only ever issue `genesyx://invite/{code}`.
+    func testOurSchemeWithAForeignHostIsNotAnInvite() {
+        XCTAssertNil(DeepLink.inviteCode(from: URL(string: "genesyx://evil/invite/ATTACKER")!))
+        XCTAssertNil(DeepLink.inviteCode(from: URL(string: "genesyx://open/x/invite/ATTACKER")!))
+    }
+
+    /// The shape we actually issue must still parse — the guard above rejects by host, not by luck.
+    func testOurOwnSchemeLinkStillParses() throws {
+        let url = try XCTUnwrap(DeepLink.schemeInviteURL(code: "REALCODE"))
+        XCTAssertEqual(url.host, "invite")
+        XCTAssertEqual(DeepLink.inviteCode(from: url), "REALCODE")
     }
 
     /// The Universal Link on our own domain — the one that survives a fresh install.

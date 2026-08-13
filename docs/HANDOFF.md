@@ -4,9 +4,9 @@
 > before this could be saved). Companion to `CHANGE_LIST_PLAN.md`, which tracks the client's
 > change list task-by-task. This file tracks **what is in flight right now**.
 
-**Branch:** `main` · **HEAD:** `74c17bb` (plus the docs commit carrying this line) · **Version:** 1.2.0 (18)
-· **Test baseline:** 180 domain + 202 app + 45 UI (44 + 1 skipped on a simulator that has already
-answered the notification prompt) — all three verified green 2026-08-12
+**Branch:** `main` · **HEAD:** `b1ab67b` (plus the uncommitted T24 working tree, §4e) · **Version:** 1.2.0 (18)
+· **Test baseline:** 180 domain + 202 app + 46 UI (45 + 1 skipped on a simulator that has already
+answered the notification prompt) — all three verified green 2026-08-12, the UI suite in full
 
 ```bash
 swift test && xcodebuild test -project Genesyx.xcodeproj -scheme Genesyx \
@@ -60,13 +60,15 @@ all. The new migration is idempotent, so applying it is safe either way.
 | # | Task | Blocked by | Where |
 |---|---|---|---|
 | 18 | Confirm whether a live web client writes `profiles` | — | Supabase Edge Logs → `PATCH /rest/v1/profiles`, group by user agent |
-| 21 | CHANGELOG entry for the privacy/security batch **+ T23** | — | Covers `9d08d82` → HEAD |
+| ~~21~~ | ~~CHANGELOG entry for the privacy/security batch **+ T23**~~ | — | ✅ Done — the 1.2.0 (18) section carries both (`CHANGELOG.md` §Privacy & security, and the glass-size entry). Row was stale |
 | 25 | Sync hydration display prefs (unit **and** glass size) to `profiles` | — | New — see below. One change with Android, not half of one here |
 | 24 | Android: drop `partner_id` from the DTO write path | — | Android repo — harmless today only because the caller passes `null` |
 | — | Verify `daily_logs.sexual_activity` applied | — | Supabase SQL Editor — **pre-flight 1** in `TESTFLIGHT_B18.md` |
 | — | Apply `20260811_waitlist_emails.sql` | — | Supabase SQL Editor — **pre-flight 2**. Idempotent |
+| — | Apply `20260812_daily_logs_food_groups.sql` | — | Supabase SQL Editor — **pre-flight 3**. Verified MISSING on the live project. Meal logging fails silently without it: she ticks food groups all week, watches them persist locally, and syncs none of it |
+| ✅ | ~~Deploy all six Edge Functions~~ | — | **pre-flight 4 — done 13 Aug.** The deploy also turned `verify_jwt` on; see §4i |
 | 19 | Supabase: revoke UPDATE on `created_at` / `updated_at` | 18 | One-liner once web is cleared; triggers unaffected |
-| 22 | Ship build 18 to TestFlight | pre-flight 1–3 | Version bumped to 1.2.0 (18) and notes written — `TESTFLIGHT_B18.md`. What remains is the three pre-flight checks, then archive and upload |
+| 22 | Ship build 18 to TestFlight | pre-flight 1–5 | Version bumped to 1.2.0 (18) and notes written — `TESTFLIGHT_B18.md`. **This said "1–3" while the table grew to five**; two of the additions are load-bearing, so do not stop at three. Then archive and upload |
 | 23 | Supabase: drop `profiles.quiz_answers` | 18 | ~~Blocked on build 18 being live~~ — it never was. See below |
 
 **Critical path:** 18 → 23, and 22 on its own. Everything else runs in parallel.
@@ -252,13 +254,207 @@ Verified on screen in both schemes; the one combination the seed cannot produce 
 ovulation cell, since ovulation is in the future and future days cannot be logged. That pair is
 proven numerically only (3.34–4.29:1).
 
-## 5. Still gated on the client (unchanged)
+## 4e. T24 — the Nutrition text pass (2026-08-12)
+
+The last gate-free item on the client change list. The copy ask was as small as the plan predicted —
+the disclosures the client wanted hidden were already behind toggles — so the read turned up
+something else instead: **the screen was gated on a cycle it mostly did not use.**
+
+`supplementPlanCard` and `articlesSection` were both inside `if let phase` while reading no phase
+data at all. Cycle setup is skippable, so skipping it removed the supplement plan, and with it every
+per-supplement reminder from T30 — `SupplementPlanSheet` has no other entry point in the app. This
+is the same defect as the no-cycle calendar (§4c, Sprint 2 row 20), and the hydration card two cards
+below already had the right instinct: `contextLine(phase: nil)` degrades to a prompt rather than
+vanishing. The phase-change card and focus foods stay gated; they genuinely need a phase.
+
+The **"Coming soon" meal card ranked second**, above the supplement plan and hydration — and *first*
+with no cycle, so a skipped setup opened Nutrition on a placeholder. Moved below both, above
+articles.
+
+**One duplicated line cut.** `HydrationInsightLogic.insightLine` appends "`N`-day streak going" at a
+streak ≥3, which the card already showed in the pill top-right — the same number twice, next to a
+third consistency line in `weeklyStreakLabel`. The insight sentence renders in Track's hydration
+detail (`TrackView.swift:1048`), which is where this card's "Track ›" button and tap gesture already
+go, so it moved one tap away rather than disappearing. `weeklyStreakLabel` **stayed** — Nutrition is
+its only render site, so cutting it would have deleted a shipped line, not thinned a repeated one.
+
+`testNutritionKeepsWhatDoesNotNeedACycle` (+1 UI) pins the ungating, and was confirmed to fail
+against the old gating before being kept.
+
+## 4f. Items 5 and 7 of the client's own running order (2026-08-12)
+
+Two findings, one of them a correction to something this repo asserted about itself.
+
+**Item 7 — the notification architecture does not need building; it exists.** The ask was for "a real
+architecture of notification". It is already three clean layers: `NotificationPlanner` (pure, 465
+lines, zero system dependencies, 54 tests), `NotificationService` (the only thing that touches
+`UNUserNotificationCenter`), and observable preferences that make a toggle in Profile replan without
+anyone wiring a message. Four invariants are enforced at plan time rather than checked afterwards —
+no filler, one a day, never guilt, dormancy after 14 days.
+
+A survey pass flagged two "gaps" that are neither. Supplement reminders sit outside the weekly budget
+and the one-a-day rule, and milestones fire outside both as well — both are deliberate and both say
+so at `NotificationService.swift:411` and `:381`. An alarm she set herself should ring; a celebration
+should not wait for a budget. **Do not "fix" these.**
+
+Where the 7/10/30-day challenge programme plugs in, when it is specified: a `Challenge` model, a
+field on `NotificationSnapshot`, and a `challenge()` slot in the planner competing for the same
+`weeklyBudget = 4` as pH, insights, track and learn. Nothing structural has to move.
+
+**Item 5 — the text is not the problem; the type scale is.** Screens were measured before being
+edited: three prose strings over 80 characters in Insights, one in Track, two in Home, none in Log.
+The text-heavy screens the client remembers were largely thinned already. One genuine duplicate went:
+the intro standfirst named cycle awareness, nutrition and insights immediately above three cards that
+name the same three things with icons — and the splash had said it one screen earlier.
+
+The real finding is underneath. **The app has no Dynamic Type support at all.** All nine names in
+`Typography.swift` are `Font.system(size:)`, which is a fixed point size and takes no part in Dynamic
+Type; so are ~150 further call sites that size their own text; and `dynamicTypeSize`, `@ScaledMetric`
+and `relativeTo:` appear exactly zero times in the app target. Larger Text in iOS Settings changes
+nothing in Genesyx. The file's own doc comment claimed the opposite — "Dynamic Type rendering remains
+reliable" — and has been corrected.
+
+This was found the hard way, and the detour is worth recording. A fix went in first for the splash
+and the quiz, the only two screens that distribute themselves with flexible `Spacer()`s and so cannot
+scroll when their content outgrows the screen. It was **reverted**: a UI test driving the quiz at
+`UICTContentSizeCategoryAccessibilityXXXL` passed identically with and without it, on an iPhone 17 Pro
+and on a created iPhone SE (3rd gen). It passed because nothing grew. The overflow it guarded against
+cannot happen while type is fixed, so the guard was speculation.
+
+Scope, if the client wants it: the 239 `.font(.gx*)` sites are cheap because they funnel through nine
+constants, but `@ScaledMetric` is a view modifier rather than a `Font`, so those nine constants have
+to become a modifier and every call site changes shape. The ~150 inline sizes are individual. And the
+splash and the quiz then genuinely do need to scroll — that revert comes back. Estimate 1–2 days plus
+a visual pass, and it is invisible at default settings by construction.
+
+## 4g. T26 — meal logging, and the bug it uncovered (2026-08-12)
+
+The Nutrition screen has told her what to eat this phase since the first build and never let her say
+she had. Six food-group chips close that loop, in the place the "Coming soon" card used to sit.
+
+**Groups rather than nutrients is the compliance position, not a scoping compromise.** The client
+asked for "food-group *or* nutrient tracking". Nutrients need a food database — the deferred barcode
+work — and turn every line on the card into a claim wanting substantiation under CAP Code 3.7. Naming
+a category and listing what falls in it is a definition, so the card carries no citation, no
+disclaimer and no medical sign-off, while the focus-foods card *directly above it* has all three.
+The six groups are the NHS Eatwell Guide's five with fruit and vegetables split apart, because a day
+with fruit and no vegetables is exactly the day worth being able to record.
+
+`testFoodLogCopyMakesNoHealthClaim` is what holds that position over time, and it was written because
+the realistic failure here is not a banned phrase — nobody will type "alkaline diet" into a food log.
+It is one warm sentence added next year, "protein supports egg quality", moving the card into the
+category that needs a reviewer with every other guard still green. **Proven by mutation:** that exact
+sentence was planted, the pre-existing banned-phrase guard passed it (12 tests, 0 failures), and only
+the new guard failed — twice, on `supports` and on `fertility`.
+
+**⚠️ A day of only meals does not extend her streak, and that is deliberate.** `isMeaningfulLog` and
+`hasAnyEntry` are the cross-platform contract driven by `tracking_test_vectors.json`; widening them
+on iOS alone gives the two clients different streak numbers for identical data, with nothing anywhere
+to report the divergence. This one costs something visible, and is paid until Android ships
+`food_groups` and the shared vectors move in the same commit. `testStreakContractIgnoresFoodGroups`
+fails if someone widens it unilaterally — also mutation-proven. `NotificationService.snapshot` folds
+food groups in *separately* (iOS-only, mirrors nothing), so she is never nudged to log on a day she
+logged.
+
+**The bug found on the way is the more valuable half.** `LogView.save` rebuilt a whole fresh
+`DailyLog` from its own `@State` and wrote it over the day — silently resetting every field the sheet
+does not display. That was harmless for as long as the sheet was the only writer. The moment food
+groups became loggable from Nutrition, saving a note would have erased what she ticked off, with no
+error and no undo. It is now a read-modify-write on the stored day, which holds for every field added
+after this one and not just this one. `testLoggingOneSurfaceDoesNotEraseTheOther` pins the repository
+half.
+
+**Outstanding:** `supabase/migrations/20260812_daily_logs_food_groups.sql` is **not applied**. Checked
+against the live project 12 Aug — `food_groups` is absent, and `symptoms`/`supplements` are
+`text[] NOT NULL DEFAULT '{}'::text[]`, so the migration's "STOP if these are jsonb" caveat is
+cleared and it can go in as written. Until it does, the app works end to end and syncs this one field
+into nothing, silently. Build-18 pre-flight row 3.
+
+## 4h. T27 — recipes, and why they need no reviewer (2026-08-12)
+
+Eight recipes, two per phase, in a horizontal row directly beneath the focus foods. Opening one gives
+ingredients, a numbered method, and a button that logs the food groups it covers into the card
+further down the same screen. The client asked for imagery and meals instead of ingredient names;
+this is the meals half.
+
+**The compliance argument is the whole design, so do not undo it by accident.** The focus-foods card
+above carries a citation, a disclaimer and a medical reviewer because it makes claims about bodies.
+The recipes carry none of the three because they make no claim at all — each one cooks a focus food
+the reviewed content *already* recommends for that phase, and then says how. `Recipe.usesFocusFood`
+is a foreign key, not a caption: `testEveryRecipeNamesAFocusFoodThatExistsInItsOwnPhase` fails unless
+it matches a `PhaseFood.name` in the same phase byte for byte. Mutation-proven by pointing the
+ovulatory salad at the period food "Iron-rich foods" — the failure names the reviewed list it was
+checked against. `testRecipeCopyMakesNoHealthClaim` is the other half: the day a recipe starts saying
+*why* it helps, it has begun making a new claim and needs everything `phaseFoods` has.
+
+**No photography, deliberately.** The catalogue holds Learn heroes and brand art and nothing edible.
+Shipping stock food photos as placeholder art is the Guideline 2.1 risk documented in
+`docs/FIX_REPORT_2026-07-12_data_honesty.md`, so each card renders on the phase accent and
+`Recipe.imageName` is a nil seam. `testNoRecipeClaimsAnImageTheAppDoesNotHave` asserts that and gets
+deleted in the same commit as real assets.
+
+**`logFoodGroups` is additive on purpose** — see the note on it in `DailyLogRepository`. Wiring the
+button to `toggleFoodGroup` per group compiles, looks identical, and silently *un*-ticks groups she
+logged by hand. `testARecipeCardOpensAndLogsWhatSheCooked` walks the whole path in the simulator and
+was mutation-proven by making the sheet's callback a no-op: it fails on the chip count, not on
+anything cosmetic.
+
+## 4i. The backend batch — four defects that all reported success (2026-08-13)
+
+One shape, four places: a call whose result was discarded, so the function returned `{ok:true}` for
+work it had not done. None of them can be seen from the client, because the client is being told
+they worked.
+
+**`delete_account` could delete the auth user and leave the data.** Every statement discarded its
+result. A table that refused to delete was stepped over, the auth user went anyway, the app got
+`{ok:true}` — and the rows now belong to nobody, so nobody can retry. Guideline 5.1.1(v). Each
+delete is checked now and a failure returns 500 with the auth user intact, which is what keeps the
+account deletable. The auth user deliberately goes last: it is the handle everything else hangs off.
+Worth knowing: `deleteAccount()` in `SupabaseBackend.swift:39` calls `signOut()` *after* the invoke,
+so a 500 now correctly leaves her signed in and able to try again.
+
+**Invites addressed to her outlived her.** Only `inviter_id` was cleaned. `invitee_email` is free
+text with no FK — it has to be, an invite can go to someone with no account — so nothing cascaded
+it, and `partner_invites_owner` is `using (inviter_id = auth.uid())`, so after deletion nobody could
+see the row either. Matched case-insensitively now, but note the shape of it: `ilike` *narrows*, an
+exact comparison *decides*. `_` and `%` are LIKE wildcards and both are legal in an address, so the
+pattern over-matches — `a_b@x.com` also matches `axb@x.com` — and deleting on it alone would take a
+stranger's pending invite. Verified with a runtime check on the filter, not by reading it.
+
+**`unlink_partner` could leave him reading her profile.** Both updates fired, both results dropped;
+a failure on the second returned `{ok:true}` over a half-cleared link. `profiles_select` is
+`using (id = auth.uid() or id = public.current_partner_id())`, so *his* `partner_id` is what grants
+him *her* row. Her UI would then show no partner and never offer the unlink again. His row is
+cleared first now, so any residue lands on the side that is harmless and retryable.
+
+**`verify_jwt` was OFF on all six, and two functions were written as though it were on.** Probed
+2026-08-12 — every one answered an anonymous POST from its own catch block. `send_partner_invite` and
+`revoke_partner_invite` mapped the auth throw to 500 "unhandled" on that false premise; the other
+four had the mirror bug, a blanket 401 that reported a malformed body or a database outage as an
+auth failure and sent the app to a sign-in screen that could not fix it. `requireUser` now throws a
+`NotAuthenticated` type and nothing else does, so each catch tests for it. **Mirror this in any new
+function** — `supabase/functions/README.md` now carries the rule and the reason.
+
+**Deployed 2026-08-13, and the deploy turned `verify_jwt` ON.** There is no `supabase/config.toml`
+here, so `functions deploy` takes the CLI default of `true`. That was a real choice, not an
+accident: suppressing it needs `--no-verify-jwt`, and leaving the gateway open when every one of
+these functions requires a signed-in user anyway had nothing to recommend it. Re-probed immediately
+after — all six now return the gateway's `{"code":"UNAUTHORIZED_NO_AUTH_HEADER"}` rather than their
+own `{"error":"Not authenticated"}`, which is the only way to tell the two layers apart from
+outside.
+
+This changes nothing about the code. The `NotAuthenticated` split was written to be correct either
+way, and `requireUser` stays in every function — the gateway proves a JWT is well-formed, it does
+not hand you a user, and one `--no-verify-jwt` on a future deploy removes it silently.
+
+## 5. Still gated on the client — G1 alone
 
 | Gate | Needs | Blocks |
 |---|---|---|
-| G1 | Written client + medical-reviewer sign-off to relax banned-phrase guards | T7, T29b (Shettles, Girl/Boy) |
+| G1 | Written client + medical-reviewer sign-off to remove `"boy or girl"` from `QuizContentTests` | T7 (Girl/Boy quiz option) only |
+| ~~G1 (Shettles half)~~ | ~~Sign-off to relax the Learn banned-phrase guards~~ — resolved 12 Aug: no relaxation was needed. The list bans claims, not the subject, and is drawn deliberately narrow so debunking prose passes. Shipped as week 12, revealed 2026-11-08, cited to Wilcox 1995. T29b shipped. | — |
 | ~~G2~~ | ~~pH tab placement~~ — resolved 11 Aug: 7 tabs, Insights stays. The SE objection was based on the 320pt SE 1, which iOS 16 drops; 375pt leaves ~53pt a tab. T1 + T2 shipped. | — |
-| G3 | Build number + screenshot for the "offline symbol" — no such code path exists | T9 |
+| ~~G3~~ | ~~Build number + screenshot for the "offline symbol"~~ — resolved 11 Aug, and the client was right. The "no such code path" reading searched for `NWPathMonitor`/`Reachability`; the badge is driven by the owed-days set in `DailyLogRepository.syncState(on:)`, which was not `@Published`. Fixed in the Phase 2 reliability batch. T9 shipped. | — |
 | ~~G4~~ | ~~Original egg artwork files~~ — never actually blocked; the files had been in the catalog since 10 Jul. T21 shipped. | — |
 
 AI compresses engineering days, not approval days. G1 is calendar time.

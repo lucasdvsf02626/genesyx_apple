@@ -55,6 +55,14 @@ public struct DailyLog: Hashable, Sendable {
     /// screen anyone holding the phone can read.
     public var sexualActivity: Bool
 
+    /// The food groups she recorded eating, as `FoodGroup.rawValue` tokens.
+    ///
+    /// `Set<String>` rather than `Set<FoodGroup>` for the same reason `symptoms` and `supplements`
+    /// are: it stores as a plain `text[]` column, and a token written by a build that knows a group
+    /// this one does not survives the round trip instead of failing the whole row's decode and
+    /// taking the day's mood, sleep and water down with it.
+    public var foodGroups: Set<String>
+
     public init(
         mood: Mood? = nil,
         energy: EnergyLevel? = nil,
@@ -63,7 +71,8 @@ public struct DailyLog: Hashable, Sendable {
         supplements: Set<String> = [],
         notes: String? = nil,
         waterMl: Int = 0,
-        sexualActivity: Bool = false
+        sexualActivity: Bool = false,
+        foodGroups: Set<String> = []
     ) {
         self.mood = mood
         self.energy = energy
@@ -73,5 +82,6 @@ public struct DailyLog: Hashable, Sendable {
         self.notes = notes
         self.waterMl = waterMl
         self.sexualActivity = sexualActivity
+        self.foodGroups = foodGroups
     }
 }

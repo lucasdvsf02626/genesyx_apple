@@ -57,8 +57,16 @@ reintroduce that exact territory. Raise this directly with the client.
 
 ## 1. Gate 0 — decisions before any code
 
-- [ ] ⚠️ **G1 — Shettles + Girl/Boy sign-off.** Written client + medical-reviewer approval to relax
-      the banned-phrase guards. *Blocks T7, T29b, all Shettles copy.*
+- [x] ✅ **G1 — Shettles.** Resolved 12 Aug 2026, and the premise was wrong. The gate assumed the
+      guards would have to be relaxed; they did not, and were not. `bannedPhrases` bans *claims* —
+      "choose the sex", "gender sway", "alkaline diet" — and its own docstring says the list is drawn
+      deliberately narrow so that debunking prose does not trip it. An honest piece stating the theory
+      is unsupported clears every guard untouched, and is also the only version publishable in the UK
+      (CAP Code 3.7 wants substantiation for the efficacy claim, and there is none to give).
+      Shipped as `shettles-method`, week 12, revealed 2026-11-08, cited to Wilcox 1995.
+      **Still open: the Girl/Boy quiz option (T7)**, which is a different question — that one really
+      does need `"boy or girl"` removed from `QuizContentTests`, and that is still a client +
+      medical-reviewer decision. Unblocked T29b only.
 - [x] ✅ **G2 — pH tab placement.** Resolved 11 Aug 2026: **7 tabs**, Insights stays. The SE worry did
       not survive measurement — iOS 16 drops the 320pt SE 1, so the narrowest supported device is
       375pt, giving ~53pt a tab against a ~48pt widest label ("Nutrition"). Verified on an
@@ -240,15 +248,88 @@ T1 inherits G2's block. Do not ship T1 alone.
       **Android parity note:** 250/240 were documented as shared constants. A custom size on iOS
       alone means the two clients describe identical water as different glass counts. Display-only —
       no data divergence, unlike the `isMeaningfulLog` case — but it is a visible difference.
-- [ ] ⬜ **T24 — Nutrition text pass.** Smaller than the client thinks; disclosures already exist.
+- [x] ✅ **T24 — Nutrition text pass.** The disclosures were already there, so the copy ask really was
+      as small as this line predicted. What the read turned up instead was a screen that was mostly
+      *absent*: `supplementPlanCard` and `articlesSection` were both wrapped in `if let phase` while
+      reading no phase data at all. Cycle setup is skippable, so skipping it removed the supplement
+      plan — and with it every per-supplement reminder from T30, which has no other entry point in
+      the app — plus the whole nutrition articles section. Same shape as the no-cycle calendar
+      (Sprint 2 row 20), and the hydration card two cards below already had the right instinct:
+      `contextLine(phase: nil)` degrades to "Log your cycle to get phase-aware hydration guidance"
+      rather than vanishing. Only the phase-change card and focus foods stay gated; they genuinely
+      need a phase.
+
+      **The "Coming soon" card was ranked second**, above the supplement plan and hydration — and
+      first with no cycle set up, so a skipped setup opened Nutrition on a placeholder. Moved below
+      both, above articles: still discoverable, no longer the headline.
+
+      **One line of genuine duplication cut.** `insightLine` appends "`N`-day streak going" at a
+      streak ≥3 (`HydrationInsightLogic.swift:47`), which the card already showed in the pill at
+      top-right — the same number twice, beside a third consistency line in `weeklyStreakLabel`. The
+      insight sentence renders in Track's hydration detail (`TrackView.swift:1048`), which is exactly
+      where this card's "Track ›" button and tap gesture already go, so it is one tap away rather
+      than gone. `weeklyStreakLabel` **stayed**: Nutrition is its only render site, so cutting it
+      would have deleted a shipped line rather than thinned a repeated one.
 - [x] ✅ **T25 — Phase-change card** linking to the `eating-with-your-cycle` article. Announced once
       per transition, never on a first install — she is mid-phase then, not crossing into one, and
       the card would be reporting something that happened days before she opened the app. Carries no
       nutrition claim of its own (every line is a phase label or a statement about the screen), so it
       needs no medical sign-off; the reviewed guidance stays in the focus-foods card below it.
-- [ ] ⬜ **T26 — Meal logging** model + UI. Replaces the "Coming soon" placeholder at
-      `NutritionView.swift:304`. **Most expensive item on the list — scope separately.**
-- [ ] ⬜ **T27 — Recipe cards** with imagery. Needs content + design, not just code.
+- [x] ✅ **T26 — Meal logging**, in food-group terms. Replaces the "Coming soon" placeholder that
+      stood where `foodLogCard` now is (`NutritionView.swift:433`). The screen has always told her
+      what to eat this phase and never let her say she had; six Eatwell-Guide chips close that loop.
+
+      **Groups, not nutrients.** The client asked for "food-group *or* nutrient tracking". Nutrients
+      need a food database — the deferred barcode work — and every nutrient count is a claim needing
+      substantiation. Naming a category and listing what is in it is a definition, so this card
+      carries no citation, no disclaimer and no medical sign-off, unlike the focus-foods card
+      directly above it which has all three. `testFoodLogCopyMakesNoHealthClaim` is what keeps it
+      that way: the realistic failure is not a banned phrase but one warm sentence added later
+      ("protein supports egg quality") sliding the card into CAP Code 3.7 with every other guard
+      still green. Proven by mutation — that exact sentence sails past the banned-phrase guard.
+
+      **Synced, not device-local** (`food_groups text[]`, migration `20260812_daily_logs_food_groups.sql`,
+      **applied to the live project 13 Aug 2026**). Stored as raw tokens like `symptoms`,
+      so a group a future Android build knows and this one does not survives the round trip instead
+      of failing the whole row's decode and taking the day's mood, sleep and water with it.
+
+      **⚠️ Excluded from `isMeaningfulLog`/`hasAnyEntry`**, so a day she logs *only* meals does not
+      extend her streak. That is the cross-platform contract, not an oversight: widening it here
+      alone would give iOS and Android different streaks for identical data with nothing to report
+      the divergence. Costs a real thing and is paid until Android carries `food_groups` and
+      `tracking_test_vectors.json` moves with it. `NotificationService` folds food groups in
+      separately (iOS-only, mirrors nothing), so she is never nudged to log on a day she logged.
+
+      **Found en route:** `LogView.save` rebuilt a whole `DailyLog` from its own `@State`, resetting
+      every field the sheet does not show. Harmless until a second surface wrote the same day —
+      then saving a note would have silently erased what she ticked off in Nutrition. Now a
+      read-modify-write, which holds for every future field and not just this one.
+- [x] ✅ **T27 — Recipe cards.** Eight recipes, two per phase, in a horizontal row directly beneath
+      the focus foods (`RecipeContent.swift`, `NutritionView.recipesSection`). Tapping one opens the
+      ingredients, a numbered method, and a button that logs the food groups it covers — so the
+      answer to "what do I do with iron-rich foods?" is a meal, and cooking it feeds the log card
+      further down the same screen without re-typing anything.
+
+      **Why these need no medical sign-off** while the card above them has a citation, a disclaimer
+      and a reviewer. A recipe adds no claim of its own: it names a focus food the reviewed content
+      *already* recommends for that phase and then says how to cook it. `usesFocusFood` is not a
+      label, it is a foreign key — `testEveryRecipeNamesAFocusFoodThatExistsInItsOwnPhase` fails if
+      it does not match a `PhaseFood.name` in the same phase, byte for byte. Proven by mutation:
+      pointing the ovulatory salad at the period focus food "Iron-rich foods" fails the test naming
+      the reviewed list it was checked against. The moment a recipe starts explaining *why* it
+      helps, it has stopped repeating a reviewed claim and started making a new one, which is what
+      `testRecipeCopyMakesNoHealthClaim` catches.
+
+      **No photography, no placeholders.** The asset catalogue has Learn heroes and brand art and
+      nothing edible. Rather than ship stock images of somebody else's food — Apple Guideline 2.1
+      territory — each card carries a gradient in the phase accent, and `Recipe.imageName` is a nil
+      seam for real photography later. `testNoRecipeClaimsAnImageTheAppDoesNotHave` is deleted in
+      the same commit as the assets.
+
+      **Logging is additive, not a toggle** (`DailyLogRepository.logFoodGroups`). The obvious
+      implementation — call `toggleFoodGroup` once per group — would silently *un*-tick every group
+      she had already logged by hand, under a button labelled "log". One upsert per tap, not one per
+      group, and a no-op guard so reopening a recipe does not re-queue a day the server already has.
 
 ## 6. Phase 5 — education (6–8d + medical review)
 
@@ -265,9 +346,13 @@ T1 inherits G2's block. Do not ship T1 alone.
       from the twelve-week series: seven in-app how-tos covering cycle, pH, nutrition, symptoms,
       sleep and hydration. Four already existed — pH three times over — so only the genuine gaps were
       written. See `CHANGELOG.md` for the two factual errors that checking against the code caught.
-- [ ] ⬜ **T29b — Shettles.** Needs G1 (written client + medical-reviewer sign-off). Not engineering
-      time. `testShettlesArticleIsAbsent` fails the day it lands, which is the intended reminder that
-      the banned-phrase guards have to be revisited first.
+- [x] ✅ **T29b — Shettles.** Shipped 12 Aug 2026 as week 12 of the series, revealed 2026-11-08,
+      cited to Wilcox 1995 (NEJM), disclaimer on. No guard was relaxed — see G1 for why none needed
+      to be. `testShettlesArticleIsAbsent` is replaced by four framing guards, each proven under
+      mutation: the negations must stay, no efficacy claim may appear (and none of the ones tested
+      for is a banned phrase, so the existing scan passes on all of them), the citation must hold,
+      and no cited source *title* may carry a banned phrase — `SourcesFooter` renders titles verbatim
+      and the article scan never sees them.
 - [x] ✅ **T30 — Per-supplement reminders.** Each supplement carries its own time, the Genesyx
       essentials included; "No reminder" stays a first-class choice in the menu.
 
@@ -360,12 +445,16 @@ their hand, and it closes the one item they raised that was genuinely missing.
 ### 9.2 What Sprint 1 deliberately excludes
 
 - **T1 · T2** (pH tab) — G2. Shipping T1 alone makes pH *harder* to find.
-- **T7 · T29b** (Girl/Boy, Shettles) — G1. Blocked on written sign-off, not on engineering.
+- **T7** (Girl/Boy quiz option) — G1. Still blocked on written sign-off; this one genuinely does
+  require removing `"boy or girl"` from `QuizContentTests`. *T29b (Shettles) is no longer here — it
+  shipped 12 Aug 2026 without relaxing anything. See G1.*
 - **T9** (offline symbol) — G3. *Superseded 11 Aug 2026: reproduced and fixed. The original "no such
   code path" reading looked for reachability monitoring; the badge is driven by the owed-days set.*
 - **T21 · T22** (artwork, visual pass) — G4 / no design spec. T22 will sprawl without one.
 - **T16–T19** (profile editors) — real work, but no defect; they are unbuilt features.
-- **T23–T27** (nutrition) and **Phase 6** — separate scope.
+- **T23–T27** (nutrition) and **Phase 6** — separate scope. *Superseded 12 Aug 2026: T23–T27 all
+  shipped. None of them needed a gate — the nutrition work was scoped out of Sprint 1 for size, not
+  for approval, and food groups rather than nutrients kept it that way.*
 
 **The honest constraint:** AI compresses *engineering* days, not *approval* days. Gate-free work
 moves at AI speed. G1 in particular is calendar time — client sign-off plus medical review — and no
@@ -435,9 +524,10 @@ added 2 brand-asset guards, the build-18 `drainPending` fix added 1, past-day lo
 `RepositoryTests`, and `page_background` added 2 more brand-asset guards; Sprint 2 then added 8 app
 tests for the Phase 2 reliability batch, 1 domain test for the no-cycle grid, and 4 app tests for
 the Phase 3 calendar contrast floors),
-plus **45 UI tests** behind the `-uiTestSeed` harness — the notification opt-in test skips itself once
-that permission has been answered, so it counts 44 + 1 skipped on a simulator you have already run
-against, and 45 on a freshly erased one. Run after every task:
+plus **46 UI tests** behind the `-uiTestSeed` harness — T24 added the no-cycle Nutrition test — the
+notification opt-in test skips itself once
+that permission has been answered, so it counts 45 + 1 skipped on a simulator you have already run
+against, and 46 on a freshly erased one. Run after every task:
 
 ```bash
 swift test && xcodebuild test -project Genesyx.xcodeproj -scheme Genesyx \

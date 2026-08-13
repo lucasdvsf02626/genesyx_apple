@@ -37,9 +37,12 @@ public struct ConsistencyCardModel: Equatable {
 
 public enum ConsistencyInsightLogic {
 
+    /// Every number here is about *logging*, not hydration — this is the Consistency card, and its
+    /// own subtitle counts logged days. Feeding it `dailyHydration` meant "Daily streak 0" could sit
+    /// above "You've logged 6 of 7 days this week"; hydration keeps its own streak on its own card.
     public static func model(from state: StreakState) -> ConsistencyCardModel {
-        let empty = state.dailyHydration == 0 && state.weeklyStreak == 0
-            && state.daysLoggedThisWeek == 0 && state.bestDailyStreak == 0
+        let empty = state.dailyLogging == 0 && state.weeklyStreak == 0
+            && state.daysLoggedThisWeek == 0 && state.bestLoggingStreak == 0
 
         let insight: String
         if empty {
@@ -54,9 +57,9 @@ public enum ConsistencyInsightLogic {
         }
 
         return ConsistencyCardModel(
-            dailyStreak: state.dailyHydration,
+            dailyStreak: state.dailyLogging,
             weeklyStreak: state.weeklyStreak,
-            bestDailyStreak: state.bestDailyStreak,
+            bestDailyStreak: state.bestLoggingStreak,
             daysLoggedThisWeek: state.daysLoggedThisWeek,
             weekDots: state.weekDots,
             insight: insight,

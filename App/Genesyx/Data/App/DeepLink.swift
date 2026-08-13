@@ -60,12 +60,32 @@ enum DeepLink {
     }
 
     static func inviteCode(from url: URL) -> String? {
-        // Custom scheme: genesyx://invite/{code}
-        if url.scheme == "genesyx", url.host == "invite" {
-            let comps = url.pathComponents.filter { $0 != "/" }
-            return comps.last
+        // Custom scheme: genesyx://invite/{code} and nothing else.
+        //
+        // The whole scheme is decided HERE, including the rejection. Letting a non-matching
+        // `genesyx://` URL fall through to the web branch below is what allowed
+        // `genesyx://anything/invite/CODE` to be read as an invite: the host check failed, and the
+        // path check then matched anyway. Any app or web page on the device can open a custom-scheme
+        // URL, so that fallthrough let an arbitrary page raise the "Accept to link your accounts"
+        // sheet carrying a code of its choosing.
+        //
+        // Not a way in — `accept_partner_invite` still refuses a code not addressed to her email, so
+        // the ceiling was a spoofed sheet rather than a link. But the sheet should only ever appear
+        // for a URL shaped like one we issued, and `schemeInviteURL` only ever issues that shape.
+        if url.scheme == "genesyx" {
+            guard url.host == "invite" else { return nil }
+            return url.pathComponents.filter { $0 != "/" }.last
         }
-        // Universal Link: …/invite/{code}
+        // Universal Link: https://{webHost}/invite/{code}, on our domain and no other.
+        //
+        // The host was previously unchecked, so ANY https URL carrying an `/invite/` path yielded a
+        // code. That existed to keep links on the retired `…lovable.app` prototype resolving; that
+        // domain is dead, and with it the reason to honour a stranger's.
+        //
+        // Compared case-insensitively: Foundation does not normalise host case, while Universal Link
+        // matching is case-insensitive, so `https://GENESYX.CO.UK/invite/x` is a link iOS would
+        // legitimately deliver and an exact `==` would silently drop.
+        guard url.scheme == "https", url.host?.lowercased() == webHost else { return nil }
         let comps = url.pathComponents.filter { $0 != "/" }
         if let i = comps.firstIndex(of: "invite"), i + 1 < comps.count {
             return comps[i + 1]

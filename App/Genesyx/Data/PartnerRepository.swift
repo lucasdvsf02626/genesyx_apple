@@ -25,8 +25,14 @@ final class PartnerRepository: ObservableObject {
     /// mailer isn't configured (or the send failed) and the share sheet is the only delivery.
     @Published private(set) var lastInviteEmailed = false
 
-    /// Creates the invite and returns it carrying the code the DATABASE issued — that code is what
-    /// the share link redeems, so it must never be guessed on the device.
+    /// Creates the invite and returns the row the database STORED, so the code in the share link is
+    /// the code that redeems. The code itself is generated client-side and sent with the insert
+    /// (`SupabasePartner.sendInvite`) — `partner_invites.code` has no default — but what comes back
+    /// here is the persisted row, not the request, which is the property that actually matters.
+    ///
+    /// Said precisely because the previous wording claimed the database issued the code. It does
+    /// not, and a future change that trusted that sentence — dropping the `.select()` round-trip as
+    /// redundant, say — would quietly reintroduce the bug this class was written to kill.
     ///
     /// Then asks the server to email it. A failure there is deliberately NOT fatal: the invite is
     /// real and shareable either way, and throwing would destroy a perfectly good invite over a
@@ -52,6 +58,20 @@ final class PartnerRepository: ObservableObject {
     func accept(code: String) async throws {
         guard let backend else { throw RemoteError.notConfigured }
         try await backend.accept(code: code)
+        await refresh()
+    }
+
+    /// Refuses an invite addressed to this account, so the code stops being redeemable.
+    ///
+    /// Not the same as dismissing the sheet, which is what "Not now" does and which leaves the
+    /// invite pending — and a pending invite is a standing offer to anyone the link was forwarded
+    /// to. Not the same as `revoke` either: that is the inviter withdrawing one of her own.
+    ///
+    /// Throws on failure like every other method here, for the same reason: a decline is an
+    /// agreement between two accounts, so only the server can say it happened.
+    func decline(code: String) async throws {
+        guard let backend else { throw RemoteError.notConfigured }
+        try await backend.decline(code: code)
         await refresh()
     }
 

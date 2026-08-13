@@ -12,7 +12,7 @@ struct PregnancyView: View {
             VStack(alignment: .leading, spacing: 0) {
                 HStack { GxBackButton { dismiss() }; Spacer() }
                 VStack(spacing: 0) {
-                    Image(systemName: "heart.fill").font(.system(size: 36)).foregroundStyle(GenesyxColor.electricPink)
+                    Image(systemName: "heart.fill").font(.system(size: 36)).foregroundStyle(GenesyxColor.pregnancyAccent)
                         .frame(width: 80, height: 80).background(GenesyxColor.powderPink.tintOnWhite(0.30))
                         .clipShape(RoundedRectangle(cornerRadius: 24))
                     Spacer().frame(height: 24)
@@ -47,7 +47,7 @@ struct PregnancyView: View {
 
     private func featureCard(_ icon: String, _ title: String, _ desc: String) -> some View {
         HStack(spacing: 16) {
-            Image(systemName: icon).foregroundStyle(GenesyxColor.electricPink)
+            Image(systemName: icon).foregroundStyle(GenesyxColor.pregnancyAccent)
                 .frame(width: 48, height: 48).background(GenesyxColor.powderPink.tintOnWhite(0.25))
                 .clipShape(RoundedRectangle(cornerRadius: 16))
             VStack(alignment: .leading, spacing: 2) {

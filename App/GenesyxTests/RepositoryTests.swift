@@ -108,7 +108,7 @@ final class RepositoryTests: XCTestCase {
         backend.online = false
         let synced = DailyLogRepository(store: makeStore(), backend: backend)
         synced.setWater(500, on: today)
-        XCTAssertEqual(synced.syncState(on: today), .willSyncWhenOnline)
+        XCTAssertEqual(synced.syncState(on: today), .pendingSync)
 
         backend.online = true
         await synced.refresh()
@@ -164,6 +164,92 @@ final class RepositoryTests: XCTestCase {
         XCTAssertEqual(repo.syncState(on: today), .synced)
     }
 
+    func testFoodGroupsAreIncludedInOutboundDailyLogSyncPayload() async {
+        let backend = FakeDailyLogBackend()
+        let today = CalendarDate.today()
+        let repo = DailyLogRepository(store: makeStore(), backend: backend)
+
+        repo.toggleFoodGroup(FoodGroup.vegetables.rawValue, on: today)
+        await repo.drainPending()
+
+        XCTAssertEqual(backend.remote[today]?.foodGroups, ["vegetables"])
+        XCTAssertEqual(repo.syncState(on: today), .synced)
+    }
+
+    func testTogglingAFoodGroupTwiceRemovesIt() {
+        let repo = DailyLogRepository(store: makeStore())
+        let today = CalendarDate.today()
+
+        repo.toggleFoodGroup(FoodGroup.fruit.rawValue, on: today)
+        repo.toggleFoodGroup(FoodGroup.protein.rawValue, on: today)
+        repo.toggleFoodGroup(FoodGroup.fruit.rawValue, on: today)
+
+        XCTAssertEqual(repo.log(on: today).foodGroups, ["protein"])
+    }
+
+    /// ⚠️ The recipe card's "log this" button writes several groups at once, and the obvious
+    /// implementation — call `toggleFoodGroup` per group — would *un*-log every group she had
+    /// already ticked by hand before opening the recipe. A silent removal of her own data, by an
+    /// action whose label says "log". `logFoodGroups` is additive for exactly that reason.
+    func testLoggingARecipeAddsItsGroupsAndNeverRemovesOne() {
+        let repo = DailyLogRepository(store: makeStore())
+        let today = CalendarDate.today()
+
+        repo.toggleFoodGroup(FoodGroup.fruit.rawValue, on: today)
+        repo.logFoodGroups([FoodGroup.fruit.rawValue, FoodGroup.protein.rawValue], on: today)
+        XCTAssertEqual(repo.log(on: today).foodGroups, ["fruit", "protein"])
+
+        // A second tap means the same thing as the first.
+        repo.logFoodGroups([FoodGroup.fruit.rawValue, FoodGroup.protein.rawValue], on: today)
+        XCTAssertEqual(repo.log(on: today).foodGroups, ["fruit", "protein"])
+    }
+
+    /// Re-logging a recipe whose groups are all already recorded must not mark the day owed again.
+    /// Every `upsert` queues a push, so without the no-op guard, reopening a recipe and tapping the
+    /// button would put an unchanged day back in the sync queue and show her the unsynced badge
+    /// over a day the server already has.
+    func testReLoggingTheSameRecipeQueuesNothing() async {
+        let backend = FakeDailyLogBackend()
+        let today = CalendarDate.today()
+        let repo = DailyLogRepository(store: makeStore(), backend: backend)
+
+        repo.logFoodGroups([FoodGroup.dairy.rawValue], on: today)
+        await repo.drainPending()
+        XCTAssertEqual(repo.syncState(on: today), .synced)
+
+        repo.logFoodGroups([FoodGroup.dairy.rawValue], on: today)
+        XCTAssertEqual(repo.syncState(on: today), .synced, "an unchanged day must not be re-queued")
+    }
+
+    func testFoodGroupsSurviveARelaunch() {
+        let store = makeStore()
+        let today = CalendarDate.today()
+        DailyLogRepository(store: store).toggleFoodGroup(FoodGroup.dairy.rawValue, on: today)
+
+        XCTAssertEqual(DailyLogRepository(store: store).log(on: today).foodGroups, ["dairy"])
+    }
+
+    /// Two surfaces now write the same day: food groups from Nutrition, everything else from the
+    /// log sheet. `LogView.save` used to rebuild a whole `DailyLog` from its own `@State`, which
+    /// resets every field it does not show — so saving a note after ticking off lunch would have
+    /// erased lunch, silently and with no undo.
+    ///
+    /// This pins the repository half of the fix: a read-modify-write on the stored day, so neither
+    /// surface can flatten the other.
+    func testLoggingOneSurfaceDoesNotEraseTheOther() {
+        let repo = DailyLogRepository(store: makeStore())
+        let today = CalendarDate.today()
+
+        repo.toggleFoodGroup(FoodGroup.vegetables.rawValue, on: today)
+        var entry = repo.log(on: today)
+        entry.mood = .good
+        entry.notes = "long day"
+        repo.upsert(entry, on: today)
+
+        XCTAssertEqual(repo.log(on: today).foodGroups, ["vegetables"])
+        XCTAssertEqual(repo.log(on: today).mood, .good)
+    }
+
     /// Seed days into the store already marked owed, without any backend push — so `drainPending`
     /// is the only thing that talks to the backend and there is no fire-and-forget race to fight.
     private func seedPendingDailyLogs(store: LocalStore, _ logs: [CalendarDate: DailyLog]) {
@@ -185,8 +271,8 @@ final class RepositoryTests: XCTestCase {
         await repo.drainPending()
 
         XCTAssertEqual(backend.attempts, 1, "offline should stop after the first owed day, not walk the whole queue")
-        XCTAssertEqual(repo.syncState(on: older), .willSyncWhenOnline)
-        XCTAssertEqual(repo.syncState(on: newer), .willSyncWhenOnline)
+        XCTAssertEqual(repo.syncState(on: older), .pendingSync)
+        XCTAssertEqual(repo.syncState(on: newer), .pendingSync)
 
         backend.transportFail = false
         await repo.drainPending()
@@ -217,8 +303,8 @@ final class RepositoryTests: XCTestCase {
         await repo.drainPending()
 
         XCTAssertEqual(backend.attempts, 1, "no session should stop after the first owed day, not walk the whole queue")
-        XCTAssertEqual(repo.syncState(on: older), .willSyncWhenOnline)
-        XCTAssertEqual(repo.syncState(on: newer), .willSyncWhenOnline)
+        XCTAssertEqual(repo.syncState(on: older), .pendingSync)
+        XCTAssertEqual(repo.syncState(on: newer), .pendingSync)
 
         // And nothing was lost by stopping: once she is signed in, the same queue drains whole.
         backend.authFail = false
@@ -245,7 +331,7 @@ final class RepositoryTests: XCTestCase {
         XCTAssertEqual(backend.attempts, 2, "both days must be attempted — the poisoned one can't short-circuit the drain")
         XCTAssertEqual(repo.syncState(on: good), .synced)
         XCTAssertEqual(backend.remote[good]?.waterMl, 200)
-        XCTAssertEqual(repo.syncState(on: poisoned), .willSyncWhenOnline, "the rejected day stays owed for a later retry")
+        XCTAssertEqual(repo.syncState(on: poisoned), .pendingSync, "the rejected day stays owed for a later retry")
         XCTAssertNil(backend.remote[poisoned])
     }
 
@@ -457,14 +543,14 @@ final class RepositoryTests: XCTestCase {
     }
 
     /// The client's "offline symbol appears and stays". `syncState` reads the owed-days set, so the
-    /// save draws "Will sync when online" and the push that clears it a moment later has to announce
+    /// save draws the unsynced badge and the push that clears it a moment later has to announce
     /// itself — otherwise the icon sits over a day the server already has until some unrelated edit
     /// happens to redraw the row.
     func testDrainingTheLastOwedDayRedrawsTheRow() async {
         let store = makeStore()
         DailyLogRepository(store: store).setWater(500)     // local-only: owed, and no push in flight
         let repo = DailyLogRepository(store: store, backend: FakeDailyLogBackend())
-        XCTAssertEqual(repo.syncState(on: .today()), .willSyncWhenOnline)
+        XCTAssertEqual(repo.syncState(on: .today()), .pendingSync)
 
         var redraws = 0
         let watch = repo.objectWillChange.sink { _ in redraws += 1 }
@@ -473,6 +559,121 @@ final class RepositoryTests: XCTestCase {
 
         XCTAssertEqual(repo.syncState(on: .today()), .synced)
         XCTAssertGreaterThan(redraws, 0, "nothing told the row its day had landed")
+    }
+
+    // MARK: - Connectivity
+
+    /// The other half of the client's complaint, and the part the redraw fix did not touch: the
+    /// badge said "Will sync when online" over an app that was plainly online. An unsynced row is a
+    /// fact about the row; only the offline case may mention the network.
+    func testTheUnsyncedBadgeOnlyBlamesTheNetworkWhenSheIsActuallyOffline() {
+        XCTAssertEqual(DailyLogSyncState.pendingSync.label(online: true), "Saved on this phone")
+        XCTAssertFalse(DailyLogSyncState.pendingSync.label(online: true).lowercased().contains("online"),
+                       "a working connection must never be described to her as being offline")
+        XCTAssertTrue(DailyLogSyncState.pendingSync.label(online: false).lowercased().contains("online"))
+        // And the two settled states say the same thing either way — connectivity explains an
+        // unsynced row, it does not re-describe a synced one.
+        XCTAssertEqual(DailyLogSyncState.synced.label(online: false), DailyLogSyncState.synced.label(online: true))
+        XCTAssertEqual(DailyLogSyncState.saved.label(online: false), DailyLogSyncState.saved.label(online: true))
+    }
+
+    /// A reconnect is the moment the backlog can actually move. Before this the only trigger was
+    /// foregrounding the app, so a phone that stayed in her hand through a dead-spot kept its queue.
+    func testComingBackOnlineDrainsTheQueueWithoutWaitingForAForeground() async {
+        let reachability = Reachability(monitoring: false)
+        let drained = expectation(description: "coming back online drains the queue")
+        var drains = 0
+        reachability.onReconnect = { @MainActor in
+            drains += 1
+            drained.fulfill()
+        }
+
+        reachability.simulate(online: false)
+        XCTAssertFalse(reachability.isOnline)
+        XCTAssertEqual(drains, 0, "going offline is not a reason to retry")
+
+        reachability.simulate(online: true)
+        await fulfillment(of: [drained], timeout: 2)
+        XCTAssertTrue(reachability.isOnline)
+
+        // Wi-Fi to cellular re-reports `.satisfied` without ever leaving it; that is not a reconnect
+        // and must not fire a second walk of the whole queue.
+        reachability.simulate(online: true)
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        XCTAssertEqual(drains, 1, "a repeated online report is not a reconnect")
+    }
+
+    /// `NWPathMonitor` says nothing until its queue first runs, so a monitor that started at
+    /// `false` would flash "offline" across every cold launch — the exact false alarm being fixed.
+    func testConnectivityStartsOptimisticSoALaunchNeverFlashesOffline() {
+        XCTAssertTrue(Reachability(monitoring: false).isOnline)
+    }
+
+    /// The log-loss question itself, end to end and across a relaunch: she logs with no usable
+    /// connection, the app is killed, and the day must still reach the server afterwards. The
+    /// existing drain tests all reuse one live repository, so none of them crosses the process
+    /// boundary — and this queue is the only record that the day is owed.
+    ///
+    /// Two days, not one, and that is the point. `pendingDates` falls back to "every logged day is
+    /// owed" when the key is absent, which is right for a v1.0 install but would also mask a broken
+    /// save: with a single day the fallback alone passes this test. The synced day is the control —
+    /// it can only still read `.synced` after the relaunch if the set was genuinely persisted.
+    func testADayLoggedOfflineSurvivesARelaunchAndStillReachesTheServer() async {
+        let store = makeStore()
+        let today = CalendarDate.today()
+        let alreadySynced = today.minusDays(2)
+        let backend = DrainProbeDailyLogBackend()
+
+        let beforeCrash = DailyLogRepository(store: store, backend: backend)
+        beforeCrash.upsert(DailyLog(waterMl: 400), on: alreadySynced)
+        await beforeCrash.drainPending()
+        XCTAssertEqual(beforeCrash.syncState(on: alreadySynced), .synced)
+
+        backend.transportFail = true                    // she walks into a dead-spot
+        beforeCrash.upsert(DailyLog(mood: .good, symptoms: ["Cramps"], waterMl: 900), on: today)
+        await beforeCrash.drainPending()
+        XCTAssertEqual(beforeCrash.syncState(on: today), .pendingSync)
+        XCTAssertNil(backend.remote[today], "nothing can have reached the server yet")
+
+        // Relaunch: a brand-new repository over the same store, nothing carried in memory.
+        let afterRelaunch = DailyLogRepository(store: store, backend: backend)
+        XCTAssertEqual(afterRelaunch.log(on: today).waterMl, 900, "the day itself must survive")
+        XCTAssertEqual(afterRelaunch.syncState(on: today), .pendingSync, "and must still be known to be owed")
+        XCTAssertEqual(afterRelaunch.syncState(on: alreadySynced), .synced,
+                       "the owed set itself must survive — not be rebuilt from 'everything is owed'")
+
+        backend.transportFail = false
+        await afterRelaunch.drainPending()
+
+        XCTAssertEqual(afterRelaunch.syncState(on: today), .synced)
+        XCTAssertEqual(backend.remote[today]?.waterMl, 900)
+        XCTAssertEqual(backend.remote[today]?.mood, .good)
+        XCTAssertEqual(backend.remote[today]?.symptoms, ["Cramps"])
+    }
+
+    /// Losing the connection mid-session must not lose the edit made during it, and the recovery
+    /// must carry the *newest* value — not the one that was in flight when the network died.
+    func testAnEditMadeWhileOfflineIsNotOverwrittenByTheServerOnReconnect() async {
+        let store = makeStore()
+        let today = CalendarDate.today()
+        let backend = DrainProbeDailyLogBackend()
+        let repo = DailyLogRepository(store: store, backend: backend)
+
+        repo.setWater(500, on: today)
+        await repo.drainPending()
+        XCTAssertEqual(backend.remote[today]?.waterMl, 500)
+
+        backend.transportFail = true
+        repo.setWater(1_500, on: today)              // her correction, made in a dead-spot
+        await repo.drainPending()
+        XCTAssertEqual(repo.syncState(on: today), .pendingSync)
+
+        backend.transportFail = false
+        await repo.refresh()                         // pushes what is owed, then pulls
+
+        XCTAssertEqual(repo.waterMl(on: today), 1_500, "a pull must not replace her correction with the stale copy")
+        XCTAssertEqual(backend.remote[today]?.waterMl, 1_500)
+        XCTAssertEqual(repo.syncState(on: today), .synced)
     }
 
     // MARK: - Auth
@@ -687,6 +888,52 @@ final class RepositoryTests: XCTestCase {
         XCTAssertEqual(repo.themeMode, .dark)
         XCTAssertEqual(repo.focusMode, .pregnancy)
         XCTAssertFalse(repo.pushEnabled)
+    }
+
+    /// The light default shipped, and still nobody who already had an account could see it. A first
+    /// sync seeds the profile row from the device, so every account made before `560591e` stored the
+    /// old `.system` default as though she had asked for it — and pulling that down put her back in
+    /// dark on a dark phone. Corrected once, in the row as well as on the device.
+    func testTheOldSystemDefaultDoesNotOverrideTheLightPaletteOnAnExistingAccount() async {
+        let backend = FakeProfileBackend()
+        backend.remote = ProfilePrefs(focusMode: .prep, themeMode: .system, pushEnabled: false)
+        let repo = PreferencesRepository(store: makeStore(), backend: backend)
+
+        await repo.refresh()
+        XCTAssertEqual(repo.themeMode, .light, "she never chose `.system` — it was the old default")
+
+        await repo.refresh()                               // drains the correction it owes
+        XCTAssertEqual(backend.remote?.themeMode, .light,
+                       "the artifact has to leave the row too, or the next pull reinstates it")
+    }
+
+    /// The other half of that fix, and the reason it keys on `.system` alone: dark is a scheme she
+    /// had to open Profile and pick. Resetting it would be the same overreach in the other direction.
+    func testADarkThemeSheActuallyChoseSurvivesTheMigration() async {
+        let backend = FakeProfileBackend()
+        backend.remote = ProfilePrefs(focusMode: .prep, themeMode: .dark, pushEnabled: false)
+        let repo = PreferencesRepository(store: makeStore(), backend: backend)
+
+        await repo.refresh()
+
+        XCTAssertEqual(repo.themeMode, .dark)
+    }
+
+    /// One-shot, not a standing rule. Once the legacy value is cleared, `.system` goes back to being
+    /// an ordinary preference — otherwise picking "match my phone" would silently never stick.
+    func testSystemStaysChosenWhenShePicksItAfterTheMigration() async {
+        let backend = FakeProfileBackend()
+        backend.remote = ProfilePrefs(focusMode: .prep, themeMode: .system, pushEnabled: false)
+        let store = makeStore()
+        let repo = PreferencesRepository(store: store, backend: backend)
+        await repo.refresh()                               // migration runs here
+
+        repo.themeMode = .system                           // now she asks for it herself
+        await repo.refresh()
+
+        XCTAssertEqual(repo.themeMode, .system)
+        XCTAssertEqual(PreferencesRepository(store: store, backend: backend).themeMode, .system,
+                       "and it survives the relaunch that used to re-run the correction")
     }
 
     /// The whole of T8: the quiz is answered *before* she has an account, so at the moment she

@@ -25,6 +25,86 @@ public struct PhaseFood: Hashable, Sendable {
     }
 }
 
+/// The food groups she can tick off for a day.
+///
+/// The Eatwell Guide's five, with fruit and vegetables split apart — the Guide counts them as one
+/// group, but a day with fruit and no vegetables is precisely the day worth being able to record.
+///
+/// A fixed vocabulary rather than a food database, and that is the point rather than a shortcut.
+/// Naming a group, and listing what is in it, states nothing about what any of it *does* — so this
+/// screen carries no claim for a medical reviewer to sign off and none for the CAP Code to want
+/// substantiated. Counting nutrients would need both, plus the food database that lives in the
+/// deferred barcode work.
+public enum FoodGroup: String, CaseIterable, Identifiable, Sendable {
+    case vegetables, fruit, starchyCarbs, protein, dairy, oilsAndFats
+
+    public var id: String { rawValue }
+
+    public var label: String {
+        switch self {
+        case .vegetables: return "Vegetables"
+        case .fruit: return "Fruit"
+        case .starchyCarbs: return "Starchy carbs"
+        case .protein: return "Protein"
+        case .dairy: return "Dairy & alternatives"
+        case .oilsAndFats: return "Oils & fats"
+        }
+    }
+
+    /// Examples only, so she can tell which chip a meal belongs under. A list of what is in a group
+    /// is a definition, not a health statement.
+    public var examples: String {
+        switch self {
+        case .vegetables: return "Salad, greens, peppers, carrots"
+        case .fruit: return "Berries, apples, bananas, citrus"
+        case .starchyCarbs: return "Potatoes, bread, rice, pasta, oats"
+        case .protein: return "Beans, pulses, fish, eggs, meat, tofu"
+        case .dairy: return "Milk, yoghurt, cheese, fortified alternatives"
+        case .oilsAndFats: return "Olive oil, nuts, seeds, avocado"
+        }
+    }
+}
+
+/// Reader-facing copy for the food log.
+///
+/// In Core rather than in the view for the same reason `HydrationCoach`'s copy is: it is the only
+/// way the content guards can see it. Copy written inline in a SwiftUI body is copy no test scans.
+public enum FoodLogCopy {
+    public static let title = "What you ate today"
+
+    /// The whole tone of the card in one line. A food log is the easiest surface in a fertility app
+    /// to turn into a scoreboard, and a scoreboard is the thing she least needs from it.
+    public static let footnote = "A record, not a target. Nothing here is scored, and a blank day costs you nothing."
+
+    public static func summary(logged: Int, total: Int) -> String {
+        logged == 0
+            ? "Tap a group when you have eaten something from it."
+            : "\(logged) of \(total) groups so far today."
+    }
+
+    /// Names the groups the focus-foods card above already leans on. A statement about the screen,
+    /// not advice — see `NutritionContent.phaseFoodGroups`.
+    public static func phaseLine(_ groups: [FoodGroup]) -> String? {
+        guard !groups.isEmpty else { return nil }
+        return "Your focus foods this phase lean on \(sentenceList(groups.map { $0.label.lowercased() }))."
+    }
+
+    static func sentenceList(_ items: [String]) -> String {
+        guard let last = items.last else { return "" }
+        guard items.count > 1 else { return last }
+        return items.dropLast().joined(separator: ", ") + " and " + last
+    }
+
+    /// Everything this card can render, for the banned-phrase guard.
+    public static var allStrings: [String] {
+        var out = [title, footnote]
+        out += FoodGroup.allCases.flatMap { [$0.label, $0.examples] }
+        out += (0...FoodGroup.allCases.count).map { summary(logged: $0, total: FoodGroup.allCases.count) }
+        out += Phase.allCases.compactMap { phaseLine(NutritionContent.phaseFoodGroups[$0] ?? []) }
+        return out
+    }
+}
+
 /// Supplement-plan item shown as the F/O/D/Z stack + "Review Plan" dialog.
 public struct SupplementPlanItem: Hashable, Sendable {
     public let initial: String
@@ -138,6 +218,19 @@ public enum NutritionContent {
                 .luteal
             ),
         ],
+    ]
+
+    /// Which groups the phase's focus foods above already lean on — read straight off the
+    /// `phaseFoods` copy, entry by entry, so it repeats guidance rather than adding any.
+    ///
+    /// That is what keeps this line free of a sign-off: it is a statement about the screen, the
+    /// same move `phaseChangeCard` makes. If it ever starts saying a group is *good for* a phase,
+    /// it has become a claim and needs the reviewer that `phaseFoods` already had.
+    public static let phaseFoodGroups: [Phase: [FoodGroup]] = [
+        .period: [.protein, .vegetables, .oilsAndFats],
+        .follicular: [.dairy, .protein, .oilsAndFats],
+        .ovulatory: [.vegetables, .fruit, .protein, .starchyCarbs],
+        .luteal: [.starchyCarbs, .vegetables, .protein, .oilsAndFats],
     ]
 
     public static let phaseDescription: [Phase: String] = [

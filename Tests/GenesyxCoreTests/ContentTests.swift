@@ -98,6 +98,79 @@ final class ContentTests: XCTestCase {
         XCTAssertEqual(CycleContent.phaseHeroSubtext(.luteal, inFertile: false), CycleContent.phaseHeroCopy[.luteal]!.sub)
     }
 
+    // ── Food groups (meal logging, T26) ──
+
+    func testEveryPhaseNamesFoodGroupsAndNamesNoneTwice() {
+        XCTAssertEqual(Set(NutritionContent.phaseFoodGroups.keys), allPhases)
+        for (phase, groups) in NutritionContent.phaseFoodGroups {
+            XCTAssertFalse(groups.isEmpty, "phase \(phase) names no food groups")
+            XCTAssertEqual(Set(groups).count, groups.count, "phase \(phase) names a group twice")
+        }
+    }
+
+    func testEveryFoodGroupHasDistinctNonBlankCopy() {
+        for group in FoodGroup.allCases {
+            XCTAssertFalse(group.label.isBlank, "label blank for \(group.rawValue)")
+            XCTAssertFalse(group.examples.isBlank, "examples blank for \(group.rawValue)")
+        }
+        XCTAssertEqual(Set(FoodGroup.allCases.map(\.label)).count, FoodGroup.allCases.count)
+        XCTAssertEqual(Set(FoodGroup.allCases.map(\.examples)).count, FoodGroup.allCases.count)
+    }
+
+    /// ⚠️ The whole compliance position of the food-log card is that it *names categories and says
+    /// nothing about what they do*. That is why it carries no citation, no disclaimer and no
+    /// medical sign-off, while the focus-foods card directly above it — which does make claims —
+    /// has all three.
+    ///
+    /// So the realistic failure is not a banned phrase; nobody is going to type "alkaline diet"
+    /// here. It is one warm sentence added later — "protein supports egg quality" — that quietly
+    /// moves this card into the category that needs substantiating under CAP Code 3.7, with every
+    /// other guard still green. This is the test that notices.
+    func testFoodLogCopyMakesNoHealthClaim() {
+        let claimWords = [
+            "boost", "improve", "helps you", "help you", "good for", "supports", "support your",
+            "increases", "reduces", "prevents", "treats", "cures", "balances", "optimis",
+            "fertility", "conceive", "egg quality", "hormone",
+        ]
+        for text in FoodLogCopy.allStrings {
+            let lower = text.lowercased()
+            for word in claimWords {
+                XCTAssertFalse(lower.contains(word),
+                    "\"\(word)\" makes the food-log card a claim surface. It has no citation and no "
+                    + "sign-off — put it in phaseFoods, which has both. Copy: \(text)")
+            }
+        }
+    }
+
+    func testFoodLogSummaryDistinguishesAnEmptyDayAndNeverExceedsTheTotal() {
+        let total = FoodGroup.allCases.count
+        XCTAssertNotEqual(FoodLogCopy.summary(logged: 0, total: total),
+                          FoodLogCopy.summary(logged: 1, total: total))
+        XCTAssertTrue(FoodLogCopy.summary(logged: total, total: total).contains("\(total) of \(total)"))
+        XCTAssertFalse(FoodLogCopy.summary(logged: 0, total: total).contains("0"),
+                       "an empty day is an invitation, not a score of zero")
+    }
+
+    func testFoodLogPhaseLineNamesEveryGroupItWasGiven() {
+        XCTAssertNil(FoodLogCopy.phaseLine([]))
+        for phase in Phase.allCases {
+            let groups = NutritionContent.phaseFoodGroups[phase]!
+            let line = FoodLogCopy.phaseLine(groups)!
+            for group in groups {
+                XCTAssertTrue(line.lowercased().contains(group.label.lowercased()),
+                              "\(phase) line omits \(group.label): \(line)")
+            }
+        }
+    }
+
+    func testSentenceListReadsAsEnglish() {
+        XCTAssertEqual(FoodLogCopy.sentenceList([]), "")
+        XCTAssertEqual(FoodLogCopy.sentenceList(["fruit"]), "fruit")
+        XCTAssertEqual(FoodLogCopy.sentenceList(["fruit", "protein"]), "fruit and protein")
+        XCTAssertEqual(FoodLogCopy.sentenceList(["fruit", "protein", "dairy"]),
+                       "fruit, protein and dairy")
+    }
+
     func testTagsPrependFertileWindowForNonOvulatoryFertileDaysOnly() {
         let base = CycleContent.phaseHeroCopy[.follicular]!.tags
         let fertile = CycleContent.phaseTags(.follicular, inFertile: true)

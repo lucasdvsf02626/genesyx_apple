@@ -15,6 +15,8 @@ struct NutritionView: View {
     @State private var expandedFood: String?
     @State private var planOpen = false
     @State private var whyExpanded = false
+    @State private var groupsExplained = false
+    @State private var openRecipe: Recipe?
     @EnvironmentObject private var router: TabRouter
     @State private var articlePath: [String] = []
     @AppStorage(HydrationPrefs.unitKey) private var hydrationUnitRaw = HydrationUnit.glasses.rawValue
@@ -54,15 +56,18 @@ struct NutritionView: View {
                     if let phase {
                         if showsPhaseChange { phaseChangeCard(phase) }
                         focusFoodsCard(NutritionContent.phaseFoods[phase] ?? [])
+                        // Directly beneath the foods they cook, because that adjacency is the whole
+                        // reason these cards need no sign-off of their own — see `Recipe`.
+                        recipesSection(phase)
                     }
-                    mealSuggestionsCard
-                    if let phase {
-                        supplementPlanCard
-                    }
+                    // Only the two cards above read the phase. Gating the rest on it meant skipping
+                    // cycle setup took the supplement plan — and every per-supplement reminder with
+                    // it — out of reach anywhere in the app.
+                    supplementPlanCard
                     hydrationCard
-                    if let phase {
-                        articlesSection
-                    }
+                    waterChallengeCard
+                    foodLogCard
+                    articlesSection
                 }
                 .padding(.horizontal, 20)
                 .padding(.bottom, 24)
@@ -79,6 +84,11 @@ struct NutritionView: View {
             .onChange(of: phase) { _ in recordFirstPhase() }
         }
         .sheet(isPresented: $planOpen) { SupplementPlanSheet() }
+        .sheet(item: $openRecipe) { recipe in
+            RecipeSheet(recipe: recipe) { groups in
+                dailyLog.logFoodGroups(Set(groups.map(\.rawValue)), on: today)
+            }
+        }
     }
 
     private var header: some View {
@@ -103,8 +113,6 @@ struct NutritionView: View {
         let hour = Calendar.current.component(.hour, from: Date())
         let pct = Double(waterMl) / Double(waterGoalMl)
         let streak = dailyLog.streak()
-        let insights = HydrationInsightLogic.lastSevenDays(
-            logByDate: dailyLog.logByDate, goalMl: waterGoalMl, streak: streak, today: today)
         return VStack(alignment: .leading, spacing: 14) {
             HStack {
                 Eyebrow("Hydration", color: GenesyxColor.mutedForeground)
@@ -137,9 +145,6 @@ struct NutritionView: View {
                 .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
                 .fixedSize(horizontal: false, vertical: true)
             CitationLink("armstrong-2012")
-            Text(insights.insight)
-                .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
-                .fixedSize(horizontal: false, vertical: true)
             if weeklyStreak >= 1 {
                 HStack(spacing: 6) {
                     Image(systemName: "checkmark.seal.fill")
@@ -192,6 +197,46 @@ struct NutritionView: View {
     private func openHydrationDetail() {
         router.pendingHydration = true
         router.selection = 1
+    }
+
+    // MARK: Water challenge
+
+    /// Seven consecutive days at the water goal. Everything shown here is derived from the water
+    /// she has already logged — `WaterChallenge` stores nothing — so there is no progress record to
+    /// wire up, back up, or watch fall out of step with her logs.
+    private var waterChallengeCard: some View {
+        let state = WaterChallenge.state(logsByDate: dailyLog.logByDate, goalMl: waterGoalMl, today: today)
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Eyebrow(state.title, color: GenesyxColor.mutedForeground)
+                Spacer()
+                if state.isComplete {
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.system(size: 15)).foregroundStyle(GenesyxColor.primary)
+                }
+            }
+            Text(state.progressLabel)
+                .font(.system(size: 28, weight: .semibold)).foregroundStyle(GenesyxColor.foreground)
+            HStack(spacing: 6) {
+                ForEach(0..<state.target, id: \.self) { day in
+                    Capsule()
+                        .fill(day < state.daysDone ? GenesyxColor.primary : GenesyxColor.border.opacity(0.6))
+                        .frame(height: 6)
+                }
+            }
+            Text(state.detail)
+                .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(20)
+        .background(GenesyxColor.card)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+        .contentShape(Rectangle())
+        .onTapGesture { openHydrationDetail() }
+        // Seven undifferentiated capsules are noise to VoiceOver; the label already carries the count.
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(state.title). \(state.progressLabel). \(state.detail)")
+        .accessibilityHint("Opens hydration in Track")
     }
 
     // MARK: Phase change
@@ -304,6 +349,77 @@ struct NutritionView: View {
         .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
     }
 
+    // MARK: Recipes
+
+    /// The client's ask was to stop listing ingredients and start showing meals. These are meals,
+    /// and each is built from a focus food named in the card directly above — which is what lets
+    /// them ship without a citation or a sign-off of their own (see `Recipe`).
+    ///
+    /// No photography: the asset catalogue holds Learn heroes and brand art and nothing edible.
+    /// Rather than ship stock images of somebody else's food, each card carries a gradient in the
+    /// phase accent. `Recipe.imageName` is the seam for real photography later.
+    private func recipesSection(_ phase: Phase) -> some View {
+        let recipes = RecipeContent.forPhase(phase)
+        let accent = Theme.color(for: FoodAccent(rawValue: phase.rawValue) ?? .period)
+        return VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Eyebrow(RecipeCopy.eyebrow, color: GenesyxColor.mutedForeground)
+                Text(RecipeCopy.title).font(.gxCardHeading).foregroundStyle(GenesyxColor.foreground)
+            }
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    ForEach(recipes) { recipe in
+                        recipeCard(recipe, accent: accent)
+                    }
+                }
+                // The cards sit inside the page's own 20pt gutter, so the row is padded back out
+                // and in again — otherwise the first card starts flush against the screen edge.
+                .padding(.horizontal, 20)
+            }
+            .padding(.horizontal, -20)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.top, 4)
+    }
+
+    private func recipeCard(_ recipe: Recipe, accent: Color) -> some View {
+        Button { openRecipe = recipe } label: {
+            VStack(alignment: .leading, spacing: 0) {
+                ZStack(alignment: .bottomLeading) {
+                    LinearGradient(
+                        colors: [accent.opacity(0.85), accent.opacity(0.35)],
+                        startPoint: .topLeading, endPoint: .bottomTrailing)
+                    Image(systemName: "fork.knife")
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.9))
+                        .padding(14)
+                }
+                .frame(height: 92)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(recipe.name).font(.gxCardHeadingSmall).foregroundStyle(GenesyxColor.foreground)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(RecipeCopy.usesLine(recipe.usesFocusFood))
+                        .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(RecipeCopy.meta(minutes: recipe.minutes, serves: recipe.serves))
+                        .font(.caption2).foregroundStyle(GenesyxColor.mutedForeground.opacity(0.9))
+                        .padding(.top, 2)
+                }
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(width: 220)
+            .background(GenesyxColor.card)
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("nutrition.recipe.\(recipe.id)")
+        .accessibilityLabel("\(recipe.name). \(RecipeCopy.meta(minutes: recipe.minutes, serves: recipe.serves))")
+        .accessibilityHint(RecipeCopy.usesLine(recipe.usesFocusFood))
+    }
+
     // MARK: Supplement plan
 
     /// Honest count of today's logged supplements (from the daily log), never a fixed placeholder.
@@ -386,28 +502,194 @@ struct SupplementAvatar: View {
 }
 
 private extension NutritionView {
-    /// Honest empty state for content not built yet (meal suggestions + food preferences). No fake
-    /// data — a clean "coming soon" placeholder that keeps the section discoverable.
-    var mealSuggestionsCard: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: "fork.knife").font(.system(size: 16))
-                .foregroundStyle(GenesyxColor.electricLavender)
-                .frame(width: 40, height: 40)
-                .background(GenesyxColor.primary.opacity(0.10)).clipShape(RoundedRectangle(cornerRadius: 12))
-            VStack(alignment: .leading, spacing: 4) {
-                Eyebrow("Coming soon", color: GenesyxColor.mutedForeground)
-                Text("Meal suggestions & food preferences")
-                    .font(.gxCardHeadingSmall).foregroundStyle(GenesyxColor.foreground)
-                Text("Personalised meals and dietary preferences are on the way. For now, your phase focus foods above are your guide.")
+    /// Meal logging, in food-group terms — the loop this screen has always opened and never closed.
+    /// The focus-foods card above tells her what to eat this phase; until now nothing let her say
+    /// she had.
+    ///
+    /// Groups rather than foods deliberately. Naming a dish needs a food database, which is the
+    /// deferred barcode work, and counting nutrients needs claims this app has no substantiation
+    /// for. Six chips need neither and answer the question she actually has, which is whether the
+    /// week has had any vegetables in it.
+    var foodLogCard: some View {
+        let logged = dailyLog.log(on: today).foodGroups
+        // Counted against the known cases, not the stored set: a token written by a build that
+        // knows a seventh group would otherwise render "7 of 6".
+        let known = FoodGroup.allCases.filter { logged.contains($0.rawValue) }
+        let emphasis = phase.flatMap { NutritionContent.phaseFoodGroups[$0] } ?? []
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Eyebrow(FoodLogCopy.title, color: GenesyxColor.mutedForeground)
+                Spacer()
+                Text("\(known.count)/\(FoodGroup.allCases.count)")
+                    .font(.gxBodySmall.weight(.semibold))
+                    .foregroundStyle(known.isEmpty ? GenesyxColor.mutedForeground : GenesyxColor.primary)
+            }
+            Text(FoodLogCopy.summary(logged: known.count, total: FoodGroup.allCases.count))
+                .font(.gxBody.weight(.semibold)).foregroundStyle(GenesyxColor.foreground)
+                .fixedSize(horizontal: false, vertical: true)
+            FlowLayout(spacing: 8) {
+                ForEach(FoodGroup.allCases) { group in
+                    foodGroupChip(group, selected: logged.contains(group.rawValue))
+                }
+            }
+            if let line = FoodLogCopy.phaseLine(emphasis) {
+                Text(line)
                     .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            Spacer(minLength: 0)
+            Rectangle().fill(GenesyxColor.border.opacity(0.6)).frame(height: 1)
+            whatCountsDisclosure
+            Text(FoodLogCopy.footnote)
+                .font(.caption2).foregroundStyle(GenesyxColor.mutedForeground)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(16)
+        .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(GenesyxColor.card)
         .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+    }
+
+    func foodGroupChip(_ group: FoodGroup, selected: Bool) -> some View {
+        Button {
+            dailyLog.toggleFoodGroup(group.rawValue, on: today)
+        } label: {
+            HStack(spacing: 4) {
+                if selected { Image(systemName: "checkmark").font(.system(size: 12, weight: .bold)) }
+                Text(group.label).font(.system(size: 13, weight: .medium))
+            }
+            .foregroundStyle(selected ? .white : GenesyxColor.foreground.opacity(0.8))
+            .padding(.horizontal, 14).frame(height: 36)
+            .background(selected ? GenesyxColor.primary : GenesyxColor.card)
+            .clipShape(Capsule())
+            .overlay(Capsule().strokeBorder(selected ? .clear : GenesyxColor.border, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("nutrition.foodGroup.\(group.rawValue)")
+        .accessibilityLabel(selected ? "\(group.label), logged" : "\(group.label), not logged")
+        .accessibilityHint(group.examples)
+    }
+
+    /// "Starchy carbs" is not self-explanatory, and a chip has no room to say what counts. Same
+    /// disclosure pattern as "Why hydration?" three cards up, so it costs one line until she asks.
+    var whatCountsDisclosure: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Button { withAnimation(.easeInOut(duration: 0.2)) { groupsExplained.toggle() } } label: {
+                HStack {
+                    Text("What counts as what?").font(.gxBodySmall.weight(.medium))
+                        .foregroundStyle(GenesyxColor.primary)
+                    Spacer()
+                    Image(systemName: "chevron.down").font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(GenesyxColor.mutedForeground)
+                        .rotationEffect(.degrees(groupsExplained ? 180 : 0))
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("nutrition.foodGroupsExplain")
+            if groupsExplained {
+                ForEach(FoodGroup.allCases) { group in
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(group.label).font(.gxBodySmall.weight(.medium))
+                            .foregroundStyle(GenesyxColor.foreground)
+                        Text(group.examples).font(.gxBodySmall)
+                            .foregroundStyle(GenesyxColor.mutedForeground.opacity(0.9))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// One recipe, in full. The "log this" button writes the groups the recipe already knows it covers,
+/// so she is not re-entering into the food log what is on the screen in front of her.
+private struct RecipeSheet: View {
+    let recipe: Recipe
+    /// Called with the recipe's groups. Additive on the repository side — see `logFoodGroups`.
+    let onLog: ([FoodGroup]) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var logged = false
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(RecipeCopy.usesLine(recipe.usesFocusFood))
+                            .font(.gxBodySmall).foregroundStyle(GenesyxColor.primary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text(RecipeCopy.meta(minutes: recipe.minutes, serves: recipe.serves))
+                            .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+                    }
+
+                    section(RecipeCopy.ingredientsHeading) {
+                        ForEach(recipe.ingredients, id: \.self) { line in
+                            HStack(alignment: .top, spacing: 10) {
+                                Circle().fill(GenesyxColor.primary.opacity(0.5))
+                                    .frame(width: 5, height: 5).padding(.top, 7)
+                                Text(line).font(.gxBody).foregroundStyle(GenesyxColor.foreground)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                    }
+
+                    section(RecipeCopy.methodHeading) {
+                        ForEach(Array(recipe.method.enumerated()), id: \.offset) { i, step in
+                            HStack(alignment: .top, spacing: 10) {
+                                Text("\(i + 1)").font(.gxBodySmall.weight(.semibold))
+                                    .foregroundStyle(GenesyxColor.primary)
+                                    .frame(width: 22, height: 22)
+                                    .background(GenesyxColor.primary.opacity(0.12)).clipShape(Circle())
+                                Text(step).font(.gxBody).foregroundStyle(GenesyxColor.foreground)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                    }
+
+                    logButton
+
+                    Text(RecipeCopy.footnote)
+                        .font(.caption2).foregroundStyle(GenesyxColor.mutedForeground)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(20)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .background(GenesyxColor.background)
+            .navigationTitle(recipe.name).navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+        }
+    }
+
+    /// Stays on screen after tapping rather than dismissing. Tapping "log" and being thrown back to
+    /// the list reads as the sheet closing on her, and she may well still be cooking from it.
+    private var logButton: some View {
+        Button {
+            onLog(recipe.groups)
+            withAnimation(.easeInOut(duration: 0.2)) { logged = true }
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: logged ? "checkmark.circle.fill" : "plus.circle")
+                Text(logged ? "Added to today" : RecipeCopy.logGroupsAction(recipe.groups))
+            }
+            .font(.gxBody.weight(.semibold))
+            .foregroundStyle(logged ? GenesyxColor.primary : .white)
+            .padding(.horizontal, 18).frame(height: 48)
+            .frame(maxWidth: .infinity)
+            .background(logged ? GenesyxColor.primary.opacity(0.12) : GenesyxColor.primary)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
+        .disabled(logged)
+        .accessibilityIdentifier("recipe.logGroups")
+    }
+
+    private func section<Content: View>(_ heading: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Eyebrow(heading, color: GenesyxColor.mutedForeground)
+            content()
+        }
     }
 }
 

@@ -1,6 +1,24 @@
 // Permanently delete the caller's account and all their data.
-// REQUIRED by App Store Guideline 5.1.1(v) once the app has accounts. STUB — verify table list.
-import { serviceClient, requireUser, json } from "../_shared/client.ts";
+// REQUIRED by App Store Guideline 5.1.1(v) once the app has accounts.
+//
+// NOTHING IS REPORTED DELETED THAT WAS NOT DELETED.
+// Every statement here used to discard its result, so the function could fail to remove a table,
+// carry on, delete the auth user, and return `{ok:true}`. That is the worst available outcome: the
+// rows survive, and the only person entitled to ask for their removal no longer exists. Nobody can
+// retry, because from the app's side it already succeeded. So each delete is checked now, and a
+// failure returns 500 with the auth user still in place — she stays deletable, and the retry is the
+// same call again.
+//
+// The auth user goes LAST for the same reason. It is the handle everything else hangs off.
+//
+// WHAT CASCADES AND WHAT DOES NOT.
+// `quiz_answers.user_id` is `references auth.users(id) on delete cascade`, so it would go with the
+// auth user regardless; it is listed explicitly anyway, because that FK lives in a migration this
+// function cannot see, and because the explicit delete happens BEFORE the auth-user step, so it
+// still holds if that last step fails. `partner_invites.invitee_email` is the opposite case — free
+// text with no foreign key, because an invite can be addressed to someone who has no account yet —
+// and it is handled separately below.
+import { serviceClient, requireUser, json, NotAuthenticated } from "../_shared/client.ts";
 
 Deno.serve(async (req) => {
   try {
@@ -8,25 +26,87 @@ Deno.serve(async (req) => {
     const db = serviceClient();
     const uid = user.id;
 
-    // Unlink any partner first so we don't leave dangling references.
-    const { data: me } = await db.from("profiles").select("partner_id").eq("id", uid).single();
+    const failed = (what: string, message: string) => {
+      console.error(`delete_account: ${what} failed —`, message);
+      return json({ error: "Something went wrong" }, 500);
+    };
+
+    // Unlink any partner first. Not just tidiness: `profiles.partner_id` points at a profile row,
+    // so deleting hers while he still points at it is the one ordering that can fail outright. It
+    // also closes the read — `profiles_select` is
+    // `using (id = auth.uid() or id = public.current_partner_id())`, and his pointer is what grants
+    // him her row.
+    const { data: me, error: meErr } = await db
+      .from("profiles").select("partner_id").eq("id", uid).maybeSingle();
+    if (meErr) return failed("profile lookup", meErr.message);
     if (me?.partner_id) {
-      await db.from("profiles").update({ partner_id: null }).eq("id", me.partner_id);
+      const unlink = await db
+        .from("profiles").update({ partner_id: null }).eq("id", me.partner_id);
+      if (unlink.error) return failed("partner unlink", unlink.error.message);
     }
 
-    // Delete owned rows (extend this list as the schema grows).
-    await db.from("ph_readings").delete().eq("user_id", uid);
-    await db.from("daily_logs").delete().eq("user_id", uid);
-    await db.from("cycle_settings").delete().eq("user_id", uid);
-    await db.from("partner_invites").delete().eq("inviter_id", uid);
-    await db.from("profiles").delete().eq("id", uid);
+    // Rows she owns by id. Extend this list as the schema grows.
+    for (const [table, column] of [
+      ["ph_readings", "user_id"],
+      ["daily_logs", "user_id"],
+      ["cycle_settings", "user_id"],
+      ["quiz_answers", "user_id"],
+      ["partner_invites", "inviter_id"],
+    ] as const) {
+      const { error } = await db.from(table).delete().eq(column, uid);
+      if (error) return failed(`${table} delete`, error.message);
+    }
 
-    // Finally delete the auth user (admin).
+    const email = user.email?.trim();
+    if (email) {
+      const lowered = email.toLowerCase();
+
+      // Invites addressed TO her. Keyed by email with no foreign key, so nothing cascades these
+      // away — her address would sit in this table permanently, and she could never reach it:
+      // `partner_invites_owner` is `using (inviter_id = auth.uid())`, so once her account is gone
+      // there is nobody who can even see the row, let alone delete it.
+      //
+      // Case-insensitive because that is how accept and decline match this column, and `ilike` is
+      // the only case-insensitive filter PostgREST offers. But `_` and `%` are LIKE wildcards and
+      // both are legal in an address, so the pattern can match MORE rows than it should — never
+      // fewer. Deleting on the `ilike` alone would take a stranger's pending invite with it:
+      // `a_b@x.com` also matches `axb@x.com`. So `ilike` narrows and the exact comparison decides.
+      const { data: addressed, error: addrErr } = await db
+        .from("partner_invites").select("id, invitee_email").ilike("invitee_email", email);
+      if (addrErr) return failed("partner_invites lookup", addrErr.message);
+
+      const mine = (addressed ?? [])
+        .filter((r) => r.invitee_email?.toLowerCase() === lowered)
+        .map((r) => r.id);
+      if (mine.length > 0) {
+        const { error } = await db.from("partner_invites").delete().in("id", mine);
+        if (error) return failed("partner_invites (invitee) delete", error.message);
+      }
+
+      // The waitlist she may have joined before she had an account at all. `join_waitlist` stores
+      // `lower(trim(...))`, so an exact match is sound here and needs no wildcard dance.
+      //
+      // The ONE table whose failure does not stop the deletion. `20260811_waitlist_emails.sql` is
+      // still unapplied on the live project (TESTFLIGHT_B18.md pre-flight 2), so this can fail with
+      // "relation does not exist" today — and refusing to delete an account over a marketing row is
+      // out of all proportion to what 5.1.1(v) is protecting. Logged loudly instead, so if it is
+      // ever failing for a reason other than that pending migration, someone can see it.
+      const wait = await db.from("waitlist_emails").delete().eq("email", lowered);
+      if (wait.error) {
+        console.error("delete_account: waitlist_emails delete failed —", wait.error.message);
+      }
+    }
+
+    const profile = await db.from("profiles").delete().eq("id", uid);
+    if (profile.error) return failed("profiles delete", profile.error.message);
+
     const { error } = await db.auth.admin.deleteUser(uid);
-    if (error) return json({ error: error.message }, 500);
+    if (error) return failed("auth user delete", error.message);
 
     return json({ ok: true });
   } catch (e) {
-    return json({ error: String(e) }, 401);
+    if (e instanceof NotAuthenticated) return json({ error: "Not authenticated" }, 401);
+    console.error("delete_account: unhandled —", e);
+    return json({ error: "Something went wrong" }, 500);
   }
 });

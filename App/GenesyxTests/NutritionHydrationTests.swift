@@ -18,6 +18,31 @@ final class NutritionHydrationTests: XCTestCase {
         }
     }
 
+    /// The food-log card is the second block of reader-facing nutrition copy on this screen, and
+    /// the list above is the one that already exists for the first. `FoodLogCopy` lives in Core
+    /// specifically so a test can reach it — copy written inline in a SwiftUI body is copy nothing
+    /// scans, which is how the "alkaline diet" family gets in.
+    func testNoBannedPhrasesInFoodLogCopy() {
+        for s in FoodLogCopy.allStrings {
+            let lower = s.lowercased()
+            for phrase in bannedPhrases {
+                XCTAssertFalse(lower.contains(phrase), "Banned phrase \"\(phrase)\" in food log copy: \(s)")
+            }
+        }
+    }
+
+    /// The third block of reader-facing nutrition copy, added with the recipe cards. Ingredients and
+    /// method are long-form prose written by hand, which makes this the largest surface on the
+    /// screen for a banned phrase to arrive in unnoticed.
+    func testNoBannedPhrasesInRecipeCopy() {
+        for s in RecipeCopy.allStrings {
+            let lower = s.lowercased()
+            for phrase in bannedPhrases {
+                XCTAssertFalse(lower.contains(phrase), "Banned phrase \"\(phrase)\" in recipe copy: \(s)")
+            }
+        }
+    }
+
     func testCoachLineNamesDayPartFirst() {
         XCTAssertTrue(HydrationCoach.coachLine(hour: 7, pct: 0.2).hasPrefix("Morning"))
         XCTAssertTrue(HydrationCoach.coachLine(hour: 13, pct: 0.2).hasPrefix("Midday"))

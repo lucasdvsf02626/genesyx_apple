@@ -51,6 +51,15 @@ public enum GenesyxColor {
     public static let electricPink = Color(hex: 0xC782D8) // avatar gradient end
     public static let babyPink = Color(hex: 0xDEBED2)
 
+    /// The icon inside the pregnancy teaser's two powder-pink chips.
+    ///
+    /// `electricPink` measured 2.09:1 on the hero chip and 2.33:1 on the feature chip — under the
+    /// 3:1 floor for a graphical object, and that icon is the only thing inside the chip, so there
+    /// is no label in there to carry the meaning instead. Dark is left as `electricPink`: against
+    /// the much darker composite it already measures 3.5–4.4:1, and a scheme that was fine should
+    /// not move. So this is a light-mode correction only.
+    public static let pregnancyAccent = Color.adaptive(light: Color(hex: 0x8E3FA3), dark: electricPink)
+
     // Vaginal pH status colors (two-band model)
     public static let phHealthy = Color(hex: 0x3FA37A)   // green — 3.8–4.5
     public static let phElevated = Color(hex: 0xE0952B)  // amber — above 4.5

@@ -108,16 +108,23 @@ struct LogView: View {
         loaded = true
     }
 
+    /// Overwrites the fields this sheet edits and leaves the rest of the day alone.
+    ///
+    /// It used to build a fresh `DailyLog` from `@State`, which silently reset every field the
+    /// sheet does not show. That was harmless while the sheet showed all of them; it stopped being
+    /// harmless the moment food groups became loggable from Nutrition, because saving a note here
+    /// would have wiped what she ticked off there — a data loss with no error and no undo.
     private func save() {
-        dailyLog.upsert(
-            DailyLog(
-                mood: mood, energy: energy, symptoms: symptoms,
-                sleepMinutes: sleepMinutes, supplements: selectedSupplements,
-                notes: notes.isEmpty ? nil : notes, waterMl: waterMl,
-                sexualActivity: sexualActivity
-            ),
-            on: date
-        )
+        var entry = dailyLog.log(on: date)
+        entry.mood = mood
+        entry.energy = energy
+        entry.symptoms = symptoms
+        entry.sleepMinutes = sleepMinutes
+        entry.supplements = selectedSupplements
+        entry.notes = notes.isEmpty ? nil : notes
+        entry.waterMl = waterMl
+        entry.sexualActivity = sexualActivity
+        dailyLog.upsert(entry, on: date)
         dismiss()
     }
 

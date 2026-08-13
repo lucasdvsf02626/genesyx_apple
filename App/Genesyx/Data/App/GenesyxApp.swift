@@ -35,6 +35,7 @@ struct GenesyxApp: App {
                 .environmentObject(container.session)
                 .environmentObject(container.partner)
                 .environmentObject(container.learn)
+                .environmentObject(container.reachability)
                 .environmentObject(notifications)
                 .tint(GenesyxColor.primary)
                 .task { await notifications.reconcile() }

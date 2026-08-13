@@ -88,6 +88,7 @@
 		F224834DAF0D1D8314BAF564 /* PreferencesRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 406D34D93DA7A1D21CCC5069 /* PreferencesRepository.swift */; };
 		F8747CF476AB6AC7AE8256B2 /* CalendarDate+Foundation.swift in Sources */ = {isa = PBXBuildFile; fileRef = F344C06C360FBD7A34BA772B /* CalendarDate+Foundation.swift */; };
 		F9D71D8FE7A64E15910D6C54 /* BrandAssetTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED048B54AB44204938AE8902 /* BrandAssetTests.swift */; };
+		FDC13A48823289A4B1483BDE /* Reachability.swift in Sources */ = {isa = PBXBuildFile; fileRef = D003741163D1BDCE4D6697C4 /* Reachability.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -177,6 +178,7 @@
 		C514C0E95E071BDA9843904E /* PersistenceDTOs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceDTOs.swift; sourceTree = "<group>"; };
 		C945804E1BB5F3133A5710D6 /* LearnContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearnContent.swift; sourceTree = "<group>"; };
 		CA1FD2DBFCCA2572F4AF84F1 /* PhRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhRepository.swift; sourceTree = "<group>"; };
+		D003741163D1BDCE4D6697C4 /* Reachability.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Reachability.swift; sourceTree = "<group>"; };
 		D262BD3C0DBE243270F855CB /* GenesyxAppTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = GenesyxAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D48509B6EC8A02B3A142AF09 /* PhTrackerSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhTrackerSection.swift; sourceTree = "<group>"; };
 		D6D3F941F8A48D807333965C /* EmailValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmailValidator.swift; sourceTree = "<group>"; };
@@ -325,6 +327,7 @@
 				C514C0E95E071BDA9843904E /* PersistenceDTOs.swift */,
 				CA1FD2DBFCCA2572F4AF84F1 /* PhRepository.swift */,
 				406D34D93DA7A1D21CCC5069 /* PreferencesRepository.swift */,
+				D003741163D1BDCE4D6697C4 /* Reachability.swift */,
 				709D1C1FC95A6647B86AFD2E /* SessionRepository.swift */,
 				F90F9045207B60D13F0BE507 /* App */,
 				F9597355B76D96354A513FF7 /* Remote */,
@@ -698,6 +701,7 @@
 				795CDA6439BC0D8D1A06F880 /* PregnancyView.swift in Sources */,
 				9D27EC5A52BE53D875F4A7AF /* PreviewSupport.swift in Sources */,
 				3C2FD7275110E323A3A88875 /* ProfileView.swift in Sources */,
+				FDC13A48823289A4B1483BDE /* Reachability.swift in Sources */,
 				02CDDD6278836CD356A2B6E9 /* RemoteBackend.swift in Sources */,
 				9F148CCE3A2DE5173BFFAA39 /* RemoteModels.swift in Sources */,
 				179450D82831FD20FBB06431 /* RootView.swift in Sources */,

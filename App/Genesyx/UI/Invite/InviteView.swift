@@ -14,9 +14,12 @@ struct InviteView: View {
     @EnvironmentObject private var partner: PartnerRepository
 
     @State private var accepting = false
+    @State private var declining = false
+    @State private var confirmingDecline = false
     @State private var error: String?
 
     private var valid: Bool { code.count >= 8 }
+    private var busy: Bool { accepting || declining }
 
     /// The server refuses an invite that isn't hers — wrong email, already used, or revoked. That
     /// refusal has to be shown, not swallowed: the old code linked her optimistically and she would
@@ -32,6 +35,27 @@ struct InviteView: View {
                 self.error = "This invite couldn't be accepted. It may have been sent to a different email address, already used, or withdrawn."
             }
             accepting = false
+        }
+    }
+
+    /// Refusing the invite outright, which "Not now" does NOT do — that only dismisses the sheet,
+    /// and the invite stays pending. A pending invite is a standing offer to whoever holds the link,
+    /// which may no longer be only the person it was sent to.
+    ///
+    /// Irreversible: there is no path from `declined` back to `pending`, so the server will refuse a
+    /// later accept on the same code. Hence the confirmation, and hence the quietest styling on the
+    /// screen — this is the one action here she cannot undo.
+    private func declineInvite() {
+        declining = true
+        error = nil
+        Task {
+            do {
+                try await partner.decline(code: code)
+                onBack()
+            } catch {
+                self.error = "This invite couldn't be declined. It may already have been used or withdrawn."
+            }
+            declining = false
         }
     }
 
@@ -71,8 +95,21 @@ struct InviteView: View {
                 }
                 Spacer().frame(height: 24)
                 GxPrimaryButton(title: accepting ? "Accepting…" : "Accept invite",
-                                enabled: !accepting) { acceptInvite() }
+                                enabled: !busy) { acceptInvite() }
                 GxGhostButton(title: "Not now", action: onBack)
+                Button(declining ? "Declining…" : "Decline invite") { confirmingDecline = true }
+                    .font(.gxBodySmall.weight(.medium))
+                    .foregroundStyle(GenesyxColor.destructive)
+                    .disabled(busy)
+                    .padding(.vertical, 6)
+                    .confirmationDialog("Decline this invite?", isPresented: $confirmingDecline,
+                                        titleVisibility: .visible) {
+                        Button("Decline invite", role: .destructive) { declineInvite() }
+                        Button("Cancel", role: .cancel) {}
+                    } message: {
+                        Text("The link stops working and they'll need to send a new one. "
+                             + "Either way, your logs, readings and notes were never shared.")
+                    }
             }
         }
         .frame(maxWidth: 360)

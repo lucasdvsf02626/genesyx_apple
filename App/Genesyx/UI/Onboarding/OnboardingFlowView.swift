@@ -145,9 +145,9 @@ private struct OnboardingIntroView: View {
                 HStack { GxBackButton(action: onBack); Spacer() }
                 Text("Your fertility preparation, gently guided")
                     .font(.gxDisplayLarge).foregroundStyle(GenesyxColor.foreground)
-                Spacer().frame(height: 12)
-                Text("Genesyx blends cycle awareness, nutrition, and supportive insights into one calm space.")
-                    .font(.gxBody).foregroundStyle(GenesyxColor.mutedForeground)
+                // The standfirst that sat here named cycle awareness, nutrition and insights — the
+                // same three things the cards below name, with icons, one line each. The splash had
+                // already said it too, on the screen immediately before this one.
                 Spacer().frame(height: 32)
                 ForEach(benefits) { b in
                     HStack(spacing: 16) {

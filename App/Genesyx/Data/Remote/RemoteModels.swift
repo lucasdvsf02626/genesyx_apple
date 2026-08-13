@@ -116,6 +116,10 @@ struct DailyLogRow: Codable {
     var notes: String?
     /// Optional on decode so a row from before the column existed tolerates as `false`.
     var sexualActivity: Bool?
+    /// Optional on the same grounds. It also means the app keeps working end to end if
+    /// `20260812_daily_logs_food_groups.sql` has not been applied yet — which is exactly the
+    /// silent-failure shape the build-18 pre-flight list exists to catch, so it is on that list.
+    var foodGroups: [String]?
 
     enum CodingKeys: String, CodingKey {
         case userId = "user_id"
@@ -124,6 +128,7 @@ struct DailyLogRow: Codable {
         case sleepMinutes = "sleep_minutes"
         case waterMl = "water_ml"
         case sexualActivity = "sexual_activity"
+        case foodGroups = "food_groups"
     }
 
     var domain: DailyLog {
@@ -135,7 +140,8 @@ struct DailyLogRow: Codable {
             supplements: Set(supplements),
             notes: notes,
             waterMl: waterMl,
-            sexualActivity: sexualActivity ?? false
+            sexualActivity: sexualActivity ?? false,
+            foodGroups: Set(foodGroups ?? [])
         )
     }
 
@@ -150,6 +156,7 @@ struct DailyLogRow: Codable {
         self.supplements = Array(log.supplements)
         self.notes = log.notes
         self.sexualActivity = log.sexualActivity
+        self.foodGroups = Array(log.foodGroups)
     }
 }
 

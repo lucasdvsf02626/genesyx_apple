@@ -168,13 +168,14 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
     private func snapshot() -> NotificationSnapshot {
         let today = CalendarDate.today()
         let phDays = ph.readings.map { CalendarDate.today(now: $0.recordedAt) }
-        // `sexualActivity` is folded in here and in `lastActivityDay`, but NOT into the engines'
-        // `isMeaningfulLog` / `hasAnyEntry`: those two are the cross-platform streak contract and
-        // cannot widen until Android does (see `TrackingEngine`). Notifications are iOS-only and
-        // mirror nothing, so widening here diverges nothing — and the alternative is nudging her to
-        // log on a day she logged.
+        // `sexualActivity` and `foodGroups` are folded in here and in `lastActivityDay`, but NOT
+        // into the engines' `isMeaningfulLog` / `hasAnyEntry`: those two are the cross-platform
+        // streak contract and cannot widen until Android does (see `TrackingEngine`). Notifications
+        // are iOS-only and mirror nothing, so widening here diverges nothing — and the alternative
+        // is nudging her to log on a day she logged.
         let log = dailyLog.log(on: today)
-        let loggedToday = log.isMeaningfulLog || log.sexualActivity || phDays.contains(today)
+        let loggedToday = log.isMeaningfulLog || log.sexualActivity || !log.foodGroups.isEmpty
+            || phDays.contains(today)
 
         return NotificationSnapshot(
             streak: StreakEngine.compute(
@@ -199,9 +200,11 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
     }
 
     /// Any activity at all — a log or a pH reading. Drives "she went quiet, so we go quiet", which
-    /// is why `sexualActivity` counts here (see `snapshot`).
+    /// is why `sexualActivity` and `foodGroups` count here (see `snapshot`).
     private func lastActivityDay(phDays: [CalendarDate]) -> CalendarDate? {
-        let logDays = dailyLog.logByDate.filter { $0.value.hasAnyEntry || $0.value.sexualActivity }.keys
+        let logDays = dailyLog.logByDate
+            .filter { $0.value.hasAnyEntry || $0.value.sexualActivity || !$0.value.foodGroups.isEmpty }
+            .keys
         return (Array(logDays) + phDays).max()
     }
 
@@ -421,8 +424,11 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
         // exists now.
         guard !prefs.mutedNotifications.contains(.supplements) else { return }
 
-        let reminders = SupplementReminder.all(customs: customSupplements(),
+        var reminders = SupplementReminder.all(customs: customSupplements(),
                                                hours: prefs.supplementReminders)
+        if FeatureFlags.personalisedSupplementTiming {
+            reminders = SupplementPersonalisation.apply(to: reminders, signals: supplementSignals())
+        }
         for reminder in reminders {
             let content = UNMutableNotificationContent()
             content.title = reminder.title
@@ -445,6 +451,17 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
     }
 
     nonisolated static func supplementRequestId(_ key: String) -> String { "genesyx.supplement.\(key)" }
+
+    /// Everything `SupplementPersonalisation` reads, taken from the repositories this service
+    /// already holds. Nothing is collected that wasn't already being stored for another reason.
+    private func supplementSignals() -> SupplementSignals {
+        SupplementSignals.from(
+            logs: dailyLog.logByDate,
+            readingDates: ph.readings.map(\.recordedAt),
+            quizAnswers: prefs.quizAnswers,
+            phase: cycle.settings.map { CycleEngine.cyclePhase(settings: $0).phase }
+        )
+    }
 
     /// Written by the Nutrition sheet through `@AppStorage`, which is `UserDefaults.standard` — the
     /// same place the sign-out wipe clears, so the two cannot drift apart.

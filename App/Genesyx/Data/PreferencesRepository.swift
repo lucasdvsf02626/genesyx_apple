@@ -53,6 +53,7 @@ final class PreferencesRepository: ObservableObject {
     private let supplementRemindersKey = "supplement_reminders"
     private let quizAnswersKey = "quiz_answers"
     private let pendingKey = "profile_pending"
+    private let themeMigratedKey = "theme_default_migrated"
 
     /// Set while applying a pulled profile, so writing those values doesn't bounce them straight
     /// back up as a fresh push.
@@ -163,6 +164,23 @@ final class PreferencesRepository: ObservableObject {
             return
         }
         apply(remote)
+        migrateLegacySystemTheme()
+    }
+
+    /// One-shot, and the reason the light default looked undone on every account that predates it.
+    ///
+    /// Before `560591e` the default was `.system`, and a first sync seeds the profile row from
+    /// whatever this device holds — so accounts created back then carry `.system` as a stored
+    /// preference she never actually expressed. Pulling it down is what puts a returning user on a
+    /// dark phone straight back into dark, with the palette nowhere in sight.
+    ///
+    /// Only `.system` is corrected: a `.dark` she went to Profile and chose is a real preference and
+    /// is left alone. After this runs once, a `.system` she picks herself syncs like anything else.
+    private func migrateLegacySystemTheme() {
+        guard !store.bool(forKey: themeMigratedKey, default: false) else { return }
+        store.setBool(true, forKey: themeMigratedKey)
+        guard themeMode == .system else { return }
+        themeMode = .light   // didSet persists it and owes the push, which corrects the row too
     }
 
     /// Retry the write the server never received. Called on launch/sign-in and app foreground.

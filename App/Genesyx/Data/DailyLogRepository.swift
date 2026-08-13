@@ -1,16 +1,30 @@
 import Foundation
 import GenesyxCore
 
+/// What the server knows about one day, as far as this device can tell.
+///
+/// Deliberately says nothing about connectivity. The old third case was named
+/// `willSyncWhenOnline` and read "Will sync when online", which turned a fact about a *row* into a
+/// claim about the *network* — so the ordinary second between a save and its push landing was
+/// reported to her as being offline, over an app that was working perfectly. The state is now
+/// `pendingSync`: this day is on the phone and not yet on the server, which is true whether she is
+/// online or not.
 enum DailyLogSyncState: Equatable {
+    /// Momentary write confirmation, shown for ~1.2s after an edit.
     case saved
+    /// The server has this day.
     case synced
-    case willSyncWhenOnline
+    /// Saved on the device, not yet acknowledged by the server.
+    case pendingSync
 
-    var label: String {
+    /// Connectivity changes only the *explanation*, never the fact: the row is unsynced either way.
+    /// Offline is the one case where "when you're back online" is a true statement rather than a
+    /// guess, so it is the only case that mentions it.
+    func label(online: Bool = true) -> String {
         switch self {
         case .saved: return "Saved"
         case .synced: return "Synced"
-        case .willSyncWhenOnline: return "Will sync when online"
+        case .pendingSync: return online ? "Saved on this phone" : "Saved — syncs when you're back online"
         }
     }
 }
@@ -37,7 +51,7 @@ final class DailyLogRepository: ObservableObject {
     /// every logged day counts as owed.
     ///
     /// `@Published` because `syncState` reads it: a push lands after the save that queued it, and
-    /// without the notification the row kept showing "Will sync when online" over a day the server
+    /// without the notification the row kept showing the unsynced badge over a day the server
     /// already had, until some unrelated edit redrew it.
     @Published private var pendingDates: Set<CalendarDate> {
         didSet { store.save(Array(pendingDates), forKey: pendingKey) }
@@ -63,7 +77,7 @@ final class DailyLogRepository: ObservableObject {
 
     func syncState(on date: CalendarDate) -> DailyLogSyncState {
         guard backend != nil else { return .saved }
-        return pendingDates.contains(date) ? .willSyncWhenOnline : .synced
+        return pendingDates.contains(date) ? .pendingSync : .synced
     }
 
     func upsert(_ log: DailyLog, on date: CalendarDate) {
@@ -87,6 +101,29 @@ final class DailyLogRepository: ObservableObject {
     func setWater(_ ml: Int, on date: CalendarDate = .today()) {
         var entry = log(on: date)
         entry.waterMl = min(max(ml, 0), 10_000)
+        upsert(entry, on: date)
+    }
+
+    /// Add or remove one food group for a day. `id` is a `FoodGroup.rawValue`.
+    ///
+    /// Read-modify-write on the stored day rather than a whole-log replace, so ticking a group off
+    /// in Nutrition cannot overwrite the mood she recorded in the log sheet a minute earlier.
+    func toggleFoodGroup(_ id: String, on date: CalendarDate = .today()) {
+        var entry = log(on: date)
+        if entry.foodGroups.contains(id) { entry.foodGroups.remove(id) } else { entry.foodGroups.insert(id) }
+        upsert(entry, on: date)
+    }
+
+    /// Mark a set of groups as eaten, in one write.
+    ///
+    /// Additive rather than a toggle: this is the "I cooked this" button on a recipe card, and a
+    /// second tap means the same thing as the first. Toggling would silently *un*-log a group she
+    /// had already ticked by hand. One upsert rather than one per group, so a four-group recipe is
+    /// one push and not four — and the no-op guard means a repeat tap queues nothing at all.
+    func logFoodGroups(_ ids: Set<String>, on date: CalendarDate = .today()) {
+        var entry = log(on: date)
+        guard !ids.isSubset(of: entry.foodGroups) else { return }
+        entry.foodGroups.formUnion(ids)
         upsert(entry, on: date)
     }
 

@@ -66,6 +66,7 @@ final class LearnContentTests: XCTestCase {
             "guide-nutrition-focus",
             "guide-track-ph-in-nutrition",
             "guide-cycle-and-phases",
+            "guide-understanding-vaginal-ph",
             // The weekly series: every piece states external health facts, so every piece carries it.
             "fertile-window",
             "vaginal-ph-explained",
@@ -78,9 +79,10 @@ final class LearnContentTests: XCTestCase {
             "supporting-sperm-health",
             "fertility-supplements-explained",
             "when-to-ask-for-support",
+            "shettles-method",
         ]
         let actual = Set(LearnLibrary.allArticles.filter { $0.disclaimerRequired }.map { $0.slug })
-        XCTAssertEqual(actual, expected, "Medical disclaimer must be pinned to exactly these slugs (6 articles + 5 guides + 11 weekly)")
+        XCTAssertEqual(actual, expected, "Medical disclaimer must be pinned to exactly these slugs (6 articles + 6 guides + 12 weekly)")
     }
 
     func testArticleCtaRequiresTarget() {
@@ -94,10 +96,10 @@ final class LearnContentTests: XCTestCase {
 
     func testLibraryIntegrity() {
         let articles = LearnLibrary.allArticles
-        XCTAssertEqual(articles.count, 30, "Ten articles + nine guides + eleven weekly")
+        XCTAssertEqual(articles.count, 32, "Ten articles + ten guides + twelve weekly")
         XCTAssertEqual(articles.filter { $0.featured }.count, 1, "Exactly one featured article")
-        XCTAssertEqual(Set(articles.map { $0.slug }).count, 30, "Slugs must be unique")
-        XCTAssertEqual(Set(articles.map { $0.id }).count, 30, "Ids must be unique")
+        XCTAssertEqual(Set(articles.map { $0.slug }).count, 32, "Slugs must be unique")
+        XCTAssertEqual(Set(articles.map { $0.id }).count, 32, "Ids must be unique")
         let byId = Dictionary(uniqueKeysWithValues: articles.map { ($0.id, $0) })
         for a in articles {
             for id in a.relatedArticleIds {
@@ -137,7 +139,7 @@ final class LearnContentTests: XCTestCase {
     /// already cited. They are withheld by date, not by readiness — there is no later pass.
     func testEveryWeeklyArticleIsCited() {
         let weekly = LearnLibrary.allArticles.filter { $0.publishedAt != nil }
-        XCTAssertEqual(weekly.count, 11)
+        XCTAssertEqual(weekly.count, 12)
         for a in weekly {
             XCTAssertNotNil(LearnSourceMap.sources(for: a.slug),
                 "Weekly article \(a.slug) makes health claims but carries no sources")
@@ -168,15 +170,15 @@ final class LearnContentTests: XCTestCase {
         let visible = Set(LearnLibrary.published(asOf: longAgo).map(\.slug))
         let undated = Set(LearnLibrary.allArticles.filter { $0.publishedAt == nil }.map(\.slug))
         XCTAssertEqual(visible, undated, "Before the series starts, only the original library shows")
-        XCTAssertEqual(undated.count, 19, "The original library is the nineteen that predate the series")
+        XCTAssertEqual(undated.count, 20, "The original library plus the vaginal-pH guide added in build 18")
     }
 
     func testSeriesRevealsOneArticlePerWeek() {
         let dated = LearnLibrary.allArticles
             .compactMap { $0.publishedAt }
             .sorted()
-        XCTAssertEqual(dated.count, 11, "Eleven dated articles")
-        XCTAssertEqual(Set(dated).count, 11, "No two articles share a publish date — one drop per week")
+        XCTAssertEqual(dated.count, 12, "Twelve dated articles")
+        XCTAssertEqual(Set(dated).count, 12, "No two articles share a publish date — one drop per week")
         for (a, b) in zip(dated, dated.dropFirst()) {
             XCTAssertEqual(b.dayNumber - a.dayNumber, 7, "Consecutive drops must be exactly a week apart")
         }
@@ -211,12 +213,99 @@ final class LearnContentTests: XCTestCase {
                      "An unreleased article must not resolve by slug")
     }
 
-    /// The Shettles piece is held pending client + medical-reviewer sign-off. If it ever lands,
-    /// this test failing is the intended reminder that the guard list has to be revisited first.
-    func testShettlesArticleIsAbsent() {
-        let slugs = Set(LearnLibrary.allArticles.map(\.slug))
-        XCTAssertFalse(slugs.contains("shettles-method"),
-                       "Held for medical review — see LearnContent.swift series header")
+    // MARK: - The Shettles piece
+
+    /// This replaces `testShettlesArticleIsAbsent`, which held the slot while the piece was
+    /// believed to be unwritable inside the banned-phrase guard. It turned out to be writable —
+    /// the guard bans claims, not the subject — so absence stopped being the thing worth pinning
+    /// and the *framing* became it.
+    ///
+    /// The risk this now guards is the realistic one. Nobody is going to add "choose the sex" and
+    /// sail past `testNoBannedPhrasesAnywhere`. What could happen is a slow softening under
+    /// commercial pressure: the negations trimmed, the piece left describing the method neutrally,
+    /// and an article that was a correction quietly reading as an endorsement — with every
+    /// existing guard still green, because not one banned phrase was ever typed.
+    private func shettles(file: StaticString = #filePath, line: UInt = #line) throws -> LearnArticle {
+        try XCTUnwrap(LearnLibrary.allArticles.first { $0.slug == "shettles-method" },
+                      "shettles-method is missing — see the series header in LearnContent.swift",
+                      file: file, line: line)
+    }
+
+    /// Under the CAP Code an efficacy claim needs substantiation, and for this one there is none to
+    /// give. So the article is only publishable while it says so: these negations are the legal
+    /// basis of the piece, not decoration on it.
+    func testShettlesArticleStatesThereIsNoEvidence() throws {
+        let text = try scannableStrings(shettles()).joined(separator: " ").lowercased()
+        let negations = [
+            "no controlled evidence",
+            "has never actually been demonstrated",
+            "no effect whatsoever on the sex of the baby",
+            "not been shown to exist",
+        ]
+        for phrase in negations {
+            XCTAssertTrue(text.contains(phrase),
+                "The Shettles piece must keep stating the evidence is absent. Missing: \"\(phrase)\"")
+        }
+    }
+
+    /// The inverse, and the one that catches a rewrite rather than a deletion. None of these is a
+    /// banned phrase, so `testNoBannedPhrasesAnywhere` would pass on every one of them.
+    func testShettlesArticleMakesNoEfficacyClaim() throws {
+        let claims = [
+            "increase your chances of having",
+            "improve your odds of",
+            "works best if you",
+            "will help you have",
+            "if you want a son",
+            "if you want a daughter",
+            "shettles method works",
+            "studies show it works",
+        ]
+        for s in try scannableStrings(shettles()) {
+            let lower = s.lowercased()
+            for claim in claims {
+                XCTAssertFalse(lower.contains(claim),
+                    "Efficacy claim \"\(claim)\" in the Shettles piece: \(s)")
+            }
+        }
+    }
+
+    func testShettlesArticleIsCitedAndCarriesTheDisclaimer() throws {
+        XCTAssertTrue(try shettles().disclaimerRequired)
+        let ids = LearnSourceMap.sources(for: "shettles-method") ?? []
+        XCTAssertTrue(ids.contains("wilcox-1995"),
+            "The no-effect finding is the article's load-bearing claim and must cite the study it comes from")
+    }
+
+    // MARK: - Cross-article integrity
+
+    /// Source titles render in `SourcesFooter` exactly as written, so they are reader-facing copy
+    /// that `testNoBannedPhrasesAnywhere` never sees — it scans articles. A citation titled with a
+    /// claim phrase would put it on screen under the article that exists to refute it.
+    func testNoBannedPhrasesInCitedSourceTitles() {
+        let store = MedicalSourceStore.shared
+        for ids in LearnSourceMap.bySlug.values {
+            for id in ids {
+                guard let source = store.source(id) else { continue }
+                let lower = "\(source.title) \(source.organisation)".lowercased()
+                for phrase in bannedPhrases {
+                    XCTAssertFalse(lower.contains(phrase),
+                        "Banned phrase \"\(phrase)\" in the rendered title of source \(id)")
+                }
+            }
+        }
+    }
+
+    /// An `.openArticle` CTA whose target is still withheld renders the "unavailable" screen — no
+    /// crash, and no failing test either. The reader just gets a dead end on the one button the
+    /// article asked her to press.
+    func testArticleCtaTargetsAreVisibleWheneverTheirArticleIs() {
+        for a in LearnLibrary.allArticles {
+            guard let cta = a.cta, cta.type == .openArticle, let target = cta.targetSlug else { continue }
+            let visibleThen = LearnLibrary.published(asOf: a.publishedAt ?? CalendarDate(2020, 1, 1))
+            XCTAssertTrue(visibleThen.contains { $0.slug == target },
+                "\(a.slug) links to \(target), which is not published yet when \(a.slug) appears")
+        }
     }
 
     func testSearchMatchesTitleExcerptAndTags() {

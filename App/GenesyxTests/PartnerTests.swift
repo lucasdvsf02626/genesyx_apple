@@ -124,6 +124,84 @@ final class PartnerTests: XCTestCase {
         _ = container
     }
 
+    // MARK: - Declining (the recipient's refusal, which had no path at all)
+
+    /// "Not now" only dismissed the sheet, so the invite stayed pending — a standing offer to
+    /// whoever else the link had been forwarded to. Declining has to actually end it, and the proof
+    /// is that the same code no longer redeems.
+    func testDecliningEndsTheInviteForGood() async throws {
+        let backend = FakePartnerBackend()
+        backend.serverCode = "SERVER-CODE-0003"
+        let repo = PartnerRepository(backend: backend)
+        _ = try await repo.sendInvite(email: "partner@example.com")
+
+        try await repo.decline(code: "SERVER-CODE-0003")
+
+        XCTAssertEqual(repo.invites.first?.status, .declined, "declined is its own status, not revoked")
+        XCTAssertNil(repo.partner, "refusing is the opposite of linking")
+
+        do {
+            try await repo.accept(code: "SERVER-CODE-0003")
+            XCTFail("a declined code must stop redeeming")
+        } catch {}
+        XCTAssertNil(repo.partner)
+    }
+
+    /// The mirror of `testARefusedAcceptDoesNotShowAPartner`, and the more dangerous direction: if a
+    /// failed decline reported success she would believe a link was killed that is still live.
+    func testAFailedDeclineThrowsAndLeavesTheInviteRedeemable() async throws {
+        let backend = FakePartnerBackend()
+        backend.serverCode = "SERVER-CODE-0004"
+        backend.declineSucceeds = false
+        let repo = PartnerRepository(backend: backend)
+        _ = try await repo.sendInvite(email: "partner@example.com")
+
+        do {
+            try await repo.decline(code: "SERVER-CODE-0004")
+            XCTFail("a failed decline must throw")
+        } catch {}
+
+        XCTAssertEqual(repo.invites.first?.status, .pending, "nothing happened — show nothing")
+        try await repo.accept(code: "SERVER-CODE-0004")
+        XCTAssertNotNil(repo.partner, "the invite really is still live; the throw was not cosmetic")
+    }
+
+    /// A backend that cannot make the call must fail loudly. The protocol default is a throw for
+    /// exactly this reason; a no-op would be a silent lie.
+    func testABackendWithoutDeclineFailsLoudly() async {
+        let repo = PartnerRepository(backend: LegacyPartnerBackend())
+
+        do {
+            try await repo.decline(code: "any-code")
+            XCTFail("the default must throw, never quietly succeed")
+        } catch {}
+    }
+
+    /// `declined` has to survive the trip back from Postgres, or the inviter's list would show a
+    /// refusal as something else.
+    func testDeclinedSurvivesTheRoundTripFromTheDatabase() throws {
+        let row = try decodeInviteRow(status: "declined")
+
+        XCTAssertEqual(row.domain.status, .declined)
+    }
+
+    /// The migration that adds `declined` lands before both clients ship. A build that has never
+    /// heard of a status must degrade to pending rather than throw — one unknown value would
+    /// otherwise fail the decode of the whole invite list.
+    func testAnUnknownStatusDegradesToPendingInsteadOfFailingTheList() throws {
+        let row = try decodeInviteRow(status: "some_future_status")
+
+        XCTAssertEqual(row.domain.status, .pending)
+    }
+
+    private func decodeInviteRow(status: String) throws -> PartnerInviteRow {
+        let json = """
+        {"id":"inv-1","inviter_id":"user-1","invitee_email":"partner@example.com",\
+        "code":"abc123def456","status":"\(status)"}
+        """
+        return try JSONDecoder().decode(PartnerInviteRow.self, from: Data(json.utf8))
+    }
+
     // MARK: - The share link (the step that was missing entirely)
 
     func testTheShareLinkRoundTripsBackToTheCode() throws {
@@ -152,6 +230,7 @@ final class PartnerTests: XCTestCase {
 private final class FakePartnerBackend: PartnerBackend {
     var online = true
     var acceptSucceeds = true
+    var declineSucceeds = true
     var serverCode = "server-issued-code"
     /// Mail outcomes: sent, silently not-configured, or an outright failure.
     var emailSends = true
@@ -160,6 +239,7 @@ private final class FakePartnerBackend: PartnerBackend {
 
     private var stored: [PartnerInvite] = []
     private var linked: Partner?
+    private var declinedCodes: Set<String> = []
 
     func emailInvite(code: String) async throws -> Bool {
         if emailThrows { throw RemoteError.notConfigured }
@@ -189,13 +269,39 @@ private final class FakePartnerBackend: PartnerBackend {
         stored.removeAll { $0.id == id }
     }
 
+    /// A declined code is refused here, exactly as the Edge Function refuses a non-pending invite.
+    /// Without that clause the fake would happily redeem a declined invite and the test that says
+    /// declining ends it would pass while proving nothing.
     func accept(code: String) async throws {
-        guard online, acceptSucceeds else { throw RemoteError.notAuthenticated }
+        guard online, acceptSucceeds, !declinedCodes.contains(code) else { throw RemoteError.notAuthenticated }
         linked = Partner(name: "Sam")
+    }
+
+    /// Writes a status and nothing else — no `linked`, because a decline is the opposite of a link.
+    func decline(code: String) async throws {
+        guard online, declineSucceeds else { throw RemoteError.notAuthenticated }
+        declinedCodes.insert(code)
+        if let i = stored.firstIndex(where: { $0.code == code }) { stored[i].status = .declined }
     }
 
     func unlink() async throws {
         guard online else { throw RemoteError.notConfigured }
         linked = nil
     }
+}
+
+/// A conformer from before `decline` existed: it does not implement the method, so it takes the
+/// protocol's default. Present so that default stays a THROW — a later "convenience" no-op would
+/// let the UI report a refusal that never reached the database, leaving the invite redeemable by
+/// whoever else holds the link.
+@MainActor
+private final class LegacyPartnerBackend: PartnerBackend {
+    func listInvites() async throws -> [PartnerInvite] { [] }
+    func fetchPartner() async throws -> Partner? { nil }
+    func sendInvite(email: String) async throws -> PartnerInvite {
+        PartnerInvite(id: UUID().uuidString, email: email, code: "legacy-code", status: .pending)
+    }
+    func revoke(id: String) async throws {}
+    func accept(code: String) async throws {}
+    func unlink() async throws {}
 }

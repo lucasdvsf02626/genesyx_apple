@@ -18,6 +18,12 @@ public enum PhCopy {
     /// Shown on the pH detail + log surfaces.
     public static let disclaimer = "This tracker is for your own record and isn't medical advice. If a reading worries you, or a pattern persists, please speak to a GP, nurse, or pharmacist."
 
+    /// Non-diagnostic accuracy caveat, shown where she logs and on the tracker. Timing guidance
+    /// only — it names no condition, so it stays within the wellness framing and the banned-phrase
+    /// guard. Several everyday things temporarily shift a reading; testing around them gives a
+    /// truer picture of her own pattern.
+    public static let accuracyCaveat = "For an accurate reading, test away from your period and at least 24 hours after sex. Lubricants, douches, and recent antibiotics can also shift the result."
+
     /// One-time migration notice, shown on the first visit to the pH section after the update.
     public static let oneTimeNotice = "This tracker now records vaginal pH. Your earlier readings are kept and marked 'urine (legacy)'. New readings are saved as vaginal pH, on a different scale."
 
