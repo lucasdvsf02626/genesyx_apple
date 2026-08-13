@@ -1,27 +1,27 @@
 # Genesyx — Privacy Policy
 
-_Last updated: 13 August 2026 · Data controller: SF MEDIA & PR LTD · Contact: hello@genesyx.co.uk_
+_Last updated: 13 August 2026 · Data controller: Genesyx Ltd · Contact: hello@genesyx.co.uk_
 
-> ⚠️ **DRAFT — NEEDS SIGN-OFF BEFORE PUBLISHING.** This was rewritten on 2026-08-13 because the
-> previous version was factually wrong about this build: it said the app collected nothing, had no
-> accounts and no servers, at a point when it had all three. That version must not be published.
+> ℹ️ **THIS IS NOT THE PUBLISHED POLICY.** The live policy is at
+> <https://genesyx.co.uk/policies/privacy-policy> and it is accurate — it names the controller and
+> address, declares vaginal pH, cycle and daily logs, states Article 9(2)(a) explicit consent, and
+> lists Supabase, Apple, Google, Shopify and Klaviyo. **Nothing on this page is a blocker for
+> submission.** Use it as the engineering-side reference: it is written from the code, so it is the
+> place to notice when the app starts collecting something the live policy does not mention yet.
 >
-> This replacement describes what the code actually does, verified against `SupabaseBackend.swift`,
-> the `supabase/migrations/`, and the six Edge Functions. It is **not legal advice.** Health data is
-> special-category data under UK GDPR Article 9, so have a practitioner check this before release.
+> The earlier version of *this file* was wrong about the build — it said the app collected nothing,
+> had no accounts and no servers. That was a stale repo document, never the published text; an
+> earlier audit note in `TESTFLIGHT_B18.md` conflated the two and overstated the risk.
 >
-> The brackets were filled on 13 Aug from sources, not guesses: the controller is the name the build
-> is signed with (`Apple Distribution: SF MEDIA & PR LTD`, team `M5L3MM75SG`); the Supabase region is
-> `eu-west-1` from `supabase projects list`; Resend is the US endpoint the invite function actually
-> calls. **Three things still need a human:**
-> 1. **Registered office address** — omitted rather than invented. Take it from Companies House.
-> 2. **`hello@genesyx.co.uk` must be monitored.** It is the invite sender address; this policy now
->    also makes it the address for UK GDPR rights requests, which carry a one-month deadline.
-> 3. **The children's age must match the App Store age rating**, which has not been set yet.
+> Verified against `SupabaseBackend.swift`, the `supabase/migrations/`, and the six Edge Functions.
+> **Not legal advice.** Health data is special-category under UK GDPR Article 9 — have a practitioner
+> check anything before it goes near the live page.
 >
-> Host this page at a public URL and paste it into App Store Connect → App Privacy → Privacy Policy
-> URL. It must agree with the App Privacy answers in `APP_STORE_SUBMISSION.md` §2 — App Review reads
-> both, and the previous mismatch was a rejection risk in its own right.
+> **Two things this file knows that the live policy should be checked against:**
+> 1. **Resend is a US processor** and is not named in the live policy's provider list. It receives the
+>    invite recipient's email address and no health data. Either add it or move the invite to Resend's
+>    EU region (`send_partner_invite/index.ts:22` calls the global endpoint; it is a one-line change).
+> 2. **The children's age must match the App Store age rating**, which has not been set yet.
 
 ## Summary
 
@@ -35,11 +35,14 @@ You can delete your account and everything in it from inside the app at any time
 
 ## Who we are
 
-**SF MEDIA & PR LTD** is the data controller for the personal data described here.
+**Genesyx Ltd** is the data controller for the personal data described here.
+Unit 8 Axiom, Orbital Park, Ashford, TN24 0AA, United Kingdom.
 Contact: **hello@genesyx.co.uk**.
 
-<!-- TODO before publishing: add the registered office address from Companies House. Left out
-     deliberately rather than guessed. -->
+<!-- Controller and address taken from the live policy at genesyx.co.uk/policies/privacy-policy,
+     which is authoritative. Note this is NOT the name the build is signed with — the archive signs
+     as `Apple Distribution: SF MEDIA & PR LTD (M5L3MM75SG)`. A signing identity is not a controller;
+     do not infer one from the other, which is the mistake that put the wrong name here on 13 Aug. -->
 
 
 ## What we collect

@@ -16,10 +16,26 @@ checklist in `docs/TESTFLIGHT_B18.md`; current state of play in `docs/HANDOFF.md
   The lesson is not about imports: **a green suite is not evidence the thing builds**, and an
   archive belongs in the pre-release routine next to the tests.
 - **Signed archive for 1.2.0 (18)** now exists — `Apple Distribution: SF MEDIA & PR LTD`, dSYM
-  present. Not uploaded: the privacy policy blocks submission, not archiving.
+  present. Not uploaded, and **re-archived on 13 Aug** after the privacy manifest changed; the
+  manifest is baked into the bundle, so the first archive was stale the moment it did.
+
+### Privacy — one real gap, and one I invented
+- **`PrivacyInfo.xcprivacy` and the App Privacy table both under-declared.** Neither listed **Name**
+  or **Other User Content**, and both are collected: the display name upserts at
+  `SupabaseBackend.swift:151` and is the single field a linked partner is shown (`:173`), and
+  daily-log notes are free text (`DailyLog.swift:41`) that the Health category does not cover. Added
+  to both, which is a rejection risk closed rather than a feature.
+- **A privacy-policy blocker I reported did not exist, and this is the correction.** I claimed the
+  published policy said the app collects nothing. It does not. The live page names Genesyx Ltd with
+  its registered address, declares vaginal pH, cycle and daily logs, cites Article 9(2)(a) explicit
+  consent and lists its processors. What was stale was `docs/PRIVACY_POLICY.md` — a repo document
+  nobody publishes — and I read the two as the same thing. I then filled its data-controller field
+  with the archive's **code-signing identity**, which is not a legal entity and was simply wrong.
+  Both fixed. The genuine finding underneath: **Resend is a US processor the live policy does not
+  name**, receiving the invite recipient's email and no health data.
 
 ### Theme — light was the default everywhere except where it counted
-- **`profiles.theme` defaults to `dark` on the server.** T20 set the local default to light
+- **`profiles.theme` defaulted to `dark` on the server; fixed 13 Aug.** T20 set the local default to light
   (`PreferencesRepository.swift:102`), but `apply(remote)` at `:196` takes the server's value
   verbatim, so a row written by the column default hands a brand-new user a preference she never
   expressed, on her first launch. `migrateLegacySystemTheme()` (`:179`) does not save her: it
@@ -27,9 +43,13 @@ checklist in `docs/TESTFLIGHT_B18.md`; current state of play in `docs/HANDOFF.md
   is a real choice — reasoning that is right for a row she touched and exactly wrong for one the
   default wrote. From the client the two are identical, which is why the fix is
   `20260813_profiles_theme_default_light.sql` and not more client code.
+- **Applied to the live project 13 Aug and verified** — `information_schema` now reports
+  `column_default` = `'light'::text`, so every profile created from here on starts light.
 - Existing `dark` rows are **not** rewritten. The update is written out and commented in step 3 of
   that migration, because repairing everyone who was defaulted also overrides everyone who chose it,
-  and there is no audit column to tell them apart and no undo.
+  and there is no audit column to tell them apart and no undo. Eighteen rows exist — **8 `dark`,
+  8 `light`, 2 `system`** — which is few enough to be a question for the client rather than a guess.
+  The 2 on `system` need nothing; the client corrects those once on next sync.
 
 ### Connectivity — the app now knows whether it is online
 - **The app had no concept of connectivity at all.** `syncState` was computed purely from the set of

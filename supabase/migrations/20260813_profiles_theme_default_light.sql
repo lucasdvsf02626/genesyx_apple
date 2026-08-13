@@ -51,7 +51,19 @@ alter table public.profiles
 -- below fixes the second group and overrides the first, and there is no undo and no audit column to
 -- reconstruct it from.
 --
--- Get the counts before deciding — this is pre-flight 5 in docs/TESTFLIGHT_B18.md:
+-- The counts, read 13 Aug 2026 (pre-flight 5 in docs/TESTFLIGHT_B18.md):
+--
+--     dark    8
+--     light   8
+--     system  2
+--     ------ 18 rows
+--
+-- Eighteen rows. Small enough that this is worth thirty seconds of the client's attention rather
+-- than an inference. The 8 on `dark` are the whole question, and the honest reading is that on an
+-- app which shipped dark-by-default most of them are probably the default rather than a choice —
+-- but the 8 on `light` prove people do go to Profile and change it, so some fraction of that 8 is
+-- real. There is no column that tells them apart. Re-run the count before acting; it will have moved.
+--
 --   select theme, count(*) from public.profiles group by theme;
 --
 --   -- update public.profiles set theme = 'light' where theme = 'dark';

@@ -447,6 +447,60 @@ This changes nothing about the code. The `NotAuthenticated` split was written to
 way, and `requireUser` stays in every function — the gateway proves a JWT is well-formed, it does
 not hand you a user, and one `--no-verify-jwt` on a future deploy removes it silently.
 
+## 4j. A second-opinion audit, and the two things it caught that I had wrong (2026-08-13)
+
+An external audit was run against `480bcfc`. Its headline recommendation was **"do not archive yet."**
+That recommendation does not survive checking, but two of its findings do, and one of them is a
+correction to me rather than to the code. Every claim below was verified against the repo or the live
+site rather than taken on trust — in both directions.
+
+**Where it was right, and I was wrong.**
+
+- **The published privacy policy was never inaccurate.** I had reported that it claimed the app
+  collects nothing, and raised a Guideline 5.1.1 blocker on that basis. Fetching
+  <https://genesyx.co.uk/policies/privacy-policy> shows an accurate, current policy: **Genesyx Ltd**,
+  Unit 8 Axiom, Orbital Park, Ashford, TN24 0AA; vaginal pH, cycle and daily logs all declared;
+  Article 9(2)(a) explicit consent stated; Supabase, Apple, Google, Shopify and Klaviyo named;
+  deletion immediate. What was stale was `docs/PRIVACY_POLICY.md`, a repo file nobody publishes. I
+  read one as the other. **P0-10 is retracted**, and the invented blocker is the more instructive
+  half: it would have delayed a release for a document that was already correct.
+- **I then filled that file's data-controller field with `SF MEDIA & PR LTD`** — the archive's
+  code-signing identity. A signing certificate is not a legal entity, and inferring one from the
+  other is exactly the kind of plausible-looking guess that a "verified, not assumed" note makes
+  worse rather than better. Corrected to Genesyx Ltd with the registered address.
+- **App Privacy under-declared, in both places.** Neither the table in `APP_STORE_SUBMISSION.md` §2
+  nor `PrivacyInfo.xcprivacy` listed **Name** or **Other User Content**, and the app collects both:
+  `SupabaseBackend.swift:151` upserts the display name and `:173` shows it to a linked partner, and
+  `DailyLog.swift:41` is free text. Fixed in both, archive rebuilt — the manifest is baked into the
+  bundle. This is the real 5.1.1 exposure, and it is the one I missed while reporting the fake one.
+- **`delete_account` never revokes the Sign in with Apple token.** Read the function end to end;
+  there is no call to Apple's revocation endpoint. Also true: the `waitlist_emails` delete is
+  best-effort and `{ok: true}` is returned even when it fails (`:84-108`). Both now P0-15.
+- **Article 9(2)(a) is asserted publicly and evidenced nowhere.** The live policy says health data is
+  processed on explicit consent. Explicit consent has to be an affirmative act you can produce later;
+  onboarding has no consent statement, no tickbox and no stored timestamp. P0-13. This is a lawyer's
+  call, not an engineer's — either add the step and record it, or change the lawful basis.
+
+**Where it was wrong.**
+
+- **"Disable Partner behind a flag or get written approval."** Partner linking is not unreleased
+  work. It is **live in build 17** (`to do list.md:121`), so disabling it is a regression shipped to
+  women already using it, not a deferral. The audit reached this by reading
+  `CHANGE_LIST_PLAN.md:364` as an omitted requirement; that line sits under **Phase 6, quoted
+  separately at 40–60d**, and it describes *partner data-sharing scopes* — a permission model that
+  does not exist and was never in this build. The real open item is narrower and already recorded:
+  `profiles_select` returns the whole row, so RLS is broader than the UI.
+- **Stale by four commits.** It audited `480bcfc` and therefore missed the Release-build fix, the
+  theme default (applied and verified `'light'::text`), the archive, and the bracket fills. Several
+  of its ⬜ items were ✅ before it was written.
+
+**What it gave us that we could not get ourselves.** The `profiles.theme` row counts — **8 dark,
+8 light, 2 system**, 18 rows. That read was declined twice here, and it is the number the step-3
+decision in `20260813_profiles_theme_default_light.sql` was waiting on.
+
+**Net:** nothing blocks a TestFlight upload. P0-13 (consent) and P0-14 (declarations, now fixed)
+belong to public App Store submission, and P0-13 needs a decision from someone qualified to make it.
+
 ## 5. Still gated on the client — G1 alone
 
 | Gate | Needs | Blocks |

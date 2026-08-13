@@ -86,11 +86,17 @@ Deno.serve(async (req) => {
       // The waitlist she may have joined before she had an account at all. `join_waitlist` stores
       // `lower(trim(...))`, so an exact match is sound here and needs no wildcard dance.
       //
-      // The ONE table whose failure does not stop the deletion. `20260811_waitlist_emails.sql` is
-      // still unapplied on the live project (TESTFLIGHT_B18.md pre-flight 2), so this can fail with
-      // "relation does not exist" today — and refusing to delete an account over a marketing row is
-      // out of all proportion to what 5.1.1(v) is protecting. Logged loudly instead, so if it is
-      // ever failing for a reason other than that pending migration, someone can see it.
+      // The ONE table whose failure does not stop the deletion, and the reason has changed.
+      //
+      // It was written this way because `waitlist_emails` might not exist on the live project yet,
+      // making "relation does not exist" an expected error. That premise is dead: both the table and
+      // `join_waitlist` were confirmed present on 13 Aug 2026. Any failure here is now a real one.
+      //
+      // It stays non-fatal anyway, because the two risks are not the same size. Blocking deletion
+      // outright would mean an operational fault in a marketing table locks her out of 5.1.1(v)
+      // erasure entirely; the alternative harm is an email address left on a waitlist. The second is
+      // smaller. But `{ok: true}` below is then not quite true, and nobody reads this log — see
+      // P0-15 in TESTFLIGHT_B18.md. Whether to surface it to her is a decision, not an oversight.
       const wait = await db.from("waitlist_emails").delete().eq("email", lowered);
       if (wait.error) {
         console.error("delete_account: waitlist_emails delete failed —", wait.error.message);

@@ -64,20 +64,29 @@ Answer "Yes, we collect data." Declare exactly these (all **Linked to the user**
 |----------|-----------|--------|----------|---------|
 | Health & Fitness | **Health** (cycle, pH, symptoms, sleep) | Yes | No | App Functionality |
 | Contact Info | **Email Address** | Yes | No | App Functionality |
+| Contact Info | **Name** (display name) | Yes | No | App Functionality |
 | Identifiers | **User ID** | Yes | No | App Functionality |
+| User Content | **Other User Content** (free-text daily-log notes) | Yes | No | App Functionality |
 
 Notes:
 - **Reproductive/menstrual health is "sensitive"** — declare it under Health and do NOT use it
   for tracking/advertising. We don't.
 - We do **not** use third-party analytics/ads → no Tracking, no Data Used to Track You.
-- This matches the on-device `PrivacyInfo.xcprivacy` (already updated to declare Email, Health, User ID).
+- This matches the on-device `PrivacyInfo.xcprivacy`, which declares the same five types.
+- **Name and Other User Content were added 13 Aug 2026** after a third-party audit caught both
+  missing from the table *and* the manifest. Neither is optional: the display name upserts at
+  `SupabaseBackend.swift:151` and is the one field a linked partner is shown (`:173`), and daily-log
+  notes are free text (`DailyLog.swift:41`) that Health does not cover — she can type anything in
+  there. Under-declaring is one of the most common 5.1.1 rejections. **The 1.2.0 (18) archive was
+  built before this fix, so it must be re-archived before upload.**
 - Account deletion is in-app (Profile → Delete account) — required by Guideline 5.1.1(v). ✅ built.
-- ⚠️ **These answers and `PRIVACY_POLICY.md` must say the same thing.** App Review reads both. Until
-  13 Aug 2026 they flatly contradicted each other: this table declared Health + Email + User ID
-  while the policy said the app collected nothing, had no accounts and no servers. The policy has
-  been rewritten to match the code and **still needs sign-off before it is published** — it is the
-  document that goes at the public URL below, so a mismatch here is both a 5.1.1 rejection risk and
-  a UK GDPR Article 13 problem, health data being special-category under Article 9.
+  ⬜ **Sign in with Apple token revocation is missing** from `delete_account` — Apple requires it
+  where Sign in with Apple is offered. See P0-15 in `TESTFLIGHT_B18.md`.
+- ⚠️ **These answers must agree with the policy at the Privacy Policy URL above** — App Review reads
+  both. That is the **live page**, which is accurate. `docs/PRIVACY_POLICY.md` in this repo is an
+  engineering reference and is *not* what gets published; an earlier note here claimed the published
+  policy said the app collects nothing, which was false and has been retracted (see P0-10). The one
+  real gap between the two is **Resend**, a US processor the live policy does not name.
 - Keywords are at **exactly** the 100-character cap — adding anything means removing something.
 
 ---
@@ -172,12 +181,16 @@ App / build:
       failed. Do not read a green suite as "it builds"
 - [x] Signed App Store archive + local App Store Connect export succeed for version 1.1.0 (12)
 - [x] **Signed archive for version 1.2.0 (18)** — `build/Genesyx_1.2.0_18.xcarchive`, 13 Aug 2026,
-      `Apple Distribution: SF MEDIA & PR LTD (M5L3MM75SG)`, `com.genesyx.app`, dSYM present
+      `Apple Distribution: SF MEDIA & PR LTD (M5L3MM75SG)`, `com.genesyx.app`, dSYM present.
+      **Re-archived later the same day** after `PrivacyInfo.xcprivacy` gained Name and Other User
+      Content — the manifest is baked into the bundle, so the first cut was stale the moment it did.
+      Verified in the archive itself: all five types present, 1.2.0 (18), same signing identity
 - [x] Production App Review password login verified; fictional review data seeded
 - [x] Medical disclaimer (onboarding + Profile → About)
 - [x] Privacy policy linked in-app (Profile → About → Privacy Policy)
 - [x] In-app account deletion (Profile → Delete account, wired to `delete_account`)
-- [x] `PrivacyInfo.xcprivacy` declares Email + Health + User ID
+- [x] `PrivacyInfo.xcprivacy` declares Email + Health + User ID + Name + Other User Content
+      (the last two added 13 Aug 2026; `plutil -lint` clean)
 - [x] `ITSAppUsesNonExemptEncryption = false` (skips export-compliance prompt)
 - [x] `DEVELOPMENT_TEAM` set in project.yml (`M5L3MM75SG`)
 - [ ] Real-device test: email + Google + Apple sign-in; log pH/cycle; delete account
