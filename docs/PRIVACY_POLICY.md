@@ -1,6 +1,6 @@
 # Genesyx — Privacy Policy
 
-_Last updated: [DATE] · Data controller: [LEGAL ENTITY NAME] · Contact: [your-email@domain.com]_
+_Last updated: 13 August 2026 · Data controller: SF MEDIA & PR LTD · Contact: hello@genesyx.co.uk_
 
 > ⚠️ **DRAFT — NEEDS SIGN-OFF BEFORE PUBLISHING.** This was rewritten on 2026-08-13 because the
 > previous version was factually wrong about this build: it said the app collected nothing, had no
@@ -9,7 +9,15 @@ _Last updated: [DATE] · Data controller: [LEGAL ENTITY NAME] · Contact: [your-
 > This replacement describes what the code actually does, verified against `SupabaseBackend.swift`,
 > the `supabase/migrations/`, and the six Edge Functions. It is **not legal advice.** Health data is
 > special-category data under UK GDPR Article 9, so have a practitioner check this before release.
-> Every `[SQUARE BRACKET]` below is a fact only you can supply.
+>
+> The brackets were filled on 13 Aug from sources, not guesses: the controller is the name the build
+> is signed with (`Apple Distribution: SF MEDIA & PR LTD`, team `M5L3MM75SG`); the Supabase region is
+> `eu-west-1` from `supabase projects list`; Resend is the US endpoint the invite function actually
+> calls. **Three things still need a human:**
+> 1. **Registered office address** — omitted rather than invented. Take it from Companies House.
+> 2. **`hello@genesyx.co.uk` must be monitored.** It is the invite sender address; this policy now
+>    also makes it the address for UK GDPR rights requests, which carry a one-month deadline.
+> 3. **The children's age must match the App Store age rating**, which has not been set yet.
 >
 > Host this page at a public URL and paste it into App Store Connect → App Privacy → Privacy Policy
 > URL. It must agree with the App Privacy answers in `APP_STORE_SUBMISSION.md` §2 — App Review reads
@@ -27,8 +35,12 @@ You can delete your account and everything in it from inside the app at any time
 
 ## Who we are
 
-[LEGAL ENTITY NAME] is the data controller for the personal data described here.
-Contact: **[your-email@domain.com]**. [POSTAL ADDRESS, if required for your registration.]
+**SF MEDIA & PR LTD** is the data controller for the personal data described here.
+Contact: **hello@genesyx.co.uk**.
+
+<!-- TODO before publishing: add the registered office address from Companies House. Left out
+     deliberately rather than guessed. -->
+
 
 ## What we collect
 
@@ -72,12 +84,23 @@ We use these providers. They act on our instructions and may not use your data f
 
 | Provider | What it does | Where |
 |---|---|---|
-| Supabase | Database, authentication, and the server functions behind account deletion and partner invites | [CONFIRM PROJECT REGION — this determines whether an international transfer safeguard is needed] |
-| Resend | Sends the partner-invitation email only | [CONFIRM REGION] |
-| Google / Apple | Only if you choose to sign in with them. They tell us you signed in successfully; we do not receive your password | [CONFIRM] |
+| Supabase | Database, authentication, and the server functions behind account deletion and partner invites. **This is where your health entries are stored.** | Ireland (EU) — project region `eu-west-1` |
+| Resend | Sends the partner-invitation email only. It receives the recipient's email address and the invitation text, and no health data. | United States |
+| Google / Apple | Only if you choose to sign in with them. They tell us you signed in successfully; we do not receive your password. | United States |
 
-If any provider stores data outside the UK, we rely on [UK INTERNATIONAL DATA TRANSFER AGREEMENT /
-ADDENDUM TO THE EU SCCs — confirm which applies].
+**Transfers outside the UK.** Your health entries stay in the EU, and the UK Government has found
+the EEA to provide an adequate level of protection, so no additional safeguard is needed for them.
+The partner-invitation email is the one thing that leaves for the United States, and it carries an
+email address, not health data; that transfer relies on the UK International Data Transfer Addendum
+to the EU SCCs in the provider's data-processing terms.
+
+<!-- TODO before publishing: confirm the Resend and Google/Apple DPAs are actually countersigned /
+     accepted for this account, and that Resend's UK Addendum is the version in force. The regions
+     above are verified (supabase projects list -> eu-west-1; send_partner_invite/index.ts:22 calls
+     the global https://api.resend.com/emails, not the EU endpoint) — the paperwork is not. If you
+     would rather avoid the US transfer entirely, Resend has an EU region and switching that
+     endpoint is a one-line change. -->
+
 
 ## Sharing with your partner
 
@@ -101,7 +124,7 @@ were addressed **to** your email address. This happens straight away, not on a s
 ## Your rights
 
 Under UK GDPR you can ask us to: give you a copy of your data; correct it; delete it; restrict or
-object to how we use it; or provide it in a portable form. Email **[your-email@domain.com]** and we
+object to how we use it; or provide it in a portable form. Email **hello@genesyx.co.uk** and we
 will respond within one month.
 
 You can delete everything yourself, immediately, in **Profile → Delete account**.
@@ -117,8 +140,16 @@ other users except through the partner link described above, which you control.
 
 ## Children
 
-Genesyx is intended for adults and is not directed to children under [AGE — align with your App
-Store age rating].
+Genesyx is intended for adults and is not directed to children under 18. We do not knowingly collect
+data from children. If you believe a child has given us their information, email
+**hello@genesyx.co.uk** and we will delete it.
+
+<!-- TODO before publishing: 18 is chosen to match what the app is — a fertility-preparation tool
+     that logs sexual activity — and it is the strictest defensible line. It is NOT yet backed by an
+     App Store age rating, because the questionnaire in APP_STORE_SUBMISSION.md §3 has not been
+     completed. Whatever rating you select there must not be lower than the number in this sentence,
+     or the two public documents disagree again. -->
+
 
 ## Medical disclaimer
 
@@ -133,4 +164,4 @@ significant changes affecting your health data, we will tell you in the app.
 
 ## Contact
 
-**[your-email@domain.com]**
+**hello@genesyx.co.uk**

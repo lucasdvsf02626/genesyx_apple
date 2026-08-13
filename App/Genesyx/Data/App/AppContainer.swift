@@ -1,7 +1,8 @@
 import Foundation
-#if DEBUG
+// Not `#if DEBUG`. It was, back when only the seeding block used the package — then the sign-out
+// wipe started naming `CustomSupplement.storageKey`, which is release code. Every test target is a
+// Debug build, so they all kept compiling and only `archive` failed.
 import GenesyxCore
-#endif
 
 /// Composition root — constructs the `LocalStore`, resolves the optional remote backend, and
 /// builds all repositories. Injected into the environment. The lightweight iOS equivalent of the

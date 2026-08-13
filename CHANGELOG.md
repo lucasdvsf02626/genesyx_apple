@@ -7,6 +7,30 @@ All notable changes to Genesyx (iOS) are recorded here.
 Version 1.2.0 rather than 1.1.2: this is new surface, not a fix pass. Pre-flight checks and release
 checklist in `docs/TESTFLIGHT_B18.md`; current state of play in `docs/HANDOFF.md`.
 
+### Release build — it did not compile, and nothing was going to tell us
+- **`archive` had been broken since `dad4afb`.** `AppContainer.swift` imported `GenesyxCore` inside
+  `#if DEBUG` — correct when only the seeding block used the package — and then the sign-out wipe
+  started naming `CustomSupplement.storageKey`, which is release code. Every test target is a Debug
+  build, so 236 domain, 233 app and 46 UI tests all passed against a configuration that had the
+  import, and the only configuration that did not was the one nobody ran. Found by archiving.
+  The lesson is not about imports: **a green suite is not evidence the thing builds**, and an
+  archive belongs in the pre-release routine next to the tests.
+- **Signed archive for 1.2.0 (18)** now exists — `Apple Distribution: SF MEDIA & PR LTD`, dSYM
+  present. Not uploaded: the privacy policy blocks submission, not archiving.
+
+### Theme — light was the default everywhere except where it counted
+- **`profiles.theme` defaults to `dark` on the server.** T20 set the local default to light
+  (`PreferencesRepository.swift:102`), but `apply(remote)` at `:196` takes the server's value
+  verbatim, so a row written by the column default hands a brand-new user a preference she never
+  expressed, on her first launch. `migrateLegacySystemTheme()` (`:179`) does not save her: it
+  corrects `system` only, and leaves `dark` alone on the deliberate grounds that a `dark` in the row
+  is a real choice — reasoning that is right for a row she touched and exactly wrong for one the
+  default wrote. From the client the two are identical, which is why the fix is
+  `20260813_profiles_theme_default_light.sql` and not more client code.
+- Existing `dark` rows are **not** rewritten. The update is written out and commented in step 3 of
+  that migration, because repairing everyone who was defaulted also overrides everyone who chose it,
+  and there is no audit column to tell them apart and no undo.
+
 ### Connectivity — the app now knows whether it is online
 - **The app had no concept of connectivity at all.** `syncState` was computed purely from the set of
   days still owed to the server, so an ordinary in-flight push — a second of latency on a perfectly

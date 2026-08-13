@@ -165,8 +165,14 @@ privacy policy is in Profile → About → Privacy Policy.
 ## 6. Pre-submission checklist
 
 App / build:
-- [x] Release build compiles, DEBUG seeding excluded (`#if DEBUG` verified)
+- [x] Release build compiles, DEBUG seeding excluded (`#if DEBUG` verified) — **it did not, from
+      `dad4afb` until 13 Aug 2026.** `AppContainer.swift` imported `GenesyxCore` inside `#if DEBUG`
+      while the sign-out wipe referenced `CustomSupplement.storageKey` in release code. Every test
+      target is a Debug build, so 236 + 233 + 46 green tests never touched it and only `archive`
+      failed. Do not read a green suite as "it builds"
 - [x] Signed App Store archive + local App Store Connect export succeed for version 1.1.0 (12)
+- [x] **Signed archive for version 1.2.0 (18)** — `build/Genesyx_1.2.0_18.xcarchive`, 13 Aug 2026,
+      `Apple Distribution: SF MEDIA & PR LTD (M5L3MM75SG)`, `com.genesyx.app`, dSYM present
 - [x] Production App Review password login verified; fictional review data seeded
 - [x] Medical disclaimer (onboarding + Profile → About)
 - [x] Privacy policy linked in-app (Profile → About → Privacy Policy)

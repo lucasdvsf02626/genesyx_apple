@@ -1,0 +1,57 @@
+-- Genesyx — profiles.theme default light, not dark (client change list T20).
+--
+-- T20 made light the app's default and it has looked undone ever since, because it was only ever
+-- half the change. `PreferencesRepository.swift:102` defaults to `.light` on device, but
+-- `apply(remote)` at `:196` takes the server's value verbatim — so whatever `profiles.theme` says
+-- wins the moment she signs in. The column's default is `dark`, which means a row created before
+-- the app has written anything hands her back a preference she never expressed, on her very first
+-- launch. The local default never gets a chance to matter.
+--
+-- `migrateLegacySystemTheme()` (`:179`) does not catch this. It corrects `system` only, and it
+-- deliberately leaves `dark` alone, on the grounds that a `dark` in the row is a real choice she
+-- made in Profile. That reasoning is sound for a row she has touched. It is exactly wrong for a row
+-- the column default wrote for her — and from the client the two are indistinguishable, which is
+-- why this has to be fixed on the server side.
+--
+-- Idempotent. Apply: Supabase dashboard → SQL Editor → paste → Run. (No auto-push from this repo.)
+
+-- 1. The default -------------------------------------------------------------------------------
+-- Affects rows created from here on. Existing rows are NOT touched — see step 3.
+
+alter table public.profiles
+  alter column theme set default 'light';
+
+-- 2. Verify ------------------------------------------------------------------------------------
+--   select column_name, column_default, is_nullable
+--     from information_schema.columns
+--    where table_schema = 'public' and table_name = 'profiles' and column_name = 'theme';
+--   -- Expect column_default to read 'light'::text (or 'light' if the column is not text).
+--
+-- If the column is an enum or carries a CHECK, confirm 'light' is a member before trusting the
+-- above — `ThemeMode` is `system | light | dark` (Account.swift:9-11) and 'light' is valid in all
+-- three shapes, but a typo'd default only fails at INSERT time, which is the worst place to find it:
+--   select conname, pg_get_constraintdef(oid) from pg_constraint
+--    where conrelid = 'public.profiles'::regclass and contype = 'c';
+--
+-- A default is not the only way a row gets a value. If signup runs a trigger that INSERTs a profile
+-- with theme spelled out, this migration changes nothing and the trigger is the thing to edit —
+-- there is no such trigger in this repo, but `profiles` predates these migrations and was built in
+-- the dashboard, so check rather than assume:
+--   select tgname, pg_get_triggerdef(oid) from pg_trigger
+--    where tgrelid = 'public.profiles'::regclass and not tgisinternal;
+
+-- 3. Existing rows — deliberately NOT run ------------------------------------------------------
+-- Left commented because it is a decision, not a check, and it is destructive to real preferences.
+--
+-- The server cannot tell "she opened Profile and chose dark" from "the old default wrote dark and
+-- she never touched it". Both are the same four characters in the same column. Running the update
+-- below fixes the second group and overrides the first, and there is no undo and no audit column to
+-- reconstruct it from.
+--
+-- Get the counts before deciding — this is pre-flight 5 in docs/TESTFLIGHT_B18.md:
+--   select theme, count(*) from public.profiles group by theme;
+--
+--   -- update public.profiles set theme = 'light' where theme = 'dark';
+--
+-- Anyone still on `system` is a separate group again, and the client already corrects those one
+-- time on next sync without needing anything here.
