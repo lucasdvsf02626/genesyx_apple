@@ -40,9 +40,24 @@ apart is the only way to know which layer answered, and therefore the only way t
 setting from outside. **It was OFF until 13 Aug**, and it is a deploy-time flag with no trace in a
 diff, so re-probe rather than trusting this paragraph.
 
-**Keep `requireUser` in every function anyway.** The gateway only proves the JWT is well-formed and
-unexpired; it does not hand you a user, and one `--no-verify-jwt` on a future deploy silently
-removes it. It is defence in depth, not a substitute for the guard.
+**Keep `requireUser` in every function anyway — `verify_jwt` on is a narrower gate than it sounds.**
+Probed 13 Aug against `unlink_partner`, all four cases:
+
+| Request | Answered by | Status |
+|---|---|---|
+| no headers | gateway — `UNAUTHORIZED_NO_AUTH_HEADER` | 401 |
+| `apikey:` only, no `Authorization` | **the function** — `{"error":"Not authenticated"}` | 401 |
+| `Authorization: Bearer <publishable key>` | **the function** — `{"error":"Not authenticated"}` | 401 |
+| `Authorization: Bearer <bad-signature JWT>` | gateway — `UNAUTHORIZED_LEGACY_JWT` | 401 |
+
+Read rows 2 and 3. **The publishable key alone is enough to reach the function body**, `verify_jwt`
+or not — it is a public key, shipped in the app bundle, and anyone can read it out. All the gateway
+buys you is that a *malformed or badly-signed* token is rejected early. `requireUser` is still what
+stands between a stranger and anything that matters, and one `--no-verify-jwt` on a future deploy
+removes even the narrow part silently.
+
+Rows 2 and 3 are also the live proof that the `NotAuthenticated` split works: that is this
+directory's own 401, returned from a real deployed function, not a typecheck.
 
 ### Why the `NotAuthenticated` split still matters
 
