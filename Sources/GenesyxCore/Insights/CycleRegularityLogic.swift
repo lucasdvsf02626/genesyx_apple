@@ -1,7 +1,9 @@
 import Foundation
 
-/// Cycle-regularity insight derived from the CURRENT cycle settings only (we don't store
-/// per-cycle history), so it's honest about being a single-cycle view against the typical range.
+/// Derived from the CURRENT cycle settings only (we don't store per-cycle history), so it is a
+/// single-cycle view against the typical range. The card it feeds is titled "Current cycle length"
+/// for that reason; these types keep the older name so the Android mirror still matches, and both
+/// should be renamed together when real period events land.
 public struct CycleRegularityInsights: Equatable, Sendable {
     public let cycleLength: Int
     public let inTypicalRange: Bool     // 21...35

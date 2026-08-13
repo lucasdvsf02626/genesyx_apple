@@ -1,3 +1,4 @@
+import GenesyxCore
 import SwiftUI
 import UIKit
 
@@ -249,5 +250,71 @@ struct BrandEgg: View {
             .opacity(scheme == .dark ? min(1, fade * 1.7) : fade)
             // Decoration only — VoiceOver should reach the headline, not four unnamed shapes.
             .accessibilityHidden(true)
+    }
+}
+
+/// The in-app half of a streak milestone. The notification reaches her when the app is closed; this
+/// reaches her when it isn't — and it is the *only* half she ever sees if she never granted
+/// notification permission, which is the common case.
+///
+/// It reuses `NotificationContent.milestoneTitle`/`milestoneBody` rather than writing its own words,
+/// for two reasons: the banner and the app then cannot congratulate her for different things, and
+/// that copy already sits inside the reach of the banned-phrase and no-guilt scans in
+/// `NotificationTests`. Fresh strings here would be user-facing copy that nothing walks.
+struct MilestoneCelebrationView: View {
+    let milestone: Milestone
+    let onDismiss: () -> Void
+
+    var body: some View {
+        ZStack {
+            // Tap anywhere to dismiss, so the way out is not one small button.
+            GenesyxColor.foreground.opacity(0.35)
+                .ignoresSafeArea()
+                .onTapGesture(perform: onDismiss)
+                .accessibilityHidden(true)
+
+            VStack(spacing: 16) {
+                Image(systemName: "flame.fill")
+                    .font(.system(size: 30))
+                    .foregroundStyle(GenesyxColor.electricPink)
+                    .frame(width: 64, height: 64)
+                    .background(GenesyxColor.electricPink.opacity(0.12))
+                    .clipShape(Circle())
+
+                VStack(spacing: 6) {
+                    Text(NotificationContent.milestoneTitle(milestone))
+                        .font(.gxCardHeading)
+                        .foregroundStyle(GenesyxColor.foreground)
+                        .multilineTextAlignment(.center)
+                    Text(NotificationContent.milestoneBody(milestone))
+                        .font(.gxBodySmall)
+                        .foregroundStyle(GenesyxColor.mutedForeground)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Button(action: onDismiss) {
+                    Text("Thanks")
+                        .font(.gxBodySmall.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 44)
+                        .background(GenesyxColor.primary, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("milestone.dismiss")
+            }
+            .padding(24)
+            .frame(maxWidth: 320)
+            .background(GenesyxColor.card, in: RoundedRectangle(cornerRadius: 20))
+            .overlay(
+                RoundedRectangle(cornerRadius: 20)
+                    .strokeBorder(GenesyxColor.border, lineWidth: 1))
+            .padding(.horizontal, 32)
+            // Deliberately unidentified. An `accessibilityIdentifier` out here does not name the
+            // card — SwiftUI lets the outermost one win, so it renamed the only control inside and
+            // the whole celebration collapsed into a single button called "Thanks", with the words
+            // she had earned unreadable to VoiceOver. `milestone.dismiss` is the handle instead.
+        }
     }
 }

@@ -15,11 +15,28 @@ final class MeaningfulLogTests: XCTestCase {
         XCTAssertTrue(DailyLog(supplements: ["Iron"]).isMeaningfulLog)
         XCTAssertTrue(DailyLog(notes: "ok").isMeaningfulLog)
         XCTAssertTrue(DailyLog(waterMl: 250).isMeaningfulLog)
+        XCTAssertTrue(DailyLog(foodGroups: ["vegetables"]).isMeaningfulLog)
     }
 
     func testAnUntouchedDayDoesNotCount() {
         XCTAssertFalse(DailyLog().isMeaningfulLog)
-        XCTAssertFalse(DailyLog(sleepMinutes: 0, notes: "", waterMl: 0).isMeaningfulLog)
+        XCTAssertFalse(DailyLog(notes: "", waterMl: 0).isMeaningfulLog)
+    }
+
+    /// Sleep is `Int?`, and the optionality already carries "she never opened the sheet" — so a
+    /// stored `0` is not an empty value, it is a night she went to the picker, span it to 0h 0m and
+    /// tapped Done. `waterMl` is non-optional and `notes` is empty-by-content, so neither can draw
+    /// that distinction; they stay zero-means-untouched above.
+    ///
+    /// This was the last divergence left in the predicate. `TrackingEngine` read `> 0` while
+    /// `StreakEngine`, *both* Android predicates and this suite's own vectors changelog ("sleep
+    /// meaningful when != null", since v2) all read `!= nil` — so the same 0h night counted toward
+    /// her milestones and not toward her Consistency streak, on the same screen-full of app.
+    /// Settled 2026-08-13 toward the three, which is also the only direction that can lengthen a
+    /// streak rather than take one back from someone already holding it.
+    func testAnAllNighterCountsOnBothPredicates() {
+        XCTAssertTrue(DailyLog(sleepMinutes: 0).isMeaningfulLog)
+        XCTAssertTrue(DailyLog(sleepMinutes: 0).hasAnyEntry)
     }
 
     /// ⚠️ Contract guard, not a statement of intent. Recording sex plainly *is* a meaningful log,
@@ -46,23 +63,19 @@ final class MeaningfulLogTests: XCTestCase {
         XCTAssertTrue(DailyLog(mood: .good, sexualActivity: true).hasAnyEntry)
     }
 
-    /// ⚠️ The same contract guard, for the same reason, over the food groups added with meal
-    /// logging. Ticking off what she ate plainly *is* a meaningful log — and here that costs
-    /// something visible, because a day she logs only her meals will not extend her streak. That is
-    /// the price of the two clients agreeing, and it is paid until Android carries `food_groups`
-    /// and the shared vectors move with it.
+    /// Food groups were held outside this contract until Android could see them: counting a meal-only
+    /// day on iOS alone would have given the two clients different streaks for identical rows. H4
+    /// paid that debt — Android now reads and persists `food_groups` and applies the same term — so
+    /// a day she only ticked her meals on extends her streak on either phone.
     ///
-    /// The notification layer already folds food groups in separately
-    /// (`NotificationService.snapshot`), so she is not nudged to log on a day she logged. That is
-    /// safe precisely because notifications are iOS-only and mirror nothing.
-    func testStreakContractIgnoresFoodGroups() {
-        XCTAssertFalse(DailyLog(foodGroups: ["vegetables", "protein"]).isMeaningfulLog,
-                       "coordinate with Android and the shared vectors before changing this")
-        XCTAssertFalse(DailyLog(foodGroups: ["vegetables"]).hasAnyEntry,
-                       "coordinate with Android and the shared vectors before changing this")
+    /// Both predicates are asserted because the app has two engines and only widening one would put
+    /// the divergence back, one layer down.
+    func testFoodGroupsCountTowardTheStreak() {
+        XCTAssertTrue(DailyLog(foodGroups: ["vegetables", "protein"]).isMeaningfulLog)
+        XCTAssertTrue(DailyLog(foodGroups: ["vegetables"]).hasAnyEntry)
     }
 
-    func testFoodGroupsNeverSuppressADayThatCountsForAnotherReason() {
+    func testFoodGroupsAlongsideAnotherFieldStillCount() {
         XCTAssertTrue(DailyLog(waterMl: 250, foodGroups: ["fruit"]).isMeaningfulLog)
         XCTAssertTrue(DailyLog(mood: .good, foodGroups: ["fruit"]).hasAnyEntry)
     }

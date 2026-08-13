@@ -215,11 +215,39 @@ final class StreakEngineTests: XCTestCase {
         XCTAssertTrue(s.milestones.contains(.week4))
     }
 
-    func testDay14RequiresFourteenConsecutiveHydrationDays() {
+    func testDay14RequiresFourteenConsecutiveLoggedDays() {
         var logs: [CalendarDate: FakeLog] = [:]
         for i in 0..<13 { logs[monday.addingDays(-i)] = .water() }
         XCTAssertFalse(compute(logs: logs, today: monday).milestones.contains(.day14))
         logs[monday.addingDays(-13)] = .water()
         XCTAssertTrue(compute(logs: logs, today: monday).milestones.contains(.day14))
+    }
+
+    /// The behaviour change these milestones were repointed for. They keyed off the *hydration*
+    /// streak while the Consistency card headlines the *logging* one, so someone who logged a meal
+    /// and her symptoms every day for a fortnight — and was shown a 14-day streak for it — was
+    /// never congratulated. `moodOnly` is the shape of that user: real entries, no water.
+    func testMilestonesFollowTheStreakSheIsShownNotHydration() {
+        var logs: [CalendarDate: FakeLog] = [:]
+        for i in 0..<14 { logs[monday.addingDays(-i)] = .moodOnly() }
+
+        let s = compute(logs: logs, today: monday)
+        XCTAssertEqual(s.dailyHydration, 0, "she logged no water at all")
+        XCTAssertEqual(s.dailyLogging, 14, "but she logged something every day for a fortnight")
+        XCTAssertTrue(s.milestones.contains(.day7), "so the 7-day milestone is hers")
+        XCTAssertTrue(s.milestones.contains(.day14), "and so is the 14-day one")
+    }
+
+    /// The other half of the same rule: hydration alone no longer carries the daily milestones,
+    /// because a day with water on it is a logged day anyway. Without this, repointing the trigger
+    /// could quietly have been a no-op that the `.water()` fixtures above would never have caught —
+    /// they satisfy both streaks at once.
+    func testAWaterOnlyDayStillCountsBecauseItIsAlsoALoggedDay() {
+        var logs: [CalendarDate: FakeLog] = [:]
+        for i in 0..<7 { logs[monday.addingDays(-i)] = .water() }
+
+        let s = compute(logs: logs, today: monday)
+        XCTAssertEqual(s.dailyLogging, 7)
+        XCTAssertTrue(s.milestones.contains(.day7))
     }
 }

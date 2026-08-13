@@ -1,14 +1,14 @@
 // TrackingEngine.swift
 // Canonical cross-platform tracking metrics — identical rules to the Android `TrackingEngine`.
-// Pure and synchronous, with NO UI/SwiftUI imports. This is the single type the shared
-// `tracking_test_vectors.json` (mirrored byte-for-byte in the Android repo) runs against; it is
-// the contract that keeps both platforms computing the same numbers from the same data.
+// Pure and synchronous, with NO UI/SwiftUI imports. This is the type `tracking_test_vectors.json`
+// runs against. What the two platforms share is the RULES below, not that file: the Android repo
+// keeps its own fixtures in its own schema, and neither file is a copy of the other.
 //
 // Definitions (canonical spec):
 //   • Day  = the user's local calendar date (`CalendarDate`, timezone-free).
 //   • Week = ISO-8601 Monday-start calendar week (`CalendarDate.startOfWeek`).
-//   • Meaningful log = a day whose log has ANY of: mood, energy, ≥1 symptom, sleep > 0,
-//     water > 0, ≥1 supplement, non-blank note — OR a pH reading exists for that date.
+//   • Meaningful log = a day whose log has ANY of: mood, energy, ≥1 symptom, sleep recorded,
+//     water > 0, ≥1 supplement, ≥1 food group, non-blank note — OR a pH reading exists for that date.
 
 import Foundation
 
@@ -16,23 +16,34 @@ import Foundation
 /// concrete `DailyLog`) is what lets the shared vectors drive it with a tiny synthetic type.
 public protocol TrackingLoggable {
     var waterMl: Int { get }
-    /// True when the day's log carries ANY meaningful field: mood, energy, ≥1 symptom, sleep > 0,
-    /// water > 0, ≥1 supplement, or a non-blank note. Excludes pH — the engine folds pH in
-    /// separately via `phByDate`, because a pH reading also makes a day "meaningful".
+    /// True when the day's log carries ANY meaningful field: mood, energy, ≥1 symptom, sleep
+    /// recorded, water > 0, ≥1 supplement, ≥1 food group, or a non-blank note. Excludes pH — the
+    /// engine folds pH in separately via `phByDate`, because a pH reading also makes a day
+    /// "meaningful".
     var isMeaningfulLog: Bool { get }
 }
 
 extension DailyLog: TrackingLoggable {
-    /// ⚠️ `sexualActivity` and `foodGroups` are deliberately absent. Both plainly *are* meaningful
-    /// logs, but this predicate is the cross-platform contract: the same rule runs in the Android
-    /// `TrackingEngine` against the same `tracking_test_vectors.json`, so adding a term here alone
-    /// would give the two clients different streak numbers for identical data — with no error
-    /// anywhere to say so. Flag for Android coordination; do not apply unilaterally.
-    /// `testStreakContractIgnoresSexualActivity` and `testStreakContractIgnoresFoodGroups` fail if
-    /// someone does.
+    /// ⚠️ `sexualActivity` is deliberately absent. It plainly *is* a meaningful log, but this
+    /// predicate is the cross-platform contract: the same rule runs in the Android engine, so adding
+    /// a term here alone would give the two clients different streak numbers for identical data —
+    /// with no error anywhere to say so. Flag for Android coordination; do not apply unilaterally.
+    /// `testStreakContractIgnoresSexualActivity` fails if someone does.
+    ///
+    /// `foodGroups` was under that same guard until H4, when Android gained `food_groups` and the
+    /// matching term. Both clients now count a day she only ticked her meals on.
+    ///
+    /// Sleep is `!= nil`, not `> 0`. The optionality already carries "she never opened the sheet",
+    /// so a stored `0` is a night she span the picker to 0h 0m and tapped Done — an entry, not an
+    /// empty value. `waterMl` is non-optional and `notes` is empty-by-content, so neither can draw
+    /// that distinction and both stay zero-means-untouched. This read `> 0` until 2026-08-13, which
+    /// made it the only one of four predicates that did: `StreakEngine.hasAnyEntry`, both Android
+    /// predicates and the vectors changelog ("sleep meaningful when != null", v2) all disagreed, so
+    /// the same 0h night counted toward her milestones and not toward her Consistency streak.
     public var isMeaningfulLog: Bool {
         waterMl > 0 || mood != nil || energy != nil || !symptoms.isEmpty
-            || (sleepMinutes ?? 0) > 0 || !supplements.isEmpty || !(notes ?? "").isEmpty
+            || sleepMinutes != nil || !supplements.isEmpty || !(notes ?? "").isEmpty
+            || !foodGroups.isEmpty
     }
 }
 

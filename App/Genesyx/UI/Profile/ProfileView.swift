@@ -728,7 +728,7 @@ private struct TrackingPreferencesSheet: View {
                                         Rectangle().fill(GenesyxColor.border.opacity(0.5))
                                             .frame(height: 1).padding(.horizontal, 16)
                                     }
-                                    optionRow(question: question.id, option: option)
+                                    optionRow(question: question, option: option)
                                 }
                             }
                             .background(GenesyxColor.card).clipShape(RoundedRectangle(cornerRadius: 16))
@@ -748,9 +748,15 @@ private struct TrackingPreferencesSheet: View {
         }
     }
 
-    private func optionRow(question: String, option: QuizOption) -> some View {
-        let selected = answers[question] == option.id
-        return Button { answers[question] = option.id } label: {
+    /// Tapping the chosen option again clears it, but only where the question is optional. Without
+    /// that, the first tap here is a one-way door: a question she was allowed to skip in onboarding
+    /// would become permanently answered the moment she opened this editor and touched it.
+    private func optionRow(question: QuizQuestion, option: QuizOption) -> some View {
+        let selected = answers[question.id] == option.id
+        let clears = selected && question.isOptional
+        return Button {
+            if clears { answers.removeValue(forKey: question.id) } else { answers[question.id] = option.id }
+        } label: {
             HStack {
                 Text(option.label).font(.system(size: 14.5)).foregroundStyle(GenesyxColor.foreground)
                     .multilineTextAlignment(.leading)
@@ -764,7 +770,8 @@ private struct TrackingPreferencesSheet: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("quizOption.\(question).\(option.id)")
+        .accessibilityIdentifier("quizOption.\(question.id).\(option.id)")
         .accessibilityAddTraits(selected ? [.isSelected] : [])
+        .accessibilityHint(clears ? "Tap again to leave this question unanswered" : "")
     }
 }

@@ -39,6 +39,18 @@ struct MainTabView: View {
             tabBar
         }
         .environmentObject(router)
+        // Above the tab bar rather than inside a tab: she crosses a milestone by logging, and
+        // logging happens on Home, Track, pH and Nutrition. A celebration that only appeared on
+        // Insights would mostly be shown to nobody.
+        .overlay {
+            if let milestone = notifications.celebration {
+                MilestoneCelebrationView(milestone: milestone) {
+                    notifications.celebration = nil
+                }
+                .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: notifications.celebration)
         // A notification tap lands on its tab — and, for the Learn nudge, on the article itself.
         .onChange(of: notifications.pendingDestination) { destination in
             guard let destination else { return }

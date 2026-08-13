@@ -16,6 +16,14 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
     @Published var pendingDestination: NotificationRouter.Destination?
     @Published private(set) var authorizationStatus: UNAuthorizationStatus = .notDetermined
 
+    /// A milestone she has just crossed and not yet been shown *in the app*, consumed by
+    /// `MainTabView`. Published from `checkMilestones` rather than recomputed by the UI on
+    /// purpose: that method flags each milestone celebrated the moment it handles it, so anything
+    /// reading `StreakEngine` a second time would find the list already empty and never show a
+    /// thing. One computation, one flag set, and the notification and the in-app moment cannot
+    /// disagree about what she achieved.
+    @Published var celebration: Milestone?
+
     private let prefs: PreferencesRepository
     private let dailyLog: DailyLogRepository
     private let ph: PhRepository
@@ -60,7 +68,7 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
         // Logging changes everything the plan is built from: today's hydration nudge becomes
         // unnecessary the moment she logs water, a gap closes, a streak crosses a milestone.
         // Observing the repository means no screen has to remember to tell us.
-        onChange(dailyLog.$logByDate) { [weak self] in self?.replan() }
+        onChange(dailyLog.$logByDate) { [weak self] in self?.replanAndCelebrate() }
             .store(in: &cancellables)
 
         // Moving the reminder time changes when tonight's check-in should fire — re-plan so the
@@ -97,14 +105,20 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
         }
     }
 
-    /// Re-check permission, re-plan from her current data, re-sync the scheduled set.
+    /// Re-check permission, re-plan from her current data, re-sync the scheduled set — and
+    /// celebrate anything she crossed while the app was closed.
     func reconcile() async {
         await refreshAuthorizationStatus()
-        guard isActive else {
-            cancelAll()
-            return
-        }
+        if !isActive { cancelAll() }
+        replanAndCelebrate()
+    }
+
+    /// The two halves of "her data changed", in the order they have to happen. `replan` begins by
+    /// cancelling every pending request, so a milestone scheduled ahead of it would be swept away
+    /// by the very call that was meant to follow it.
+    private func replanAndCelebrate() {
         replan()
+        checkMilestones()
     }
 
     private var isActive: Bool {
@@ -138,7 +152,6 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
         if let hydration = plan.hydration {
             schedule(hydration, restDays: plan.hydrationRestDays)
         }
-        fireDueMilestones()
         scheduleSupplementReminders()
         dumpScheduleForDebugging()
     }
@@ -168,14 +181,14 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
     private func snapshot() -> NotificationSnapshot {
         let today = CalendarDate.today()
         let phDays = ph.readings.map { CalendarDate.today(now: $0.recordedAt) }
-        // `sexualActivity` and `foodGroups` are folded in here and in `lastActivityDay`, but NOT
-        // into the engines' `isMeaningfulLog` / `hasAnyEntry`: those two are the cross-platform
-        // streak contract and cannot widen until Android does (see `TrackingEngine`). Notifications
-        // are iOS-only and mirror nothing, so widening here diverges nothing — and the alternative
-        // is nudging her to log on a day she logged.
+        // `sexualActivity` is folded in here and in `lastActivityDay`, but NOT into the engines'
+        // `isMeaningfulLog` / `hasAnyEntry`: those two are the cross-platform streak contract and
+        // cannot widen until Android does (see `TrackingEngine`). Notifications are iOS-only and
+        // mirror nothing, so widening here diverges nothing — and the alternative is nudging her to
+        // log on a day she logged. `foodGroups` needed the same treatment until H4 put it in the
+        // shared predicates on both clients.
         let log = dailyLog.log(on: today)
-        let loggedToday = log.isMeaningfulLog || log.sexualActivity || !log.foodGroups.isEmpty
-            || phDays.contains(today)
+        let loggedToday = log.isMeaningfulLog || log.sexualActivity || phDays.contains(today)
 
         return NotificationSnapshot(
             streak: StreakEngine.compute(
@@ -200,10 +213,10 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
     }
 
     /// Any activity at all — a log or a pH reading. Drives "she went quiet, so we go quiet", which
-    /// is why `sexualActivity` and `foodGroups` count here (see `snapshot`).
+    /// is why `sexualActivity` counts here (see `snapshot`).
     private func lastActivityDay(phDays: [CalendarDate]) -> CalendarDate? {
         let logDays = dailyLog.logByDate
-            .filter { $0.value.hasAnyEntry || $0.value.sexualActivity || !$0.value.foodGroups.isEmpty }
+            .filter { $0.value.hasAnyEntry || $0.value.sexualActivity }
             .keys
         return (Array(logDays) + phDays).max()
     }
@@ -378,10 +391,16 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
 
     // MARK: - Streak milestones
 
-    /// Fires each newly-crossed milestone once. `StreakEngine` owns the rule; the flags live in
+    /// Celebrates each newly-crossed milestone once. `StreakEngine` owns the rule; the flags live in
     /// preferences, and a milestone whose streak has since lapsed is un-flagged so re-achieving it
     /// celebrates again.
-    private func fireDueMilestones() {
+    ///
+    /// Deliberately *outside* the `isActive` gate that holds back the schedule. A banner reaches her
+    /// when the app is closed; the in-app moment reaches her when it isn't, and for everyone who
+    /// never granted notification permission — the common case — it is the only half there is.
+    /// Both halves are handled here together rather than split in two, because the flag write below
+    /// consumes the list: whichever ran first would leave the other with nothing to show.
+    private func checkMilestones() {
         let state = StreakEngine.compute(
             logsByDate: dailyLog.logByDate,
             phByDate: Set(ph.readings.map { CalendarDate.today(now: $0.recordedAt) }),
@@ -390,19 +409,30 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
         )
 
         // Muted or not, they are still flagged as celebrated below: switching milestones back on
-        // should not deliver a backlog of every one she passed while they were off.
+        // should not deliver a backlog of every one she passed while they were off. Muting covers
+        // the in-app moment too — someone who turned milestones off did not ask for a quieter
+        // celebration, she asked for none.
         if !prefs.mutedNotifications.contains(.milestones) {
-            for milestone in state.milestones {
-                let content = UNMutableNotificationContent()
-                content.title = NotificationContent.milestoneTitle(milestone)
-                content.body = NotificationContent.milestoneBody(milestone)
-                content.sound = .default
-                content.userInfo = NotificationRouter.payload(tab: .insights)
-                center.add(UNNotificationRequest(
-                    identifier: NotificationKind(milestone: milestone).rawValue,
-                    content: content,
-                    trigger: UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
-                ))
+            // `allCases` order is significance order, so `last` is the biggest thing she did. Only
+            // one is shown: crossing day7 and week1 together is one good week, not two modals.
+            // Assigned only when there IS one — writing `nil` here would tear a celebration off the
+            // screen the moment she logs anything else, which is the moment she is most likely to.
+            if let crossed = state.milestones.last { celebration = crossed }
+
+            // The banner half, which unlike the modal above does need permission to exist.
+            if isActive {
+                for milestone in state.milestones {
+                    let content = UNMutableNotificationContent()
+                    content.title = NotificationContent.milestoneTitle(milestone)
+                    content.body = NotificationContent.milestoneBody(milestone)
+                    content.sound = .default
+                    content.userInfo = NotificationRouter.payload(tab: .insights)
+                    center.add(UNNotificationRequest(
+                        identifier: NotificationKind(milestone: milestone).rawValue,
+                        content: content,
+                        trigger: UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+                    ))
+                }
             }
         }
         prefs.celebrate(state.milestones.map(\.flagKey))

@@ -2,7 +2,7 @@ import SwiftUI
 import GenesyxCore
 
 /// Insights — every card is computed from the user's real logged data: vaginal pH, hydration,
-/// nutrition consistency, sleep, cycle regularity, symptom patterns, and predicted ovulation. No
+/// nutrition consistency, sleep, current cycle length, symptom patterns, and predicted ovulation. No
 /// mock/hardcoded/sine values. (The Android "Nutrition consistency" card was a mock; the iOS one
 /// is honest — it counts the supplements she actually logged each day this week.)
 struct InsightsView: View {
@@ -82,10 +82,20 @@ struct InsightsView: View {
         return (0..<7).map { dailyLog.log(on: monday.addingDays($0)).supplements.count }
     }
 
+    /// Days this ISO week with at least one food group recorded. Counted separately from the
+    /// supplement bars rather than added into them: the bars are drawn as a fraction of her
+    /// supplement plan, so a day of meals would fill one and the card would then report supplements
+    /// she never took.
+    private var currentWeekFoodGroupDays: Int {
+        let monday = CalendarDate.today().startOfWeek
+        return (0..<7).filter { !dailyLog.log(on: monday.addingDays($0)).foodGroups.isEmpty }.count
+    }
+
     private var nutritionConsistencyCard: some View {
         NutritionConsistencyCard(
             insights: NutritionConsistencyLogic.compute(dailyCounts: currentWeekSupplements),
-            labels: ["M", "T", "W", "T", "F", "S", "S"])
+            labels: ["M", "T", "W", "T", "F", "S", "S"],
+            foodGroupDays: currentWeekFoodGroupDays)
     }
 
     /// Real sleep minutes per day for the current ISO week (Monday → Sunday) — same week definition
@@ -448,6 +458,9 @@ private struct HydrationInsightsCard: View {
 private struct NutritionConsistencyCard: View {
     let insights: NutritionConsistencyInsights
     let labels: [String]
+    /// Days this week with any food group recorded — its own tile, deliberately outside the
+    /// supplement bars and the supplement copy.
+    let foodGroupDays: Int
     private let barHeight: CGFloat = 112
 
     var body: some View {
@@ -461,6 +474,8 @@ private struct NutritionConsistencyCard: View {
             HStack(spacing: 12) {
                 tile("Days logged", "\(insights.daysLogged) / 7")
                 tile("Supplements taken", "\(insights.totalTaken)")
+                tile("Days with meals", "\(foodGroupDays) / 7",
+                     valueIdentifier: "insights.foodGroupDays")
             }
             .padding(.top, 16)
             Text(insights.insight)
@@ -496,10 +511,14 @@ private struct NutritionConsistencyCard: View {
         .frame(height: barHeight + 18)
     }
 
-    private func tile(_ label: String, _ value: String) -> some View {
+    /// `valueIdentifier` exists so a UI test can read one tile's number rather than guessing which
+    /// of three identically shaped "N / 7" strings it found. Empty is the identifier a `Text`
+    /// already has, so the untagged tiles are unchanged.
+    private func tile(_ label: String, _ value: String, valueIdentifier: String = "") -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Eyebrow(label, color: GenesyxColor.mutedForeground)
             Text(value).font(.gxCardHeading).foregroundStyle(GenesyxColor.foreground)
+                .accessibilityIdentifier(valueIdentifier)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
@@ -573,16 +592,18 @@ private struct SleepCard: View {
     }
 }
 
-// MARK: - Real-data cards (cycle regularity, symptom patterns, ovulation)
+// MARK: - Real-data cards (current cycle length, symptom patterns, ovulation)
 
-/// Cycle length vs the typical 21–35 day range (honest single-cycle view — no fabricated history).
+/// The cycle length she configured, placed against the typical 21–35 day range. Deliberately not
+/// titled "regularity": regularity is a property of several completed cycles, and one
+/// `cycle_settings` row is not history. Restore that word only alongside real period events.
 private struct CycleRegularityCard: View {
     let insights: CycleRegularityInsights?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text("Cycle regularity").font(.gxCardHeading).foregroundStyle(GenesyxColor.foreground)
+                Text("Current cycle length").font(.gxCardHeading).foregroundStyle(GenesyxColor.foreground)
                 Spacer()
                 Text("Current setup").font(.gxBodySmall.weight(.medium)).foregroundStyle(GenesyxColor.primary)
             }
@@ -597,7 +618,7 @@ private struct CycleRegularityCard: View {
                 Text(insights.insight).font(.gxBodySmall).foregroundStyle(GenesyxColor.foreground.opacity(0.8))
                     .fixedSize(horizontal: false, vertical: true).padding(.top, 12)
             } else {
-                Text("Log your last period to see cycle regularity.")
+                Text("Log your last period to see your cycle length.")
                     .font(.gxBody).foregroundStyle(GenesyxColor.mutedForeground).padding(.top, 12)
             }
         }
@@ -870,6 +891,12 @@ private struct LogHistoryCard: View {
             }
             if !log.supplements.isEmpty {
                 metricRow("Supplements", log.supplements.sorted().joined(separator: ", "))
+            }
+            // Listed by known case, not by stored token, so a group written by a newer build renders
+            // as nothing rather than as a raw identifier.
+            let groups = FoodGroup.allCases.filter { log.foodGroups.contains($0.rawValue) }
+            if !groups.isEmpty {
+                metricRow("Food groups", groups.map(\.label).joined(separator: ", "))
             }
             if let notes = log.notes, !notes.isEmpty {
                 metricRow("Notes", notes)

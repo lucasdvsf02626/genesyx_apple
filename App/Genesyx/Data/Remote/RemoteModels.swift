@@ -116,9 +116,9 @@ struct DailyLogRow: Codable {
     var notes: String?
     /// Optional on decode so a row from before the column existed tolerates as `false`.
     var sexualActivity: Bool?
-    /// Optional on the same grounds. It also means the app keeps working end to end if
-    /// `20260812_daily_logs_food_groups.sql` has not been applied yet — which is exactly the
-    /// silent-failure shape the build-18 pre-flight list exists to catch, so it is on that list.
+    /// Optional on the same grounds. `20260812_daily_logs_food_groups.sql` was applied 13 Aug, so
+    /// this now tolerates old *rows*, not an absent column. Keep it optional anyway: these meals
+    /// count toward the streak on both clients, and a decode failure here would zero it.
     var foodGroups: [String]?
 
     enum CodingKeys: String, CodingKey {

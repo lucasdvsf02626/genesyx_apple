@@ -418,6 +418,33 @@ final class RepositoryTests: XCTestCase {
         XCTAssertTrue(repo.readings.isEmpty)
     }
 
+    /// The v1.2 data-loss defect. `PhRecord.dto` dropped `measurementType`, so a cold start decoded
+    /// every saved reading as legacy urine and the tracker hid the lot — "No pH readings yet", with
+    /// the calendar markers and the logging streak going with it. The other pH tests all read back
+    /// from the same live instance, which is why they never saw it; a second repository over the
+    /// same store is the relaunch.
+    func testPhReadingsSurviveARelaunch() {
+        let store = makeStore()
+        let recordedAt = Date(timeIntervalSince1970: 1_000_000)
+        PhRepository(store: store).create(PhReading(id: "x", phValue: 4.2, recordedAt: recordedAt, measurementType: .vaginal))
+
+        let relaunched = PhRepository(store: store)
+
+        XCTAssertEqual(relaunched.readings.map(\.phValue), [4.2], "her pH history must survive a cold start")
+        XCTAssertEqual(relaunched.readings.first?.measurementType, .vaginal)
+    }
+
+    /// The other half of that invariant, so the fix can't be "treat an absent type as vaginal":
+    /// builds 12–13 recorded real readings on the urine scale, and dragging those into the vaginal
+    /// trend would corrupt her fertility reading and the shared backend Android also pulls from.
+    func testLegacyUrineReadingsStayHiddenAcrossARelaunch() {
+        let store = makeStore()
+        let legacy = PhReadingDTO(id: "legacy", phValue: 6.5, recordedAt: Date(timeIntervalSince1970: 1_000_000))
+        store.save([legacy], forKey: "ph_readings")
+
+        XCTAssertTrue(PhRepository(store: store).readings.isEmpty, "a pre-migration urine row stays hidden")
+    }
+
     /// A first launch must land on the designed light palette, not on whatever scheme the phone
     /// happens to be in.
     func testThemeDefaultsToLightBeforeAnyChoice() {
@@ -952,6 +979,38 @@ final class RepositoryTests: XCTestCase {
         await repo.refresh()
 
         XCTAssertEqual(backend.remote?.quizAnswers, ["stage": "trying", "gender": "private"])
+    }
+
+    /// T7's real assertion: a skipped question must reach the server as *absent*, not as an option
+    /// id standing in for silence. The danger is the reverse of the usual one — nothing is lost by
+    /// skipping, so the only way to fail is to invent an answer she never gave.
+    func testASkippedQuestionIsNeitherStoredNorInvented() async {
+        let backend = FakeProfileBackend()
+        let repo = PreferencesRepository(store: makeStore(), backend: backend)
+
+        repo.recordQuizAnswers(["stage": "trying", "cycle": "mostly", "supplements": "no", "support": "nutrition"])
+        await repo.refresh()
+
+        XCTAssertNil(repo.quizAnswers["gender"], "skipping must leave no local answer")
+        XCTAssertNil(backend.remote?.quizAnswers["gender"], "and none on the server either")
+        XCTAssertEqual(backend.remote?.quizAnswers.count, 4, "the four she did answer still arrive")
+    }
+
+    /// Answering and then going back to skip has to erase, not merely stop re-writing. The push
+    /// replaces `quiz_answers.answers` wholesale, so an answer dropped locally is dropped remotely.
+    func testChangingHerMindToSkipClearsTheAnswerEverywhere() async {
+        let backend = FakeProfileBackend()
+        let store = makeStore()
+        let repo = PreferencesRepository(store: store, backend: backend)
+
+        repo.recordQuizAnswers(["stage": "trying", "gender": "girl"])
+        await repo.refresh()
+        repo.recordQuizAnswers(["stage": "trying"])
+        await repo.refresh()
+
+        XCTAssertNil(backend.remote?.quizAnswers["gender"], "the answer she withdrew must not survive")
+        XCTAssertNil(PreferencesRepository(store: store).quizAnswers["gender"],
+                     "nor come back on the next launch")
     }
 
     func testQuizAnswersSurviveARelaunchBeforeSheEverSignsIn() {

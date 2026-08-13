@@ -1,13 +1,24 @@
 -- ============================================================================
 -- A. CANONICAL ACCOUNT-DELETION RPC — public.delete_current_user()
 --
--- ✅ APPLIED to production 13 Aug 2026. Idempotent — re-running is safe:
---      supabase db query --linked -f supabase/migrations/20260813_delete_current_user_hardening.sql
+-- ⛔ SUPERSEDED — DO NOT RE-RUN THIS FILE AGAINST PRODUCTION.
 --
--- Verified after applying: prosecdef = true, proconfig = {search_path=}; anon and
--- PUBLIC cannot execute, authenticated can; the body contains the unlink, the
--- invitee-email delete, the waitlist delete and quiz_answers, and does NOT name
--- user_supplements. profiles.relforcerowsecurity and waitlist_emails.relforce-
+-- It was applied on 13 Aug 2026 and was idempotent at that time. Later the same day, H1 spliced
+--      delete from public.user_supplements where user_id = v_uid;
+-- into the deployed body, once, immediately before the profiles/auth deletion (migration
+-- `20260813_user_supplements_delete_backstop_and_push_default_false`, project
+-- `epltxklawpcxxbaleswg`; see CHANGE_LIST_PLAN.md §6A.4). The body below is `create or replace`
+-- and does NOT contain that line, so re-running it now would quietly revert H1 and leave account
+-- deletion without its defence-in-depth delete again. The revert would report success.
+--
+-- The applied file is not yet checked into this repo. Recover the exact production text before
+-- touching this function again — do not reconstruct it from the description above, and do not
+-- hand-edit the body below into a substitute.
+--
+-- Verified after applying (13 Aug, before the H1 splice): prosecdef = true,
+-- proconfig = {search_path=}; anon and PUBLIC cannot execute, authenticated can; the body contains
+-- the unlink, the invitee-email delete, the waitlist delete and quiz_answers, and at that point did
+-- not name user_supplements. profiles.relforcerowsecurity and waitlist_emails.relforce-
 -- rowsecurity are both FALSE, which clears the pre-apply risk flagged below: the
 -- function owner does bypass RLS, so the unlink reaches rows it does not own.
 --
@@ -59,8 +70,11 @@
 --   at RUN time, not definition time, so naming a table that does not exist
 --   creates the function happily and then aborts every call — which would break
 --   account deletion outright. Migration B creates that table WITH
---   `on delete cascade`, so it needs no line here, ever. Apply order between A
+--   `on delete cascade`, so it needs no line here. Apply order between A
 --   and B does not matter, and that is on purpose.
+--   ⚠️ SUPERSEDED BY H1: the table now exists, so the run-time hazard is gone, and production
+--   was given the explicit delete anyway as defence in depth — the cascade is the FK's promise,
+--   not this function's. Read the ⛔ banner at the top before running anything here.
 --
 -- ONE DELIBERATE SIDE EFFECT: deleting invites addressed to her removes another
 -- user's pending invitation. That is correct — the row contains her email

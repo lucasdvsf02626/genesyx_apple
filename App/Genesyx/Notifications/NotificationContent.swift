@@ -62,7 +62,9 @@ enum NotificationContent {
 
     static func milestoneBody(_ milestone: Milestone) -> String {
         switch milestone {
-        case .day7:  return "Seven days of hydration logged. That's a habit forming."
+        // Not "of hydration": the daily milestones follow the logging streak, so this now arrives
+        // for a week of meals or symptoms with no water logged in it at all.
+        case .day7:  return "Seven days logged. That's a habit forming."
         case .day14: return "Fourteen days. Your trends are starting to mean something."
         case .week1: return "You logged on most days this week. That's all consistency asks."
         case .week4: return "Four steady weeks. Your data has a real story in it now."

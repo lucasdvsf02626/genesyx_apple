@@ -37,7 +37,7 @@ Supabase; data is wiped locally on sign-out.
 - **Hydration** — weekly bar chart vs goal, days-on-goal, week-over-week delta.
 - **Nutrition consistency** — supplements logged per day this week.
 - **Sleep** — nightly hours this ISO week, nightly average, nights logged.
-- **Cycle regularity** — cycle length vs the typical 21–35 day range.
+- **Current cycle length** — her configured cycle length vs the typical 21–35 day range. Not a regularity measure: there is no per-cycle history to compute one from.
 - **Symptom patterns** — 4×7 (28-day) heatmap of logged symptoms, tap-through to that day's log.
 - **Ovulation** — predicted ovulation day + fertile window on a cycle timeline.
 - **My Logs** — full history of daily entries.
@@ -58,11 +58,13 @@ Supabase; data is wiped locally on sign-out.
   screen listing all references.
 
 ## Cross-cutting
-- **Daily log**: mood, energy, symptoms, sleep, water, supplements, notes.
+- **Daily log**: mood, energy, symptoms, sleep, water, meals (food groups), supplements, notes.
 - **Local-first storage** with Supabase sync (offline-safe; owed writes retried; sign-out clears
   on-device health data).
 - **Local notifications**: hydration nudges, weekly reminders, Learn nudges, milestone
   celebrations — with tap routing to the right tab/article.
+- **Streak milestones**: celebrated *in the app* as well as by notification. The in-app half
+  deliberately does not require notification permission — it is the only half most people get.
 - **Deep links**: partner invites via custom scheme (`genesyx://invite/{code}`) and universal links.
 - **Medical citations**: an NHS / EFSA / NCBI-StatPearls / PubMed reference system surfaced inline
   next to health content (App Store Guideline 1.4.1).

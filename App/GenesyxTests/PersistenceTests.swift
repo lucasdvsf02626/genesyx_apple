@@ -68,7 +68,8 @@ final class PersistenceTests: XCTestCase {
 
     func testPhReadingDTORoundTrip() {
         let r = PhReading(id: "abc", phValue: 6.8, recordedAt: Date(timeIntervalSince1970: 1_000_000), notes: "am")
-        XCTAssertEqual(r.dto.domain, r)
+        let record = PhRecord(reading: r, updatedAt: Date(timeIntervalSince1970: 1_000_000), pendingSync: false)
+        XCTAssertEqual(record.dto.domain, r)
     }
 
     // MARK: measurement_type (vaginal pH migration)
@@ -93,9 +94,13 @@ final class PersistenceTests: XCTestCase {
         XCTAssertEqual(dto.domain.measurementType, .urine)
     }
 
+    /// Must go through `PhRecord.dto` — that is the only DTO `PhRepository` persists. An earlier
+    /// version of this test encoded a `PhReading.dto` helper the repository never called, so it
+    /// stayed green while every saved reading lost its type and vanished on the next launch.
     func testLocalDTORoundTripPreservesVaginal() throws {
         let reading = PhReading(phValue: 4.2, recordedAt: Date(timeIntervalSince1970: 1_000_000), measurementType: .vaginal)
-        let data = try JSONEncoder().encode(reading.dto)
+        let record = PhRecord(reading: reading, updatedAt: Date(timeIntervalSince1970: 1_000_000), pendingSync: true)
+        let data = try JSONEncoder().encode(record.dto)
         XCTAssertTrue(try XCTUnwrap(String(data: data, encoding: .utf8)).contains("\"measurementType\":\"vaginal\""))
         let decoded = try JSONDecoder().decode(PhReadingDTO.self, from: data)
         XCTAssertEqual(decoded.domain.measurementType, .vaginal)

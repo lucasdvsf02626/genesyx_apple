@@ -196,6 +196,14 @@ private struct QuizView: View {
     private func advance() { if isLast { onComplete(answers) } else { step += 1 } }
     private func onContinue() { if let fact = question.fact { pendingFact = fact } else { advance() } }
 
+    /// Leaves with no key at all for this question — not an option id standing in for silence. It
+    /// removes rather than merely skipping the write, because she can answer, go back, and skip.
+    /// No "Did you know?" either: the fact is what follows engaging with the question.
+    private func skip() {
+        answers.removeValue(forKey: question.id)
+        advance()
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 12) {
@@ -222,6 +230,10 @@ private struct QuizView: View {
             }
             Spacer()
             GxPrimaryButton(title: isLast ? "See My Summary" : "Continue", enabled: selected != nil, action: onContinue)
+            if question.isOptional {
+                GxGhostButton(title: "Skip this question", action: skip)
+                    .accessibilityIdentifier("quiz.skip")
+            }
         }
         .padding(.horizontal, 24)
         .padding(.bottom, 24)

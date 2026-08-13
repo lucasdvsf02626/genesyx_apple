@@ -118,6 +118,15 @@ final class AppContainer: ObservableObject {
     /// onboarding complete so a fresh launch lands directly on the main tabs. Triggered by the
     /// `-uiTestSeed YES` launch argument (see `GenesyxApp`). Never compiled into Release builds.
     static func uiTestSeeded() -> AppContainer {
+        // `-uiTestKeepStore YES` is the second half of a cold-relaunch test: the same local-only
+        // container, but reading whatever the previous launch left on disk instead of wiping and
+        // re-seeding. Without it every launch starts empty and "did this survive a restart?" cannot
+        // be asked at all — which is how the pH serialization defect reached a release candidate.
+        // Deliberately still backend-less: a relaunch without the seed flag would resolve the real
+        // Supabase backend, and no test may point at the shared production project.
+        if UserDefaults.standard.bool(forKey: "uiTestKeepStore") {
+            return AppContainer(store: LocalStore(), backend: nil)
+        }
         if let bundleID = Bundle.main.bundleIdentifier {
             UserDefaults.standard.removePersistentDomain(forName: bundleID)
         }
@@ -152,6 +161,25 @@ final class AppContainer: ObservableObject {
         // to the one before the seeded cycle day (day 9 → follicular), so the card is due.
         if UserDefaults.standard.bool(forKey: "uiTestPhaseChange") {
             UserDefaults.standard.set(Phase.period.rawValue, forKey: NutritionView.lastSeenPhaseKey)
+        }
+        // `-uiTestMilestone YES` is a week of meals and nothing else: six backdated food-group-only
+        // days which, with today's seeded water, make a 7-day *logging* streak and a 1-day hydration
+        // one. That asymmetry is the point — under the old rule, where the daily milestones keyed off
+        // hydration, this woman crossed nothing. She is exactly who the trigger was repointed for.
+        if UserDefaults.standard.bool(forKey: "uiTestMilestone") {
+            for day in 1...6 {
+                container.dailyLog.upsert(
+                    DailyLog(foodGroups: ["vegetables", "protein"]),
+                    on: CalendarDate.today().minusDays(day))
+            }
+        } else {
+            // Every other seeded launch is a woman with several days of history behind her, and on
+            // most weekdays that history already clears the first weekly milestone — the base seed
+            // does it today. Her celebration would then open over the tab bar in every unrelated UI
+            // test and swallow its taps, on some weekdays and not others. She has been here a while:
+            // treat her celebrations as already spent, and let the milestone test be the one place
+            // they are not.
+            container.prefs.celebrate(Milestone.allCases.map(\.flagKey))
         }
         return container
     }

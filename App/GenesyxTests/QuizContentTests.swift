@@ -38,6 +38,14 @@ final class QuizContentTests: XCTestCase {
         XCTAssertEqual(gender?.options.map { $0.id }, ["girl", "boy", "either", "private"])
     }
 
+    /// Optionality is scoped, not general. The sex-preference question is the one she may decline
+    /// to place on the record at all; making the other four skippable would quietly hollow out the
+    /// personalisation they drive, and is a product decision nobody has taken.
+    func testOnlyTheSexPreferenceQuestionIsOptional() {
+        let optional = QuizContent.questions.filter { $0.isOptional }.map { $0.id }
+        XCTAssertEqual(optional, ["gender"], "ANDROID MUST MATCH: only `gender` may be skipped")
+    }
+
     /// These ids are storage keys, not just array order: her answers persist to `quiz_answers.answers`
     /// keyed by them. Renaming one orphans every answer already given to that question, on both
     /// clients, with nothing to report it — so a change here is a data migration, not a rename.

@@ -1540,7 +1540,11 @@ private struct DayDetailSheet: View {
         if let energy = log.energy { parts.append("\(energy.rawValue) energy") }
         if !log.symptoms.isEmpty { parts.append("\(log.symptoms.count) symptom\(log.symptoms.count == 1 ? "" : "s")") }
         if !log.supplements.isEmpty { parts.append("\(log.supplements.count) supplement\(log.supplements.count == 1 ? "" : "s")") }
-        if let m = log.sleepMinutes, m > 0 { parts.append(String(format: "%.1f h sleep", Double(m) / 60)) }
+        if !log.foodGroups.isEmpty { parts.append("\(log.foodGroups.count) food group\(log.foodGroups.count == 1 ? "" : "s")") }
+        // `!= nil`, not `> 0`, to match the streak rule settled on 13 Aug: a stored 0 is a night she
+        // recorded, so a day whose only entry is one must not fall through to "No log for this day"
+        // while her streak counts it.
+        if let m = log.sleepMinutes { parts.append(String(format: "%.1f h sleep", Double(m) / 60)) }
         if hasPhReading { parts.append("pH test") }
         if !(log.notes ?? "").isEmpty { parts.append("a note") }
         if log.sexualActivity { parts.append("intimacy") }

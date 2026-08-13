@@ -21,19 +21,24 @@ public struct QuizQuestion: Hashable, Sendable {
     public let options: [QuizOption]
     /// Shown after answering this question, before advancing.
     public let fact: DidYouKnow?
+    /// Whether she may move on without answering. Skipping stores *nothing* — which is a different
+    /// answer from every option on offer, including "Prefer not to say".
+    public let isOptional: Bool
 
     public init(
         id: String,
         question: String,
         helper: String,
         options: [QuizOption],
-        fact: DidYouKnow? = nil
+        fact: DidYouKnow? = nil,
+        isOptional: Bool = false
     ) {
         self.id = id
         self.question = question
         self.helper = helper
         self.options = options
         self.fact = fact
+        self.isOptional = isOptional
     }
 }
 
@@ -88,7 +93,10 @@ public enum QuizContent {
                 QuizOption("boy", "Boy"),
                 QuizOption("either", "No preference"),
                 QuizOption("private", "Prefer not to say"),
-            ]
+            ],
+            // The one question she may leave entirely. "Prefer not to say" is still an answer, and
+            // it is recorded; this lets her decline to place the subject on the record at all.
+            isOptional: true
             // `either` and `private` keep their ids on purpose: these are storage keys for
             // `quiz_answers.answers`, and the two labels changed wording without changing meaning,
             // so reusing them carries every stored answer across intact.

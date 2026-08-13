@@ -152,7 +152,10 @@ final class LearnContentTests: XCTestCase {
     /// unfinished, and only on the day it is revealed. Same lookup the view performs.
     func testEveryHeroImageAssetExists() {
         for a in LearnLibrary.allArticles {
-            guard let name = a.heroImage else { continue }
+            guard let name = a.heroImage else {
+                XCTFail("Missing hero asset mapping for \(a.slug)")
+                continue
+            }
             XCTAssertNotNil(UIImage(named: name),
                 "Missing hero asset \"\(name)\" for \(a.slug)")
         }

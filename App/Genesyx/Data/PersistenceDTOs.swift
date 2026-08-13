@@ -67,13 +67,6 @@ struct PhReadingDTO: Codable {
     var measurementType: String? = nil
 }
 
-extension PhReading {
-    var dto: PhReadingDTO {
-        PhReadingDTO(id: id, phValue: phValue, recordedAt: recordedAt, notes: notes,
-                     measurementType: measurementType.rawValue)
-    }
-}
-
 extension PhReadingDTO {
     var domain: PhReading {
         PhReading(id: id, phValue: phValue, recordedAt: recordedAt, notes: notes,
@@ -91,6 +84,8 @@ extension PhReadingDTO {
     }
 }
 
+/// The only DTO the repository persists through. `measurementType` has to travel with it: without
+/// it every reload decodes as legacy `urine` and `PhRepository` hides the whole history.
 extension PhRecord {
     var dto: PhReadingDTO {
         PhReadingDTO(
@@ -100,7 +95,8 @@ extension PhRecord {
             notes: reading.notes,
             updatedAt: updatedAt,
             pendingSync: pendingSync,
-            deleted: deleted
+            deleted: deleted,
+            measurementType: reading.measurementType.rawValue
         )
     }
 }

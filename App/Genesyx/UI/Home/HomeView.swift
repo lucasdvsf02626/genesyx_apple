@@ -36,18 +36,21 @@ struct HomeView: View {
             ScrollView {
                 VStack(spacing: 16) {
                     greetingHeader
+                    // Only the phase and focus cards read the cycle. Everything below needs no phase,
+                    // so skipping cycle setup must not take it away — Home is the third no-cycle
+                    // surface after Track and Nutrition.
                     if let settings = cycle.settings {
                         phaseCard(for: settings)
                         focusCard(for: settings)
-                        hydrationCard
-                        phNudgeCard
-                        learnCard
-                        GxPrimaryButton(title: "Log today", leadingSystemImage: "square.and.pencil") { showLog = true }
-                        // v1: Pregnancy preview entry hidden (destination intact, unreachable). Restore by uncommenting.
-                        // pregnancyPathwayLink
                     } else {
                         setupCard
                     }
+                    hydrationCard
+                    phNudgeCard
+                    learnCard
+                    GxPrimaryButton(title: "Log today", leadingSystemImage: "square.and.pencil") { showLog = true }
+                    // v1: Pregnancy preview entry hidden (destination intact, unreachable). Restore by uncommenting.
+                    // pregnancyPathwayLink
                 }
                 .padding(20)
             }
@@ -245,6 +248,7 @@ struct HomeView: View {
                 .onTapGesture { openHydrationDetail() }
         )
         .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+        .accessibilityIdentifier("home.hydrationCard")
     }
 
     private func hydrationRing(pct: Double) -> some View {

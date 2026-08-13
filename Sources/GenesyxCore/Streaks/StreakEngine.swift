@@ -39,28 +39,29 @@ public extension CalendarDate {
 public protocol StreakLoggable {
     var waterMl: Int { get }
     /// True when ANY field was logged: water, mood, energy, symptom, sleep,
-    /// supplement, or note. pH days arrive separately via `phByDate`.
+    /// supplement, food group, or note. pH days arrive separately via `phByDate`.
     var hasAnyEntry: Bool { get }
 }
 
 /// Conform the existing DailyLog model to the engine's input protocol (§3).
 extension DailyLog: StreakLoggable {
-    /// ⚠️ `sexualActivity` and `foodGroups` are deliberately absent, for the same reason they are
-    /// absent from `TrackingEngine.isMeaningfulLog` — see the note there. Widening either one alone
-    /// gives iOS and Android different streaks for identical data. The notification layer folds
-    /// them in separately (`NotificationService.snapshot`), which is safe because notifications are
-    /// iOS-only and mirror nothing.
+    /// ⚠️ `sexualActivity` is deliberately absent, for the same reason it is absent from
+    /// `TrackingEngine.isMeaningfulLog` — see the note there. Widening it alone gives iOS and
+    /// Android different streaks for identical data. The notification layer folds it in separately
+    /// (`NotificationService.snapshot`), which is safe because notifications are iOS-only and
+    /// mirror nothing. `foodGroups` left that exclusion with H4 and now counts on both clients.
     public var hasAnyEntry: Bool {
         waterMl > 0 || mood != nil || energy != nil || !symptoms.isEmpty
             || sleepMinutes != nil || !supplements.isEmpty || !(notes ?? "").isEmpty
+            || !foodGroups.isEmpty
     }
 }
 
 // MARK: - Output
 
 public enum Milestone: String, CaseIterable {
-    case day7 = "milestone_7"       // 7-day daily hydration streak
-    case day14 = "milestone_14"     // 14-day daily hydration streak
+    case day7 = "milestone_7"       // 7-day daily *logging* streak — see `compute`
+    case day14 = "milestone_14"     // 14-day daily *logging* streak
     case week1 = "milestone_w1"     // first complete week
     case week4 = "milestone_w4"     // four consecutive complete weeks
 
@@ -157,8 +158,14 @@ public enum StreakEngine {
         let dots = (0..<7).map { activityDays.contains(currentMonday.addingDays($0)) }
         let thisWeekCount = dots.filter { $0 }.count
 
+        // `logging`, not `daily`: these celebrate the streak she is actually shown. The Consistency
+        // card headlines `dailyLogging`, so keying the milestones off hydration meant someone who
+        // logged a meal and her symptoms every day for a fortnight watched a 14-day streak climb and
+        // was never congratulated for it — while hydration alone, which she is shown on its own card
+        // with its own flame, fired the "daily" milestone. Water still counts: a day with water on it
+        // is a logged day. The weekly pair already used `weekly`, which was always logging-based.
         let current: [Milestone: Int] = [
-            .day7: daily, .day14: daily, .week1: weekly, .week4: weekly,
+            .day7: logging, .day14: logging, .week1: weekly, .week4: weekly,
         ]
         let thresholds: [Milestone: Int] = [.day7: 7, .day14: 14, .week1: 1, .week4: 4]
 

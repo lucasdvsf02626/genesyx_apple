@@ -1,7 +1,16 @@
 // TrackingEngineVectorTests.swift
-// Runs the shared cross-platform contract (`tracking_test_vectors.json`) against TrackingEngine.
-// The JSON is mirrored byte-for-byte in the Android repo — if a case fails here, the platforms
-// have diverged and one of them is wrong. Keep the file, not the assertions, as the source of truth.
+// Runs this platform's half of the cross-platform contract (`tracking_test_vectors.json`) against
+// TrackingEngine. Keep the file, not the assertions, as the source of truth.
+//
+// ⚠️ The Android repo does NOT hold a copy of this file. It keeps its own vectors, in its own
+// schema, covering its own extra metrics — what the two platforms share is the RULES, not the
+// fixture. A rule that moves has to move in both repos in the same change; nothing automated will
+// notice if it doesn't.
+//
+// ⚠️ These cases pin the streak ARITHMETIC, not the meaningful-log predicate: each day carries a
+// precomputed `meaningful` boolean, so `DailyLog.isMeaningfulLog` is never called here. That
+// predicate — which fields count toward a streak — is pinned by `MeaningfulLogTests`. Widening it
+// cannot fail this file, which is exactly why the guard tests over there exist.
 
 import XCTest
 @testable import GenesyxCore

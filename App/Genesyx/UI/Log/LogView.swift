@@ -30,6 +30,7 @@ struct LogView: View {
     @State private var waterMl = 0
     @State private var selectedSupplements: Set<String> = []
     @State private var sexualActivity = false
+    @State private var foodGroups: Set<String> = []
 
     @State private var showAddSymptom = false
     @State private var customSymptom = ""
@@ -50,6 +51,7 @@ struct LogView: View {
                     energySection
                     symptomsSection
                     intimacySection
+                    foodGroupsSection
                     miniCards
                     notesSection
                     Spacer().frame(height: 20)
@@ -105,6 +107,7 @@ struct LogView: View {
         waterMl = log.waterMl
         selectedSupplements = log.supplements
         sexualActivity = log.sexualActivity
+        foodGroups = log.foodGroups
         loaded = true
     }
 
@@ -114,6 +117,12 @@ struct LogView: View {
     /// sheet does not show. That was harmless while the sheet showed all of them; it stopped being
     /// harmless the moment food groups became loggable from Nutrition, because saving a note here
     /// would have wiped what she ticked off there — a data loss with no error and no undo.
+    ///
+    /// The sheet now edits food groups too, so it writes them rather than carrying them through: an
+    /// editor that cannot un-tick is not an editor. That is safe because `populate()` snapshots the
+    /// stored day on appear, so anything logged from Nutrition is already selected here before she
+    /// can save over it. The read-modify-write stays regardless — it costs nothing and it is the
+    /// only thing standing between the next field logged from somewhere else and the same bug.
     private func save() {
         var entry = dailyLog.log(on: date)
         entry.mood = mood
@@ -124,6 +133,7 @@ struct LogView: View {
         entry.notes = notes.isEmpty ? nil : notes
         entry.waterMl = waterMl
         entry.sexualActivity = sexualActivity
+        entry.foodGroups = foodGroups
         dailyLog.upsert(entry, on: date)
         dismiss()
     }
@@ -267,6 +277,37 @@ struct LogView: View {
                 .font(.gxBodySmall)
                 .foregroundStyle(GenesyxColor.mutedForeground)
                 .padding(.top, 8).padding(.leading, 4)
+        }
+    }
+
+    /// The same six groups Nutrition offers, so a meal ticked here and a meal ticked there are the
+    /// same record on the same day. A toggle rather than the recipe card's additive `logFoodGroups`:
+    /// this is the day's editor, and the whole reason it exists is that the Track day sheet could
+    /// report "3 food groups" with nowhere to correct them.
+    private var foodGroupsSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            sectionLabel("Food groups")
+            FlowLayout(spacing: 8) {
+                ForEach(FoodGroup.allCases) { group in
+                    let sel = foodGroups.contains(group.rawValue)
+                    Button {
+                        if sel { foodGroups.remove(group.rawValue) } else { foodGroups.insert(group.rawValue) }
+                    } label: {
+                        HStack(spacing: 4) {
+                            if sel { Image(systemName: "checkmark").font(.system(size: 12, weight: .bold)) }
+                            Text(group.label).font(.system(size: 13, weight: .medium))
+                        }
+                        .foregroundStyle(sel ? .white : GenesyxColor.foreground.opacity(0.8))
+                        .padding(.horizontal, 14).frame(height: 36)
+                        .background(sel ? GenesyxColor.primary : GenesyxColor.card)
+                        .clipShape(Capsule())
+                        .overlay(Capsule().strokeBorder(sel ? .clear : GenesyxColor.border, lineWidth: 1))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("log.foodGroup.\(group.rawValue)")
+                    .accessibilityLabel("\(group.label), \(sel ? "logged" : "not logged")")
+                }
+            }
         }
     }
 

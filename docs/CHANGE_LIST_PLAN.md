@@ -1,72 +1,63 @@
 # Genesyx iOS — Client Change List: Audit & Execution Plan
 
 > Response to the client's "Simplified Consolidated Changes" list (received 2026-08-10).
-> Audited against **v1.1.1 (build 17)**, baseline green at **125 domain + 139 app tests**.
-> Legend: ✅ already shipped · 🟡 partial · ⬜ not started · ⚠️ needs a decision (off-code)
+> Historical execution journal for builds 17–18, refreshed against **HEAD `d0b0c9f` on
+> 13 Aug 2026** plus the current working tree. The latest clean full-suite baseline through
+> H0 · H5 · T7 · H3-interim · H4 · H4-log-sheet · H7-celebration · sleep-contract is
+> **239 domain, 238 app and 57 UI tests** — 0 failures and 1 pre-existing permission-dependent skip.
+> Legend: ✅ complete · 🟡 partial/in progress · ⬜ missing · ⚠️ decision or external gate
 
 ---
 
 ## 0. Read this first
 
-**Roughly 40% of the client's list is already implemented.** Several items described as broken
-are not broken. Verify before quoting or building.
+**Current item-by-item result for Sections 1–3: 35 of 44 client sub-items Done (80%), 2 In progress,
+3 In review, 3 Blocked and 1 To do. Section 4 remains excluded.** This replaces the earlier rough
+count with the row-level assessment in `PROGRESS_CHECKLIST.md`. The original 25/44 count pre-dated
+the pH relaunch/history fix, optional onboarding, honest cycle-card copy and live Supabase
+corrections. Section **6A** remains the source of truth for the hard work and external gates.
 
-| Client item | Verified reality |
+| Client item | Current verified reality |
 |---|---|
-| 3A "Add a daily logging streak" | ✅ Built, tested (17 tests), wired into Home/Track/Insights/Nutrition. `StreakEngine.swift` |
-| 4A "Confirm what Add Partner does" | ✅ Works end to end: invite → DB code → email + share sheet → deep link → accept → unlink. Partner sees **name only**; logs/readings/notes already private |
-| 1B "Entries don't stay on the right date" | ✅ No defect found. `DailyLogRepository.swift:29` keys on timezone-free `CalendarDate` day-number |
-| 1D "Offline symbol appears" | ✅ No offline indicator exists. Zero hits for `NWPathMonitor`/`Reachability`/`isOffline`. No `.wifi`-only check, so cellular already works. Offline writes queue and drain on foreground |
-| 1A pH add / history / interpretation | ✅ Log sheet, 7/30/90/All chart, healthy vs elevated bands |
-| 1A "Why pH matters" explanation | ✅ `PhSpine` section in `PhTrackerSection.swift` |
-| 2C Hydration by glasses or ml + progress | ✅ Shipped in `2dcbfd8`. Only *custom* glass size missing |
-| 2D Personalised greeting | ✅ `HomeView.swift:63` uses display name |
-| 3B Weekly article notification | ✅ Sunday 09:00 Learn nudge already ships |
-| 2B "Hide greyed-out explanatory text" | ✅ Already behind disclosure toggles in `NutritionView.swift:145` |
+| 1A vaginal pH | 🟡 The dedicated tab, correct wording, logging, chart, Insights, full dated history, edit/delete, guidance and expandable disclaimer now work. A real second-process cold-relaunch test proves vaginal type persists. No migration or pH reclassification is permitted. The remaining client-list item is the approved Genesyx website links for science and Shettles (H12). |
+| 1B dated logs/calendar | 🟡 Hydration, sleep, symptoms, mood, energy, notes, supplements, food groups, pH and intimacy all survive relaunch on their correct dates, and calendar markers work. Food groups gained their dated Track/My Logs/Insights wiring on 13 Aug (H4). Live Profile journeys remain H8. |
+| 1C preference question | ✅ Girl / Boy / No preference / Prefer not to say are implemented safely, and it is now the one question she may skip outright — skipping stores no key at all, locally or on the server. |
+| 1D connectivity | 🟡 Reachability wording, local-first queues and the pH offline/cold-relaunch path are implemented and automated. Only real cellular, dead-zone, reconnect and lock-screen privacy testing remains on a physical iPhone (H10). |
+| 2A presentation | 🟡 Light mode, egg artwork, shorter cards and dark/light contrast work are implemented. The subjective warm/premium review and approved recipe photography remain H11. |
+| 2B Nutrition | 🟡 Food-group logging, recipes and supplement reminders work, and food groups now feed Track, My Logs, a “Days with meals” Insights tile and the shared streak contract on both clients. Only the Android editor UI is outstanding — iOS remains the one place meals can be logged. |
+| 2C Hydration | ✅ Glasses/ml, custom glass size, correction, target progress, persistence and Insights work. Display unit/glass preferences are still device-local. |
+| 2D contextual cycle guidance | ✅ Phase-change card, article route and personalised Home greeting are implemented. |
+| Cycle Insights | 🟡 Predictions work, but only one `cycle_settings` row exists. The card no longer claims regularity — it is titled “Current cycle length” — but real regularity still needs the H3 period-event model. |
+| 3A streak | 🟡 Visible and data-linked, and meal-only days now hold a streak identically on both clients (H4). Milestones now celebrate in-app on both clients and follow the logging streak on both (H7). The last divergence inside the predicate is closed too: a 0h sleep counted toward her milestones but not toward her Consistency streak, because `TrackingEngine` read `> 0` where `StreakEngine`, both Android predicates and the vectors changelog read `!= nil` — iOS is now in line with the three, and Android needed no change. The day-detail summary followed the predicate, so a day whose only entry is a 0h night no longer reads “No log for this day” under a streak that has just counted it. Cycle edits and article reads still do not count (H6), and streak restore remains an open product decision (H7). |
+| 3B education | ✅ All 12 topics, dashboard/new-article delivery and opt-in-gated notifications exist. Production `profiles.push_enabled` now defaults to `false`; all 18 existing rows were deliberately left unchanged. |
 
-### ⚠️ The compliance blocker
+### Medical and compliance guardrails
 
-The codebase **forbids the content requested in items 1A and 1C — enforced by tests, not docs.**
+The codebase forbids unsupported sex-selection, diet/pH causation, diagnosis and treatment claims.
+Those guards remain correct and must not be weakened to make a feature easier to ship.
 
-Seven test files assert user-facing copy never contains `"sex selection"`, `"boy or girl"`,
-`"gender sway"`, `"sway the sex"`, `"choose the sex"`, `"alkaline diet"`, `"balance your ph"`,
-`"detox"`, `"flush toxins"`. pH articles additionally ban `"infection"`, `"thrush"`, `"candida"`,
-`"vaginosis"`, `"bv"` (`PhContentGuardTests.swift:9`).
+The four preference answers now record preference without claiming an outcome. The Shettles article
+is a clearly framed, cited debunking piece, and the vaginal-health guidance explains when to seek
+professional help without diagnosing the user. These are no longer implementation blockers.
 
-Enforcing files: `LearnContentTests`, `QuizContentTests`, `NotificationTests`, `RealInsightsTests`,
-`HydrationInsightTests`, `NutritionHydrationTests`, `PhContentGuardTests`.
-
-Three requests collide with these rails:
-
-1. **Shettles method content** — Shettles *is* a sex-selection theory.
-2. **Girl / Boy preference options** — `QuizContentTests.swift:8` bans `"boy or girl"`.
-3. **"When to seek professional help" for vaginal health** — cannot say "signs of an infection"
-   without failing the pH guard.
-
-Item 1A also asks to **hide the medical disclaimer behind an info icon** while *adding* unproven
--theory content. Those point in opposite directions for App Store health-app review.
-
-**This ground has already been walked.** `QuizContent.swift:91` carries an explicit note that a
-previous "Did you know?" claim — that diet/pH can influence a baby's sex — was **deliberately
-removed as unsupported and contradictory to the Learn content**. The Shettles request asks to
-reintroduce that exact territory. Raise this directly with the client.
-
-**Do not quietly edit these tests.** Relaxing them is a client + medical-reviewer decision.
+Remaining rule: do not reinterpret legacy urine rows as vaginal, infer a diagnosis from pH,
+manufacture meal/nutrient effects, or put intimacy/medical detail into notifications or partner
+surfaces. Any future clinical thresholds or recommendations still require written approval.
 
 ---
 
 ## 1. Gate 0 — decisions before any code
 
-- [x] ✅ **G1 — Shettles.** Resolved 12 Aug 2026, and the premise was wrong. The gate assumed the
+- [x] ✅ **G1 — Shettles and preference framing.** Resolved 12 Aug 2026. The gate assumed the
       guards would have to be relaxed; they did not, and were not. `bannedPhrases` bans *claims* —
       "choose the sex", "gender sway", "alkaline diet" — and its own docstring says the list is drawn
       deliberately narrow so that debunking prose does not trip it. An honest piece stating the theory
       is unsupported clears every guard untouched, and is also the only version publishable in the UK
       (CAP Code 3.7 wants substantiation for the efficacy claim, and there is none to give).
       Shipped as `shettles-method`, week 12, revealed 2026-11-08, cited to Wilcox 1995.
-      **Still open: the Girl/Boy quiz option (T7)**, which is a different question — that one really
-      does need `"boy or girl"` removed from `QuizContentTests`, and that is still a client +
-      medical-reviewer decision. Unblocked T29b only.
+      Girl / Boy / No preference / Prefer not to say also shipped without an efficacy claim. The
+      only open part of T7 was making that question optional, which shipped 13 Aug 2026. **G1 is
+      fully closed**, and closed without the sign-off it was assumed to need.
 - [x] ✅ **G2 — pH tab placement.** Resolved 11 Aug 2026: **7 tabs**, Insights stays. The SE worry did
       not survive measurement — iOS 16 drops the 320pt SE 1, so the narrowest supported device is
       375pt, giving ~53pt a tab against a ~48pt widest label ("Nutrition"). Verified on an
@@ -115,12 +106,18 @@ T1 inherits G2's block. Do not ship T1 alone.
       client's "offline" confusion.
 - [x] ✅ **T6 — Disclaimer into expandable panel.** `PhTrackerSection.swift:97` and `:315`. Kept
       permanently visible on the **log sheet**; only the card copy collapses.
-- [ ] ⬜ **T7 — Gender question → 4 options.** `Sources/GenesyxCore/Content/QuizContent.swift:83`:
-      Girl / Boy / No preference / Prefer not to say, and skippable. Current options only record
-      *that* a preference exists ("hope" / "either" / "private"), never which. *Needs G1.*
+- [x] ✅ **T7 — Four preference options, and the question is now genuinely optional.** *Closed
+      13 Aug 2026.* `QuizContent.swift` contains Girl / Boy / No preference / Prefer not to say, with
+      stable storage ids and no promise that sex can be influenced. `QuizQuestion.isOptional` is now
+      true for `gender` **and nothing else**; `OnboardingFlowView` offers "Skip this question", which
+      *removes* the key rather than storing a stand-in id. No schema or wire change: the push
+      replaces `quiz_answers.answers` wholesale, so a key dropped locally is dropped remotely.
+      `TrackingPreferencesSheet` clears an optional answer on a second tap, so the first tap there is
+      not a one-way door back into a compulsory question. **Android must match the scope** —
+      `testOnlyTheSexPreferenceQuestionIsOptional` pins it. See `HANDOFF.md` §4l.
 - [x] ✅ **T8 — Persist quiz answers.** `OnboardingFlowView.swift:155` collected answers into a local
-      dict and **discarded them on completion**. They now go to `profiles.quiz_answers` (`jsonb`,
-      keyed by question id) via `PreferencesRepository.recordQuizAnswers`.
+      dict and **discarded them on completion**. They now go to the owner-only `quiz_answers` table
+      (`answers jsonb`, keyed by question id) via `PreferencesRepository.recordQuizAnswers`.
 
       The quiz runs *before* sign-up, so at the moment she answers there is no session to write
       under — the answers are written on-device and stay **owed** to the server until sign-in
@@ -132,14 +129,11 @@ T1 inherits G2's block. Do not ship T1 alone.
       one of them. **Question ids are now storage keys** — renaming one orphans every answer already
       given to it, on both clients. `QuizContentTests.testFiveQuestionsInOrder` pins them.
 
-      **Nothing reads the answers yet**, by design: the consumer is T7's personalised copy, which
-      needs G1. This is the plumbing only, as scoped.
-
-      ⚠️ **Raised for G3/security:** `profiles` carries a partner-read policy, and her answer to the
-      baby's-sex question now lives in that row — under a helper line that promises "This is just
-      for you." If that policy selects whole rows rather than named columns, the promise is false.
-      The check is written into `supabase/migrations/20260810_profiles_quiz_answers.sql` §2 and must
-      be run before this reaches production.
+      Tracking Preferences reads and updates the stored answers. The original
+      `profiles.quiz_answers` design was rejected because profiles is partner-readable; the deployed
+      owner-only table keeps the “This is just for you” promise. The deprecated empty profiles
+      column is a separate cleanup item and must not be dropped until every shipped client has
+      stopped selecting it.
 - [x] ✅ **T9 — Connectivity.** G3 turned out to be a real defect rather than a question, so this is a
       fix and not a write-up. Shipped with the Phase 2 reliability batch: the stuck "Will sync when
       online" badge, a cycle correction lost when it was made mid-drain, and an owed profile write
@@ -211,8 +205,11 @@ T1 inherits G2's block. Do not ship T1 alone.
       out of. Raise it with the client if a real consumer for it appears.
       Email is display-only because changing it is a re-verification flow, not a text field; leaving
       it off the screen entirely meant "which account am I in?" had no answer anywhere in the app.
-- [ ] ⬜ **T19 — Password change.** `SessionRepository.swift:99` throws in local mode and surfaces an
-      error. Either gate the row or wire the backend.
+- [ ] 🟡 **T19 — Password reset is wired; live account journey remains.** Profile now sends the
+      signed-in address a Supabase password-reset email and reports success/failure. Complete it only
+      after verifying delivery, universal/deep-link return, the reset form and a successful login with
+      the new password on a disposable account. Local/guest mode must keep the action unavailable or
+      explain why it cannot run.
 
 ## 4. Phase 3 — design (10–20d, design-gated)
 
@@ -356,6 +353,108 @@ T1 inherits G2's block. Do not ship T1 alone.
 - [x] ✅ **T30 — Per-supplement reminders.** Each supplement carries its own time, the Genesyx
       essentials included; "No reminder" stays a first-class choice in the menu.
 
+## 6A. Current hard remaining work — 13 Aug 2026
+
+This section supersedes old effort estimates wherever they conflict. It covers Sections 1–3 and 5
+only; every Section 4 item remains deferred. Genesyx has one live Supabase project shared by iOS and
+Android, so shared schema, privacy, deletion and streak rules must move as one contract.
+
+### 6A.1 Priority and ownership
+
+| ID | Priority | Work | Why it is hard / safe boundary | Owner and definition of done |
+|---|---:|---|---|---|
+| H0 | ~~P0~~ | ~~**Vaginal-pH cold-relaunch fix**~~ | `PhRecord.dto` omitted `measurementType`, while the test exercised the unused `PhReading.dto`. Builds 12–13 may contain genuine urine readings, so “missing type means vaginal” is unsafe. | ✅ **Done 13 Aug, iOS only.** Real type now persists through the production path; the dead `PhReading.dto` decoy is deleted; missing legacy type still decodes as urine. Reverting the fix reproduces the empty history, so the new relaunch test is proven to bite. No SQL, no conversion. `HANDOFF.md` §4k. |
+| H1 | ~~P0 backend~~ | ~~**Complete account-deletion backstop for `user_supplements`**~~ | The live table already had owner-only RLS and `auth.users ON DELETE CASCADE`, but the hardened RPC lacked an explicit defence-in-depth delete. | ✅ **Production done 13 Aug.** Project `epltxklawpcxxbaleswg` now has the line exactly once before profile/auth deletion; partner unlink, owned-data deletes, email-keyed invite/waitlist cleanup, owner, ACL, `SECURITY DEFINER` and `search_path=''` were preserved. Row counts identical before and after: profiles = 18, user_supplements = 1, genesyx_products = 0, ph_readings = 61. `delete_current_user()` was **redefined, not executed** — no account was deleted to obtain this evidence. **Still owed, and it is remaining behavioural QA rather than missing implementation:** check the exact applied migration into **this repo** — it is the shared-backend repo, and the executable copy belongs here alone; Android keeps only an audit pointer under its `docs/migrations/` — and run a disposable-account deletion test. Production DDL is not proof of runtime behaviour. |
+| H2 | ~~P1 backend~~ | ~~**Make push consent semantically opt-in**~~ | iOS already requires preference + system authorization; the server default had contradicted that model. | ✅ **Production done 13 Aug.** `profiles.push_enabled` now defaults to `false`. No existing profile row was rewritten: distribution stayed 18 true / 0 false. Android reminder behaviour still deserves parity QA, but the shared default is fixed. |
+| H3 | P1 product + backend | **Real cycle history and honest regularity** | Both apps have one current `cycle_settings` row. A configured 28-day length cannot prove regularity. This needs a dated-event model, offline conflict rules and migration on both clients. | **Product + iOS + Android + Supabase.** Approve what counts as a period start/end/correction. Then design an owner-only `cycle_periods`/equivalent table with client ids, timestamps and tombstones; implement local-first sync on both platforms; derive regularity only from sufficient completed cycles. 🟡 **Interim implemented 13 Aug, iOS only:** the card is renamed “Current cycle length”, guarded by `testInsightsReportsCycleLengthWithoutClaimingRegularity`, which asserts no static text on Insights contains “regularity” — proven to bite by reverting the title. Full suite green at 236/238/52. The `CycleRegularityLogic`/`CycleRegularityInsights` types keep the old name so the Android mirror still matches; rename them together when period events land. The modelling work below is untouched and still owed. |
+| H4 | ~~P1 cross-platform~~ | ~~**Connect meals to Track, My Logs, Insights and streaks**~~ | `daily_logs.food_groups` was live, but iOS Insights counted supplements only and both shared streak engines deliberately excluded food groups. An iOS-only change would have produced different streaks from identical backend data. | 🟡 **iOS done 13 Aug; Android at read parity. No SQL was needed or written.** Both iOS engines now count meals (`TrackingEngine.isMeaningfulLog`, `StreakEngine.hasAnyEntry`), so a meal-only day holds a streak. Track's dated summary lists “N food groups”; the My Logs day card lists them by known case, so a group written by a newer build renders as nothing rather than a raw token; Nutrition Insights gained a separate **“Days with meals N / 7”** tile. Android received the whole read/write half — Room v9 (`MIGRATION_8_9`, nullable `foodGroups TEXT`, generated `9.json` verified against the ALTER), DTO field omitted-while-empty, Supabase read/write, and the same widened `isMeaningful()` — so both clients compute identical streaks from the same rows. Two real defects were fixed on the way: Android's log form rebuilt the whole row and would have **deleted iOS-written meals on every save** (now carried through, plus `upsertPreservingWater` preserves them against a mid-edit sync), and meal-only days no longer render as empty in Android history. **The two `tracking_test_vectors.json` files never mirrored each other byte-for-byte and never had** — the false claim is now corrected in both repos, each file extended in its own schema, and the Android additions falsification-tested (removing the predicate term makes them fail). A v8→v9 Room migration test was also added, since every prior `daily_logs` migration had one and this did not; it runs on a real emulator and fails if the ALTER grows a `DEFAULT`. All three new iOS surfaces are covered end to end by `testAMealLoggedTodayReachesTrackMyLogsAndInsights`, which cooks a recipe and then goes looking for the meal on Track, My Logs and Insights; each of the three assertions was falsification-tested by breaking that surface alone and watching only it fail. It writes to *today* deliberately, because the Insights tile counts within the current ISO week and seeding a past day would make a Monday run legitimately read zero. Green at 236 domain / 238 app / 53 UI / 380 Android unit / 3 Android instrumented, 0 failures *at that point in the day*. **What H4 left owed:** a food-group control in the daily log sheet on **both** clients — on iOS the Track day sheet reported “N food groups” while “Edit this day” could not change them, and on Android there was no way to record a meal at all — plus offline/relaunch/sync QA on both devices. The QA and the Android control are still owed; the iOS control is not, see below. **The “Days with meals” metric is my reading of the plan's open “agree the insight metric” item — redirect it if the product owner wants something else.** **Closed on iOS later the same day:** `LogView` gained a `foodGroupsSection` of the same six `FoodGroup` cases Nutrition offers, so “Edit this day” can now change the meals the day sheet reports and a meal can be entered from the tracker rather than Nutrition only. It is a *toggle*, unlike the recipe card's deliberately additive `logFoodGroups` — this is the day's editor, and an editor that cannot un-tick is not one. That made `save()` start writing `foodGroups` rather than carrying them through, which is precisely the shape of the bug already found and fixed on Android, so it is guarded by its own test: `testSavingTheLogSheetKeepsAMealLoggedFromNutrition` logs a recipe, saves an unrelated field from the sheet, and asserts *both* that the save landed and that the meal survived it. Deleting the `populate()` read makes it fail with `Logged: 0.8 L water, pH test, intimacy.` — the meal gone, exactly as predicted. `testTheLogSheetCanRecordAndClearAMeal` covers the round trip including un-ticking. Green after that change at 236 domain / 238 app / 55 UI, 0 failures. Android still has no such control and remains read-only for meals. |
+| H5 | ~~P1 iOS~~ | ~~**Complete pH history editing**~~ | The premise was generous: a `.sheet(isPresented:)`/`editing` race meant **no** reading was editable — every tap opened a blank new-reading sheet and saving filed a duplicate. | ✅ **Done 13 Aug.** One `PhSheetMode?` presented with `.sheet(item:)`, plus a collapsible dated "Reading history (N)" opening any reading for edit or delete. Legacy urine stays hidden. **Android parity review still owed.** `HANDOFF.md` §4k. |
+| H6 | P2 product + cross-platform | **Decide how article reads and cycle actions count toward streaks** | Article read state currently stores only device-local slugs, not dates. A read cannot honestly count for a specific day or sync across phones. Cycle-setting changes are likewise not event history. | **Product decision first.** Either narrow the requirement to existing meaningful logs, or define dated owner-only events and the shared engine rule. If cross-device consistency is required, draft an `article_reads`/activity-event migration; do not fake dates from the current slug set. |
+| H7 | 🟡 P2 product | **In-app milestone celebration and optional restore** | Milestones scheduled local notifications and nothing else. Restore affects the canonical meaning of the streak and could become a paid/gamified entitlement. | 🟡 **Celebration done 13 Aug on both clients; restore still an open product decision. No schema, no migration, no SQL.** The premise understated it: the milestone check ran inside `replan()`, behind `guard isActive`, so the woman who *declined* notifications logged for a week and the app said nothing at all — the missing in-app moment was not a polish gap, it was the whole feature for the majority case. `checkMilestones()` now runs outside that gate, from `reconcile()` (launch and every foreground) and from the `dailyLog.$logByDate` observer; only the banner half still needs permission. Ordering is load-bearing and documented: `replan()` opens with `cancelAll()`, which would sweep away a milestone scheduled ahead of it, so `replanAndCelebrate()` fixes the sequence. **The trigger was repointed, on both clients in the same sitting:** the 7- and 14-day milestones followed *hydration* while Home headlines the *logging* streak, so a woman who logged a meal and her symptoms every day for a fortnight watched that number climb and was congratulated for nothing. Both engines now key off the activity streak — the number she is actually shown — matching the client's 3A wording. `MilestoneCelebrationView` reuses `NotificationContent.milestoneTitle`/`milestoneBody` rather than writing fresh copy, so the banner and the app cannot congratulate her for different things and the words stay inside the reach of the banned-phrase and no-guilt scans. Only the largest crossed milestone is shown — day7 and week1 together is one good week, not two stacked modals — and `celebration` is only ever assigned non-`nil`, because writing `nil` on the next call would tear the moment off screen the instant she logged anything else. Two UI tests cover it: `testMilestoneIsCelebratedInTheAppWithoutNotificationPermission` (running with no permission granted *is* the test) and `testACelebratedMilestoneDoesNotReturnOnTheNextLaunch`, a cold relaunch against the same store. Three falsifications, each rebuilt and re-run: restoring the `isActive` guard, flipping `.last` to `.first`, and deleting `prefs.celebrate(...)` each fail exactly one assertion. **Two real defects were found on the way.** A VoiceOver one: an `accessibilityIdentifier` on the card container does not name the card — SwiftUI lets the outermost one win, so it renamed the only control inside and the whole celebration collapsed into a single button called “Thanks”, with the words she had earned unreadable; the container is now deliberately unidentified. And a test-harness one: with the celebration no longer gated, the base UI seed crosses `week1` on most weekdays, so a full-screen modal would have opened over the tab bar in every unrelated test and eaten its taps — and with `continueAfterFailure = false` that aborts the whole suite. The non-milestone seed now pre-flags every milestone as spent. Green at **238 domain / 238 app / 57 UI / 381 Android unit**, 0 failures. **Still owed:** restore — approve grace and allowance first, and add backend state only if restores must follow the account across devices. |
+| H8 | P2 account QA | **Finish Profile account journeys** | Name has a local success path but remote errors are not clearly surfaced. Password change is an email/deep-link flow; email change is deliberately unsupported. | **iOS + Supabase Auth QA.** On disposable accounts, verify display-name sync, reset-email delivery, deep-link return, new-password sign-in and user-facing failures. Decide explicitly whether email change is in scope. |
+| H9 | P2 cross-platform | **Sync hydration display preferences** | Water is correctly canonical in ml, but unit and custom glass size remain device-local; identical water can render differently on iOS and Android. | **iOS + Android + Supabase.** Move display unit and glass size together, validate allowed values, preserve ml storage/calculations, add owner-only profile columns or an owner-only preferences object, and test old clients/defaults. |
+| H10 | Release gate | **Physical-iPhone connectivity/privacy QA** | Simulator Wi-Fi cannot prove cellular transport, dead-zone recovery, lock-screen copy or notification permissions. | **Human/device.** Test Wi-Fi, cellular-only, forced connection drop, offline save/relaunch/reconnect, notification opt-in/denial and password-reset link on a real iPhone. Confirm data on the shared backend without exposing medical details. |
+| H11 | Design gate | **Warm/premium review and real recipe imagery** | This is subjective and can sprawl. Generic recipe gradients are functional but not the requested food photography. | **Design/content owner.** Approve a small screen list and asset brief, then replace only approved placeholders and rerun SE/dark/light visual QA. |
+| H12 | P2 content + iOS | **Link the pH science and Shettles website content** | The app contains cited in-app articles and a generic `https://genesyx.co.uk` share root, but no approved Genesyx URLs for these two promised external destinations. Guessing paths could ship a 404 or unsupported efficacy copy. | **Content owner + iOS.** Publish/approve the two exact HTTPS pages, keep Shettles framed as an unproven theory, add visible CTAs from the relevant Learn/pH surfaces, and test both routes on device. |
+
+### 6A.2 Supabase action matrix
+
+Live read-only audit on 13 Aug 2026 found nine public tables, including the newly deployed
+`user_supplements` and `genesyx_products`. Core health tables remain owner-only. The product catalogue
+is authenticated read-only; user supplements are owner-only; `user_supplements.user_id` cascades
+from `auth.users`; `product_id` becomes null if a catalogue item is removed.
+
+| Backend item | Live state | Action now |
+|---|---|---|
+| `ph_readings.measurement_type` and conditional range | ✅ Deployed | **No migration. Never relabel or bulk-update existing pH rows.** H0 is local iOS serialization. |
+| `daily_logs.food_groups` | ✅ Deployed | **No schema work was needed and none was done.** Both clients now read and write the column and count it toward the shared streak rule. Android's DTO omits the field while empty, so the server's `'{}'` default applies. Only the Android editor UI and device sync QA remain. |
+| `quiz_answers` | ✅ Owner-only table | No schema work for optional onboarding. Keep question ids stable. |
+| `user_supplements` / `genesyx_products` | ✅ Deployed with correct RLS/FKs; H1 deletion backstop is also live | Do not change production again. Check the exact applied migration into this repo (the shared-backend one); Android keeps an audit pointer, not a second executable copy. Then prove deletion only with a disposable account. Never delete catalogue rows during account deletion. |
+| `profiles.push_enabled` | ✅ Default is `false` | H2 is complete. Existing rows remain 18 true / 0 false by design; do not bulk-reset them. |
+| Cycle history | ⬜ No table | Design and review H3 first; do not invent/apply a table during the quick backend patch. |
+| Dated article reads/activity events | ⬜ No table | Product decision H6 first; current slug-only read state cannot be safely backfilled with dates. |
+| Hydration display preferences | ⬜ Not in shared profile | Design H9 with Android before adding fields. Keep canonical water in ml. |
+
+### 6A.3 Safe order from here
+
+1. ✅ **Done 13 Aug:** H0 pH persistence, H5 full history/editing, T7 optional onboarding, H1
+   deletion backstop, H2 push-default correction, H3's honest iOS “Current cycle length” copy and
+   H4's meal wiring (iOS complete, Android at read parity).
+2. **Repository reconciliation:** copy the exact production migration into **this repo's**
+   `supabase/migrations/` so git matches project `epltxklawpcxxbaleswg`. Do not replace it with
+   either older draft. **One executable copy, not two:** this is the shared-backend repo and the
+   backend is applied from here, so Android must not grow a `supabase/migrations/` directory — its
+   SQL records stay under `docs/migrations/` as audit history pointing at the canonical file. Two
+   runnable copies of the same migration is how a stale one gets applied. Then run the H1
+   disposable-account deletion test; production DDL alone does not prove runtime behaviour.
+3. **Decide the shared contracts before more SQL:** H3 period events, H6 article/cycle streak
+   events, H7 restores and H9 hydration display preferences. H4's contract is now settled in code —
+   a meal-only day is a meaningful log on both clients — but the **“Days with meals” Insights metric
+   is still open to a product ruling**, and any change to it must move in both repos together.
+4. **Largest visible implementation gap:** the Android food-group editor, so meals can be logged
+   from either phone rather than only from iOS. Then implement whichever of H3/H6/H7/H9 received an
+   explicit product decision.
+5. Complete H8 on disposable auth accounts, approve/wire H12's exact website URLs, run H10 on a
+   physical iPhone, and finish the H11 design review before calling Sections 1–3 release-complete.
+
+### 6A.4 Applied shared Supabase result — 13 Aug 2026
+
+Production project **`epltxklawpcxxbaleswg`** received one guarded transaction named
+`20260813_user_supplements_delete_backstop_and_push_default_false` with exactly two changes:
+
+1. It spliced `delete from public.user_supplements where user_id = v_uid;` into the deployed
+   hardened `delete_current_user()` exactly once, immediately before profiles/auth deletion.
+2. It changed only the `profiles.push_enabled` column default to `false`.
+
+Post-apply checks passed: function owner `postgres`, `SECURITY DEFINER`, `search_path=''`, and EXECUTE
+for postgres/authenticated/service_role only were preserved; all hardened cleanup blocks remained;
+profiles = 18, user supplements = 1, products = 0 and pH readings = 61 before and after; existing
+push distribution stayed 18 true / 0 false. The migration never called deletion, touched pH, or
+changed RLS, grants or foreign keys.
+
+**Remaining evidence/repository work:** the exact applied file is not yet present in this iOS repo's
+`supabase/migrations/` and must be checked in **here**, verbatim — this is the shared-backend repo
+and the only place an executable copy belongs. Android's `docs/migrations/2026-07-29_user_supplements.sql`
+already carries a DO NOT APPLY banner pointing at this directory, and that pointer is the whole of
+Android's obligation. Then run account deletion end to end on a disposable account and prove its
+supplement, profile/auth row and email-keyed residue are removed. **This test is explicitly pending
+and must never be run against an existing user** — the project holds 18 live profiles including
+Apple's reviewer.
+
+### 6A.5 Public App Store gates outside the 44-item client count
+
+These do not change the client-list completion percentage, but they must not disappear from release
+planning:
+
+- **Article 9 explicit consent:** the live policy names Article 9(2)(a), but the app has no explicit
+  consent step or stored policy version/timestamp. Legal must either approve a different lawful
+  basis or engineering must implement an auditable consent record before public submission.
+- **Sign in with Apple deletion:** the iOS `delete_account` Edge Function does not revoke Apple's
+  refresh token, and two Apple identities exist live. Add Apple `/auth/revoke` handling and make
+  waitlist cleanup failure honest before public submission.
+- **Deletion behaviour:** after the migration is version-controlled, use disposable accounts to
+  prove both the iOS Edge Function and Android SQL RPC erase the same shared-backend data.
+
 ## 7. Phase 6 — quote separately (40–60d)
 
 - [ ] ⬜ HealthKit / Apple Watch / Oura (~15–20d) — zero code, no entitlement, no Info.plist keys
@@ -375,21 +474,21 @@ tab/article, and a "never guilt" invariant enforced by tests.
 Already scheduled: daily hydration · Monday pH reminder · Wednesday insights · Friday track nudge ·
 Sunday Learn article · instant streak milestones.
 
-New work is extending `NotificationPlanner.plan()` — **~3–4 days total**:
+The completed extension to `NotificationPlanner.plan()` was **~3–4 days total**:
 
 | Notification | Effort | Task |
 |---|---|---|
-| Fertile-window entry alert | 1.5d | T14 |
-| Weekly new-article alert | 0.5d | T28 |
-| Per-supplement reminders | 1d | T30 |
-| Per-category opt-in toggles | 1d | T15 |
+| Fertile-window entry alert | 1.5d | ✅ T14 |
+| Weekly new-article alert | 0.5d | ✅ T28 |
+| Per-supplement reminders | 1d | ✅ T30 |
+| Per-category opt-in toggles | 1d | ✅ T15 |
 
 ---
 
-## 9. Timeline
+## 9. Historical initial timeline
 
-One experienced iOS dev. Excludes copywriting, medical review and design assets — those are the
-critical path, not the code.
+This was the pre-implementation estimate for one experienced iOS developer. Do not use it as the
+current remaining estimate; use section 6A.
 
 | Phase | Effort |
 |---|---|
@@ -420,17 +519,15 @@ start today and finish inside one sprint. Ordered so each day ships something de
 | 8 | T10 · T11 — `sexualActivity` model + persistence + migration | 2.5d | ✅ |
 | 9 | T12 — private logging UI (excluded from partner surfaces) | 1.5d | ✅ |
 | 10 | T13 — calendar dot markers (pH, symptoms, activity) | 2d | ✅ |
-| 11 | T8 — persist quiz answers (plumbing only; T7's copy needs G1) | 1.5d | ✅ |
+| 11 | T8 — persist quiz answers in the owner-only table | 1.5d | ✅ |
 | | **Total** | **12.75d** | 1.25d QA buffer |
 
 **Sprint 1 is complete** — all eleven rows shipped, `71567c8` … `148e754`. Two things it leaves
 behind for whoever picks up next:
 
-1. **Migrations need running by hand** in the Supabase SQL Editor; this repo never pushes schema.
-   Until then a column exists only in the app's decoders, which tolerate its absence — so nothing
-   breaks, and nothing syncs either. *Superseded 2026-08-11: `profiles_quiz_answers` was replaced by
-   the owner-only table in `9d08d82` and has been applied; `daily_logs_sexual_activity` is still
-   unconfirmed. **See `HANDOFF.md` §2 for current Supabase state** — that is the live record.*
+1. **Historical migration warning, now superseded.** Quiz answers, sexual activity, food groups,
+   pH type/ranges, user supplements and the product catalogue are present live. Use section 6A.2
+   for current backend work; never infer production state from this sprint journal.
 2. **An Android coordination item.** `sexualActivity` is deliberately *not* counted by
    `TrackingEngine.isMeaningfulLog` or `StreakEngine.hasAnyEntry`. Those two predicates are mirrored
    in the Android client and driven by a byte-for-byte shared `tracking_test_vectors.json`, so
@@ -445,9 +542,8 @@ their hand, and it closes the one item they raised that was genuinely missing.
 ### 9.2 What Sprint 1 deliberately excludes
 
 - **T1 · T2** (pH tab) — G2. Shipping T1 alone makes pH *harder* to find.
-- **T7** (Girl/Boy quiz option) — G1. Still blocked on written sign-off; this one genuinely does
-  require removing `"boy or girl"` from `QuizContentTests`. *T29b (Shettles) is no longer here — it
-  shipped 12 Aug 2026 without relaxing anything. See G1.*
+- **T7** (optional preference answer) — the four safe options have shipped. What remains is a Skip
+  path and tests proving that no answer is stored or invented when she skips.
 - **T9** (offline symbol) — G3. *Superseded 11 Aug 2026: reproduced and fixed. The original "no such
   code path" reading looked for reachability monitoring; the badge is driven by the owed-days set.*
 - **T21 · T22** (artwork, visual pass) — G4 / no design spec. T22 will sprawl without one.
@@ -483,8 +579,9 @@ nutrition items while the context is warm.
 | 20 | The calendar with no cycle set up | 0.5d | ✅ |
 | 21 | Phase 3 — tracking markers, fertile-stage highlight, dark-mode contrast | 1d | ✅ |
 
-T19 (password change) is the one Profile row still unbuilt: `SessionRepository.swift:99` throws in
-local mode. It is a backend decision, not a UI one, so it did not belong in the same batch.
+T19 is no longer an unbuilt row: the Profile flow requests a Supabase reset email. It remains partial
+until a disposable-account test proves email delivery, deep-link return, password replacement and
+sign-in with the replacement credential.
 
 **Row 20 — the calendar existed only after the cycle did.** Cycle setup is skippable, and skipping
 it took the whole month grid away: no cells, so nothing to tap, so no way to record or review any
@@ -517,29 +614,40 @@ nothing in this repo can check it.
 
 ## 10. Verification gate
 
-Green baseline is **180 domain + 202 app tests** (was 125 + 139 before Sprint 1; T23 added 5 domain;
-the app figure was 169 until the uncommitted `RepositoryTests` work took it to 172, the weekly
-Learn series added 11 — 6 drip-gate, 3 citation-integrity, 1 hero-asset, 1 end-to-end drop — T21
-added 2 brand-asset guards, the build-18 `drainPending` fix added 1, past-day logging added 2
-`RepositoryTests`, and `page_background` added 2 more brand-asset guards; Sprint 2 then added 8 app
-tests for the Phase 2 reliability batch, 1 domain test for the no-cycle grid, and 4 app tests for
-the Phase 3 calendar contrast floors),
-plus **46 UI tests** behind the `-uiTestSeed` harness — T24 added the no-cycle Nutrition test — the
-notification opt-in test skips itself once
-that permission has been answered, so it counts 45 + 1 skipped on a simulator you have already run
-against, and 46 on a freshly erased one. Run after every task:
+The independent baseline before Claude's pH patch was **236 domain, 233 app and 47 UI tests**, all
+passed with no failures or skips. The latest clean full-suite baseline after H0 · H5 · T7 ·
+H3-interim · H4 · H4-log-sheet · H7-celebration · sleep-contract is **239 domain, 238 app and 57 UI tests** — 0 failures, 1 skip
+(`NotificationFlowUITests.testTurningOnRemindersExplainsFirstThenAsksPermission`, which needs the
+real device in H10 and skipped before this work too). The 52nd UI test is H3's claim guard,
+`testInsightsReportsCycleLengthWithoutClaimingRegularity`; the 53rd is H4's,
+`testAMealLoggedTodayReachesTrackMyLogsAndInsights`; the 54th and 55th are the log sheet's,
+`testTheLogSheetCanRecordAndClearAMeal` and
+`testSavingTheLogSheetKeepsAMealLoggedFromNutrition`.
+
+H0's create → terminate → relaunch check is no longer a manual step: it is
+`testAVaginalPhReadingSurvivesKillingAndReopeningTheApp`, which saves a reading, calls
+`app.terminate()`, and relaunches into a **second process** via the new `-uiTestKeepStore YES` flag
+(same local-only container, no wipe, no re-seed, still no backend — a relaunch without the seed flag
+would resolve the real Supabase project). Reverting the one-line `PhRecord.dto` fix makes it fail on
+"her pH history must still be there after a cold start", so the guard is proven to bite rather than
+merely proven green. Run after every task:
 
 ```bash
 swift test && xcodebuild test -project Genesyx.xcodeproj -scheme Genesyx \
   -destination 'platform=iOS Simulator,name=iPhone 17' -skip-testing:GenesyxUITests
 ```
 
-- **Do not use `-quiet`** — it returned exit 0 with no summary and hid the result.
+- Record the `.xcresult` summary; terminal silence or exit 0 alone is not sufficient evidence.
 - If the simulator reports `Application failed preflight checks` / `Busy`:
   `xcrun simctl shutdown all`, then re-boot and retry. That is a simulator flake, not a code failure.
   If it survives that (it has, twice in a row), go heavier —
   `killall -9 com.apple.CoreSimulator.CoreSimulatorService`, `xcrun simctl erase <device-id>`, then
   `xcrun simctl bootstatus <device-id> -b` to wait for ready before handing the device to `xcodebuild`.
+- `testTheCalendarWorksWithoutACycleSetUp` is the suite's timing-sensitive one. It failed once on
+  13 Aug at "the day she logged should carry the marker" **taking 24.5s against its usual 13–14s**,
+  and passed in isolation and on a clean full re-run. Duration is the tell: if it fails at anything
+  near its normal time, treat it as real; if it is slow, `xcrun simctl shutdown all` and re-run
+  before believing it.
 - **Never run two `xcodebuild test` processes at once.** They contend for the one simulator and the
   loser dies with `Test crashed with signal kill` — which reads exactly like a real crash, and cost a
   full afternoon of chasing a UI bug that did not exist. `ps aux | grep "xcodebuild test"` before you

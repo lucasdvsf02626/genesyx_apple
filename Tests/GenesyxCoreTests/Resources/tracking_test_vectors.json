@@ -1,7 +1,7 @@
 {
-  "contractVersion": 2,
-  "changelog": "v2: weekly minDays 5→4; sleep meaningful when != null; today-grace on both streaks; empty states = 0; never-guilt reminder copy",
-  "_comment": "Cross-platform tracking contract. This file is mirrored byte-for-byte in the Android repo; both platforms' TrackingEngine must satisfy every case. Per day: waterMl (logged water), meaningful (log has any meaningful field, EXCLUDING pH), ph (a pH reading exists that date). Defaults: goalMl 2400, weeklyMinDays 4.",
+  "contractVersion": 3,
+  "changelog": "v2: weekly minDays 5→4; sleep meaningful when != null; today-grace on both streaks; empty states = 0; never-guilt reminder copy. v3 (2026-08-13, H4): food groups count toward a meaningful log on both clients. Implementation note, 2026-08-13, deliberately NOT a contract bump: iOS TrackingEngine.isMeaningfulLog was still reading sleep as > 0, against the v2 rule above, and has been brought in line. The rule did not move, so Android is unaffected — it had implemented v2 correctly in both of its predicates all along.",
+  "_comment": "This platform's half of the cross-platform tracking contract. NOT a copy of the Android file and never has been — Android keeps its own vectors in its own schema, so what the two share is the RULES, and a rule that moves must move in both repos in the same change. Per day: waterMl (logged water), meaningful (log has any meaningful field, EXCLUDING pH), ph (a pH reading exists that date). Defaults: goalMl 2400, weeklyMinDays 4. NOTE: `meaningful` is precomputed here, so these cases pin the streak arithmetic and never call the predicate itself — which fields count is pinned by MeaningfulLogTests.",
   "cases": [
     {
       "name": "empty history",

@@ -31,28 +31,47 @@ struct PhTrackerSection: View {
     var onOpenSupplements: (() -> Void)? = nil
 
     @EnvironmentObject private var ph: PhRepository
-    @State private var showSheet = false
-    /// The reading the sheet is open on, or nil for a new one. Until the latest-reading panel
-    /// became tappable this was only ever nil, which left `PhLogSheet`'s Delete button and the
-    /// update path unreachable — a reading entered wrongly could not be corrected or removed.
-    @State private var editing: PhReading?
+    /// One piece of state, presented with `.sheet(item:)`. The pair it replaced — a `showSheet`
+    /// flag plus a separate `editing` reading — raced: SwiftUI evaluated the sheet body before the
+    /// sibling update landed, so `existing` was still nil and every edit opened as a blank new
+    /// reading. Tapping a reading appeared to work and silently filed a duplicate instead.
+    @State private var sheet: PhSheetMode?
 
     var body: some View {
         PhTrackerCard(
             readings: ph.readings,
             onOpenSupplements: onOpenSupplements,
-            onLog: { editing = nil; showSheet = true },
-            onEdit: { editing = $0; showSheet = true })
-            .sheet(isPresented: $showSheet) {
+            onLog: { sheet = .new },
+            onEdit: { sheet = .edit($0) })
+            .sheet(item: $sheet) { mode in
                 PhLogSheet(
-                    existing: editing,
+                    existing: mode.reading,
                     onSave: { reading in
-                        if editing == nil { ph.create(reading) } else { ph.update(reading) }
-                        showSheet = false
+                        if mode.reading == nil { ph.create(reading) } else { ph.update(reading) }
+                        sheet = nil
                     },
-                    onDelete: { id in ph.delete(id: id); showSheet = false }
+                    onDelete: { id in ph.delete(id: id); sheet = nil }
                 )
             }
+    }
+}
+
+/// What the log sheet is open on. `Identifiable` so `.sheet(item:)` hands the value to the body
+/// rather than reading it back out of a sibling `@State`.
+private enum PhSheetMode: Identifiable {
+    case new
+    case edit(PhReading)
+
+    var id: String {
+        switch self {
+        case .new: return "new"
+        case .edit(let reading): return reading.id
+        }
+    }
+
+    var reading: PhReading? {
+        if case .edit(let reading) = self { return reading }
+        return nil
     }
 }
 
@@ -76,6 +95,7 @@ private struct PhTrackerCard: View {
     let onEdit: (PhReading) -> Void
     @State private var range: PhRange = .month
     @State private var disclaimerExpanded = false
+    @State private var historyExpanded = false
 
     private var filtered: [PhReading] {
         guard let days = range.days else { return readings }
@@ -143,6 +163,7 @@ private struct PhTrackerCard: View {
                 } else {
                     chartEmpty("Not enough readings in this range")
                 }
+                history
             } else {
                 emptyState
             }
@@ -192,6 +213,63 @@ private struct PhTrackerCard: View {
             }
         }
         .padding(4).background(GenesyxColor.muted).clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    /// The full history, newest first — deliberately ignoring `range`, which reads as a chart
+    /// control. A reading she entered wrongly months ago has to stay reachable without her first
+    /// working out that the chart's "All" tab is also what unhides it in the list.
+    private var history: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button { withAnimation(.easeInOut(duration: 0.2)) { historyExpanded.toggle() } } label: {
+                HStack {
+                    Text("Reading history (\(readings.count))")
+                        .font(.caption2.weight(.medium)).foregroundStyle(GenesyxColor.primary)
+                    Spacer()
+                    Image(systemName: "chevron.down").font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(GenesyxColor.mutedForeground)
+                        .rotationEffect(.degrees(historyExpanded ? 180 : 0))
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("phHistoryToggle")
+
+            if historyExpanded {
+                VStack(spacing: 8) {
+                    ForEach(Array(readings.reversed().enumerated()), id: \.element.id) { index, reading in
+                        Button { onEdit(reading) } label: { historyRow(reading) }
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier("phHistoryRow\(index)")
+                            .accessibilityHint("Edit or delete this reading")
+                    }
+                }
+                .padding(.top, 10)
+            }
+        }
+    }
+
+    private func historyRow(_ reading: PhReading) -> some View {
+        let color = Theme.color(for: PhStatus.classify(reading.phValue))
+        return HStack(spacing: 12) {
+            Text(String(format: "%.1f", reading.phValue))
+                .font(.system(size: 15, weight: .semibold)).foregroundStyle(color)
+                .frame(width: 46, height: 34)
+                .background(color.opacity(0.18)).clipShape(RoundedRectangle(cornerRadius: 10))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(reading.recordedAt.formatted(.dateTime.day().month().hour().minute()))
+                    .font(.system(size: 13)).foregroundStyle(GenesyxColor.foreground)
+                if let notes = reading.notes, !notes.isEmpty {
+                    Text(notes).font(.system(size: 11)).foregroundStyle(GenesyxColor.mutedForeground)
+                        .lineLimit(1)
+                }
+            }
+            Spacer()
+            Image(systemName: "chevron.right").font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(GenesyxColor.mutedForeground)
+        }
+        .padding(.horizontal, 12).padding(.vertical, 10)
+        .background(GenesyxColor.muted.opacity(0.4))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
     private func chartEmpty(_ message: String) -> some View {
@@ -353,6 +431,7 @@ private struct PhLogSheet: View {
 
                     VStack(spacing: 6) {
                         Text(String(format: "%.1f", value)).font(.system(size: 44, weight: .semibold)).foregroundStyle(color)
+                            .accessibilityIdentifier("ph.currentValue")
                         Text(status.label.uppercased()).font(.system(size: 11, weight: .semibold))
                             .foregroundStyle(color).padding(.horizontal, 10).padding(.vertical, 3)
                             .background(color.opacity(0.18)).clipShape(Capsule())
