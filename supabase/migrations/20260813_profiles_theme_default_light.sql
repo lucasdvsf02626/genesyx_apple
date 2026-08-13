@@ -14,6 +14,9 @@
 -- why this has to be fixed on the server side.
 --
 -- Idempotent. Apply: Supabase dashboard → SQL Editor → paste → Run. (No auto-push from this repo.)
+--
+-- STATUS: step 1 APPLIED to the live project 13 Aug 2026 and verified — `information_schema`
+-- now reports `column_default` = `'light'::text`. Step 3 has NOT been run and is still a decision.
 
 -- 1. The default -------------------------------------------------------------------------------
 -- Affects rows created from here on. Existing rows are NOT touched — see step 3.
