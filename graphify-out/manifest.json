@@ -1,0 +1,997 @@
+{
+  "App/Genesyx/Data/App/AppBackend.swift": {
+    "mtime": 1786613239.8351357,
+    "ast_hash": "21f761986446320779d7afe661a55927",
+    "semantic_hash": "21f761986446320779d7afe661a55927"
+  },
+  "App/Genesyx/Data/App/AppContainer.swift": {
+    "mtime": 1786613239.8357358,
+    "ast_hash": "53afea2fb75bdac9e06d2882ab021d56",
+    "semantic_hash": "53afea2fb75bdac9e06d2882ab021d56"
+  },
+  "App/Genesyx/Data/App/DeepLink.swift": {
+    "mtime": 1786613239.8357358,
+    "ast_hash": "5a059ad3a7b1ab75d51e5bdd99c551b6",
+    "semantic_hash": "5a059ad3a7b1ab75d51e5bdd99c551b6"
+  },
+  "App/Genesyx/Data/App/GenesyxApp.swift": {
+    "mtime": 1786613239.8357358,
+    "ast_hash": "95f5cf1bde22645b8119544c670208eb",
+    "semantic_hash": "95f5cf1bde22645b8119544c670208eb"
+  },
+  "App/Genesyx/Data/App/RootView.swift": {
+    "mtime": 1786613239.8357358,
+    "ast_hash": "ed68422f18c83836a3dd8214411fa1ba",
+    "semantic_hash": "ed68422f18c83836a3dd8214411fa1ba"
+  },
+  "App/Genesyx/Data/AuthRepository.swift": {
+    "mtime": 1786613239.8357358,
+    "ast_hash": "53dbb6af2296b10599372e4b1cdd152d",
+    "semantic_hash": "53dbb6af2296b10599372e4b1cdd152d"
+  },
+  "App/Genesyx/Data/CycleRepository.swift": {
+    "mtime": 1786613239.8357358,
+    "ast_hash": "1b04599cd8ae281b376e3578198a0d2c",
+    "semantic_hash": "1b04599cd8ae281b376e3578198a0d2c"
+  },
+  "App/Genesyx/Data/DailyLogRepository.swift": {
+    "mtime": 1786613239.8357358,
+    "ast_hash": "8570e492ab4f6410a1e6d41a0cdc2391",
+    "semantic_hash": "8570e492ab4f6410a1e6d41a0cdc2391"
+  },
+  "App/Genesyx/Data/LocalStore.swift": {
+    "mtime": 1786613239.8357358,
+    "ast_hash": "0a3de2b22c6155090b6e2ba71bc932ee",
+    "semantic_hash": "0a3de2b22c6155090b6e2ba71bc932ee"
+  },
+  "App/Genesyx/Data/PartnerRepository.swift": {
+    "mtime": 1786613239.8357358,
+    "ast_hash": "9392839e8176431c2771fc122930c49a",
+    "semantic_hash": "9392839e8176431c2771fc122930c49a"
+  },
+  "App/Genesyx/Data/PersistenceDTOs.swift": {
+    "mtime": 1786613239.8357358,
+    "ast_hash": "617bfb3dfcf18d4cd1dc0f6521395e73",
+    "semantic_hash": "617bfb3dfcf18d4cd1dc0f6521395e73"
+  },
+  "App/Genesyx/Data/PhRepository.swift": {
+    "mtime": 1786613239.8357358,
+    "ast_hash": "a66861cb8ed6e45f527562566b8737ca",
+    "semantic_hash": "a66861cb8ed6e45f527562566b8737ca"
+  },
+  "App/Genesyx/Data/PreferencesRepository.swift": {
+    "mtime": 1786613239.8357358,
+    "ast_hash": "c0e0b2feb19dcc55b40965433c14d104",
+    "semantic_hash": "c0e0b2feb19dcc55b40965433c14d104"
+  },
+  "App/Genesyx/Data/Remote/RemoteBackend.swift": {
+    "mtime": 1786613239.8357358,
+    "ast_hash": "58afdd47b3ebfa10922614f582b80ed7",
+    "semantic_hash": "58afdd47b3ebfa10922614f582b80ed7"
+  },
+  "App/Genesyx/Data/Remote/RemoteModels.swift": {
+    "mtime": 1786613239.8357358,
+    "ast_hash": "c9fa1d87daff1493dc3d862aa6f75cc4",
+    "semantic_hash": "c9fa1d87daff1493dc3d862aa6f75cc4"
+  },
+  "App/Genesyx/Data/Remote/SupabaseBackend.swift": {
+    "mtime": 1786613239.8357358,
+    "ast_hash": "3ffeab78eafeffd7faab92b2234def6b",
+    "semantic_hash": "3ffeab78eafeffd7faab92b2234def6b"
+  },
+  "App/Genesyx/Data/SessionRepository.swift": {
+    "mtime": 1786613239.8357358,
+    "ast_hash": "9bcdf50baf32e5f207ddc5f2a3c622b5",
+    "semantic_hash": "9bcdf50baf32e5f207ddc5f2a3c622b5"
+  },
+  "App/Genesyx/Models/MedicalSource.swift": {
+    "mtime": 1786613239.8357358,
+    "ast_hash": "ad3d7a055ae9bcc12c5f0c5ae864fef0",
+    "semantic_hash": "ad3d7a055ae9bcc12c5f0c5ae864fef0"
+  },
+  "App/Genesyx/Notifications/LearnReadLog.swift": {
+    "mtime": 1786613239.8357358,
+    "ast_hash": "badd8289fdd8fd30eb8ceba5298d1b9b",
+    "semantic_hash": "badd8289fdd8fd30eb8ceba5298d1b9b"
+  },
+  "App/Genesyx/Notifications/NotificationContent.swift": {
+    "mtime": 1786613239.8376474,
+    "ast_hash": "2cc7517f22a18c7754497105f9d6af84",
+    "semantic_hash": "2cc7517f22a18c7754497105f9d6af84"
+  },
+  "App/Genesyx/Notifications/NotificationRouter.swift": {
+    "mtime": 1786613239.8376474,
+    "ast_hash": "d99bdff7460869242b8c4c9efc3eb58b",
+    "semantic_hash": "d99bdff7460869242b8c4c9efc3eb58b"
+  },
+  "App/Genesyx/Notifications/NotificationService.swift": {
+    "mtime": 1786613239.8376474,
+    "ast_hash": "cdc14f762487a6881c149f1ebaf638d6",
+    "semantic_hash": "cdc14f762487a6881c149f1ebaf638d6"
+  },
+  "App/Genesyx/Services/MedicalSourceStore.swift": {
+    "mtime": 1786613239.8488753,
+    "ast_hash": "421b42cbd3c68ffbf14972386a7c9f0e",
+    "semantic_hash": "421b42cbd3c68ffbf14972386a7c9f0e"
+  },
+  "App/Genesyx/UI/Auth/AuthView.swift": {
+    "mtime": 1786613239.8488753,
+    "ast_hash": "8dbd99dc2d94491d745901b5c3b60149",
+    "semantic_hash": "8dbd99dc2d94491d745901b5c3b60149"
+  },
+  "App/Genesyx/UI/Components/CitationLink.swift": {
+    "mtime": 1786613239.8488753,
+    "ast_hash": "06b3ceb2c7cde9ed1d9d93a70ef188e3",
+    "semantic_hash": "06b3ceb2c7cde9ed1d9d93a70ef188e3"
+  },
+  "App/Genesyx/UI/Components/CycleSettingsSheet.swift": {
+    "mtime": 1786613239.8488753,
+    "ast_hash": "2355b2f50ac43f93a0f8bf355f8136cf",
+    "semantic_hash": "2355b2f50ac43f93a0f8bf355f8136cf"
+  },
+  "App/Genesyx/UI/Components/ErrorStateView.swift": {
+    "mtime": 1786611612.8524222,
+    "ast_hash": "5d9ab80cc42e92a1f2bcb89e73a0f75e",
+    "semantic_hash": "5d9ab80cc42e92a1f2bcb89e73a0f75e"
+  },
+  "App/Genesyx/UI/Components/FlowLayout.swift": {
+    "mtime": 1786611612.8524222,
+    "ast_hash": "1137afba20b5c85abd46008aeba329f6",
+    "semantic_hash": "1137afba20b5c85abd46008aeba329f6"
+  },
+  "App/Genesyx/UI/Components/GenesyxControls.swift": {
+    "mtime": 1786611612.8524222,
+    "ast_hash": "daeda0022de661a844c01d49f08be775",
+    "semantic_hash": "daeda0022de661a844c01d49f08be775"
+  },
+  "App/Genesyx/UI/Components/PlaceholderScreen.swift": {
+    "mtime": 1786611612.8524222,
+    "ast_hash": "dd6df72646ec78da7aaae01cdf6d1b8f",
+    "semantic_hash": "dd6df72646ec78da7aaae01cdf6d1b8f"
+  },
+  "App/Genesyx/UI/Home/HomeView.swift": {
+    "mtime": 1786613239.8488753,
+    "ast_hash": "eb36c3fc9f3fe431bc71c2e9fc5e38e6",
+    "semantic_hash": "eb36c3fc9f3fe431bc71c2e9fc5e38e6"
+  },
+  "App/Genesyx/UI/Insights/InsightsView.swift": {
+    "mtime": 1786613239.8488753,
+    "ast_hash": "8892d33245e7ed0b5d406abd2878d99c",
+    "semantic_hash": "8892d33245e7ed0b5d406abd2878d99c"
+  },
+  "App/Genesyx/UI/Insights/WeeklySummaryView.swift": {
+    "mtime": 1786613239.8488753,
+    "ast_hash": "3d432012814a42604e8e1230de722afc",
+    "semantic_hash": "3d432012814a42604e8e1230de722afc"
+  },
+  "App/Genesyx/UI/Invite/InviteShareSheet.swift": {
+    "mtime": 1786613239.8488753,
+    "ast_hash": "b336f49adc87dbe543da4573d7343e2a",
+    "semantic_hash": "b336f49adc87dbe543da4573d7343e2a"
+  },
+  "App/Genesyx/UI/Invite/InviteView.swift": {
+    "mtime": 1786613239.8488753,
+    "ast_hash": "ee55f187f7dc00da36d4402ae7a5dad8",
+    "semantic_hash": "ee55f187f7dc00da36d4402ae7a5dad8"
+  },
+  "App/Genesyx/UI/Learn/LearnContent.swift": {
+    "mtime": 1786613239.8488753,
+    "ast_hash": "508795e898d111d27911addde3ec329d",
+    "semantic_hash": "508795e898d111d27911addde3ec329d"
+  },
+  "App/Genesyx/UI/Learn/LearnModels.swift": {
+    "mtime": 1786613239.8506725,
+    "ast_hash": "95f91fb25240d1d89ca5da5b7bfb2167",
+    "semantic_hash": "95f91fb25240d1d89ca5da5b7bfb2167"
+  },
+  "App/Genesyx/UI/Learn/LearnSourceMap.swift": {
+    "mtime": 1786613239.8506725,
+    "ast_hash": "48945d07628d0a11d5703725dc19b9fa",
+    "semantic_hash": "48945d07628d0a11d5703725dc19b9fa"
+  },
+  "App/Genesyx/UI/Learn/LearnViews.swift": {
+    "mtime": 1786613239.8506725,
+    "ast_hash": "6777678f18c746f1eee19f4bcee50651",
+    "semantic_hash": "6777678f18c746f1eee19f4bcee50651"
+  },
+  "App/Genesyx/UI/Log/LogView.swift": {
+    "mtime": 1786613239.8506725,
+    "ast_hash": "fc2078b90f26f9a6f3c6b6c31a823aec",
+    "semantic_hash": "fc2078b90f26f9a6f3c6b6c31a823aec"
+  },
+  "App/Genesyx/UI/MainTabView.swift": {
+    "mtime": 1786613239.8506725,
+    "ast_hash": "15ae5a4aca563a878e3c942174e078fb",
+    "semantic_hash": "15ae5a4aca563a878e3c942174e078fb"
+  },
+  "App/Genesyx/UI/Nutrition/NutritionView.swift": {
+    "mtime": 1786613239.8506725,
+    "ast_hash": "7f8695fe24cd0b1fe9b3f62d2e7dc396",
+    "semantic_hash": "7f8695fe24cd0b1fe9b3f62d2e7dc396"
+  },
+  "App/Genesyx/UI/Onboarding/OnboardingFlowView.swift": {
+    "mtime": 1786613239.8506725,
+    "ast_hash": "ce647bf21304e1f42fa2370e360093e1",
+    "semantic_hash": "ce647bf21304e1f42fa2370e360093e1"
+  },
+  "App/Genesyx/UI/Ph/PhTrackerSection.swift": {
+    "mtime": 1786613239.8506725,
+    "ast_hash": "3c7f11c75a7f487f8ba3c2b408d57397",
+    "semantic_hash": "3c7f11c75a7f487f8ba3c2b408d57397"
+  },
+  "App/Genesyx/UI/Pregnancy/PregnancyView.swift": {
+    "mtime": 1786613239.8506725,
+    "ast_hash": "f468bd23e709b1792dcced74c212684f",
+    "semantic_hash": "f468bd23e709b1792dcced74c212684f"
+  },
+  "App/Genesyx/UI/PreviewSupport.swift": {
+    "mtime": 1786613239.8506725,
+    "ast_hash": "813e714e30a55bd768b299e2f7a855e0",
+    "semantic_hash": "813e714e30a55bd768b299e2f7a855e0"
+  },
+  "App/Genesyx/UI/Profile/MedicalSourcesView.swift": {
+    "mtime": 1786613239.851194,
+    "ast_hash": "3745a259f97de04fe3635638d10fb3ff",
+    "semantic_hash": "3745a259f97de04fe3635638d10fb3ff"
+  },
+  "App/Genesyx/UI/Profile/ProfileView.swift": {
+    "mtime": 1786613239.851194,
+    "ast_hash": "f17366ec57d9e75c2c99af37996e49f3",
+    "semantic_hash": "f17366ec57d9e75c2c99af37996e49f3"
+  },
+  "App/Genesyx/UI/Theme/GenesyxColors.swift": {
+    "mtime": 1786613239.851194,
+    "ast_hash": "a0c6528d64115aa76ad0f8ea837313fe",
+    "semantic_hash": "a0c6528d64115aa76ad0f8ea837313fe"
+  },
+  "App/Genesyx/UI/Theme/Theme.swift": {
+    "mtime": 1786613239.851194,
+    "ast_hash": "ef1c9fcf5785713a7870043891549540",
+    "semantic_hash": "ef1c9fcf5785713a7870043891549540"
+  },
+  "App/Genesyx/UI/Theme/Typography.swift": {
+    "mtime": 1786613239.851194,
+    "ast_hash": "ac17d07e5aef835514c6615291e0a2a3",
+    "semantic_hash": "ac17d07e5aef835514c6615291e0a2a3"
+  },
+  "App/Genesyx/UI/Track/TrackView.swift": {
+    "mtime": 1786613239.851194,
+    "ast_hash": "f5b3dbffff2305b9f404ac1852ea2d98",
+    "semantic_hash": "f5b3dbffff2305b9f404ac1852ea2d98"
+  },
+  "App/Genesyx/Util/CalendarDate+Foundation.swift": {
+    "mtime": 1786611612.8567338,
+    "ast_hash": "c7ca6a33ece55363f0f7ca3a8fea4efa",
+    "semantic_hash": "c7ca6a33ece55363f0f7ca3a8fea4efa"
+  },
+  "App/Genesyx/Util/EmailValidator.swift": {
+    "mtime": 1786611612.8576045,
+    "ast_hash": "e62ea6b1040163db3c2b66b27efd4b52",
+    "semantic_hash": "e62ea6b1040163db3c2b66b27efd4b52"
+  },
+  "App/Genesyx/Util/YearMonth+Foundation.swift": {
+    "mtime": 1786611612.8576045,
+    "ast_hash": "46f1278d7390d163f425ffd1a73924b9",
+    "semantic_hash": "46f1278d7390d163f425ffd1a73924b9"
+  },
+  "App/GenesyxTests/AuthPartnerBackendTests.swift": {
+    "mtime": 1786613239.851194,
+    "ast_hash": "5b8026b78a7de797814a45a9b20556e9",
+    "semantic_hash": "5b8026b78a7de797814a45a9b20556e9"
+  },
+  "App/GenesyxTests/BackendSwapTests.swift": {
+    "mtime": 1786611612.8578746,
+    "ast_hash": "dc1c2275a2830895b4663255971c24c1",
+    "semantic_hash": "dc1c2275a2830895b4663255971c24c1"
+  },
+  "App/GenesyxTests/DeepLinkTests.swift": {
+    "mtime": 1786613239.851194,
+    "ast_hash": "b8400944a3b48b47282b643a69365c38",
+    "semantic_hash": "b8400944a3b48b47282b643a69365c38"
+  },
+  "App/GenesyxTests/HydrationInsightTests.swift": {
+    "mtime": 1786613239.851194,
+    "ast_hash": "60e42083c904ffcfc27e6d3109a2663d",
+    "semantic_hash": "60e42083c904ffcfc27e6d3109a2663d"
+  },
+  "App/GenesyxTests/LearnContentTests.swift": {
+    "mtime": 1786613239.851194,
+    "ast_hash": "bea4059fc654aa633caae56935766cb6",
+    "semantic_hash": "bea4059fc654aa633caae56935766cb6"
+  },
+  "App/GenesyxTests/NotificationTests.swift": {
+    "mtime": 1786613239.851194,
+    "ast_hash": "a24bd313506f19a3ad601ebdedbea5f5",
+    "semantic_hash": "a24bd313506f19a3ad601ebdedbea5f5"
+  },
+  "App/GenesyxTests/NutritionHydrationTests.swift": {
+    "mtime": 1786613239.851194,
+    "ast_hash": "122a84258d77cedb72f8e4f9627e76a0",
+    "semantic_hash": "122a84258d77cedb72f8e4f9627e76a0"
+  },
+  "App/GenesyxTests/PartnerTests.swift": {
+    "mtime": 1786613239.851194,
+    "ast_hash": "7fb7d8b63002f5eb16e8acfd5bc471c6",
+    "semantic_hash": "7fb7d8b63002f5eb16e8acfd5bc471c6"
+  },
+  "App/GenesyxTests/PersistenceTests.swift": {
+    "mtime": 1786613239.851194,
+    "ast_hash": "9ba88895e234bb29b2f21376aa5cf8b0",
+    "semantic_hash": "9ba88895e234bb29b2f21376aa5cf8b0"
+  },
+  "App/GenesyxTests/PhContentGuardTests.swift": {
+    "mtime": 1786613239.851194,
+    "ast_hash": "943b62d81fa0880e66dbc8c0b0aee24d",
+    "semantic_hash": "943b62d81fa0880e66dbc8c0b0aee24d"
+  },
+  "App/GenesyxTests/QuizContentTests.swift": {
+    "mtime": 1786613239.851194,
+    "ast_hash": "75e075e5f87352d81d0e60a45ad2edad",
+    "semantic_hash": "75e075e5f87352d81d0e60a45ad2edad"
+  },
+  "App/GenesyxTests/RealInsightsTests.swift": {
+    "mtime": 1786613239.851194,
+    "ast_hash": "ea11426241ca40c9e7f8120a9fb47277",
+    "semantic_hash": "ea11426241ca40c9e7f8120a9fb47277"
+  },
+  "App/GenesyxTests/RepositoryTests.swift": {
+    "mtime": 1786613239.851194,
+    "ast_hash": "7eac83d668eb445437d7ceaa42c4c0d0",
+    "semantic_hash": "7eac83d668eb445437d7ceaa42c4c0d0"
+  },
+  "App/GenesyxUITests/CitationE2ETests.swift": {
+    "mtime": 1786613239.851194,
+    "ast_hash": "549f377cf0d93a6ad78130e5f8413a71",
+    "semantic_hash": "549f377cf0d93a6ad78130e5f8413a71"
+  },
+  "App/GenesyxUITests/GenesyxUITests.swift": {
+    "mtime": 1786613239.8535993,
+    "ast_hash": "83e3ff9b40bc526a6f81308c53c9e8f1",
+    "semantic_hash": "83e3ff9b40bc526a6f81308c53c9e8f1"
+  },
+  "App/GenesyxUITests/LifecycleE2ETests.swift": {
+    "mtime": 1786613239.8535993,
+    "ast_hash": "527f895e5d93e2d6f1bd62affdfe8564",
+    "semantic_hash": "527f895e5d93e2d6f1bd62affdfe8564"
+  },
+  "App/GenesyxUITests/NotificationFlowUITests.swift": {
+    "mtime": 1786613239.8535993,
+    "ast_hash": "e801930707afda7bc04137d93da0df13",
+    "semantic_hash": "e801930707afda7bc04137d93da0df13"
+  },
+  "App/GenesyxUITests/SleepSmokeUITests.swift": {
+    "mtime": 1786613239.8535993,
+    "ast_hash": "afd5893594d0795e31bab7673a5ffd5d",
+    "semantic_hash": "afd5893594d0795e31bab7673a5ffd5d"
+  },
+  "Package.swift": {
+    "mtime": 1786613239.8550575,
+    "ast_hash": "30a4bb4c01328ff39c1d25874ce4326f",
+    "semantic_hash": "30a4bb4c01328ff39c1d25874ce4326f"
+  },
+  "Sources/GenesyxCore/Content/CycleContent.swift": {
+    "mtime": 1786611612.8599646,
+    "ast_hash": "bca4a6e14705ee79febfbf87f0f8033b",
+    "semantic_hash": "bca4a6e14705ee79febfbf87f0f8033b"
+  },
+  "Sources/GenesyxCore/Content/NutritionContent.swift": {
+    "mtime": 1786611612.8603578,
+    "ast_hash": "041eef73422dd39d01d9bbc5033c73d4",
+    "semantic_hash": "041eef73422dd39d01d9bbc5033c73d4"
+  },
+  "Sources/GenesyxCore/Content/QuizContent.swift": {
+    "mtime": 1786613239.8550575,
+    "ast_hash": "80d6e55a3718180ece5e43e638b2769d",
+    "semantic_hash": "80d6e55a3718180ece5e43e638b2769d"
+  },
+  "Sources/GenesyxCore/Cycle/CycleEngine.swift": {
+    "mtime": 1786611612.8603578,
+    "ast_hash": "31d6c99d88011d7b3071a0f7f3149648",
+    "semantic_hash": "31d6c99d88011d7b3071a0f7f3149648"
+  },
+  "Sources/GenesyxCore/Cycle/CycleSetup.swift": {
+    "mtime": 1786613239.8550575,
+    "ast_hash": "04e3d862631963f94f44ea0e4baf76b6",
+    "semantic_hash": "04e3d862631963f94f44ea0e4baf76b6"
+  },
+  "Sources/GenesyxCore/Insights/ConsistencyInsightLogic.swift": {
+    "mtime": 1786613239.8550575,
+    "ast_hash": "e75bc9a7bed67a0e25efb2a913f283de",
+    "semantic_hash": "e75bc9a7bed67a0e25efb2a913f283de"
+  },
+  "Sources/GenesyxCore/Insights/CycleRegularityLogic.swift": {
+    "mtime": 1786613239.8555408,
+    "ast_hash": "2778904af375bdd0eb3e53e6f88a2073",
+    "semantic_hash": "2778904af375bdd0eb3e53e6f88a2073"
+  },
+  "Sources/GenesyxCore/Insights/HydrationCoach.swift": {
+    "mtime": 1786613239.8555408,
+    "ast_hash": "50898fb9cc0f28b5d697cfa5283121dd",
+    "semantic_hash": "50898fb9cc0f28b5d697cfa5283121dd"
+  },
+  "Sources/GenesyxCore/Insights/HydrationInsightLogic.swift": {
+    "mtime": 1786613239.8555408,
+    "ast_hash": "06676a914683776fb11e16f07e431387",
+    "semantic_hash": "06676a914683776fb11e16f07e431387"
+  },
+  "Sources/GenesyxCore/Insights/HydrationStatusEvaluator.swift": {
+    "mtime": 1786613239.8555408,
+    "ast_hash": "629a78229622b476a3a669620fb0bbbf",
+    "semantic_hash": "629a78229622b476a3a669620fb0bbbf"
+  },
+  "Sources/GenesyxCore/Insights/NutritionConsistencyLogic.swift": {
+    "mtime": 1786613239.8555408,
+    "ast_hash": "9ac8209599bc446709b0fa0ec9a4384f",
+    "semantic_hash": "9ac8209599bc446709b0fa0ec9a4384f"
+  },
+  "Sources/GenesyxCore/Insights/OvulationLogic.swift": {
+    "mtime": 1786613239.8555408,
+    "ast_hash": "5004d1428bd0eebcecbbb68905f790ca",
+    "semantic_hash": "5004d1428bd0eebcecbbb68905f790ca"
+  },
+  "Sources/GenesyxCore/Insights/SleepInsightLogic.swift": {
+    "mtime": 1786613239.8555408,
+    "ast_hash": "1f448cd4148dac4e63d792f86b11721e",
+    "semantic_hash": "1f448cd4148dac4e63d792f86b11721e"
+  },
+  "Sources/GenesyxCore/Insights/SymptomPatternLogic.swift": {
+    "mtime": 1786613239.8555408,
+    "ast_hash": "8409fef366dcf57249acde12a046932b",
+    "semantic_hash": "8409fef366dcf57249acde12a046932b"
+  },
+  "Sources/GenesyxCore/Insights/WeeklySummaryLogic.swift": {
+    "mtime": 1786613239.8555408,
+    "ast_hash": "1537f702cb8c25a075a9d7647f362b3e",
+    "semantic_hash": "1537f702cb8c25a075a9d7647f362b3e"
+  },
+  "Sources/GenesyxCore/Models/Account.swift": {
+    "mtime": 1786611612.8603578,
+    "ast_hash": "cf469601e9ca1e451985e746fa0cf367",
+    "semantic_hash": "cf469601e9ca1e451985e746fa0cf367"
+  },
+  "Sources/GenesyxCore/Models/CalendarDate.swift": {
+    "mtime": 1786611612.8613765,
+    "ast_hash": "9da0dcfad435d5b2f759b8a6ae328d1a",
+    "semantic_hash": "9da0dcfad435d5b2f759b8a6ae328d1a"
+  },
+  "Sources/GenesyxCore/Models/Cycle.swift": {
+    "mtime": 1786611612.8613765,
+    "ast_hash": "3bdfda1bb77eee9e2a908af4e5d411be",
+    "semantic_hash": "3bdfda1bb77eee9e2a908af4e5d411be"
+  },
+  "Sources/GenesyxCore/Models/DailyLog.swift": {
+    "mtime": 1786611612.8613765,
+    "ast_hash": "63a00d1eddf0c342fccf1892e243a27b",
+    "semantic_hash": "63a00d1eddf0c342fccf1892e243a27b"
+  },
+  "Sources/GenesyxCore/Models/PhReading.swift": {
+    "mtime": 1786613239.8555408,
+    "ast_hash": "ed0c9176bdc5c9f5e93688edda3e661b",
+    "semantic_hash": "ed0c9176bdc5c9f5e93688edda3e661b"
+  },
+  "Sources/GenesyxCore/Notifications/NotificationPlanner.swift": {
+    "mtime": 1786613239.8555408,
+    "ast_hash": "7c89fa4e415ab10ffb50ad70532c8c28",
+    "semantic_hash": "7c89fa4e415ab10ffb50ad70532c8c28"
+  },
+  "Sources/GenesyxCore/Ph/PhCopy.swift": {
+    "mtime": 1786613239.8555408,
+    "ast_hash": "fd6cea0a2f5d0f95997222608cefcb5c",
+    "semantic_hash": "fd6cea0a2f5d0f95997222608cefcb5c"
+  },
+  "Sources/GenesyxCore/Ph/PhInsightLogic.swift": {
+    "mtime": 1786613239.8555408,
+    "ast_hash": "473e795c4e7a6ab338c1f04162a9fe1b",
+    "semantic_hash": "473e795c4e7a6ab338c1f04162a9fe1b"
+  },
+  "Sources/GenesyxCore/Ph/PhStatus.swift": {
+    "mtime": 1786613239.8555408,
+    "ast_hash": "95037ef2fcaf3093f2a634d740882f5b",
+    "semantic_hash": "95037ef2fcaf3093f2a634d740882f5b"
+  },
+  "Sources/GenesyxCore/Ph/PhSync.swift": {
+    "mtime": 1786613239.8555408,
+    "ast_hash": "26a223279f1957d5aa44559372cad7b9",
+    "semantic_hash": "26a223279f1957d5aa44559372cad7b9"
+  },
+  "Sources/GenesyxCore/Streaks/StreakEngine.swift": {
+    "mtime": 1786613239.8555408,
+    "ast_hash": "0601832427a5ebb0c78dc9fce11d608a",
+    "semantic_hash": "0601832427a5ebb0c78dc9fce11d608a"
+  },
+  "Sources/GenesyxCore/Tracking/TrackingEngine.swift": {
+    "mtime": 1786613239.8555408,
+    "ast_hash": "b6a5fdbc23feba3249f3330ef3b5b8f7",
+    "semantic_hash": "b6a5fdbc23feba3249f3330ef3b5b8f7"
+  },
+  "Tests/GenesyxCoreTests/CalendarDateTests.swift": {
+    "mtime": 1786611612.86221,
+    "ast_hash": "d2baf11625c86d9337cc22b2c91eb0ec",
+    "semantic_hash": "d2baf11625c86d9337cc22b2c91eb0ec"
+  },
+  "Tests/GenesyxCoreTests/ContentTests.swift": {
+    "mtime": 1786611612.8624594,
+    "ast_hash": "c0fcd31042922a095ad0d492d03335a9",
+    "semantic_hash": "c0fcd31042922a095ad0d492d03335a9"
+  },
+  "Tests/GenesyxCoreTests/Cycle/CycleSetupTests.swift": {
+    "mtime": 1786613239.8555408,
+    "ast_hash": "d55981765ca4b74637671c2a1abc2239",
+    "semantic_hash": "d55981765ca4b74637671c2a1abc2239"
+  },
+  "Tests/GenesyxCoreTests/CycleEngineTests.swift": {
+    "mtime": 1786611612.8624594,
+    "ast_hash": "c889b53a2eff8b70730bb9d4038564ec",
+    "semantic_hash": "c889b53a2eff8b70730bb9d4038564ec"
+  },
+  "Tests/GenesyxCoreTests/Insights/ConsistencyInsightLogicTests.swift": {
+    "mtime": 1786613239.8555408,
+    "ast_hash": "f09135c133ec18c48c38df0f4c9156ce",
+    "semantic_hash": "f09135c133ec18c48c38df0f4c9156ce"
+  },
+  "Tests/GenesyxCoreTests/Insights/NutritionConsistencyLogicTests.swift": {
+    "mtime": 1786613239.8567324,
+    "ast_hash": "979b6915e95274c8c0a7dfbaa70331ae",
+    "semantic_hash": "979b6915e95274c8c0a7dfbaa70331ae"
+  },
+  "Tests/GenesyxCoreTests/Insights/SleepInsightLogicTests.swift": {
+    "mtime": 1786613239.8567324,
+    "ast_hash": "c7ab1e293355b6947e041de98e37ff2e",
+    "semantic_hash": "c7ab1e293355b6947e041de98e37ff2e"
+  },
+  "Tests/GenesyxCoreTests/Insights/WeeklySummaryLogicTests.swift": {
+    "mtime": 1786613239.8567324,
+    "ast_hash": "c16b96b1a3da005839ed197cadf72f0e",
+    "semantic_hash": "c16b96b1a3da005839ed197cadf72f0e"
+  },
+  "Tests/GenesyxCoreTests/Notifications/NotificationPlannerTests.swift": {
+    "mtime": 1786613239.8567324,
+    "ast_hash": "7bff6bf8dffd813ca068db74f9cdb9e3",
+    "semantic_hash": "7bff6bf8dffd813ca068db74f9cdb9e3"
+  },
+  "Tests/GenesyxCoreTests/Ph/PhSyncTests.swift": {
+    "mtime": 1786613239.8567324,
+    "ast_hash": "14380e01863c5dad3d2ce38f43c73cf2",
+    "semantic_hash": "14380e01863c5dad3d2ce38f43c73cf2"
+  },
+  "Tests/GenesyxCoreTests/PhInsightLogicTests.swift": {
+    "mtime": 1786613239.8567324,
+    "ast_hash": "776bfb40796cb3d420695218b4cb1e10",
+    "semantic_hash": "776bfb40796cb3d420695218b4cb1e10"
+  },
+  "Tests/GenesyxCoreTests/Streaks/StreakEngineTests.swift": {
+    "mtime": 1786613239.8567324,
+    "ast_hash": "1c0d29564f56f7b90bd521b308ee3ac4",
+    "semantic_hash": "1c0d29564f56f7b90bd521b308ee3ac4"
+  },
+  "Tests/GenesyxCoreTests/Tracking/TrackingEngineVectorTests.swift": {
+    "mtime": 1786613239.8567324,
+    "ast_hash": "adce6783dca228afaeb244eff51da61f",
+    "semantic_hash": "adce6783dca228afaeb244eff51da61f"
+  },
+  "docs/supabase_schema.sql": {
+    "mtime": 1786613239.907194,
+    "ast_hash": "8c2ad21668497f55245f57ae64604070",
+    "semantic_hash": "8c2ad21668497f55245f57ae64604070"
+  },
+  "scripts/prepare_store_screenshots.sh": {
+    "mtime": 1786613239.909086,
+    "ast_hash": "d6731e088c68fd7014096836170c8e0a",
+    "semantic_hash": "d6731e088c68fd7014096836170c8e0a"
+  },
+  "scripts/verify_review_account.sh": {
+    "mtime": 1786613239.9091945,
+    "ast_hash": "fbb62f3b2428744a1f2957379bc4cc26",
+    "semantic_hash": "fbb62f3b2428744a1f2957379bc4cc26"
+  },
+  "supabase/functions/_shared/client.ts": {
+    "mtime": 1786611612.8647382,
+    "ast_hash": "b382cb3eeb0215f31d40d9dbc8de0b81",
+    "semantic_hash": "b382cb3eeb0215f31d40d9dbc8de0b81"
+  },
+  "supabase/functions/accept_partner_invite/index.ts": {
+    "mtime": 1786613239.9091945,
+    "ast_hash": "49fd2f51ff8f3171fcb03720ffcf8b46",
+    "semantic_hash": "49fd2f51ff8f3171fcb03720ffcf8b46"
+  },
+  "supabase/functions/delete_account/index.ts": {
+    "mtime": 1786611612.8647382,
+    "ast_hash": "873e0138474792e0698a687212fec0d0",
+    "semantic_hash": "873e0138474792e0698a687212fec0d0"
+  },
+  "supabase/functions/send_partner_invite/index.ts": {
+    "mtime": 1786613239.9091945,
+    "ast_hash": "1219c33ea56b2384d14de533a619c89a",
+    "semantic_hash": "1219c33ea56b2384d14de533a619c89a"
+  },
+  "supabase/functions/unlink_partner/index.ts": {
+    "mtime": 1786611612.8647382,
+    "ast_hash": "c41bd5eec5bebd25d1d9bc12df3c5735",
+    "semantic_hash": "c41bd5eec5bebd25d1d9bc12df3c5735"
+  },
+  "supabase/migrations/20260712_push_enabled_default_false.sql": {
+    "mtime": 1786613239.9091945,
+    "ast_hash": "d646c6f350a28dac002ed75977ca7534",
+    "semantic_hash": "d646c6f350a28dac002ed75977ca7534"
+  },
+  "supabase/migrations/20260712_sync_hardening.sql": {
+    "mtime": 1786613239.9094632,
+    "ast_hash": "5ab44552568aaaf6c6eae89dcaf3a3f0",
+    "semantic_hash": "5ab44552568aaaf6c6eae89dcaf3a3f0"
+  },
+  ".claude/CLAUDE.md": {
+    "mtime": 1786613248.0817044,
+    "ast_hash": "9b31786b637be3c13978bec4c2330752",
+    "semantic_hash": "9b31786b637be3c13978bec4c2330752"
+  },
+  ".claude/skills/graphify/SKILL.md": {
+    "mtime": 1786613248.081214,
+    "ast_hash": "1656a8a8e4a05bbe69f32cd15de81e87",
+    "semantic_hash": "1656a8a8e4a05bbe69f32cd15de81e87"
+  },
+  ".github/workflows/ci.yml": {
+    "mtime": 1786611612.847227,
+    "ast_hash": "e024d0008f0c586efd331efdbd88d66a",
+    "semantic_hash": "e024d0008f0c586efd331efdbd88d66a"
+  },
+  "ARCHITECTURE.md": {
+    "mtime": 1786611612.847227,
+    "ast_hash": "3e3fb65d6a8850ccbbcda69fb8345e4b",
+    "semantic_hash": "3e3fb65d6a8850ccbbcda69fb8345e4b"
+  },
+  "App/Genesyx/Resources/Fonts/README.md": {
+    "mtime": 1786613239.8488753,
+    "ast_hash": "d2f84175bee18c3c86fdd992238e1446",
+    "semantic_hash": "d2f84175bee18c3c86fdd992238e1446"
+  },
+  "App/Genesyx/Resources/README.md": {
+    "mtime": 1786613239.8488753,
+    "ast_hash": "ce4b8f1a5c7e20c4900b84699e768dc4",
+    "semantic_hash": "ce4b8f1a5c7e20c4900b84699e768dc4"
+  },
+  "App_Inventory.md": {
+    "mtime": 1786613239.8535993,
+    "ast_hash": "5ad0ce3724316d77e64a7813a2935b5d",
+    "semantic_hash": "5ad0ce3724316d77e64a7813a2935b5d"
+  },
+  "BROWSER_AUDIT_PROMPT.md": {
+    "mtime": 1786613239.8535993,
+    "ast_hash": "bcad5c50ee7ef3efbc315397f2750641",
+    "semantic_hash": "bcad5c50ee7ef3efbc315397f2750641"
+  },
+  "CHANGELOG.md": {
+    "mtime": 1786613239.8535993,
+    "ast_hash": "a4a20c1268ceba648a1421916c15f9a2",
+    "semantic_hash": "a4a20c1268ceba648a1421916c15f9a2"
+  },
+  "CLAUDE.md": {
+    "mtime": 1786613248.0818467,
+    "ast_hash": "82efb97a359f5c7290bf2513d14686be",
+    "semantic_hash": "82efb97a359f5c7290bf2513d14686be"
+  },
+  "CLAUDE_APPSTORE_PROMPT.md": {
+    "mtime": 1786613239.8535993,
+    "ast_hash": "b2f70303d6f2f6ff451030cd1bea7802",
+    "semantic_hash": "b2f70303d6f2f6ff451030cd1bea7802"
+  },
+  "README.md": {
+    "mtime": 1786611612.8591833,
+    "ast_hash": "3821d37e1dd3bf913e7ac1c404471816",
+    "semantic_hash": "3821d37e1dd3bf913e7ac1c404471816"
+  },
+  "REPORT_2026-07-12_unattended.md": {
+    "mtime": 1786613239.8550575,
+    "ast_hash": "ef97f686ab8cc94bd35a63cc452e4957",
+    "semantic_hash": "ef97f686ab8cc94bd35a63cc452e4957"
+  },
+  "docs/APP_STORE_LISTING.md": {
+    "mtime": 1786613239.8567324,
+    "ast_hash": "7dee41f01c523f945c887f3ec1a0c637",
+    "semantic_hash": "7dee41f01c523f945c887f3ec1a0c637"
+  },
+  "docs/APP_STORE_SUBMISSION.md": {
+    "mtime": 1786613239.8567324,
+    "ast_hash": "a72dc7b82c7f638817bea6e2d0c8f42a",
+    "semantic_hash": "a72dc7b82c7f638817bea6e2d0c8f42a"
+  },
+  "docs/BACKEND_TEST_PLAN.md": {
+    "mtime": 1786613239.8567324,
+    "ast_hash": "7ab98443635d6c5e278929ab074180da",
+    "semantic_hash": "7ab98443635d6c5e278929ab074180da"
+  },
+  "docs/DEPLOYMENT_REPORT.md": {
+    "mtime": 1786613239.8567324,
+    "ast_hash": "62f8ac762f633a2aed819176ebd64bca",
+    "semantic_hash": "62f8ac762f633a2aed819176ebd64bca"
+  },
+  "docs/FEATURES.md": {
+    "mtime": 1786613239.8567324,
+    "ast_hash": "52ba5b1618783ec99ed62888d66a43de",
+    "semantic_hash": "52ba5b1618783ec99ed62888d66a43de"
+  },
+  "docs/FIX_REPORT_2026-07-12_data_honesty.md": {
+    "mtime": 1786613239.8567324,
+    "ast_hash": "f4c44e884e98ba76be43ab348f7b093c",
+    "semantic_hash": "f4c44e884e98ba76be43ab348f7b093c"
+  },
+  "docs/INVITE_EMAIL_SETUP.md": {
+    "mtime": 1786613239.8567324,
+    "ast_hash": "3a077f07fe262351fd7961a3f887cc6d",
+    "semantic_hash": "3a077f07fe262351fd7961a3f887cc6d"
+  },
+  "docs/MAC_SETUP.md": {
+    "mtime": 1786613239.8567324,
+    "ast_hash": "74de5be40956507b3c0dba39e248f07d",
+    "semantic_hash": "74de5be40956507b3c0dba39e248f07d"
+  },
+  "docs/OODA.md": {
+    "mtime": 1786611612.8629272,
+    "ast_hash": "ed7c04edd032ae3bc5dd4cdfc52f622f",
+    "semantic_hash": "ed7c04edd032ae3bc5dd4cdfc52f622f"
+  },
+  "docs/PLAYBOOK.md": {
+    "mtime": 1786611612.8629272,
+    "ast_hash": "85c3b27860eea9b80083c699dd827beb",
+    "semantic_hash": "85c3b27860eea9b80083c699dd827beb"
+  },
+  "docs/PRIVACY_POLICY.md": {
+    "mtime": 1786611612.8629272,
+    "ast_hash": "e7b5ca72145294d6e8a53b54f236423c",
+    "semantic_hash": "e7b5ca72145294d6e8a53b54f236423c"
+  },
+  "docs/PROJECT_STATUS.md": {
+    "mtime": 1786613239.8567324,
+    "ast_hash": "dcba5f1acedb5dcb5df5ce1fb04285bd",
+    "semantic_hash": "dcba5f1acedb5dcb5df5ce1fb04285bd"
+  },
+  "docs/RELEASE_ROADMAP.md": {
+    "mtime": 1786613239.8567324,
+    "ast_hash": "935b7d30bfe33420eff8fbe645a74728",
+    "semantic_hash": "935b7d30bfe33420eff8fbe645a74728"
+  },
+  "docs/SESSION_STATE.md": {
+    "mtime": 1786613239.8567324,
+    "ast_hash": "57109d6338e1afa60620ebbf0f74c9ed",
+    "semantic_hash": "57109d6338e1afa60620ebbf0f74c9ed"
+  },
+  "docs/SUPABASE.md": {
+    "mtime": 1786611612.8629272,
+    "ast_hash": "f0010c55624ee683aceb00ff425092ca",
+    "semantic_hash": "f0010c55624ee683aceb00ff425092ca"
+  },
+  "docs/WHATS_LEFT.md": {
+    "mtime": 1786613239.8567324,
+    "ast_hash": "6f453bb9ee21dd62740e129cea2bf586",
+    "semantic_hash": "6f453bb9ee21dd62740e129cea2bf586"
+  },
+  "project.yml": {
+    "mtime": 1786613239.9089298,
+    "ast_hash": "ec81e856ad1556cc9e01ba093383db68",
+    "semantic_hash": "ec81e856ad1556cc9e01ba093383db68"
+  },
+  "supabase/functions/README.md": {
+    "mtime": 1786611612.8644998,
+    "ast_hash": "bdb572c29be7af26965f0cb20d4f5fd7",
+    "semantic_hash": "bdb572c29be7af26965f0cb20d4f5fd7"
+  },
+  "App/Genesyx/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png": {
+    "mtime": 1786613239.8376474,
+    "ast_hash": "78ab09f5522b6a23db94167c52edda23",
+    "semantic_hash": "78ab09f5522b6a23db94167c52edda23"
+  },
+  "App/Genesyx/Resources/Assets.xcassets/brand_lockup.imageset/brand_lockup.png": {
+    "mtime": 1786613239.8387141,
+    "ast_hash": "4808ed1d2df892d11ebd109541be1df6",
+    "semantic_hash": "4808ed1d2df892d11ebd109541be1df6"
+  },
+  "App/Genesyx/Resources/Assets.xcassets/brand_lockup.imageset/brand_lockup_dark.png": {
+    "mtime": 1786613239.8387141,
+    "ast_hash": "1f2fd22c21952ffc2cd408427b84bba2",
+    "semantic_hash": "1f2fd22c21952ffc2cd408427b84bba2"
+  },
+  "App/Genesyx/Resources/Assets.xcassets/egg_female.imageset/egg_female.png": {
+    "mtime": 1786613239.8392186,
+    "ast_hash": "b195653a2f4d81ee1e3f2d4de9860f76",
+    "semantic_hash": "b195653a2f4d81ee1e3f2d4de9860f76"
+  },
+  "App/Genesyx/Resources/Assets.xcassets/egg_male.imageset/egg_male.png": {
+    "mtime": 1786613239.8410878,
+    "ast_hash": "f4a50a742711461164c4261d737e12e3",
+    "semantic_hash": "f4a50a742711461164c4261d737e12e3"
+  },
+  "App/Genesyx/Resources/Assets.xcassets/home_hero_bg.imageset/home_hero_bg.jpg": {
+    "mtime": 1786613239.842193,
+    "ast_hash": "87e742180c3769d1812bdb8baf943341",
+    "semantic_hash": "87e742180c3769d1812bdb8baf943341"
+  },
+  "App/Genesyx/Resources/Assets.xcassets/ic_launcher_foreground.imageset/ic_launcher_foreground.png": {
+    "mtime": 1786613239.842622,
+    "ast_hash": "95443eed66ecd980e7b89660c5b659d2",
+    "semantic_hash": "95443eed66ecd980e7b89660c5b659d2"
+  },
+  "App/Genesyx/Resources/Assets.xcassets/ic_launcher_monochrome.imageset/ic_launcher_monochrome.png": {
+    "mtime": 1786613239.84279,
+    "ast_hash": "95443eed66ecd980e7b89660c5b659d2",
+    "semantic_hash": "95443eed66ecd980e7b89660c5b659d2"
+  },
+  "App/Genesyx/Resources/Assets.xcassets/learn_hero_eating_cycle.imageset/learn_hero_eating_cycle.jpg": {
+    "mtime": 1786613239.8429508,
+    "ast_hash": "7102da5b62460914c1fd884046748bbd",
+    "semantic_hash": "7102da5b62460914c1fd884046748bbd"
+  },
+  "App/Genesyx/Resources/Assets.xcassets/learn_hero_first_week.imageset/learn_hero_first_week.jpg": {
+    "mtime": 1786613239.8434365,
+    "ast_hash": "53a8ef913c3a5241cb50596c33b7cc5a",
+    "semantic_hash": "53a8ef913c3a5241cb50596c33b7cc5a"
+  },
+  "App/Genesyx/Resources/Assets.xcassets/learn_hero_habits.imageset/learn_hero_habits.jpg": {
+    "mtime": 1786613239.843736,
+    "ast_hash": "fe2823212a3fca99bfe903d03aa6ec88",
+    "semantic_hash": "fe2823212a3fca99bfe903d03aa6ec88"
+  },
+  "App/Genesyx/Resources/Assets.xcassets/learn_hero_hydration.imageset/learn_hero_hydration.jpg": {
+    "mtime": 1786613239.8440843,
+    "ast_hash": "bf798b010977804aa58753f420fb0766",
+    "semantic_hash": "bf798b010977804aa58753f420fb0766"
+  },
+  "App/Genesyx/Resources/Assets.xcassets/learn_hero_insights.imageset/learn_hero_insights.jpg": {
+    "mtime": 1786613239.8444326,
+    "ast_hash": "25c29847cbc0e870b1e4d5db55fda63d",
+    "semantic_hash": "25c29847cbc0e870b1e4d5db55fda63d"
+  },
+  "App/Genesyx/Resources/Assets.xcassets/learn_hero_logging.imageset/learn_hero_logging.jpg": {
+    "mtime": 1786613239.845077,
+    "ast_hash": "85815da266583bbc576e558ea26435a9",
+    "semantic_hash": "85815da266583bbc576e558ea26435a9"
+  },
+  "App/Genesyx/Resources/Assets.xcassets/learn_hero_supplements.imageset/learn_hero_supplements.jpg": {
+    "mtime": 1786613239.8458316,
+    "ast_hash": "3628b47e2e1aa9dedd8bcb67cdf9f79b",
+    "semantic_hash": "3628b47e2e1aa9dedd8bcb67cdf9f79b"
+  },
+  "App/Genesyx/Resources/Assets.xcassets/learn_hero_trends.imageset/learn_hero_trends.jpg": {
+    "mtime": 1786613239.8463287,
+    "ast_hash": "6be5740c0c8fc7f860fde872fbfe3613",
+    "semantic_hash": "6be5740c0c8fc7f860fde872fbfe3613"
+  },
+  "App/Genesyx/Resources/Assets.xcassets/learn_hero_using.imageset/learn_hero_using.jpg": {
+    "mtime": 1786613239.8467896,
+    "ast_hash": "8fd8032a7880070814b151c0801edd9d",
+    "semantic_hash": "8fd8032a7880070814b151c0801edd9d"
+  },
+  "App/Genesyx/Resources/Assets.xcassets/learn_hero_what_to_log.imageset/learn_hero_what_to_log.jpg": {
+    "mtime": 1786613239.8470335,
+    "ast_hash": "271a66f74c1db33f4f01e8bea81fef76",
+    "semantic_hash": "271a66f74c1db33f4f01e8bea81fef76"
+  },
+  "App/Genesyx/Resources/Assets.xcassets/logo_g.imageset/logo_g.png": {
+    "mtime": 1786613239.847632,
+    "ast_hash": "5d6b1360f11653d361272a5e243f91ae",
+    "semantic_hash": "5d6b1360f11653d361272a5e243f91ae"
+  },
+  "App/Genesyx/Resources/Assets.xcassets/urine45.imageset/urine45.png": {
+    "mtime": 1786613239.847729,
+    "ast_hash": "05ebbba04c35b801cc2a992d7f5ae0c5",
+    "semantic_hash": "05ebbba04c35b801cc2a992d7f5ae0c5"
+  },
+  "App/Genesyx/Resources/Assets.xcassets/urinetrack34.imageset/urinetrack34.png": {
+    "mtime": 1786613239.848459,
+    "ast_hash": "3ee790684d67f94b548783c4a991be55",
+    "semantic_hash": "3ee790684d67f94b548783c4a991be55"
+  },
+  "App/Genesyx/Resources/Assets.xcassets/urinetrack67.imageset/urinetrack67.png": {
+    "mtime": 1786613239.8488753,
+    "ast_hash": "3f4a5841dac71856a827afb7b72652ee",
+    "semantic_hash": "3f4a5841dac71856a827afb7b72652ee"
+  },
+  "docs/appstore_screenshots/1-Home.png": {
+    "mtime": 1786613239.859194,
+    "ast_hash": "626296985373f1cbb6f7494570d4093a",
+    "semantic_hash": "626296985373f1cbb6f7494570d4093a"
+  },
+  "docs/appstore_screenshots/2-Track.png": {
+    "mtime": 1786613239.863194,
+    "ast_hash": "ab1517004ebb8560c732848bce9ed997",
+    "semantic_hash": "ab1517004ebb8560c732848bce9ed997"
+  },
+  "docs/appstore_screenshots/3-Nutrition.png": {
+    "mtime": 1786613239.863194,
+    "ast_hash": "d7cb438d156eebe562820740e9321deb",
+    "semantic_hash": "d7cb438d156eebe562820740e9321deb"
+  },
+  "docs/appstore_screenshots/4-Insights.png": {
+    "mtime": 1786613239.867194,
+    "ast_hash": "29e2f9aa51a84006e72485f30bf964f8",
+    "semantic_hash": "29e2f9aa51a84006e72485f30bf964f8"
+  },
+  "docs/appstore_screenshots/5-Learn.png": {
+    "mtime": 1786613239.871194,
+    "ast_hash": "2da21932d539df047a6d7e73b54f24a4",
+    "semantic_hash": "2da21932d539df047a6d7e73b54f24a4"
+  },
+  "docs/appstore_screenshots/6-Profile.png": {
+    "mtime": 1786613239.875194,
+    "ast_hash": "d04a73b1406697fd8a5f86f00fcf0d6a",
+    "semantic_hash": "d04a73b1406697fd8a5f86f00fcf0d6a"
+  },
+  "docs/review_evidence/Simulator Screenshot - iPhone 17 Pro - 2026-07-20 at 10.40.20.png": {
+    "mtime": 1786613239.875194,
+    "ast_hash": "252cabe4f39f67a50ca43c12ee7a6fb5",
+    "semantic_hash": "252cabe4f39f67a50ca43c12ee7a6fb5"
+  },
+  "docs/review_evidence/Simulator Screenshot - iPhone 17 Pro - 2026-07-20 at 10.49.31.png": {
+    "mtime": 1786613239.8792882,
+    "ast_hash": "8c9996fb9c37c6c21c49c0856052ea85",
+    "semantic_hash": "8c9996fb9c37c6c21c49c0856052ea85"
+  },
+  "docs/review_evidence/Simulator Screenshot - iPhone 17 Pro - 2026-07-20 at 10.51.18.png": {
+    "mtime": 1786613239.883194,
+    "ast_hash": "29940e4c9cfd67e78e12c232ffe81b54",
+    "semantic_hash": "29940e4c9cfd67e78e12c232ffe81b54"
+  },
+  "docs/review_evidence/Simulator Screenshot - iPhone 17 Pro - 2026-07-20 at 10.51.38.png": {
+    "mtime": 1786613239.883194,
+    "ast_hash": "8fcb9c71e86f117fa6e87be4b4e5b23e",
+    "semantic_hash": "8fcb9c71e86f117fa6e87be4b4e5b23e"
+  },
+  "docs/review_evidence/Simulator Screenshot - iPhone 17 Pro - 2026-07-20 at 10.51.46.png": {
+    "mtime": 1786613239.887194,
+    "ast_hash": "a0ab7165fd7be1c954b856f0ea623d17",
+    "semantic_hash": "a0ab7165fd7be1c954b856f0ea623d17"
+  },
+  "docs/review_evidence/Simulator Screenshot - iPhone 17 Pro - 2026-07-20 at 10.51.54.png": {
+    "mtime": 1786613239.8911939,
+    "ast_hash": "4a1a253e52cefa147b9d7a7bb840b4f0",
+    "semantic_hash": "4a1a253e52cefa147b9d7a7bb840b4f0"
+  },
+  "docs/screenshots/1-.png": {
+    "mtime": 1786613239.8911939,
+    "ast_hash": "b09b795ecf1af996b46882dc90566e1a",
+    "semantic_hash": "b09b795ecf1af996b46882dc90566e1a"
+  },
+  "docs/screenshots/1-Home.png": {
+    "mtime": 1786613239.8938885,
+    "ast_hash": "33ad6100dccbc77068edf5e233f7d033",
+    "semantic_hash": "33ad6100dccbc77068edf5e233f7d033"
+  },
+  "docs/screenshots/2-Home.png": {
+    "mtime": 1786613239.895194,
+    "ast_hash": "7ea0fbf8f1539731162e035b47afea3a",
+    "semantic_hash": "7ea0fbf8f1539731162e035b47afea3a"
+  },
+  "docs/screenshots/2-Track.png": {
+    "mtime": 1786613239.895194,
+    "ast_hash": "7e543ef5895f6904c3ec77c702bdc691",
+    "semantic_hash": "7e543ef5895f6904c3ec77c702bdc691"
+  },
+  "docs/screenshots/3-Nutrition.png": {
+    "mtime": 1786613239.895194,
+    "ast_hash": "42da9f6dd2e5b5bb74d6572b93fe8151",
+    "semantic_hash": "42da9f6dd2e5b5bb74d6572b93fe8151"
+  },
+  "docs/screenshots/3-Track.png": {
+    "mtime": 1786613239.899194,
+    "ast_hash": "3090d2c70d48eaff55794639d0b198bf",
+    "semantic_hash": "3090d2c70d48eaff55794639d0b198bf"
+  },
+  "docs/screenshots/4-Insights.png": {
+    "mtime": 1786613239.899194,
+    "ast_hash": "b6270491fcc9437e80ef346bc0f02f61",
+    "semantic_hash": "b6270491fcc9437e80ef346bc0f02f61"
+  },
+  "docs/screenshots/4-Nutrition.png": {
+    "mtime": 1786613239.903194,
+    "ast_hash": "73e3f49d6060ece685759f100c3cdd7d",
+    "semantic_hash": "73e3f49d6060ece685759f100c3cdd7d"
+  },
+  "docs/screenshots/5-Insights.png": {
+    "mtime": 1786613239.907194,
+    "ast_hash": "e68a60ecc859a6fdfb1efbe7baf1e8cf",
+    "semantic_hash": "e68a60ecc859a6fdfb1efbe7baf1e8cf"
+  },
+  "docs/screenshots/5-Profile.png": {
+    "mtime": 1786613239.907194,
+    "ast_hash": "8a04f2c0e4bb7dda2d10ebdf1471326a",
+    "semantic_hash": "8a04f2c0e4bb7dda2d10ebdf1471326a"
+  }
+}
