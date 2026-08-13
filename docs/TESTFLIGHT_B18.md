@@ -137,7 +137,7 @@ This list lived only in conversation until now, which is why it is written down 
 | # | Item | State |
 |---|---|---|
 | P0-1 | Waitlist: copy fix + a migration for the objects it calls | ✅ Copy and backend wiring were already in the tree; `supabase/migrations/20260811_waitlist_emails.sql` written. **Still needs applying** — pre-flight 2 |
-| P0-2 | Commit the working tree | ⬜ |
+| P0-2 | Commit the working tree | ✅ `6000f2d`, 13 Aug — 63 modified + 14 untracked, on `main`. **Not pushed.** `graphify-out/` (17M of generated skill output) went in at the client's explicit instruction; it was scanned for credentials first and is clean |
 | P0-3 | Version bump 1.1.1 (17) → 1.2.0 (18) + this document | ✅ `project.yml` bumped, `xcodegen generate` run — pbxproj delta was exactly the 4 version lines plus the 8 for two new Swift files, no collateral churn |
 | P0-4 | `drainPending()` — stop the drain on a missing session | ✅ See below |
 | P0-5 | Correct the docs that were wrong | ✅ `CHANGE_LIST_PLAN.md` test baseline; `HANDOFF.md` task 23's fictional dependency on build 18 |
