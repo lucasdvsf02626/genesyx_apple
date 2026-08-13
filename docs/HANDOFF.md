@@ -35,7 +35,7 @@ This is the part git cannot tell you. Verify here before assuming.
 |---|---|
 | `quiz_answers` owner-only table + RLS policy | ✅ Applied & verified |
 | `partner_id` UPDATE revoke (`authenticated` + `anon`) | ✅ Applied & verified — 0 pre-existing bad links found |
-| `daily_logs.sexual_activity` column | ⚠️ **Unconfirmed — verify first.** Written `20260810_daily_logs_sexual_activity.sql`, never recorded as applied |
+| `daily_logs.sexual_activity` column | ✅ **Applied & verified 12 Aug 2026** — `information_schema.columns` returned the row. `20260810_daily_logs_sexual_activity.sql` |
 | `join_waitlist` RPC + `waitlist_emails` table | ⚠️ **Unconfirmed — verify first.** `20260811_waitlist_emails.sql`, written 11 Aug; the objects were never in this repo at all before that |
 | `created_at` / `updated_at` UPDATE revoke | ⬜ Written, **held** pending web check (task 18) |
 | `alter table profiles drop column quiz_answers` | ⬜ Written, **held** pending web check (task 18) — *not* on build 18, see §4 |
@@ -63,7 +63,7 @@ all. The new migration is idempotent, so applying it is safe either way.
 | ~~21~~ | ~~CHANGELOG entry for the privacy/security batch **+ T23**~~ | — | ✅ Done — the 1.2.0 (18) section carries both (`CHANGELOG.md` §Privacy & security, and the glass-size entry). Row was stale |
 | 25 | Sync hydration display prefs (unit **and** glass size) to `profiles` | — | New — see below. One change with Android, not half of one here |
 | 24 | Android: drop `partner_id` from the DTO write path | — | Android repo — harmless today only because the caller passes `null` |
-| — | Verify `daily_logs.sexual_activity` applied | — | Supabase SQL Editor — **pre-flight 1** in `TESTFLIGHT_B18.md` |
+| ✅ | Verify `daily_logs.sexual_activity` applied | — | Done 12 Aug — **pre-flight 1** in `TESTFLIGHT_B18.md` |
 | — | Apply `20260811_waitlist_emails.sql` | — | Supabase SQL Editor — **pre-flight 2**. Idempotent |
 | — | Apply `20260812_daily_logs_food_groups.sql` | — | Supabase SQL Editor — **pre-flight 3**. Verified MISSING on the live project. Meal logging fails silently without it: she ticks food groups all week, watches them persist locally, and syncs none of it |
 | ✅ | ~~Deploy all six Edge Functions~~ | — | **pre-flight 4 — done 13 Aug.** The deploy also turned `verify_jwt` on; see §4i |

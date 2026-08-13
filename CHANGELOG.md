@@ -444,9 +444,10 @@ checklist in `docs/TESTFLIGHT_B18.md`; current state of play in `docs/HANDOFF.md
   46th).
 
 ### Owed
-- ⚠️ **`daily_logs.sexual_activity` is unconfirmed.** The migration was written and never recorded as
-  applied, and the decoders tolerate the column's absence — so she would log intimacy all week, see
-  the calendar dots, and sync nothing. Pre-flight 1 in `docs/TESTFLIGHT_B18.md`.
+- ✅ **`daily_logs.sexual_activity` is applied** — verified against the live project 12 Aug 2026.
+  Worth keeping the reason it was pre-flight 1: the decoder tolerates the column's absence, so had it
+  been missing she would have logged intimacy all week, watched the calendar dots appear, and synced
+  nothing. Silent, not loud.
 - T20 made light the local default, but `apply(remote)` overwrites it on sign-in, and the server
   cannot tell "she chose system" from "she was defaulted to it before T20". A decision, not a check.
 - `alter table public.profiles drop column quiz_answers` (task 23) is **not** part of this release.
@@ -497,8 +498,8 @@ no client or medical-reviewer sign-off. Audit and plan in `docs/CHANGE_LIST_PLAN
   would read as a backlog rather than an invitation.
 
 ### Owed — resolved since, see 1.2.0 (18) above
-- `20260810_daily_logs_sexual_activity.sql` is still unconfirmed against production; it is now
-  pre-flight 1 for build 18.
+- `20260810_daily_logs_sexual_activity.sql` was unconfirmed against production when this version
+  shipped. Verified applied 12 Aug 2026.
 - The partner-read check **came back badly**: `profiles_select` selects whole rows, so the "just for
   you" promise was false as written. `20260810_profiles_quiz_answers.sql` is therefore superseded and
   must not be applied to a fresh database — the answers moved to their own owner-only table in
