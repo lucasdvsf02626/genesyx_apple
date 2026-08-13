@@ -1,8 +1,23 @@
 -- ============================================================================
 -- B. ANDROID SUPPLEMENT BACKEND — genesyx_products + user_supplements
 --
--- ⛔ DRAFT — NOT APPLIED. Review, then apply by hand:
+-- ✅ APPLIED to production 13 Aug 2026. Idempotent — re-running is safe:
 --      supabase db query --linked -f supabase/migrations/20260813_android_supplements_backend.sql
+--
+-- Applied TWICE. The first run created both tables correctly but left the grants
+-- wrong, and verification test 2 below caught it: `grant select` is additive, so
+-- authenticated kept the full arwdDxtm the schema default privileges hand out at
+-- CREATE TABLE time — including TRUNCATE, which RLS cannot refuse. The revoke
+-- lines now name authenticated as well as anon. See the note above the grants.
+--
+-- Verified after the second run: both FKs correct (user_id CASCADE, product_id
+-- SET NULL); both check constraints present; RLS enabled with exactly one policy
+-- each; both indexes created; both tables empty; grants now exactly SELECT for
+-- authenticated on genesyx_products and SELECT/INSERT/UPDATE/DELETE on
+-- user_supplements, with anon holding nothing on either.
+--
+-- STILL UNVERIFIED — tests 5, 6 and 7 are behavioural: they need throwaway
+-- accounts, a real account deletion, and an Android device. Not run.
 --
 -- Supersedes genesyx-android/docs/migrations/2026-07-29_user_supplements.sql,
 -- which must NOT be applied. That file is wrong in two ways that matter:
@@ -61,7 +76,18 @@ create index if not exists genesyx_products_active_idx
 
 alter table public.genesyx_products enable row level security;
 
-revoke all    on public.genesyx_products from anon;
+-- REVOKE BEFORE GRANT, and the revoke must name `authenticated` too.
+-- Supabase's schema-level default privileges hand the full arwdDxtm to anon,
+-- authenticated AND service_role at CREATE TABLE time, so a bare `grant select`
+-- is purely additive and leaves everything else standing. This is the same
+-- defect 20260812_client_role_grant_cleanup.sql cleaned off the other six
+-- tables; creating a table re-introduces it every time.
+--
+-- TRUNCATE is the privilege that actually matters here: it is NOT subject to
+-- RLS, so no policy can scope or refuse it. A client holding it empties the
+-- whole table in one statement. The only thing otherwise standing in the way is
+-- that PostgREST emits no TRUNCATE verb — an API-layer property, not a control.
+revoke all    on public.genesyx_products from anon, authenticated;
 grant  select on public.genesyx_products to   authenticated;
 grant  all    on public.genesyx_products to   service_role;
 
@@ -136,7 +162,12 @@ create index if not exists user_supplements_user_idx
 
 alter table public.user_supplements enable row level security;
 
-revoke all on public.user_supplements from anon;
+-- Revoke from `authenticated` first, for the reason spelled out above
+-- genesyx_products. It matters more on this table: the default privileges
+-- include TRUNCATE, RLS cannot refuse it, and one call would erase every user's
+-- supplements — not merely the caller's own rows, which is all the owner policy
+-- below ever governs.
+revoke all on public.user_supplements from anon, authenticated;
 grant  select, insert, update, delete on public.user_supplements to authenticated;
 grant  all on public.user_supplements to service_role;
 
@@ -159,12 +190,24 @@ create policy user_supplements_owner on public.user_supplements
 --     expect user_id -> auth.users(id) ON DELETE CASCADE
 --        and product_id -> public.genesyx_products(id) ON DELETE SET NULL
 --
---  2. Grants are exact — anon has none:
---       select grantee, privilege_type from information_schema.role_table_grants
---        where table_schema='public' and table_name in
---              ('user_supplements','genesyx_products') order by 1,2;
---     expect authenticated: SELECT/INSERT/UPDATE/DELETE on user_supplements and
---     SELECT only on genesyx_products; service_role full; anon absent from both.
+--  2. Grants are EXACT, not merely sufficient. Run this and read every row —
+--     the first version of this migration passed a "can she write?" check while
+--     silently leaving authenticated with TRUNCATE on both tables:
+--       select grantee, table_name,
+--              string_agg(privilege_type, ',' order by privilege_type) as privs
+--         from information_schema.role_table_grants
+--        where table_schema='public'
+--          and table_name in ('user_supplements','genesyx_products')
+--        group by grantee, table_name order by table_name, grantee;
+--     expect exactly:
+--       genesyx_products  authenticated  SELECT
+--       user_supplements  authenticated  DELETE,INSERT,SELECT,UPDATE
+--       both              service_role   full arwdDxtm
+--       anon              absent from both rows entirely
+--     THE FAILURE TO LOOK FOR IS AN EXTRA PRIVILEGE, NOT A MISSING ONE. If
+--     TRUNCATE appears against authenticated, the revoke above did not run:
+--     RLS cannot refuse TRUNCATE, so that one verb empties the table for every
+--     user at once.
 --
 --  3. RLS isolation: as A insert a row; as B select it -> 0 rows; as B update
 --     it by id -> 0 rows affected; as B delete it by id -> 0 rows affected.

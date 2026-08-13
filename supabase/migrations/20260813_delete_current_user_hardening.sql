@@ -1,8 +1,18 @@
 -- ============================================================================
 -- A. CANONICAL ACCOUNT-DELETION RPC — public.delete_current_user()
 --
--- ⛔ DRAFT — NOT APPLIED. Review, then apply by hand:
+-- ✅ APPLIED to production 13 Aug 2026. Idempotent — re-running is safe:
 --      supabase db query --linked -f supabase/migrations/20260813_delete_current_user_hardening.sql
+--
+-- Verified after applying: prosecdef = true, proconfig = {search_path=}; anon and
+-- PUBLIC cannot execute, authenticated can; the body contains the unlink, the
+-- invitee-email delete, the waitlist delete and quiz_answers, and does NOT name
+-- user_supplements. profiles.relforcerowsecurity and waitlist_emails.relforce-
+-- rowsecurity are both FALSE, which clears the pre-apply risk flagged below: the
+-- function owner does bypass RLS, so the unlink reaches rows it does not own.
+--
+-- STILL UNVERIFIED — the behavioural half (tests 2, 3 and 5) needs two throwaway
+-- accounts and an actual deletion on a project holding real users. Not run.
 --
 -- WHY THIS EXISTS
 -- Android deletes through this RPC; iOS deletes through the `delete_account`
