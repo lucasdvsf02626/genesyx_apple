@@ -4,30 +4,33 @@ import GenesyxCore
 import GoogleSignIn
 #endif
 
-/// Decides the top-level surface: onboarding until complete, then the main tabs.
-/// Also handles partner-invite deep links (custom scheme + Universal Links).
-/// The dashboard is gated behind Auth: `onboardingComplete` only becomes true after a successful
-/// sign-in inside the onboarding flow (Android parity), so the main tabs are unreachable otherwise.
+/// Top-level surface. Session state is the credential; `onboardingComplete` is only a progress
+/// flag. Private tabs never mount while the session is unresolved, missing, expired or revoked.
 struct RootView: View {
 
+    @EnvironmentObject private var container: AppContainer
     @EnvironmentObject private var prefs: PreferencesRepository
     @EnvironmentObject private var session: SessionRepository
+    @EnvironmentObject private var notifications: NotificationService
     @AppStorage("genesyx.onboardingComplete") private var onboardingComplete = false
 
     @State private var invite: InvitePresentation?
     @State private var showAuthFromInvite = false
-
-    /// The invite she's mid-way through accepting, held across the sign-in detour. A partner
-    /// arriving from a share link almost always has no account yet, so dropping the code here
-    /// (as we used to) meant the invite silently vanished on the one path everybody takes.
-    @State private var codeAwaitingSignIn: String?
+    @State private var heldInviteCode: String?
 
     var body: some View {
         Group {
-            if onboardingComplete {
-                MainTabView()
-            } else {
+            switch destination {
+            case .resolving:
+                SessionResolvingView()
+            case .unavailable:
+                ServiceUnavailableView()
+            case .onboarding:
                 OnboardingFlowView(onFinished: { onboardingComplete = true })
+            case .mandatoryAuth:
+                AuthView(allowsDismissal: false)
+            case .mainTabs:
+                MainTabView()
             }
         }
         .preferredColorScheme(colorScheme)
@@ -35,11 +38,19 @@ struct RootView: View {
             #if canImport(GoogleSignIn)
             if GIDSignIn.sharedInstance.handle(url) { return }   // Google OAuth callback
             #endif
-            if let code = DeepLink.inviteCode(from: url) { invite = InvitePresentation(code: code) }
+            if let code = DeepLink.inviteCode(from: url) { receiveInvite(code) }
         }
         .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
             if let url = activity.webpageURL, let code = DeepLink.inviteCode(from: url) {
-                invite = InvitePresentation(code: code)
+                receiveInvite(code)
+            }
+        }
+        .onChange(of: session.state) { new in
+            if new == .signedIn {
+                resumeHeldInvite()
+            } else {
+                invite = nil
+                showAuthFromInvite = false
             }
         }
         .sheet(item: $invite) { presentation in
@@ -47,19 +58,40 @@ struct RootView: View {
                 code: presentation.code,
                 onAccepted: { invite = nil },
                 onBack: { invite = nil },
-                onSignIn: { codeAwaitingSignIn = presentation.code; invite = nil; showAuthFromInvite = true }
+                onSignIn: { heldInviteCode = presentation.code; invite = nil; showAuthFromInvite = true }
             )
         }
         .sheet(isPresented: $showAuthFromInvite, onDismiss: {
-            // Signed in? Bring her straight back to the invite she came here to accept.
-            // Cancelled? Drop it, so she isn't trapped in a sign-in/invite loop.
-            if let code = codeAwaitingSignIn, session.isSignedIn {
-                invite = InvitePresentation(code: code)
+            if session.isSignedIn {
+                resumeHeldInvite()
             }
-            codeAwaitingSignIn = nil
         }) {
-            AuthView()
+            AuthView(allowsDismissal: true)
         }
+    }
+
+    private var destination: RootDestination {
+        RootRouting.destination(
+            session: session.state,
+            onboardingComplete: onboardingComplete,
+            serviceAvailable: container.isServiceAvailable
+        )
+    }
+
+    /// A signed-out invite is held, never used to mount private tabs. After a successful
+    /// sign-in the same code is presented again.
+    private func receiveInvite(_ code: String) {
+        if session.isSignedIn {
+            invite = InvitePresentation(code: code)
+        } else {
+            heldInviteCode = code
+        }
+    }
+
+    private func resumeHeldInvite() {
+        guard session.isSignedIn, let code = heldInviteCode else { return }
+        heldInviteCode = nil
+        invite = InvitePresentation(code: code)
     }
 
     private var colorScheme: ColorScheme? {
@@ -67,6 +99,44 @@ struct RootView: View {
         case .system: return nil
         case .light: return .light
         case .dark: return .dark
+        }
+    }
+}
+
+/// Neutral branded hold while a cached token is validated. No tab chrome, no copy that
+/// implies she is already inside the app.
+private struct SessionResolvingView: View {
+    var body: some View {
+        ZStack {
+            GenesyxColor.background.ignoresSafeArea()
+            ProgressView()
+                .tint(GenesyxColor.primary)
+                .accessibilityIdentifier("root.resolving")
+        }
+    }
+}
+
+/// Release fail-closed: no backend, no mock login, no private tabs.
+private struct ServiceUnavailableView: View {
+    var body: some View {
+        ZStack {
+            GenesyxColor.background.ignoresSafeArea()
+            VStack(spacing: 16) {
+                Text("GENESYX")
+                    .font(.gxCardHeading)
+                    .tracking(2)
+                    .foregroundStyle(GenesyxColor.foreground)
+                Text("Genesyx can’t reach its service right now.")
+                    .font(.gxTitle)
+                    .foregroundStyle(GenesyxColor.foreground)
+                    .multilineTextAlignment(.center)
+                Text("Check your connection and try again later. Your data on this phone is unchanged.")
+                    .font(.gxBody)
+                    .foregroundStyle(GenesyxColor.mutedForeground)
+                    .multilineTextAlignment(.center)
+            }
+            .padding(24)
+            .accessibilityIdentifier("root.unavailable")
         }
     }
 }

@@ -100,10 +100,25 @@ final class CycleEngineTests: XCTestCase {
     }
 
     func testDaysUntilNextPeriodIsZeroOnDayOneAndCountsDownOtherwise() {
-        // Matches web cycle.ts: day 1 reports 0.
+        // Day 1 reports 0 — she is on her period, not waiting for it.
         XCTAssertEqual(phaseOn(lastPeriod).daysUntilNextPeriod, 0)
-        XCTAssertEqual(phaseOn(lastPeriod.plusDays(7)).daysUntilNextPeriod, 20) // day 8 -> 28-8
-        XCTAssertEqual(phaseOn(lastPeriod.plusDays(26)).daysUntilNextPeriod, 1) // day 27 -> 28-27
+        // The next period starts on day 1 of the next cycle, i.e. `lastPeriod + 28`. Counted from
+        // day 8 that is 21 days, not 20: this asserted 20 until 14 Aug, which is how a countdown
+        // that was a day short everywhere passed its own suite.
+        XCTAssertEqual(phaseOn(lastPeriod.plusDays(7)).daysUntilNextPeriod, 21)
+        XCTAssertEqual(phaseOn(lastPeriod.plusDays(26)).daysUntilNextPeriod, 2) // day 27
+    }
+
+    /// The day the old expression got visibly wrong. On the last day of the cycle it returned 0, and
+    /// 0 is the value Home prints as "Next period: Today" and Track as "due today" — telling her the
+    /// period had arrived on the day before it was predicted to.
+    func testLastDayOfCycleSaysTomorrowRatherThanToday() {
+        let lastDay = phaseOn(lastPeriod.plusDays(27)) // day 28 of 28
+        XCTAssertEqual(lastDay.dayOfCycle, 28)
+        XCTAssertEqual(lastDay.daysUntilNextPeriod, 1, "the next period is due tomorrow, not today")
+
+        // And the following day really is day 1, where 0 ("today") is correct.
+        XCTAssertEqual(phaseOn(lastPeriod.plusDays(28)).daysUntilNextPeriod, 0)
     }
 
     func testPeriodTakesPrecedenceOverFertileOnShortCycle() {

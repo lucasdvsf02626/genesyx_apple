@@ -4,6 +4,12 @@ The client change list, end to end. 1.2.0 rather than 1.1.2 because this is a fe
 fix pass — a weekly article series, intimacy logging, a fertile-window notification, and
 per-supplement reminder times are all new surface.
 
+> **This document describes build 18, archived 13 Aug. It predates H22 and does not contain the
+> mandatory authentication gate.** H22 landed 14 Aug, after the archive, and is still uncommitted.
+> Every row below is a statement about the pre-gate binary and must stay that way — do not rewrite
+> them as though H22 shipped in this build. A **new archive with a new build number** is required
+> before H22 can reach TestFlight. Row H22 in the release checklist has the detail.
+
 ---
 
 ## Pre-flight — do these before uploading
@@ -61,12 +67,18 @@ This build works through the whole change list. Please focus on:
    This needs a cycle set up and a day to arrive, so it is the slowest item here to confirm.
 6. **Choosing which reminders you get** — Profile → Notifications now has a switch per kind
    (hydration, weekly summary, fertile window, supplements) instead of one all-or-nothing toggle.
-   Turn one off and confirm the others still arrive.
+   Turn one off and confirm the others still arrive. The switch above them is now called
+   **All reminders**, which is what it always did — it used to say "Weekly reminders", so anyone who
+   turned it off expecting to lose a weekly digest was also losing their supplement reminders, the
+   evening check-in and the fertile-window nudge without being told.
 7. **A time per supplement** — Nutrition → Review Plan. Each supplement now carries its own reminder
    time rather than sharing one. Set two to different times and confirm both fire.
 8. **Your own glass size** — Profile → Hydration. With the unit set to glasses you can now set what
    a glass means to you (50–1000 ml, default 250). Change it and check Home, Track and Nutrition all
    agree on the new count. Your totals should not move — only how they are described.
+   Please also try a size we cannot use — 3000, or 10 — and tap away from the field. It should come
+   back as the nearest size we allow (1000, or 50) rather than sitting there looking accepted.
+   Until now it was dropped in silence: the number stayed on screen while the glass stayed 250.
 9. **Light theme by default** — a fresh install should open light. Dark is still there under
    Profile → Appearance.
 10. **The onboarding splash** — now carries the brand egg artwork rather than the plain shapes that
@@ -79,7 +91,9 @@ This build works through the whole change list. Please focus on:
     Everything that pointed at the old location (the Home card, Insights, the Learn articles) should
     now take you to the tab.
 13. **pH tracker** — the safety note is now a panel you can expand rather than a permanent block of
-    text, and the old urine-test wording is gone throughout.
+    text, and the old urine-test wording is gone throughout. The safety note is now on the pH card in
+    **Insights** too, which previously showed your reading and an "elevated" badge with no small print
+    at all. The chart's 7d / 30d / 90d / All buttons now clearly show which one you are looking at.
 14. **Logging what you ate** — Nutrition now has "What you ate today" where the "coming soon" card
     used to be. Tap a group when you have eaten something from it; "What counts as what?" expands if
     you are unsure which is which. Please check it survives closing and reopening the app, and — the
@@ -90,7 +104,98 @@ This build works through the whole change list. Please focus on:
     bottom is a button that logs the food groups the recipe covers: tap it, close the recipe, and the
     groups should now be ticked in "What you ate today" further down the same screen. Tapping it
     twice must not un-tick anything.
-16. **General** — sign in, complete cycle setup, and sanity-check Home, Insights and Learn.
+16. **Going back and correcting a day** — Track, tap a day you have already logged, and choose
+    "Edit this day". Change something and save. The day should keep everything that was already on
+    it — your symptoms and your note — and simply gain what you just added. Please try it on a day
+    with a note you would not want to lose.
+17. **Your current focus** — Profile → Current focus. Tapping **Pregnancy** shows the "coming soon"
+    note and leaves you on Fertility Prep, because there is nothing else in the app yet. It used to
+    switch the setting over permanently even though no screen behaved any differently.
+18. **Deleting a pH reading — please try to lose one on purpose.** Open the pH tab, expand your
+    reading history and tap an older reading. **Delete** is now down at the bottom of the sheet with
+    the rest of the form, and asks before it does anything. The top-left button is **Cancel** and only
+    closes the sheet. Previously Delete was in that top-left slot and removed the reading on the first
+    tap, with no question — so opening a reading to change it and then changing your mind destroyed
+    it. Please check that Cancel leaves your reading alone, that "Keep it" leaves it alone, and that
+    only "Delete" removes it.
+19. **Fixing a past day's water where you notice it** — Home → tap the hydration summary. The row of
+    the last seven days at the bottom is now tappable: tap any day to open that day and correct it.
+    Before, that row showed you a wrong total and gave you nothing to do about it — the only way in
+    was Track → that day → Edit this day.
+20. **Reminders that keep arriving — this one needs a few days, not a few minutes.** Turn reminders
+    on in Profile and then just use the app normally for a week. What we are asking you to notice is
+    an *absence*: previously, on any evening you had logged your day and finished your water, the app
+    queued no evening check-in at all — and because it can only line up the next reminder while it is
+    open, the check-in went missing on precisely your best days. The weekly reminders did not fill the
+    gap, because two of them are only sent when you have *stopped* logging. If you are a diligent
+    logger and the reminders quietly thin out or stop, that is exactly the fault we are trying to
+    confirm is gone, so please tell us. Also worth one deliberate try: **turn all reminders off and back on again in the same
+    evening**, then keep an eye out over the following fortnight for the fertile-window nudge. That
+    switch used to convince the app it had already sent things it never sent, and the fertile-window
+    nudge waits a full two weeks before it will send again.
+21. **Recipe photographs — does the picture match the plate?** Nutrition → open each recipe card.
+    Every recipe now has its own photograph. Automated checks prove each card has a picture, that no
+    two cards share one, and that every image actually ships — but nothing can check that the *soup*
+    card shows soup. Please look at all eight and tell us if any photograph belongs to a different
+    recipe, or shows something the recipe does not contain.
+22. **When your next period is due — please check the number, not just that one appears.** Home says
+    "Next period" and Track says "Your next period is due in N days". Both were **one day short**,
+    on every cycle, for everyone. The way to see it is to look on the *last* day of your cycle: the
+    app used to say your period was due **today**, a day before it predicted it. It should now say
+    tomorrow. Day 1 still correctly says today, because that is the day it started.
+23. **If your cycle is 21–24 days, look at your ovulation day on the calendar.** On a short cycle the
+    predicted ovulation day falls inside your period, and the calendar was drawing it as an ordinary
+    period day — no ovulation colour, and VoiceOver just said "Period" — while Home, Insights and the
+    cycle sheet all still named it. It now carries a heavier ring and, if you use VoiceOver, says
+    "your predicted ovulation day". Please confirm the day the calendar highlights is the same day
+    the other screens name. (Cycles of 25 days or more never had this; the two never overlapped.)
+24. **"Your logs" should not skip a day you logged.** Insights → Your logs. A day where the only
+    thing you did was tick a food group, or log intimacy, used to disappear from this list entirely —
+    even though the calendar showed a dot for it and it counted towards your streak. Please try it:
+    tick one food group and nothing else, then check that day appears here with what you ticked. Same
+    with intimacy on its own, which now shows as its own row.
+25. **Setting up your cycle for the first time — it must not guess for you.** On a fresh install, go
+    to your cycle settings. The last-period field starts **empty** and Save stays greyed out until
+    you choose a date. "Choose a date" used to silently fill in **today** and enable Save, so anyone
+    who tapped it to see the calendar and then tapped Save had every prediction in the app built on a
+    date they never picked. If your period genuinely did start today there is now a
+    **"My period started today"** button under the calendar — please use it and confirm Save turns on.
+26. **Your own supplements now follow the account, and the time field changed shape.** Nutrition →
+    Supplement plan → the "Add your own" row. The time box used to be free text; it is now a picker
+    with four options and a "No time" choice. **If you already had supplements in this app, please
+    look at them before anything else:** every one should still be listed with its name and dose, but
+    a time you typed by hand ("with breakfast", "8pm") will now be blank. That is intended and cannot
+    be undone — please report the opposite, a supplement that vanished entirely. Then: add one, force
+    quit, reopen — it should still be there. If you have a second device or the Android app on the
+    same account, add one there and pull-to-refresh here; it should arrive. Delete one on either
+    device and confirm it does **not** come back on the other after a refresh. Finally, try a very
+    long name — past about 60 characters the Add button greys out rather than accepting it.
+27. **Adding a supplement with no signal.** Turn on aeroplane mode, add a supplement, then turn it
+    off and reopen the app. It must still be in your list, and it must reach your other device.
+    Nothing you type should ever depend on having signal at that moment.
+28. **Signing out and signing in as someone else — please use two throwaway accounts, never your
+    own.** Set your focus to **Pregnancy** in Profile, sign out, then sign in with a *different*
+    account. That second account must open Profile and see **Fertility Prep**, not Pregnancy, and
+    must see none of the first account's logs, cycle dates, pH readings or supplements. Then check it
+    the other way round: sign back in as the first account and confirm your own Pregnancy setting has
+    come back. This is the fix we are least able to prove without real accounts, so it is the most
+    valuable thing you can test.
+29. **Deleting an account and then using the phone again.** With a throwaway account, change your
+    display name in Profile, then delete the account from Profile → Delete account. Log a little
+    something afterwards — some water, a symptom. Now sign in with a second throwaway account. It
+    must be greeted by **its own** name, not the deleted account's, and it must **not** have inherited
+    anything you logged in between.
+30. **The quiz back button.** In onboarding, answer all five questions, reach the summary, then tap
+    back. You should land on the last question with **all five answers still selected** — not on
+    question one with the quiz emptied.
+31. **What the app says on your ovulation day.** On the day the app predicts you ovulate, Home should
+    say it is happening **today** — it used to say ovulation was "expected in 1–2 days" on the very
+    day it had already named. Please report any screen that still describes that day as being in the
+    future.
+32. **The Sunday "new this week" notification.** If you get one, tap it. It must open a real article.
+    If it ever opens a page saying "That article isn't available", screenshot the notification text —
+    that is the exact fault we fixed and we want to know if any route to it survives.
+33. **General** — sign in, complete cycle setup, and sanity-check Home, Insights and Learn.
 
 Please report anything that looks wrong with a screenshot and the steps to reproduce. Thank you!
 
@@ -109,19 +214,73 @@ Please report anything that looks wrong with a screenshot and the steps to repro
 
 ## What's NOT in this build (say so if asked)
 
-- **Custom-supplement cloud sync** — still local-only, as in 17.
+- ~~**Custom-supplement cloud sync**~~ — **this now ships, on 14 Aug; the entry is kept because every
+  earlier build lacked it and because the migration it performs is one-way.** Custom supplements were
+  the last user-entered thing on iOS sitting entirely outside the owed-write contract: `@AppStorage`
+  JSON with no pending flag, no drain, no read-back. They now go through `SupplementsRepository` like
+  everything else — local write wins, a failed push stays pending and is retried, a pull merges
+  rather than replaces, and a delete is a tombstone so it propagates instead of being resurrected.
+  Three things about it are worth a tester's attention:
+  - **The time field is now a four-option picker** (Morning / Afternoon / Evening / Anytime), matching
+    Android's `SupplementTime` labels exactly, because the live constraint is
+    `time_of_day is null or time_of_day in ('morning','afternoon','evening','anytime')` and free text
+    would simply be rejected. **A value an existing user typed by hand no longer displays** — the
+    supplement itself is kept, only the unrecognisable time is dropped, and recognisable ones
+    ("Evening", " MORNING ") are recovered. This was the client's decision on 14 Aug; the discarded
+    text cannot be recovered afterwards because it never left the phone, so there is no way to count
+    how many users it affects.
+  - **The name field now refuses anything over 60 characters** rather than accepting it, because the
+    server's `check (char_length(btrim(name)) between 1 and 60)` would reject the row forever inside
+    the retry queue. The Add button greys out instead of failing silently.
+  - **First sign-in on an existing device carries the list up, it does not pull an empty one down.**
+    Every pre-sync user has a full phone and an empty `user_supplements`; if that pull won, the
+    feature would launch by deleting her list. The merge treats a local-only list as pending upload.
+
+  The one-way part: the legacy `@AppStorage` key is read exactly once, when the repository has no
+  records of its own. Once records exist it is never consulted again, so a downgrade to build 17
+  would show a stale list.
 - **Hydration display preferences** (unit and glass size) — device-local, not synced to the account.
   A new phone starts at millilitres with a 250 ml glass. Tracked as task 25; it is one coordinated
   change with Android, because storage is always `waterMl` and only the description differs.
-- **Food photography** — the recipe cards ship, but on a coloured gradient rather than a photograph.
-  The asset catalogue holds no food imagery at all and stock placeholder art is an App Store
-  rejection risk, so the cards were built with a seam for real photography to drop into later.
+- ~~**Food photography**~~ — **this now ships; the entry below is kept because earlier builds did
+  not have it.** All 8 recipes carry their own photograph. `imageName` stays optional only so a
+  newly-authored recipe can fall back to the phase gradient while its artwork is prepared. Two tests
+  hold it, and the split matters: `testEveryRecipeHasAUniqueImageMapping` (domain) proves no recipe
+  is left imageless and no two share a plate, while `testEveryRecipeImageAssetExists` (app target)
+  loads each one through `UIImage(named:)` — because SwiftUI's string-based `Image` lookup **fails
+  silently**, so a typo renders an empty card rather than falling back to the gradient. What no test
+  can check is whether the right photograph is on the right card; see tester item 21.
 - **Nutrient counting** — meal logging records food *groups*, not calories, macros or micronutrients.
   Counting needs a food database, which is the deferred barcode/photo work.
 - **Logging food groups on Android** — meals now count toward your streak, so a day where meals are
   the only thing you logged keeps it alive, and both platforms compute that identically from the
   same rule. What Android still lacks is the *editor*: it reads, syncs and counts your food groups,
   but iOS remains the only place you can tick them.
+- **Deleting a logged day** — you can correct any past day, but you cannot remove one. There is no
+  delete path for a daily log on either platform; whether there should be is a data-retention
+  decision, not an oversight. pH readings *can* be deleted individually.
+- **Old urine-scale pH readings, if you also use the Android app** — readings taken before the switch
+  to vaginal pH are on a different scale, so this build hides them rather than mixing them into your
+  trend. They are not deleted: they are stored and synced, and they are excluded from your averages
+  either way. But the Android app still *shows* them, labelled "urine (legacy)", so the same account
+  will show a longer pH history there than here. Which behaviour is right is an open product
+  question. *(Editing the hydration sheet's own day range is no longer on this list — the seven-day
+  strip became tappable on 14 Aug; see item 19 above.)*
+- **Reminders for someone who has stopped opening the app.** The app schedules one reminder at a
+  time and can only schedule the next one while it is open. That is fine while you are using it — a
+  fault where a completed day left nothing queued at all is fixed in this build — but it means the
+  message aimed at someone who has gone quiet for a fortnight is the one message that cannot get
+  through, because by then the app is not being opened to schedule it. Closing that needs background
+  refresh, which is a capability with its own battery and App Store-review implications and a change
+  in its own right, not a tweak to the reminder rules.
+- **The Android app's period countdown is still a day short.** The fix in item 22 above is iOS only.
+  Android and the website share the same expression and were never corrected, so on the last day of
+  a cycle the same account will say "due tomorrow" on iPhone and "due today" on Android. iOS is the
+  one that is right. Correcting the other two is a change to those codebases, not this one.
+- **The calendar key still shows ovulation as its own colour.** On a 21–24 day cycle that colour
+  never appears in the grid, because the ovulation day is drawn as a period day (item 23). The day
+  itself is now named correctly; making the *key* change wording depending on cycle length is a
+  design decision rather than a correction, so it was left alone.
 - **The girl/boy quiz framing** — still held pending written client and medical-reviewer approval to
   remove `"boy or girl"` from `QuizContentTests`. Calendar time, not engineering time.
   *(The Shettles article is no longer on this list: it shipped 12 Aug as week 12 of the series,
@@ -133,8 +292,13 @@ Please report anything that looks wrong with a screenshot and the steps to repro
 - Contains build 17 plus the client change list: T1–T6, T8, T10–T18, T20, T21, T23–T27, T28,
   T29a/T29c, T30, the waitlist wiring, and the privacy/security batch (quiz answers moved off the
   partner-readable `profiles` row; a user can no longer declare themselves someone else's partner).
-- **Green baseline:** 239 domain · 238 app · 57 UI, 0 failures. Verified 13 Aug 2026. Do not pass
+- **Green baseline:** 267 domain · 272 app · 66 UI, 0 failures. Verified 14 Aug 2026. Do not pass
   `-quiet` — it has returned exit 0 with no summary and hidden a real result.
+- **The UI number is not ceremonial — never cut a build on the two fast suites alone.** The supplement
+  batch had 30 new tests green while the app *terminated* on tapping "Review Plan" (a missing
+  `@EnvironmentObject` injection). Neither fast suite can see that class of fault: the domain tests
+  never touch SwiftUI, and the app tests build the screen's dependencies themselves. The ~12-minute
+  UI run caught it on the first attempt. Budget the 12 minutes before every submission.
 - **"Application failed preflight checks" is a simulator fault, not a test failure.** The UI runner
   refused to install twice on 13 Aug, aborting in ~30 s with `TEST FAILED` and no test counts. Boot
   the device first and `simctl uninstall` both `com.genesyx.app` and
@@ -170,6 +334,9 @@ This list lived only in conversation until now, which is why it is written down 
 | P0-17A | **Android supplement sync writes to a table that does not exist — data is not restorable** | ⬜ Found 13 Aug. `user_supplements` is absent from the live schema and the only migration that would create it has **never been applied**. Production DI binds the real Supabase implementation whenever credentials are configured (`NetworkModule.kt:139,148`), and they are. So she adds a supplement, it lands in Room as `PENDING_UPSERT` (`UserSupplementRepository.kt:76`), the push fails against a missing relation, `pushOrQueue` **logs a warning and reschedules** (`:98-108`), `syncPending()` returns false, and `UserSupplementSyncWorker` returns `Result.retry()` so WorkManager backs off and retries **forever**. The pull path fails the same way, log-only (`:158`). **The severity is data restoration, not just sync:** nothing has ever reached the server, so a new phone, a reinstall or a sign-in elsewhere shows none of it, and there is no copy anywhere but that one device. **I previously called the wording honest. That was wrong, and it is the opposite.** `ProfileScreen.kt:160` renders *"Saved on your device — they'll sync to your account automatically."* — a promise that is **false** while the table does not exist. The code comment directly above it (`:145-146`) states the lingering count is *"reassuring, not an error"* because the change *"syncs on its own"*; for supplements it never does, so the reassurance is false too, and the "Sync now" button re-runs a drain that cannot succeed. The counter is shared with daily logs and pH, whose tables **do** exist, so the stuck remainder is indistinguishable from a transient queue. **Play exposure: NOT VERIFIED — it needs Play Console, which I cannot reach** (no `adb`, no fastlane, no publish workflow, no app release tags). What the repo does bound: the feature arrived `aecac1a` on **29 Jul**, *after* the 27 Jul bump to `versionCode 13`, and `versionCode 14` was bumped **12 Aug** with the message "for the **next** Play release" (`ab0ebc0`) with six feature commits landing after it. **So if Production and Internal are at 13 or below, no Play user has ever run this code and it is a current-source defect only; if 14 was promoted to any track, testers on that track are losing entries now.** Settle it by reading both track version codes before deciding urgency. **✅ Server side fixed 13 Aug by migration B, `20260813_android_supplements_backend.sql`, applied to production.** `user_supplements` now exists with `user_id → auth.users(id) ON DELETE CASCADE` — so account deletion covers it with no change to either delete path, which is why A and B are order-independent — and `product_id → genesyx_products(id) ON DELETE SET NULL`, because retiring a product must never delete her history. `updated_at` is **nullable on purpose**: `UserSupplementDto.updatedAt` is `String?` and `toDto()` emits `updatedAt?.toString()`, so a `NOT NULL` column would have rejected precisely the rows this migration exists to unstick. Owner-only RLS, both indexes present, table empty. **Not yet proven end to end** — verification test 7 needs an Android build with credentials, and until someone watches that "N changes not synced yet" row reach zero on its own, "the queue now drains" is inference, not evidence |
 | P1-1 | `genesyx_products` catalogue table is not created | ⬜ Found 13 Aug, and **deliberately not filed with P0-17A — it is not the same class of problem.** The table is absent live, so the catalogue read fails; but `GenesyxProductRepository.kt:28` catches that and renders the **"coming soon"** empty state, which is *also the truthful answer* — the Genesyx range has zero SKUs and has not launched. Nothing queues, nothing is pending, no user data is at risk and there is nothing to restore. It is a readiness gap, not a data defect: a failed fetch and an empty catalogue are indistinguishable to her, and both are correct today. Worth creating empty anyway, because then real SKUs can be seeded with **no app update on either platform** — which is exactly what the client already built for. **✅ Created 13 Aug by migration B, applied to production** — empty, RLS on, a single `select` policy and no write grant by any route, so seeding real SKUs is a data change rather than a release on either platform. Nothing visible changed: the app still renders "coming soon", which remains the truth |
 | P1-2 | **Every new table in `public` is born with `authenticated` holding TRUNCATE** | ✅ Found and fixed 13 Aug, **by my own migration B breaking it first.** This project's schema-level default privileges grant the full `arwdDxtm` to `anon`, `authenticated` and `service_role` at `CREATE TABLE` time. Migration B wrote `grant select on genesyx_products to authenticated` and assumed that *described* the result; `GRANT` is additive, so it described only what was added. The post-apply read showed `authenticated` holding `DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE` on **both** new tables. **`TRUNCATE` is the one that bites: it is not subject to RLS**, so the owner policy that correctly scopes every other verb to her own rows cannot refuse it, and one statement would empty every user's supplements. This is the identical hole `2e07f1f` closed on the other six tables three weeks ago — creating a table silently re-opens it, which is exactly why it is worth a row of its own rather than a footnote. Fixed by making the revoke name `authenticated` as well as `anon` and re-applying; grants now read exactly `SELECT` on `genesyx_products` and `DELETE,INSERT,SELECT,UPDATE` on `user_supplements`, with `anon` holding nothing on either. **Standing rule for this project: after any `create table`, read the ACL back — the failure to look for is an extra privilege, not a missing one.** A "can the client still write?" check passes cleanly while this defect is present |
+| P0-19 | **Mandatory authentication gate (H22) is not in this archive** | ⚠️ **Not in build 18.** Build 18 was archived **13 Aug**. H22 landed **14 Aug** and is still uncommitted. Testers on 1.2.0 (18) will still reach every private tab after logout, deletion, or a missing session — that is the old `onboardingComplete`-only route, not a regression in the gate. **Do not tell them to look for mandatory Sign In.** The working tree now routes from session first (`RootRouting`), fails closed in Release without a backend, and has unit coverage for a revoked token (`SessionExpiryTests`). Physical logout/relaunch remains **DEFERRED** (no iPhone). Same rule as P0-18: this becomes a tester-facing fact the moment a later build carries the gate. |
+| P0-18 | **The bundled free-guide PDF gates the *next* public submission, not this one** | ⚠️ **Not in build 18.** Build 18 was archived 13 Aug; the free guide (H21) landed 14 Aug and is still uncommitted, so nothing here changes this build and testers should not be told to look for it. It is recorded now because it becomes a submission gate the moment a build carries it, and this is the checklist whoever prepares that build will read. **Client ruling D5, 14 Aug: the PDF is usable internally — TestFlight is fine — but it is NOT App Store-ready.** Four corrections need a person before public submission: the filename and internal PDF metadata must read "7-Day Fertility Nutrition Starter Guide" (it was supplied as a recipe book, so saving or sharing it produces a different title from the one the app showed); the page-20 typo "Download **out** free app" must read "our"; the page-20 QR code / app-download call-to-action must go, because it tells a reader who is already inside the app to download the app — and that QR is precisely the silent exit to Safari the in-app reader deliberately blocks; and the PDF must be accessibility-tagged or carry an accessible text equivalent in the app (the reader sets an `.accessibilityLabel`, which is not a text equivalent). **Plus the medical and content-source review every other piece of shipping content has had — this file came in through a different door.** Engineering is done and proven: the PDF is verified inside the built `.app` rather than just the repo, which matters because if it fell out of Copy Bundle Resources nothing would complain — the button would still open and the reader would simply be blank. Detail in `CHANGE_LIST_PLAN.md` §11.1c, `HANDOFF.md` §0h |
+| H22 | **The mandatory authentication gate is NOT in build 18** | ⚠️ **Not in build 18, and build 18's notes above must not be read as though it were.** Build 18 was archived 13 Aug. H22 — the gate that stops every private tab mounting without a validated session — landed 14 Aug and is still uncommitted, so **nothing in this document's build-18 rows changes**, and no tester on build 18 is exercising it. **A new archive and a new build number are required before H22 can reach TestFlight at all;** re-uploading 18, or renumbering it, would ship the pre-gate binary under a name that claims the gate. Engineering state, 14 Aug: **Engineering Done; simulator verified; physical-device QA deferred because no physical iPhone is available.** What that split means, precisely — the simulator suites are green and the decision table (`RootRouting.destination`) and the expired/revoked-token lifecycle (`SessionExpiryTests`) are both covered by domain-level tests that a UI-only rewrite cannot satisfy; but **every UI test runs `AppContainer.uiTestSeeded()` with `backend: nil`**, so they prove the routing table and the view wiring and never Supabase's real session restore. Keychain persistence across a genuine cold boot, a token revoked from another device, and Sign in with Apple on real hardware are therefore **unproven, not passed**. Whoever cuts the next build owes: a physical-device pass on those three, then a TestFlight pass on the same. See `HANDOFF.md` §0-H22 and `CHANGE_LIST_PLAN.md` |
 | P0-15 | **`delete_account` does not revoke the Sign in with Apple token** | ⬜ Found 13 Aug, confirmed by reading `supabase/functions/delete_account/index.ts` end to end — there is no call to Apple's `/auth/revoke` anywhere. Apple requires apps offering Sign in with Apple to revoke the refresh token on account deletion; leaving it live means the relationship persists after she deleted everything. Also in that file: the `waitlist_emails` delete is **best-effort** — on error it logs and falls through, and `{ok: true}` is returned regardless (`:84-108`), so a woman can be told her data is gone while her email is still on the waitlist. **Confirmed live 13 Aug: this is not hypothetical.** `auth.identities` grouped by provider returns **apple 2**, email 15, google 2 — Sign in with Apple is offered *and in use*, so the revocation duty is already engaged for real accounts, not just theoretically by having the button on screen |
 
 ### What P0-4 was

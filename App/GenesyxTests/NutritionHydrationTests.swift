@@ -1,6 +1,9 @@
 import XCTest
 @testable import Genesyx
 import GenesyxCore
+#if canImport(UIKit)
+import UIKit
+#endif
 
 /// Content-safety + logic guards for the Hydration Coach copy.
 final class NutritionHydrationTests: XCTestCase {
@@ -42,6 +45,21 @@ final class NutritionHydrationTests: XCTestCase {
             }
         }
     }
+
+    #if canImport(UIKit)
+    /// SwiftUI's string-based `Image` lookup fails silently, leaving only the phase gradient. Use
+    /// the same bundle lookup here so every mapped recipe photograph is proven to ship in the app.
+    func testEveryRecipeImageAssetExists() {
+        for recipe in RecipeContent.all {
+            guard let name = recipe.imageName else {
+                XCTFail("Missing image mapping for \(recipe.name)")
+                continue
+            }
+            XCTAssertNotNil(UIImage(named: name),
+                "Missing recipe asset \"\(name)\" for \(recipe.name)")
+        }
+    }
+    #endif
 
     func testCoachLineNamesDayPartFirst() {
         XCTAssertTrue(HydrationCoach.coachLine(hour: 7, pct: 0.2).hasPrefix("Morning"))

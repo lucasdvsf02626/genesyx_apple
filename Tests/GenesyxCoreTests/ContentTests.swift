@@ -181,6 +181,24 @@ final class ContentTests: XCTestCase {
         // Not fertile -> unchanged.
         XCTAssertEqual(CycleContent.phaseTags(.follicular, inFertile: false), base)
     }
+
+    /// `.ovulatory` is entered on `dayOfCycle == ovulationDay` and left the next day, so it is
+    /// always exactly today — never a forecast. The sub-line had been written for an approaching
+    /// window and said "expected in 1–2 days", which put the card at odds with its own hero, with
+    /// the "Predicted ovulation: Day 14" printed directly beneath it on Home, and with Track.
+    func testOvulatoryCopyNamesTheDayRatherThanForecastingIt() {
+        let info = CycleEngine.cyclePhase(
+            settings: CycleSettings(lastPeriodDate: CalendarDate.today().addingDays(-13),
+                                    cycleLength: 28, periodLength: 5))
+        XCTAssertEqual(info.dayOfCycle, 14)
+        XCTAssertEqual(info.phase, .ovulatory, "day 14 of a 28-day cycle is the ovulation day itself")
+
+        let sub = CycleContent.phaseHeroSubtext(.ovulatory, inFertile: true)
+        for forecast in ["1–2 days", "1-2 days", "expected in", "days away", "approaching"] {
+            XCTAssertFalse(sub.lowercased().contains(forecast.lowercased()),
+                           "the one day she is ovulating must not be described as still to come: \(sub)")
+        }
+    }
 }
 
 private extension String {

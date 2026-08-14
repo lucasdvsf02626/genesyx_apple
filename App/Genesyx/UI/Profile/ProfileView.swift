@@ -10,7 +10,6 @@ struct ProfileView: View {
 
     @EnvironmentObject private var session: SessionRepository
     @EnvironmentObject private var prefs: PreferencesRepository
-    @EnvironmentObject private var partner: PartnerRepository
     @EnvironmentObject private var notifications: NotificationService
     @EnvironmentObject private var cycle: CycleRepository
 
@@ -35,6 +34,8 @@ struct ProfileView: View {
     @AppStorage(HydrationPrefs.glassMlKey) private var hydrationGlassMlRaw = 0
     /// Held as text so a half-typed "3" is not read as a 3 ml glass on the way to 300.
     @State private var glassSizeField = ""
+    /// Losing focus is when a half-typed size stops being half-typed and becomes her answer.
+    @FocusState private var glassSizeFocused: Bool
 
     private var name: String { session.displayName ?? "Guest" }
 
@@ -143,23 +144,33 @@ struct ProfileView: View {
         VStack(alignment: .leading, spacing: 8) {
             groupLabel("Current focus")
             HStack(spacing: 6) {
-                focusSeg("Fertility Prep", selected: prefs.focusMode == .prep) { prefs.focusMode = .prep }
-                focusSeg("Pregnancy", selected: prefs.focusMode == .pregnancy) {
-                    prefs.focusMode = .pregnancy
-                    showPregnancy = true   // opens the "coming soon" teaser (no functional pregnancy mode in v1)
+                focusSeg("Fertility Prep", id: "focus.prep", selected: prefs.focusMode == .prep) {
+                    prefs.focusMode = .prep
+                }
+                // Shows the "coming soon" teaser and changes nothing else, because there is nothing
+                // else to change: no screen in the app behaves differently in pregnancy mode. It
+                // used to store `.pregnancy` and sync it, which left the segment reading Pregnancy
+                // for good — on this phone, on the server and on Android — while every screen went
+                // on doing fertility prep, and while the sheet's own button said "Keep tracking".
+                focusSeg("Pregnancy", id: "focus.pregnancy", selected: prefs.focusMode == .pregnancy) {
+                    showPregnancy = true
                 }
             }
             .padding(4).background(GenesyxColor.muted).clipShape(RoundedRectangle(cornerRadius: 16))
         }
     }
 
-    private func focusSeg(_ label: String, selected: Bool, action: @escaping () -> Void) -> some View {
+    private func focusSeg(_ label: String, id: String, selected: Bool, action: @escaping () -> Void) -> some View {
         Text(label).font(.system(size: 13, weight: .medium))
             .foregroundStyle(selected ? GenesyxColor.foreground : GenesyxColor.mutedForeground)
             .frame(maxWidth: .infinity, minHeight: 44)
             .background(selected ? GenesyxColor.card : .clear)
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .onTapGesture(perform: action)
+            .accessibilityIdentifier(id)
+            // Which segment is chosen was said in colour and background alone, so VoiceOver read
+            // both of them the same way and nothing outside the view could tell them apart either.
+            .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
     }
 
     // MARK: Groups
@@ -202,7 +213,11 @@ struct ProfileView: View {
         VStack(alignment: .leading, spacing: 8) {
             groupLabel("Notifications")
             cardGroup {
-                Toggle("Weekly reminders", isOn: Binding(
+                // "All", not "Weekly". This is the master switch — `NotificationService.isActive`
+                // gates every category on `pushEnabled`, and turning it off cancels the lot: the
+                // daily supplement reminders, the evening check-in, and the fertile-window nudge
+                // she is here for. A woman declining a weekly digest was silently declining that.
+                Toggle("All reminders", isOn: Binding(
                     get: { notifications.isOn },           // she asked for them AND iOS agreed
                     set: { on in
                         if on && notifications.authorizationStatus == .notDetermined {
@@ -319,6 +334,7 @@ struct ProfileView: View {
                     Spacer()
                     TextField(String(HydrationUnit.mlPerGlass), text: $glassSizeField)
                         .keyboardType(.numberPad)
+                        .focused($glassSizeFocused)
                         .gxKeyboardDoneToolbar()
                         .multilineTextAlignment(.trailing)
                         .font(.system(size: 14.5, weight: .medium))
@@ -345,6 +361,21 @@ struct ProfileView: View {
         // screen looking like the setting took.
         .onChange(of: hydrationUnitRaw) { _ in
             glassSizeField = String(HydrationPrefs.glassMl(from: hydrationGlassMlRaw))
+        }
+        // Leaving the field is when a half-typed size becomes her answer, so it is also where an
+        // unusable one has to be dealt with. Until now it was dealt with in silence: the rule above
+        // stores nothing outside 50–1000, so "3000" sat in the field reading exactly like a setting
+        // that had taken while her glass was still 250, and the only thing that ever put the field
+        // right was switching units — which nobody does to check a number they believe they saved.
+        // Corrected to the nearest size she may actually have rather than reverted, because
+        // reverting answers a woman who typed 3000 with a number she neither typed nor had.
+        .onChange(of: glassSizeFocused) { focused in
+            guard !focused else { return }
+            let corrected = Int(glassSizeField).map {
+                min(max($0, HydrationUnit.glassRangeMl.lowerBound), HydrationUnit.glassRangeMl.upperBound)
+            } ?? HydrationPrefs.glassMl(from: hydrationGlassMlRaw)
+            hydrationGlassMlRaw = corrected
+            glassSizeField = String(corrected)
         }
     }
 
@@ -462,14 +493,6 @@ struct ProfileView: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier(label)
-    }
-
-    private func switchRow(_ label: String, isOn: Binding<Bool>) -> some View {
-        Toggle(isOn: isOn) {
-            Text(label).font(.system(size: 14.5)).foregroundStyle(GenesyxColor.foreground)
-        }
-        .tint(GenesyxColor.primary)
-        .padding(.horizontal, 16).frame(minHeight: 52)
     }
 
     private var divider: some View {

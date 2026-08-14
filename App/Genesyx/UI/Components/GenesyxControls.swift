@@ -311,10 +311,14 @@ struct MilestoneCelebrationView: View {
                 RoundedRectangle(cornerRadius: 20)
                     .strokeBorder(GenesyxColor.border, lineWidth: 1))
             .padding(.horizontal, 32)
-            // Deliberately unidentified. An `accessibilityIdentifier` out here does not name the
-            // card — SwiftUI lets the outermost one win, so it renamed the only control inside and
-            // the whole celebration collapsed into a single button called "Thanks", with the words
-            // she had earned unreadable to VoiceOver. `milestone.dismiss` is the handle instead.
+            // `.contain` is load-bearing, not decoration. A bare `accessibilityIdentifier` out here
+            // does not name the card: SwiftUI lets the outermost one win, so it renamed the only
+            // control inside and the whole celebration collapsed into a single button called
+            // "Thanks", with the words she had earned unreadable to VoiceOver. `.contain` declares
+            // this a container whose children stay their own elements, which is what lets the card
+            // carry a name and the title and the button keep theirs.
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("milestone.celebration")
         }
     }
 }

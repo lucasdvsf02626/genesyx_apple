@@ -12,6 +12,10 @@ struct CycleSettingsSheet: View {
     @Environment(\.dismiss) private var dismiss
     // nil until a date is actively chosen — a new user's date is NEVER fabricated (e.g. "today").
     @State private var lastPeriod: Date?
+    // Whether the picker is on screen, which is NOT the same question as whether she has chosen.
+    // Conflating the two is what put "today" in the field: the empty-state button assigned `Date()`
+    // purely to give the picker something to bind to, and that assignment enabled Save.
+    @State private var isPickingDate = false
     @State private var cycleLength: Int
     @State private var periodLength: Int
 
@@ -38,8 +42,10 @@ struct CycleSettingsSheet: View {
 
                     VStack(alignment: .leading, spacing: 6) {
                         Eyebrow("First day of last period", color: GenesyxColor.mutedForeground)
-                        if lastPeriod == nil {
-                            Button { lastPeriod = Date() } label: {
+                        let showsPicker = CycleSetup.showsDatePicker(
+                            lastPeriod: lastPeriod.map { CalendarDate(date: $0) }, isPicking: isPickingDate)
+                        if !showsPicker {
+                            Button { isPickingDate = true } label: {
                                 Text("Choose a date")
                                     .font(.gxBody).foregroundStyle(GenesyxColor.primary)
                                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -53,6 +59,18 @@ struct CycleSettingsSheet: View {
                             DatePicker("", selection: lastPeriodBinding, in: ...Date(), displayedComponents: .date)
                                 .datePickerStyle(.graphical)
                                 .tint(GenesyxColor.primary)
+                            // The picker has to be handed a non-optional date, so it opens on today
+                            // whether or not she means today — and tapping the day it is already
+                            // showing may not move the binding, which would leave Save disabled with
+                            // nothing on screen explaining why. This is that day, said out loud.
+                            if lastPeriod == nil {
+                                Button { lastPeriod = Date() } label: {
+                                    Text("My period started today")
+                                        .font(.gxBodySmall).foregroundStyle(GenesyxColor.primary)
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityIdentifier("cycle.lastPeriodIsToday")
+                            }
                         }
                     }
 

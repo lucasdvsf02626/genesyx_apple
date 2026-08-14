@@ -47,9 +47,12 @@ final class AuthPartnerBackendTests: XCTestCase {
         XCTAssertEqual(auth.signInCount, 1)
     }
 
-    func testSessionRestoresFromExistingBackendUser() {
+    func testSessionRestoresFromExistingBackendUser() async {
         let auth = FakeAuth(); auth.userId = "u1"
-        XCTAssertTrue(SessionRepository(store: makeStore(), auth: auth).isSignedIn)
+        let restored = SessionRepository(store: makeStore(), auth: auth)
+        await restored.waitUntilResolved()
+        XCTAssertTrue(restored.isSignedIn)
+        XCTAssertEqual(restored.state, .signedIn)
         XCTAssertFalse(SessionRepository(store: makeStore(), auth: nil).isSignedIn)
     }
 

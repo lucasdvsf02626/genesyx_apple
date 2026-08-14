@@ -132,6 +132,60 @@ final class RealInsightsTests: XCTestCase {
         }
     }
 
+    /// On a short enough cycle the predicted ovulation day falls inside the period, and `dayType`
+    /// answers `.period` because bleeding takes precedence. Three screens still name the day, so
+    /// the calendar was the only surface refusing to — on a TTC app, on her peak day.
+    func testShortCycleOvulationDayIsStillNamedWhenThePeriodFillHidesIt() {
+        let start = CalendarDate(2026, 7, 1)
+        // Every combination the settings sheet allows where ovulation lands inside the period.
+        for (cycleLength, periodLength) in [(21, 7), (22, 8), (23, 9), (24, 10)] {
+            let settings = CycleSettings(lastPeriodDate: start, cycleLength: cycleLength,
+                                         periodLength: periodLength)
+            let ovulationDay = cycleLength - 14
+            let info = CycleEngine.cyclePhase(settings: settings, target: start.plusDays(ovulationDay - 1))
+
+            // The premise: the day is the ovulation day, and the fill will not say so.
+            XCTAssertEqual(info.dayOfCycle, ovulationDay)
+            XCTAssertEqual(info.ovulationDay, ovulationDay)
+            XCTAssertEqual(CycleEngine.dayType(for: info), .period,
+                           "\(cycleLength)/\(periodLength): the fill is the period, not ovulation")
+
+            let label = CyclePredictionCopy.calendarDayLabel(
+                day: 7, type: CycleEngine.dayType(for: info), isFertile: true,
+                isOvulationDay: info.dayOfCycle == info.ovulationDay, isToday: false, markers: [])
+            XCTAssertTrue(label.contains("your predicted ovulation day"),
+                          "\(cycleLength)/\(periodLength) said: \(label)")
+        }
+    }
+
+    /// The ordinary case must not become noisy in the process: after "Ovulation" the fill has
+    /// already said it, and after a plain fertile day there is nothing to add beyond the window.
+    func testTheOvulationNoteIsAddedOnlyWhereTheFillHasNotAlreadySaidIt() {
+        let onOvulationFill = CyclePredictionCopy.calendarDayLabel(
+            day: 14, type: .ovulation, isFertile: true, isOvulationDay: true,
+            isToday: false, markers: [])
+        XCTAssertEqual(onOvulationFill, "14, Ovulation")
+
+        let overlappingFertileDay = CyclePredictionCopy.calendarDayLabel(
+            day: 3, type: .period, isFertile: true, isOvulationDay: false,
+            isToday: false, markers: [])
+        XCTAssertEqual(overlappingFertileDay, "3, Period, also in your fertile window")
+    }
+
+    // MARK: Log history read-back
+
+    /// The calendar draws the dot, the day sheet names it and the streak counts it — and the one
+    /// screen whose job is reading her logs back used to drop the day entirely.
+    func testADayLoggedOnlyAsFoodGroupsOrIntimacyStillReachesHistory() {
+        let foodOnly = DailyLog(foodGroups: [FoodGroup.allCases[0].rawValue])
+        XCTAssertFalse(foodOnly.isBlank, "she ticked a meal; the streak counts it and history must show it")
+
+        let intimacyOnly = DailyLog(sexualActivity: true)
+        XCTAssertFalse(intimacyOnly.isBlank, "the calendar already marks this day")
+
+        XCTAssertTrue(DailyLog().isBlank, "an untouched day is still blank")
+    }
+
     func testFertileWindowBoundariesAreInclusive() {
         let start = CalendarDate(2026, 7, 1)
         let settings = CycleSettings(lastPeriodDate: start, cycleLength: 28, periodLength: 5)

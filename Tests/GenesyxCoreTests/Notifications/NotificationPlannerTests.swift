@@ -82,6 +82,28 @@ final class NotificationPlannerTests: XCTestCase {
         XCTAssertEqual(p.hydrationRestDays, Set(p.weekly.compactMap(\.weekday)))
     }
 
+    /// Seven days from today is today's own weekday, so a fertile nudge at the far edge of its
+    /// horizon used to claim tonight — and the evening check-in stood down for something that fires
+    /// next week. Tuesday is chosen because no evergreen nudge owns it, so the assertion can only
+    /// be about the fertile one.
+    func testAFertileNudgeAWeekOutDoesNotCostTonightsCheckIn() {
+        let p = plan(snapshot(fertileInDays: 7, todayWeekday: 2))
+        let fertile = p.weekly.first { $0.slot == .fertile }
+
+        XCTAssertEqual(fertile?.weekday, 2, "seven days on is the same weekday round again")
+        XCTAssertEqual(fertile?.dayOffset, 7)
+        XCTAssertFalse(p.hydrationRestDays.contains(2), "that nudge is next week — tonight is still hers")
+    }
+
+    /// The other side of it: the morning the window actually opens is a morning she already hears
+    /// from, so there the check-in does stand down. One a day still holds.
+    func testAFertileNudgeTodayStillStandsTheCheckInDown() {
+        let p = plan(snapshot(fertileInDays: 0, todayWeekday: 2))
+
+        XCTAssertEqual(p.weekly.first { $0.slot == .fertile }?.dayOffset, 0)
+        XCTAssertTrue(p.hydrationRestDays.contains(2))
+    }
+
     // MARK: - Invariant 3: never guilt
 
     /// The whole point. A broken streak is never named — she's offered today, not shown the loss.
@@ -207,9 +229,28 @@ final class NotificationPlannerTests: XCTestCase {
         XCTAssertEqual(h?.target, .nutrition)
     }
 
-    /// Logged and hydrated → nothing at all (invariant 1: no filler).
-    func testEveningCheckInSaysNothingWhenTheDayIsComplete() {
-        XCTAssertNil(plan(snapshot(loggedToday: true, waterToday: 2400)).hydration)
+    /// Logged and hydrated → nothing tonight, but tomorrow's invitation is queued.
+    ///
+    /// This deliberately replaces an assertion that the plan was empty. Silence tonight was right;
+    /// silence full stop was not. Requests are one-shot and are only rebuilt when the app is
+    /// opened, so planning nothing here meant the woman who logged everything was the one the app
+    /// stopped speaking to — she finishes her day, has no reason to open the app again, and never
+    /// hears from it again. Invariant 1 asks that a nudge have something true to say; tomorrow's
+    /// invitation is true on the morning it lands, because she cannot log tomorrow without opening
+    /// the app, and opening it re-plans.
+    func testEveningCheckInWaitsForTomorrowWhenTheDayIsComplete() {
+        let h = plan(snapshot(loggedToday: true, waterToday: 2400)).hydration
+
+        XCTAssertEqual(h?.dayOffset, 1, "the day is done, so this one is for tomorrow, not tonight")
+        XCTAssertEqual(h?.title, "A quick log tonight?", "tomorrow she has logged nothing yet")
+        XCTAssertEqual(h?.target, .home)
+    }
+
+    /// The check-in is only ever a fresh invitation or a water nudge — never a boast about the
+    /// streak she is on (invariant 3), including on the day she completes.
+    func testTomorrowsCheckInStillSaysNothingAboutAStreak() {
+        let h = plan(snapshot(daily: 30, best: 30, loggedToday: true, waterToday: 2400)).hydration
+        XCTAssertEqual(h?.body, "A moment to note how today went — it's how the picture builds.")
     }
 
     func testPhCopyNamesHowLongItHasActuallyBeen() {

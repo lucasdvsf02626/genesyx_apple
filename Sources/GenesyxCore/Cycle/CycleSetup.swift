@@ -20,4 +20,14 @@ public enum CycleSetup {
     public static func canSave(lastPeriod: CalendarDate?) -> Bool {
         lastPeriod != nil
     }
+
+    /// Whether the date picker belongs on screen.
+    ///
+    /// Asking for the picker and choosing a date are two different events, and this is the rule that
+    /// keeps them apart. They used to be one: the editor had no way to show a picker without handing
+    /// it a date to bind to, so the empty-state button assigned "today" — the exact fabrication the
+    /// note at the top of this file forbids, and it enabled Save on the way past.
+    public static func showsDatePicker(lastPeriod: CalendarDate?, isPicking: Bool) -> Bool {
+        lastPeriod != nil || isPicking
+    }
 }

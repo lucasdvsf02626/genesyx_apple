@@ -16,7 +16,6 @@ struct HomeView: View {
     @EnvironmentObject private var router: TabRouter
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    @State private var lastPeriod = Date()
     @State private var showLog = false
     @State private var showPregnancy = false
     @State private var showCycleSetup = false
@@ -61,9 +60,11 @@ struct HomeView: View {
             .sheet(isPresented: $showLog) { LogView() }
             .sheet(isPresented: $showPregnancy) { PregnancyView() }
             .sheet(isPresented: $showCycleSetup) {
-                CycleSettingsSheet(current: CycleSettings(lastPeriodDate: CalendarDate(date: lastPeriod))) {
-                    cycle.upsert($0)
-                }
+                // `cycle.settings` — nil for a new user, which is what keeps the sheet's empty state
+                // reachable. Passing a fabricated `CycleSettings(lastPeriodDate: today)` here made
+                // CycleSetup.initialLastPeriod return today, enabled Save, and hid the "My period
+                // started today" confirmation — the very fabrication CycleSetup forbids.
+                CycleSettingsSheet(current: cycle.settings) { cycle.upsert($0) }
             }
         }
     }
@@ -335,6 +336,9 @@ struct HomeView: View {
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
+        // Deliberately does NOT repeat the subtitle's reading value. `CitationE2ETests`
+        // .testHomePhCardHasNoUncitedClaim pins this label to exactly this string so the card stays
+        // a navigational nudge; putting a pH number in it is a compliance call, not an a11y tweak.
         .accessibilityLabel("Check your Vaginal pH")
         .accessibilityHint("Opens the pH tab")
         .accessibilityIdentifier("home.phCard")
@@ -399,10 +403,8 @@ struct HomeView: View {
     private var setupCard: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Welcome to Genesyx").font(.gxTitle).foregroundStyle(GenesyxColor.foreground)
-            Text("When did your last period start? Next we'll confirm your cycle length — every prediction is built from it.")
+            Text("Tell us when your last period started and how long your cycle runs — every prediction is built from them.")
                 .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
-            DatePicker("Last period start", selection: $lastPeriod, in: ...Date(), displayedComponents: .date)
-                .datePickerStyle(.compact)
             Button {
                 // Her cycle length drives phases, ovulation and the fertile window. Ask for it here
                 // rather than defaulting to 28 silently, which would show every user the same cycle.

@@ -59,6 +59,23 @@ enum SyncError {
 /// Social identity providers the app can exchange an ID token for a Supabase session.
 enum SocialProvider { case google, apple }
 
+/// A validated auth session. Produced by `AuthBackend.validatedSession()`, which refreshes
+/// when the SDK can and otherwise returns a non-expired cached session (the offline policy).
+struct AuthSessionSnapshot: Equatable {
+    let userId: String
+}
+
+/// Lifecycle events from `auth.authStateChanges`. The repository maps these onto
+/// `SessionAuthState` so an expiry or a remote sign-out cannot leave the UI claiming
+/// she is still signed in.
+enum AuthLifecycleEvent: Equatable {
+    case initialSession(userId: String?)
+    case signedIn(userId: String)
+    case signedOut
+    case tokenRefreshed(userId: String)
+    case sessionExpired
+}
+
 /// The remote layer the app will use once Supabase is activated (v1.x). Repositories will call
 /// these instead of (or alongside) the local store. Defining them as protocols keeps the UI and
 /// the rest of the app independent of the concrete Supabase implementation.
@@ -75,6 +92,10 @@ protocol AuthBackend {
     func resetPassword(email: String) async throws
     /// Re-sends the sign-up confirmation email to `email` (for an account created but not yet confirmed).
     func resendConfirmation(email: String) async throws
+    /// Refreshes when possible; returns a non-expired cached session when offline.
+    func validatedSession() async -> AuthSessionSnapshot?
+    /// Subscribe to `initialSession` / `signedIn` / `signedOut` / `tokenRefreshed`.
+    func observeAuthState(_ handler: @escaping @MainActor (AuthLifecycleEvent) -> Void)
 }
 
 extension AuthBackend {
@@ -84,6 +105,10 @@ extension AuthBackend {
     func signInWithIdToken(provider: SocialProvider, idToken: String, accessToken: String?, nonce: String?) async throws {}
     func resetPassword(email: String) async throws {}
     func resendConfirmation(email: String) async throws {}
+    func validatedSession() async -> AuthSessionSnapshot? {
+        currentUserId.map { AuthSessionSnapshot(userId: $0) }
+    }
+    func observeAuthState(_ handler: @escaping @MainActor (AuthLifecycleEvent) -> Void) {}
 }
 
 protocol CycleBackend {
@@ -98,6 +123,14 @@ protocol PhBackend {
     func upsert(_ record: PhRecord) async throws
 }
 
+/// Her own supplements, in `user_supplements` — the same table Android reads and writes. One write
+/// path, as with pH: a delete is an upsert carrying a tombstone, and `list` returns tombstones so a
+/// deletion made on her other phone arrives as a deletion rather than as an absence.
+protocol SupplementBackend {
+    func list() async throws -> [SupplementRecord]
+    func upsert(_ record: SupplementRecord) async throws
+}
+
 protocol DailyLogBackend {
     func fetch(date: CalendarDate) async throws -> DailyLog?
     /// Every logged day. Needed on sign-in: a device that only ever pulled "today" could never
@@ -110,6 +143,10 @@ protocol DailyLogBackend {
 /// never nulls out a column it doesn't know about (e.g. `partner_id`).
 protocol ProfileBackend {
     func fetch() async throws -> ProfilePrefs?
+    /// Read on its own rather than folded into `ProfilePrefs`, for the same reason it is written on
+    /// its own: her name belongs to the session, and a prefs struct carrying it would let a prefs
+    /// push overwrite a name that push never read.
+    func fetchDisplayName() async throws -> String?
     func upsert(_ prefs: ProfilePrefs) async throws
     func upsert(displayName: String) async throws
 }
@@ -161,6 +198,7 @@ protocol GenesyxBackend {
     var auth: AuthBackend { get }
     var cycle: CycleBackend { get }
     var ph: PhBackend { get }
+    var supplements: SupplementBackend { get }
     var dailyLog: DailyLogBackend { get }
     var profile: ProfileBackend { get }
     var partner: PartnerBackend { get }

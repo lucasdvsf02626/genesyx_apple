@@ -155,6 +155,12 @@ struct TrackView: View {
             // day: on a short cycle the fertile window opens while she is still bleeding, and
             // `dayType` gives period precedence, so the fill alone erases the overlap.
             let isFertile = info.map { $0.fertileWindow.contains($0.dayOfCycle) } ?? false
+            // The same reasoning one day further in. Where the cycle is short enough that ovulation
+            // falls inside the period — 21/7, 22/8, 23/9 and 24/10 are all selectable in the
+            // settings sheet — `dayType` answers `.period`, so the peak day got no fill, no extra
+            // ring weight and no spoken name, while Home, Insights and the cycle sheet all still
+            // printed "Predicted ovulation: Day 7". Asked of the day itself, it cannot be hidden.
+            let isOvulationDay = info.map { $0.dayOfCycle == $0.ovulationDay } ?? false
             let isSolid = type == .ovulation
             Button { selectedDay = DayInfo(date: date, info: info) } label: {
                 // The square comes from `Color.clear`, which is flexible in both axes — the same
@@ -170,12 +176,15 @@ struct TrackView: View {
                     .overlay(alignment: .bottom) { markerRow(markers, onSolidFill: isSolid) }
                     .background(cellBackground(type))
                     .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .overlay(fertileRing(isFertile: isFertile, onSolidFill: isSolid, isToday: isToday))
+                    .overlay(fertileRing(isFertile: isFertile, onSolidFill: isSolid, isToday: isToday,
+                                         isOvulationDay: isOvulationDay))
                     .overlay(cellBorder(type: type, isToday: isToday))
             }
             .buttonStyle(.plain)
             .accessibilityLabel(
-                cellLabel(date: date, type: type, isFertile: isFertile, isToday: isToday, markers: markers))
+                CyclePredictionCopy.calendarDayLabel(
+                    day: date.day, type: type, isFertile: isFertile, isOvulationDay: isOvulationDay,
+                    isToday: isToday, markers: markers))
         }
     }
 
@@ -185,14 +194,19 @@ struct TrackView: View {
     ///
     /// Inset behind today's stroke rather than fighting it — today is the worst day to lose the
     /// window on, so the two are drawn as concentric rings instead of one replacing the other.
+    /// `isOvulationDay` thickens the ring only where the fill has not already said it. On a normal
+    /// cycle ovulation carries its own solid colour and needs no help; on a short one it is drawn as
+    /// a period day, and without the heavier stroke her peak day looks identical to the five
+    /// ordinary fertile days beside it.
     @ViewBuilder
     private func fertileRing(isFertile: Bool, onSolidFill: Bool, isToday: Bool,
+                             isOvulationDay: Bool = false,
                              cornerRadius: CGFloat = 12) -> some View {
         if isFertile {
             let inset: CGFloat = isToday ? 3 : 0
             RoundedRectangle(cornerRadius: cornerRadius - inset)
                 .strokeBorder(onSolidFill ? GenesyxColor.fertileRingBright : GenesyxColor.fertileRing,
-                              lineWidth: 1.5)
+                              lineWidth: isOvulationDay && !onSolidFill ? 3 : 1.5)
                 .padding(inset)
         }
     }
@@ -219,29 +233,6 @@ struct TrackView: View {
         case .ph: return onSolidFill ? GenesyxColor.markerPhBright : GenesyxColor.markerPh
         case .symptoms: return onSolidFill ? GenesyxColor.markerSymptomsBright : GenesyxColor.markerSymptoms
         case .intimacy: return onSolidFill ? GenesyxColor.markerIntimacyBright : GenesyxColor.markerIntimacy
-        }
-    }
-
-    /// Dots carry meaning no screen reader can see, so the cell says it instead of reading out a
-    /// bare number.
-    private func cellLabel(date: CalendarDate, type: DayType?, isFertile: Bool,
-                           isToday: Bool, markers: [DayMarker]) -> String {
-        var parts = ["\(date.day)"]
-        if isToday { parts.append("today") }
-        if let type { parts.append(legendLabel(for: type)) }
-        // Only where the fill has already said it: "fertile window" after "Fertile window" or
-        // "Ovulation" is noise, but on a short cycle's overlapping period day it is the ring's
-        // whole meaning, and a ring is the one thing a screen reader cannot see.
-        if isFertile, type == .period { parts.append("also in your fertile window") }
-        parts.append(contentsOf: markers.map { markerLabel($0) })
-        return parts.joined(separator: ", ")
-    }
-
-    private func markerLabel(_ marker: DayMarker) -> String {
-        switch marker {
-        case .ph: return "pH logged"
-        case .symptoms: return "symptoms or notes logged"
-        case .intimacy: return "intimacy logged"
         }
     }
 
@@ -323,23 +314,9 @@ struct TrackView: View {
         }
     }
 
-    private func legendLabel(for type: DayType) -> String {
-        switch type {
-        case .period: return "Period"
-        case .fertile: return "Fertile window"
-        case .ovulation: return "Ovulation"
-        case .luteal: return "Luteal"
-        case .follicular: return "Follicular"
-        }
-    }
+    private func legendLabel(for type: DayType) -> String { CyclePredictionCopy.phaseKeyLabel(type) }
 
-    private func legendLabel(for marker: DayMarker) -> String {
-        switch marker {
-        case .ph: return "pH test"
-        case .symptoms: return "Symptoms / notes"
-        case .intimacy: return "Intimacy"
-        }
-    }
+    private func legendLabel(for marker: DayMarker) -> String { CyclePredictionCopy.markerKeyLabel(marker) }
 
     /// Sits under the grid rather than replacing it. The invitation is still worth making — without
     /// a period date there are no phases to show — but it is not worth taking the calendar away for.
@@ -704,6 +681,54 @@ enum CyclePredictionCopy {
     static func ovulationDayLabel(_ day: Int) -> String {
         "Predicted ovulation day: day \(day)"
     }
+
+    static func phaseKeyLabel(_ type: DayType) -> String {
+        switch type {
+        case .period: return "Period"
+        case .fertile: return "Fertile window"
+        case .ovulation: return "Ovulation"
+        case .luteal: return "Luteal"
+        case .follicular: return "Follicular"
+        }
+    }
+
+    static func markerKeyLabel(_ marker: DayMarker) -> String {
+        switch marker {
+        case .ph: return "pH test"
+        case .symptoms: return "Symptoms / notes"
+        case .intimacy: return "Intimacy"
+        }
+    }
+
+    private static func markerSpokenLabel(_ marker: DayMarker) -> String {
+        switch marker {
+        case .ph: return "pH logged"
+        case .symptoms: return "symptoms or notes logged"
+        case .intimacy: return "intimacy logged"
+        }
+    }
+
+    /// A calendar cell's spoken label. Fills and rings carry meaning no screen reader can see, so the
+    /// cell says it instead of reading out a bare number.
+    ///
+    /// Lives here rather than in the view so the short-cycle case has a seam a test can reach: it is
+    /// exactly the case where the fill is wrong, which makes it the one no one would notice by eye.
+    static func calendarDayLabel(day: Int, type: DayType?, isFertile: Bool, isOvulationDay: Bool,
+                                 isToday: Bool, markers: [DayMarker]) -> String {
+        var parts = ["\(day)"]
+        if isToday { parts.append("today") }
+        if let type { parts.append(phaseKeyLabel(type)) }
+        // Only where the fill has not already said it. After "Ovulation" this would be noise; after
+        // "Period" on a short cycle it is the whole point, because the fill has just named the one
+        // thing about the day that is *not* the reason she opened the calendar.
+        if isOvulationDay, type != .ovulation {
+            parts.append("your predicted ovulation day")
+        } else if isFertile, type == .period {
+            parts.append("also in your fertile window")
+        }
+        parts.append(contentsOf: markers.map { markerSpokenLabel($0) })
+        return parts.joined(separator: ", ")
+    }
 }
 
 private struct SparkDots: View {
@@ -874,6 +899,8 @@ private struct HydrationDetailSheet: View {
 
     @State private var manualMl = ""
     @State private var feedbackOverride: DailyLogSyncState?
+    /// The day whose log is open from the history strip below.
+    @State private var editingDay: LogTarget?
     @AppStorage(HydrationPrefs.unitKey) private var hydrationUnitRaw = HydrationUnit.glasses.rawValue
     @AppStorage(HydrationPrefs.glassMlKey) private var hydrationGlassMlRaw = 0
     private var unit: HydrationUnit { HydrationUnit(rawValue: hydrationUnitRaw) ?? .glasses }
@@ -929,6 +956,7 @@ private struct HydrationDetailSheet: View {
             }
         }
         .presentationDetents([.medium, .large])
+        .sheet(item: $editingDay) { LogView(date: $0.date) }
         .onAppear { manualMl = water == 0 ? "" : "\(water)" }
         .onChange(of: water) { newValue in
             guard manualMl.isEmpty || Int(manualMl) != newValue else { return }
@@ -1063,23 +1091,31 @@ private struct HydrationDetailSheet: View {
                 .font(.gxCardHeadingSmall)
                 .foregroundStyle(GenesyxColor.foreground)
             LazyVGrid(columns: columns, spacing: 8) {
+                // Each tile opens that day's log. Seeing "Tue: 0" on a day she knows she drank on is
+                // exactly when she wants to correct it, and until now this was the one place in the
+                // app that showed her a wrong past total and offered nothing to do about it — the
+                // only route was Track → the day → Edit this day, which is not where she is looking.
                 ForEach(rows, id: \.date) { row in
-                    VStack(spacing: 4) {
-                        Text(row.dayLabel(today: today))
-                            .font(.gxEyebrow)
-                            .foregroundStyle(GenesyxColor.mutedForeground)
-                        Text(unit.mlPerUnit(glassMl: glassMl) != nil
-                             ? (row.ml > 0 ? HydrationFormat.trimmedUnits(fromMl: row.ml, unit: unit,
-                                                                          glassMl: glassMl) : "0")
-                             : row.displayTotal)
-                            .font(.system(size: 11.5, weight: .semibold))
-                            .foregroundStyle(row.ml > 0 ? GenesyxColor.foreground : GenesyxColor.mutedForeground)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.75)
+                    Button { editingDay = LogTarget(date: row.date) } label: {
+                        VStack(spacing: 4) {
+                            Text(row.dayLabel(today: today))
+                                .font(.gxEyebrow)
+                                .foregroundStyle(GenesyxColor.mutedForeground)
+                            Text(unit.mlPerUnit(glassMl: glassMl) != nil
+                                 ? (row.ml > 0 ? HydrationFormat.trimmedUnits(fromMl: row.ml, unit: unit,
+                                                                              glassMl: glassMl) : "0")
+                                 : row.displayTotal)
+                                .font(.system(size: 11.5, weight: .semibold))
+                                .foregroundStyle(row.ml > 0 ? GenesyxColor.foreground : GenesyxColor.mutedForeground)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.75)
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 54)
+                        .background(GenesyxColor.muted.opacity(0.45))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
-                    .frame(maxWidth: .infinity, minHeight: 54)
-                    .background(GenesyxColor.muted.opacity(0.45))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("hydrationHistory.\(row.date.iso)")
                 }
             }
         }

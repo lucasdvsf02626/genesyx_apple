@@ -22,4 +22,21 @@ final class CycleSetupTests: XCTestCase {
         XCTAssertFalse(CycleSetup.canSave(lastPeriod: nil))
         XCTAssertTrue(CycleSetup.canSave(lastPeriod: CalendarDate(2026, 7, 1)))
     }
+
+    /// The state the editor could not previously reach, and the reason the fabrication happened:
+    /// showing the picker required giving it a date, so "she opened the picker" and "she chose a
+    /// date" were the same event, and the second one silently meant today.
+    func testOpeningThePickerIsNotChoosingADate() {
+        XCTAssertTrue(CycleSetup.showsDatePicker(lastPeriod: nil, isPicking: true),
+                      "asking for the picker shows it")
+        XCTAssertFalse(CycleSetup.canSave(lastPeriod: nil),
+                       "but nothing has been chosen yet, so Save stays disabled")
+    }
+
+    func testPickerIsHiddenUntilAskedForAndAlwaysShownOnceADateExists() {
+        XCTAssertFalse(CycleSetup.showsDatePicker(lastPeriod: nil, isPicking: false),
+                       "a new user sees the empty state, not a picker sitting on today")
+        XCTAssertTrue(CycleSetup.showsDatePicker(lastPeriod: CalendarDate(2026, 7, 1), isPicking: false),
+                      "an existing date is edited in the picker without asking for it")
+    }
 }

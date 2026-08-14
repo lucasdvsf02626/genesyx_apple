@@ -149,7 +149,15 @@ public struct NotificationPlan: Equatable, Sendable {
     /// The weekly nudges, at most four (invariant 2 gives each its own day).
     public var weekly: [PlannedNotification] { notifications.filter { $0.slot != .hydration } }
     /// Weekdays hydration must stand down on, because a weekly nudge already lands there.
-    public var hydrationRestDays: Set<Int> { Set(weekly.compactMap(\.weekday)) }
+    ///
+    /// A nudge a full week out is excluded, and that exclusion is the whole subtlety: seven days
+    /// from today is today's own weekday, so the fertile nudge at the far edge of its horizon used
+    /// to claim tonight and push the evening check-in to tomorrow for something that fires next
+    /// week. Weekdays are a fair proxy for the four evergreen nudges, which genuinely recur; the
+    /// fertile nudge is one date, and at offset 7 the weekday alias is simply wrong.
+    public var hydrationRestDays: Set<Int> {
+        Set(weekly.filter { $0.dayOffset != 7 }.compactMap(\.weekday))
+    }
 }
 
 // MARK: - The planner
@@ -253,15 +261,17 @@ public enum NotificationPlanner {
     /// present-tense — never a word about a streak or a day she lost (invariant 3):
     ///   • nothing meaningful logged today → a warm invitation to log
     ///   • logged, but water short of goal → a gentle nudge toward one more glass
-    ///   • the day's already complete       → nothing at all (invariant 1)
+    ///   • the day's already complete       → the same invitation, but for tomorrow
     static func hydration(_ snapshot: NotificationSnapshot) -> PlannedNotification? {
-        if !snapshot.hasMeaningfulLogToday {
-            return PlannedNotification(
+        func invitation(dayOffset: Int? = nil) -> PlannedNotification {
+            PlannedNotification(
                 slot: .hydration,
                 title: "A quick log tonight?",
                 body: "A moment to note how today went — it's how the picture builds.",
-                target: .home, weekday: nil, hour: snapshot.reminderHour)
+                target: .home, weekday: nil, hour: snapshot.reminderHour, dayOffset: dayOffset)
         }
+
+        if !snapshot.hasMeaningfulLogToday { return invitation() }
         if snapshot.waterTodayMl < snapshot.waterGoalMl {
             return PlannedNotification(
                 slot: .hydration,
@@ -269,7 +279,13 @@ public enum NotificationPlanner {
                 body: "A little water before the day winds down.",
                 target: .nutrition, weekday: nil, hour: snapshot.reminderHour)
         }
-        return nil   // logged, and hydration's already there — nothing left to say
+        // She has finished the day, so tonight really has nothing to say — but this used to return
+        // nil, and nil left the queue empty. Requests are one-shot and only rebuilt when the app is
+        // opened, so the woman who logged everything was the one the app stopped speaking to: she
+        // completes her day, has no reason to open the app again, and never hears from it again.
+        // Tomorrow's invitation is still true when it lands, because she cannot log tomorrow
+        // without opening the app, and opening it re-plans.
+        return invitation(dayOffset: 1)
     }
 
     // MARK: pH — only when a reading is actually due

@@ -41,6 +41,13 @@ final class BrandAssetTests: XCTestCase {
             + "fill, which is what they looked like before, so nobody would read it as a regression")
     }
 
+    /// The splash lockup. `Image("brand_lockup")` is a string lookup: a missing asset is a blank
+    /// 220×54 hole, not a compile error, and the screen would still have its eggs and copy.
+    func testBrandLockupArtworkExists() {
+        XCTAssertNotNil(UIImage(named: "brand_lockup"),
+            "Missing brand asset \"brand_lockup\" — SplashView would render an empty logo")
+    }
+
     /// The asset shipped as one 1323×2868 file *declared 1x*, which is how a 3x export ends up laid
     /// out at three times its intended size. The point size is the tell: it should be one phone
     /// screen, not three. Asserted here rather than against the files, because this is the number

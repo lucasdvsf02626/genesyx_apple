@@ -43,9 +43,13 @@ public enum CycleContent {
             tags: ["Estrogen rising", "Building energy"],
             focus: FocusCopy("Add 2 cups of leafy greens", "Folate-forward foods support egg quality.")
         ),
+        // `.ovulatory` is exactly one day — `CycleEngine` enters it on `dayOfCycle == ovulationDay`
+        // and leaves it the next day. The sub-line was written for an approaching window and read
+        // "Ovulation expected in 1–2 days", which contradicted its own hero, the "Predicted
+        // ovulation: Day 14" directly beneath it, and Track saying "Day 14 · Predicted ovulation day".
         .ovulatory: PhaseHeroCopy(
             hero: "High chance of conception today",
-            sub: "Ovulation expected in 1–2 days. Stay hydrated and rested.",
+            sub: "This is your predicted ovulation day. Stay hydrated and rested.",
             tags: ["High estrogen", "Peak energy"],
             focus: FocusCopy("Hydrate and prioritise protein", "Eggs, salmon, and avocado support hormone balance.")
         ),

@@ -29,7 +29,7 @@ final class NotificationFlowUITests: XCTestCase {
 
         app.launch()
 
-        let toggle = app.switches["Weekly reminders"]
+        let toggle = app.switches["All reminders"]
         XCTAssertTrue(toggle.waitForExistence(timeout: 15), "the reminders toggle should be on Profile")
         XCTAssertEqual(toggle.value as? String, "0", "reminders must start off — we never opt her in")
 

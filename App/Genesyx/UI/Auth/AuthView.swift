@@ -10,14 +10,17 @@ import GoogleSignIn
 #endif
 
 /// Email + password sign in / sign up, plus Sign in with Apple and Continue with Google.
-/// Ported from the Android `AuthScreen`; presented as a sheet. Writes to `SessionRepository`.
-/// Google is shown only when the GoogleSignIn package is linked; the token exchange happens
-/// via Supabase once that backend is active (falls back to a local mock otherwise).
+/// Ported from the Android `AuthScreen`. In mandatory mode it is root content — no back
+/// button, no dismiss that could expose the private tabs. Optional dismissal is only for
+/// returning to public onboarding or an invite sheet.
 struct AuthView: View {
 
     @EnvironmentObject private var session: SessionRepository
     @Environment(\.dismiss) private var dismiss
     var onSignedIn: (() -> Void)? = nil
+    /// When false this is the root gate: no "Back to app", and success does not dismiss
+    /// because `RootView` will swap on session state.
+    var allowsDismissal: Bool = true
 
     @State private var signupMode = false
     @State private var name = ""
@@ -46,7 +49,7 @@ struct AuthView: View {
                     name: signupMode ? name : nil,
                     signUp: signupMode
                 )
-                onSignedIn?(); dismiss()
+                finishSignedIn()
             } catch RemoteError.emailConfirmationRequired {
                 self.error = "Almost there — check your inbox and confirm your email, then sign in."
                 self.confirmPending = true
@@ -55,6 +58,11 @@ struct AuthView: View {
             }
             submitting = false
         }
+    }
+
+    private func finishSignedIn() {
+        onSignedIn?()
+        if allowsDismissal { dismiss() }
     }
 
     private func resendConfirmation() {
@@ -94,7 +102,7 @@ struct AuthView: View {
                         provider: .apple, idToken: idToken, accessToken: nil, nonce: currentNonce,
                         email: cred.email, name: fullName.isEmpty ? nil : fullName
                     )
-                    onSignedIn?(); dismiss()
+                    finishSignedIn()
                 } catch {
                     print("[AppleSignIn] Supabase exchange FAILED: \(error)")
                     self.error = "Couldn't complete Apple sign-in. Please try again."
@@ -131,7 +139,7 @@ struct AuthView: View {
                     self.error = "Couldn't complete Google sign-in. Please try again."
                     return
                 }
-                onSignedIn?(); dismiss()
+                finishSignedIn()
             } catch {
                 print("[GoogleSignIn] SDK sign-in FAILED: \(error)")
                 // Domain-checked, like the Apple path above. This was `(error as NSError).code == -5`,
@@ -172,7 +180,13 @@ struct AuthView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
-                Text("GENESYX").font(.gxCardHeading).tracking(2).foregroundStyle(GenesyxColor.foreground)
+                Image("brand_lockup")
+                    .resizable()
+                    .renderingMode(.original)
+                    .scaledToFit()
+                    .frame(width: 220, height: 54)
+                    .accessibilityLabel("Genesyx")
+                    .accessibilityIdentifier("auth.brandLogo")
                 Spacer().frame(height: 24)
                 Text(signupMode ? "Create your account" : "Welcome back")
                     .font(.gxDisplayLarge).foregroundStyle(GenesyxColor.foreground).multilineTextAlignment(.center)
@@ -243,13 +257,18 @@ struct AuthView: View {
                         .font(.gxBodySmall.weight(.semibold)).foregroundStyle(GenesyxColor.primary)
                         .onTapGesture { signupMode.toggle(); error = nil; confirmPending = false; resendNotice = nil }
                 }
-                GxGhostButton(title: "Back to app") { dismiss() }
+                if allowsDismissal {
+                    GxGhostButton(title: "Back to app") { dismiss() }
+                        .accessibilityIdentifier("auth.back")
+                }
             }
             .frame(maxWidth: 360)
             .padding(.horizontal, 24).padding(.vertical, 40)
             .frame(maxWidth: .infinity)
         }
         .background(GenesyxColor.background)
+        .accessibilityIdentifier("auth.screen")
+        .interactiveDismissDisabled(!allowsDismissal)
     }
 
     private var divider: some View { Rectangle().fill(GenesyxColor.border).frame(height: 1) }

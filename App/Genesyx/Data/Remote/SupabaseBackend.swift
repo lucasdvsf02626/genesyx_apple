@@ -14,6 +14,7 @@ final class SupabaseBackend: GenesyxBackend {
     lazy var auth: AuthBackend = SupabaseAuth(client: client)
     lazy var cycle: CycleBackend = SupabaseCycle(client: client, auth: auth)
     lazy var ph: PhBackend = SupabasePh(client: client, auth: auth)
+    lazy var supplements: SupplementBackend = SupabaseUserSupplements(client: client, auth: auth)
     lazy var dailyLog: DailyLogBackend = SupabaseDailyLog(client: client, auth: auth)
     lazy var profile: ProfileBackend = SupabaseProfile(client: client, auth: auth)
     lazy var partner: PartnerBackend = SupabasePartner(client: client, auth: auth)
@@ -48,6 +49,49 @@ private struct SupabaseAuth: AuthBackend {
     }
     func resetPassword(email: String) async throws { try await client.auth.resetPasswordForEmail(email) }
     func resendConfirmation(email: String) async throws { try await client.auth.resend(email: email, type: .signup) }
+
+    /// `client.auth.session` refreshes when it can. If that throws (typically offline), a
+    /// non-expired cached session is still a valid credential — the agreed local-first policy.
+    /// An expired cache with no refresh is not: that is a revoked-or-lapsed token.
+    func validatedSession() async -> AuthSessionSnapshot? {
+        do {
+            let session = try await client.auth.session
+            guard !session.isExpired else { return nil }
+            return AuthSessionSnapshot(userId: session.user.id.uuidString)
+        } catch {
+            if let cached = client.auth.currentSession, !cached.isExpired {
+                return AuthSessionSnapshot(userId: cached.user.id.uuidString)
+            }
+            return nil
+        }
+    }
+
+    func observeAuthState(_ handler: @escaping @MainActor (AuthLifecycleEvent) -> Void) {
+        Task {
+            for await (event, session) in client.auth.authStateChanges {
+                let mapped: AuthLifecycleEvent
+                switch event {
+                case .initialSession:
+                    let id = session.flatMap { $0.isExpired ? nil : $0.user.id.uuidString }
+                    mapped = .initialSession(userId: id)
+                case .signedIn:
+                    guard let id = session?.user.id.uuidString else { continue }
+                    mapped = .signedIn(userId: id)
+                case .signedOut:
+                    mapped = .signedOut
+                case .tokenRefreshed:
+                    if let session, !session.isExpired {
+                        mapped = .tokenRefreshed(userId: session.user.id.uuidString)
+                    } else {
+                        mapped = .sessionExpired
+                    }
+                default:
+                    continue
+                }
+                await handler(mapped)
+            }
+        }
+    }
 }
 
 private func requireUID(_ auth: AuthBackend) throws -> String {
@@ -96,6 +140,27 @@ private struct SupabasePh: PhBackend {
     }
 }
 
+private struct SupabaseUserSupplements: SupplementBackend {
+    let client: SupabaseClient
+    let auth: AuthBackend
+
+    /// Tombstones included, for the same reason as pH: a row deleted on her Android phone has to
+    /// arrive as a deletion, and an absence is indistinguishable from "this device never pushed it".
+    /// Ordered by `created_at` so a first sign-in rebuilds her list in the order she added it.
+    func list() async throws -> [SupplementRecord] {
+        let uid = try requireUID(auth)
+        let rows: [UserSupplementRow] = try await client.from("user_supplements")
+            .select().eq("user_id", value: uid).order("created_at").execute().value
+        return rows.map(\.domain)
+    }
+
+    /// Adds and deletes both land here — the row's `deleted_at` carries the tombstone.
+    func upsert(_ record: SupplementRecord) async throws {
+        let uid = try requireUID(auth)
+        try await client.from("user_supplements").upsert(UserSupplementRow(userId: uid, record: record)).execute()
+    }
+}
+
 private struct SupabaseDailyLog: DailyLogBackend {
     let client: SupabaseClient
     let auth: AuthBackend
@@ -136,6 +201,13 @@ private struct SupabaseProfile: ProfileBackend {
         let quiz: [QuizAnswersRow] = try await client.from("quiz_answers")
             .select("user_id,answers").eq("user_id", value: uid).limit(1).execute().value
         return row.domain(quizAnswers: quiz.first?.answers ?? [:])
+    }
+
+    func fetchDisplayName() async throws -> String? {
+        let uid = try requireUID(auth)
+        let rows: [ProfileRow] = try await client.from("profiles")
+            .select("id,display_name,partner_id").eq("id", value: uid).limit(1).execute().value
+        return rows.first?.displayName
     }
 
     func upsert(_ prefs: ProfilePrefs) async throws {

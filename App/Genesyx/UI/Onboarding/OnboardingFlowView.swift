@@ -1,7 +1,7 @@
 import SwiftUI
 import GenesyxCore
 
-/// The onboarding state machine: Splash → Intro → Quiz → Readiness Summary → (Waitlist) → app.
+/// The onboarding state machine: Splash → Intro → Quiz → Readiness Summary → app.
 /// Ported from the Android onboarding screens, and now with the real brand egg artwork on the
 /// splash rather than the `BrandOrb` blobs that stood in for it.
 struct OnboardingFlowView: View {
@@ -12,13 +12,10 @@ struct OnboardingFlowView: View {
     /// so they are written on-device here and owed to her `profiles` row until sign-in provides a
     /// user id to write them under.
     @EnvironmentObject private var prefs: PreferencesRepository
-    /// Reached only for the waiting-list write, which happens before there is an account — so it
-    /// goes straight to the backend rather than through a session-scoped repository.
-    @EnvironmentObject private var container: AppContainer
-
-    private enum Step { case splash, intro, quiz, summary, waitlist }
+    private enum Step { case splash, intro, quiz, summary }
     @State private var step: Step = .splash
     @State private var showAuth = false
+    @State private var showGuide = false
 
     var body: some View {
         ZStack {
@@ -29,22 +26,19 @@ struct OnboardingFlowView: View {
             case .intro:
                 OnboardingIntroView(onContinue: { step = .quiz }, onBack: { step = .splash })
             case .quiz:
-                QuizView(onComplete: { answers in
+                QuizView(initialAnswers: prefs.quizAnswers, onComplete: { answers in
                     prefs.recordQuizAnswers(answers)
                     step = .summary
                 }, onBack: { step = .intro })
             case .summary:
-                ReadinessSummaryView(onUnlockGuide: { step = .waitlist }, onContinue: { showAuth = true }, onBack: { step = .quiz })
-            case .waitlist:
-                WaitlistView(
-                    onJoin: { email in
-                        guard let backend = container.backend else { throw RemoteError.notAvailable }
-                        try await backend.joinWaitlist(email: email)
-                    },
-                    onContinue: { showAuth = true },
-                    onBack: { step = .summary }
-                )
+                ReadinessSummaryView(onOpenGuide: { showGuide = true }, onContinue: { showAuth = true }, onBack: { step = .quiz })
             }
+        }
+        // The guide is bundled, so this opens with no account, no connection and no backend. It is
+        // a sheet rather than a step so dismissing it lands back on the summary by construction
+        // rather than by remembering to route there.
+        .sheet(isPresented: $showGuide) {
+            FreeGuideScreen()
         }
         // Auth gates the dashboard (Android parity): every onboarding exit routes through Auth,
         // and only a successful sign-in calls `onFinished` (which sets onboardingComplete → main
@@ -85,7 +79,13 @@ private struct SplashView: View {
             BrandEgg(.warm, size: 124, fade: 0.42).rotationEffect(.degrees(30)).offset(x: 142, y: 84)
 
             VStack(spacing: 0) {
-                Text("GENESYX").font(.gxTitle).tracking(2).foregroundStyle(GenesyxColor.foreground)
+                Image("brand_lockup")
+                    .resizable()
+                    .renderingMode(.original)
+                    .scaledToFit()
+                    .frame(width: 220, height: 54)
+                    .accessibilityLabel("Genesyx")
+                    .accessibilityIdentifier("onboarding.brandLogo")
                 Spacer()
                 Eyebrow("Step into the future of fertility", color: GenesyxColor.primary)
                 Spacer().frame(height: 16)
@@ -183,10 +183,27 @@ private struct QuizView: View {
     /// unlocks, so completion is the one point at which they are whole.
     let onComplete: ([String: String]) -> Void
     let onBack: () -> Void
+    /// What she has already answered, if she is arriving back here from the summary. `@State` is
+    /// destroyed when this view leaves the hierarchy, so without seeding it the back button dropped
+    /// her on question 1 of 5 with all five answers cleared and made her type them all again.
+    let initialAnswers: [String: String]
+
+    init(initialAnswers: [String: String] = [:],
+         onComplete: @escaping ([String: String]) -> Void,
+         onBack: @escaping () -> Void) {
+        self.initialAnswers = initialAnswers
+        self.onComplete = onComplete
+        self.onBack = onBack
+        _answers = State(initialValue: initialAnswers)
+        // Open on the first question she has not answered, so returning lands her where she stopped
+        // rather than making her page past work she has already done.
+        let firstUnanswered = QuizContent.questions.firstIndex { initialAnswers[$0.id] == nil }
+        _step = State(initialValue: firstUnanswered ?? max(QuizContent.questions.count - 1, 0))
+    }
 
     private let questions = QuizContent.questions
-    @State private var step = 0
-    @State private var answers: [String: String] = [:]
+    @State private var step: Int
+    @State private var answers: [String: String]
     @State private var pendingFact: DidYouKnow?
 
     private var question: QuizQuestion { questions[step] }
@@ -251,7 +268,7 @@ private struct QuizView: View {
 // MARK: - Readiness summary
 
 private struct ReadinessSummaryView: View {
-    let onUnlockGuide: () -> Void
+    let onOpenGuide: () -> Void
     let onContinue: () -> Void
     let onBack: () -> Void
 
@@ -321,90 +338,8 @@ private struct ReadinessSummaryView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 24))
 
                 Spacer().frame(height: 24)
-                GxPrimaryButton(title: "Unlock My Free Guide", leadingSystemImage: "book", action: onUnlockGuide)
+                GxPrimaryButton(title: "Open My Free Guide", leadingSystemImage: "book", action: onOpenGuide)
                 GxGhostButton(title: "Register / Login to continue", action: onContinue)
-            }
-            .padding(.horizontal, 24)
-            .padding(.bottom, 24)
-        }
-    }
-}
-
-// MARK: - Waitlist
-
-private struct WaitlistView: View {
-    /// Stores the address on the waiting list. Throws when it can't — the confirmation below is
-    /// shown only after this returns, so the screen never claims a place it didn't secure.
-    let onJoin: (String) async throws -> Void
-    let onContinue: () -> Void
-    let onBack: () -> Void
-
-    @State private var email = ""
-    @State private var submitting = false
-    @State private var submitted = false
-    @State private var error: String?
-
-    private func submit() {
-        let trimmed = email.trimmingCharacters(in: .whitespaces)
-        guard EmailValidator.isValid(trimmed) else {
-            error = "Please enter a valid email address."
-            return
-        }
-        submitting = true
-        Task {
-            do {
-                try await onJoin(trimmed)
-                submitted = true
-            } catch {
-                self.error = "We couldn't add you to the list just now. Please check your connection and try again."
-            }
-            submitting = false
-        }
-    }
-
-    var body: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                if submitted {
-                    Spacer().frame(height: 64)
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 32, weight: .bold)).foregroundStyle(.white)
-                        .frame(width: 64, height: 64).background(GenesyxColor.primary).clipShape(Circle())
-                    Spacer().frame(height: 20)
-                    Text("You're on the list").font(.gxTitle).foregroundStyle(GenesyxColor.foreground)
-                    Spacer().frame(height: 8)
-                    Text("Thanks — you're on the Genesyx early-access list. Register to open your fertility nutrition guidance inside the app.")
-                        .font(.gxBody).foregroundStyle(GenesyxColor.mutedForeground).multilineTextAlignment(.center)
-                    Spacer().frame(height: 28)
-                    GxPrimaryButton(title: "Register / Login to continue", action: onContinue)
-                } else {
-                    Spacer().frame(height: 24)
-                    Eyebrow("Free with early access", color: GenesyxColor.primary)
-                    Spacer().frame(height: 8)
-                    Text("A gentle guide to fertility nutrition")
-                        .font(.gxTitle).foregroundStyle(GenesyxColor.foreground).multilineTextAlignment(.center)
-                    Spacer().frame(height: 8)
-                    Text("Join the Genesyx early-access list — your fertility nutrition guidance is waiting inside the app once you register.")
-                        .font(.gxBody).foregroundStyle(GenesyxColor.mutedForeground).multilineTextAlignment(.center)
-                    Spacer().frame(height: 20)
-                    TextField("your@email.com", text: $email)
-                        .textInputAutocapitalization(.never)
-                        .keyboardType(.emailAddress)
-                        .autocorrectionDisabled()
-                        .padding(.horizontal, 16).frame(height: 52)
-                        .background(GenesyxColor.card)
-                        .clipShape(RoundedRectangle(cornerRadius: 16))
-                        .overlay(RoundedRectangle(cornerRadius: 16)
-                            .strokeBorder(error == nil ? GenesyxColor.border : GenesyxColor.destructive, lineWidth: 1))
-                        .onChange(of: email) { _ in error = nil }
-                    if let error {
-                        Text(error).font(.gxBodySmall).foregroundStyle(GenesyxColor.destructive)
-                            .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 6)
-                    }
-                    Spacer().frame(height: 16)
-                    GxPrimaryButton(title: "Join the Waiting List", enabled: !submitting, action: submit)
-                    GxGhostButton(title: "Register / Login to continue", action: onContinue)
-                }
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 24)

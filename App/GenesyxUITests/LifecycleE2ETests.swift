@@ -14,6 +14,18 @@ final class LifecycleE2ETests: XCTestCase {
         return app
     }
 
+    /// iOS intermittently offers a system "Save Password?" sheet after a credential submission it
+    /// judges to be a successful sign-in. It belongs to another process, so it never appears in the
+    /// test log, and its backdrop swallows every touch — which surfaces as the app's own controls
+    /// going unhittable rather than as an interruption. Declining it also keeps the simulator
+    /// keychain empty, so a later run is not offered an AutoFill toolbar instead.
+    private func dismissSystemSavePasswordSheet(_ app: XCUIApplication) {
+        for root in [app, XCUIApplication(bundleIdentifier: "com.apple.springboard")] {
+            let notNow = root.buttons["Not Now"]
+            if notNow.waitForExistence(timeout: 3) { notNow.tap(); return }
+        }
+    }
+
     /// Background → foreground keeps the citation screen intact.
     func testBackgroundForegroundKeepsCitations() {
         let app = launch(tab: 3)
@@ -45,18 +57,45 @@ final class LifecycleE2ETests: XCTestCase {
                       "Medical Sources must re-render after relaunch (no blank screen)")
     }
 
-    /// The privacy data-wipe (sign-out clears local health data) must NOT blank the citation
-    /// screens — sources are bundle-sourced, not user data.
+    /// Sources are bundle-sourced, not user data — but a signed-out user must not read them
+    /// from Profile. After re-authentication the same row still renders.
     func testSignOutDoesNotBlankMedicalSources() {
         let app = launch(tab: 6)
+        let row = app.buttons["Medical Sources & Disclaimer"]
+        XCTAssertTrue(row.waitForExistence(timeout: 15))
+        row.tap()
+        XCTAssertTrue(app.buttons["medSource.nhs-water"].waitForExistence(timeout: 10))
+        app.navigationBars.buttons.firstMatch.tap()
+
         let logout = app.buttons["Log out"]
-        XCTAssertTrue(logout.waitForExistence(timeout: 15))
+        XCTAssertTrue(logout.waitForExistence(timeout: 10))
         logout.tap()
 
-        let row = app.buttons["Medical Sources & Disclaimer"]
-        XCTAssertTrue(row.waitForExistence(timeout: 10), "Medical Sources row should remain after sign-out")
-        row.tap()
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "auth.screen").firstMatch
+                        .waitForExistence(timeout: 10),
+                      "signed-out users must not keep Profile")
+        XCTAssertFalse(app.buttons["Medical Sources & Disclaimer"].exists)
+        XCTAssertFalse(app.buttons["Profile"].exists)
+
+        // DEBUG local-only: mock auth accepts any 8+ character password.
+        let email = app.textFields["you@example.com"]
+        XCTAssertTrue(email.waitForExistence(timeout: 5))
+        email.tap()
+        email.typeText("maya@example.com")
+        let password = app.secureTextFields.firstMatch
+        password.tap()
+        password.typeText("password1")
+        app.buttons["Sign in"].tap()
+
+        let profile = app.buttons["Profile"]
+        XCTAssertTrue(profile.waitForExistence(timeout: 10),
+                      "re-authentication must restore the tabs")
+        if !profile.isHittable { dismissSystemSavePasswordSheet(app) }
+        profile.tap()
+        let rowAgain = app.buttons["Medical Sources & Disclaimer"]
+        XCTAssertTrue(rowAgain.waitForExistence(timeout: 10))
+        rowAgain.tap()
         XCTAssertTrue(app.buttons["medSource.nhs-water"].waitForExistence(timeout: 10),
-                      "Sources must still render after the sign-out data wipe")
+                      "sources must still render after the sign-out wipe and a new sign-in")
     }
 }

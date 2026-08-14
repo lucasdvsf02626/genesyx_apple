@@ -47,6 +47,7 @@ extension View {
             .environmentObject(container.partner)
             .environmentObject(container.learn)
             .environmentObject(container.reachability)
+            .environmentObject(container.supplements)
             .tint(GenesyxColor.primary)
     }
 }

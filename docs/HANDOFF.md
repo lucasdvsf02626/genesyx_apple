@@ -4,16 +4,431 @@
 > before this could be saved). Companion to `CHANGE_LIST_PLAN.md`, which tracks the client's
 > change list task-by-task. This file tracks **what is in flight right now**.
 
-**Branch:** `main` · **HEAD:** `b1ab67b` (plus the uncommitted T24 working tree, §4e) · **Version:** 1.2.0 (18)
-· **Test baseline:** 239 domain + 238 app + 57 UI, 0 failures — all three verified green
-2026-08-13, the UI suite in full (~9.5 min; a `TEST FAILED` inside a minute is the simulator
-refusing to install the runner, not your code — see `TESTFLIGHT_B18.md` build facts)
+**Branch:** `main` · **HEAD:** `1b61e81` *"Food groups, the in-app celebration, and the sleep
+predicate"* (plus a large uncommitted working tree — §0) · **Version:** 1.2.0 (18)
+· **Test baseline:** 267 domain + 288 app + 79 UI (1 skip), 0 failures — **one sweep over one
+byte-identical tree**, 2026-08-14: `/tmp/genesyx_h22_final_domain.log` (267/0, 14:18),
+`/tmp/genesyx_h22_final_app.log` (288/0, 14:20), `/tmp/genesyx_h22i_full_ui.log`
+(886.043 s, 79 exec / 1 skip / 0 fail, 14:16). The UI run was deliberately adversarial:
+`xcrun simctl keychain <UDID> reset` first, to re-arm iOS's "Save Password?" sheet, on a
+simulator with no other `xcodebuild` attached. Historical H21/H11 67/1/0 logs remain valid
+for those batches. All of that is HEAD `1b61e81` **plus** the uncommitted tree.
 
 ```bash
 swift test && xcodebuild test -project Genesyx.xcodeproj -scheme Genesyx \
   -destination 'platform=iOS Simulator,name=iPhone 17' -skip-testing:GenesyxUITests
 ```
 Do **not** pass `-quiet` — it has returned exit 0 with no summary and hidden a real result.
+
+---
+
+## 0. STOP HERE FIRST — state at handoff, 14 Aug 2026
+
+**Nothing is committed. Nothing is pushed. No Supabase change was made in this session.**
+H21 engineering gates are closed. H11 / T22 is closed. **H22 (mandatory authentication
+gate): Engineering Done; simulator verified; physical-device QA deferred.** No physical
+iPhone is available — that absence does not keep H22 In progress. The PDF content
+blockers in §0h remain open. Exclude `graphify-out/` from any product commit.
+
+**Sections 1–3 remain 37/44 = 84% and 37/42 = 88%.** No release-scope row closed this
+pass. Website science/Shettles stay **BLOCKED**. Profile / name-password / edit-controls
+stay **IN REVIEW**. Physical cellular stays **DEFERRED**. D3 and D4 stay **DESCOPED**.
+
+### 0-H22. Mandatory authentication gate (P0, 14 Aug 2026)
+
+`RootView` used to mount `MainTabView` from `genesyx.onboardingComplete` alone. Session
+state is now the credential. `onboardingComplete` is only a progress flag.
+
+| File | Change |
+|---|---|
+| `App/Genesyx/Data/App/RootRouting.swift` | Pure `RootDestination` decision. |
+| `App/Genesyx/Data/SessionRepository.swift` | `resolving` / `signedOut` / `signedIn`; validated restore; auth events. |
+| `App/Genesyx/Data/App/RootView.swift` | Routes from session first; mandatory `AuthView`; held invites. |
+| `App/Genesyx/UI/Auth/AuthView.swift` | `allowsDismissal`; no “Back to app” in mandatory mode. |
+| `App/Genesyx/Data/Remote/RemoteBackend.swift` / `SupabaseBackend.swift` | `validatedSession` + `observeAuthState`. |
+| `App/Genesyx/Notifications/NotificationService.swift` | `isActive` requires `session.isSignedIn`; cancel on sign-out. |
+| `App/Genesyx/Data/App/AppContainer.swift` / `GenesyxApp.swift` | Hydrate/drain only while signed in; Release fail-closed. Plus the DEBUG-only `-uiTestPendingNotification` hook (`GenesyxApp.swift:26-38`). |
+| `App/GenesyxTests/SessionExpiryTests.swift` | **New, 4 tests.** The expired/revoked-token lifecycle, driven from an injected `AuthBackend` fake. |
+| `App/GenesyxUITests/AuthGateUITests.swift` | 11 → 12. Vacuous notification test replaced by a real pair; the misleading name corrected. |
+
+#### The second audit pass — two tests that were green while claiming more than they proved
+
+Both gaps were found on 14 Aug by re-reading the tests rather than the results. A green suite cannot
+report this class of defect on itself.
+
+**(a) The expired/revoked-token path had no coverage at any level.** The UI test that appeared to
+cover it launched with `-uiTestSignedOut`, which seeds **no credential** — the *missing*-session
+path. A cached credential the server has stopped honouring is a different mechanism, and it was the
+untested one. `SessionExpiryTests` now drives it through an injected `AuthBackend` — **no Supabase,
+no network, no account**:
+
+| Test | What it proves |
+|---|---|
+| `testExpiredSessionSignsOutAndFiresTheBecameSignedOutHook` | `.sessionExpired` signs out **and** fires `onBecameSignedOut` — the hook that drops the held notification destination and cancels the schedule. A silent state change here leaves private routing armed. |
+| `testAnExpiredSessionCannotComeBackFromARefreshOrAnExpiredInitialSession` | Neither `.tokenRefreshed` nor `.initialSession(userId: nil)` resurrects it. `tokenRefreshed` only ever describes an already-live session; treating it as a credential would re-open the tabs on the strength of the token that just lapsed. |
+| `testLaunchWithAnExpiredCachedSessionNeverSignsIn` | Cold launch with `currentUserId` non-nil but `validatedSession()` nil resolves `.resolving` → `.signedOut`, never `.signedIn`. Mounting off the cached id alone is the defect the gate exists to prevent. |
+| `testAFreshSignInAfterExpiryReachesSignedIn` | A genuine new session still signs her in — without this the gate could be "correct" by refusing everything. |
+
+The misleading UI test is renamed `testMissingSessionNeverShowsPrivateContent` and now points at
+`SessionExpiryTests` for the other path.
+
+**(b) `testNotificationTapWhileSignedOutDoesNotOpenATab` performed no notification action.** It was a
+strict subset of the test above it and its name claimed evidence it did not provide. Replaced by a
+pair. `-uiTestPendingNotification <tab>` is **DEBUG-only** (`#if DEBUG`, referenced nowhere else in
+product code, so Release cannot see it) and injects a destination through the **same** `payload` →
+`destination` decode the real `didReceive` handler uses — so the test asserts against a genuinely
+held destination, not an app that simply has nothing pending. XCUITest cannot deliver a system
+notification to a cold-launched app; the gate's job is what happens to the destination afterwards,
+not how it arrived, and the test no longer claims otherwise.
+
+- `testPendingNotificationWhileSignedOutNeverOpensItsTab` — the gate holds it (6.410 s).
+- `testPendingNotificationOpensItsTabOnceAuthenticated` — **the control** (5.449 s). The same
+  injection on a signed-in launch *does* land on Insights. Without it the first test would also pass
+  if the hook did nothing, so the control is what makes it evidence.
+
+**Falsification of the new tests (recorded):** re-inserted `case .sessionExpired: break` into
+`SessionRepository.swift` → exit 65, `Executed 4 tests, with 6 failures`, `** TEST FAILED **`
+(`/tmp/genesyx_h22_expiry_falsify.log`). 3 of 4 failed on the intended assertions (`("signedIn") is
+not equal to ("signedOut")`, `onBecameSignedOut must fire so held private state is dropped`); the 4th
+correctly still passed because it exercises the bootstrap path, not the lifecycle event. Production
+line restored and re-verified (`case .signedOut, .sessionExpired:`, `SessionRepository.swift:124`).
+
+**Falsification (recorded):** restored the old `if onboardingComplete { MainTabView }` route.
+Three new tests failed as required (50.417 s, `** TEST FAILED **`):
+- `AuthGateUITests.testCompletedOnboardingWithNoSessionOpensMandatoryLogin` — `AuthGateUITests.swift:40`
+- `AuthGateUITests.testLogoutRemovesEveryPrivateTab` — `AuthGateUITests.swift:65`
+- `GenesyxUITests.testSignOutClearsHealthDataLocally` — `GenesyxUITests.swift:1462` `logout must land on mandatory authentication`
+
+Restored production routing. Targeted UI after restore: **12/0**, 103.276 s.
+Full UI after the H22 evidence cleanup: **79 exec / 1 skip / 0 fail**,
+`/tmp/genesyx_h22i_full_ui.log` (886.043 s, 14 Aug 14:16).
+No product/test file for the gate is newer than that log.
+
+**Two red UI results were diagnosed on 14 Aug. Neither was product code.** Both are worth
+recording because both would otherwise be re-diagnosed as an app bug.
+
+*1 — `LifecycleE2ETests.testSignOutDoesNotBlankMedicalSources`.* After the test submits
+credentials, iOS sometimes decides that was a successful sign-in and offers its own
+**"Save Password?" sheet**. It belongs to another process, so it never appears in the test log;
+what surfaces instead is the app's own controls going unhittable, because the sheet ships a
+full-screen touch-blocking backdrop. Proven from the failure-linked attachment
+(`xcrun xcresulttool export attachments`, the dump with `isAssociatedWithFailure: true`): the
+app was pid 34347, and a second window owned by **pid 34360** carried
+`Sheet … label: 'Save Password?'` plus `Other, {{41.0, 315.0}, {402.0, 874.0}}`. Both the
+`Medical Sources & Disclaimer` row and the `Profile` tab were present in the tree and simply
+unreachable. XCUITest merges layered system windows into the app-under-test's snapshot, so
+`app.buttons["Not Now"]` can reach it — that is what `dismissSystemSavePasswordSheet` does,
+gated behind `if !profile.isHittable` so it costs nothing when the sheet is absent. **No
+assertion was weakened.** `xcrun simctl keychain <UDID> reset` re-arms the prompt on demand;
+without it iOS suppresses re-offering once "Not Now" has been answered, which is why the
+failure looked random. In the authoritative run the guard is **load-bearing, not decorative**:
+at t=15.64 s `profile.isHittable` returned false, the guard found and tapped "Not Now" at
+t=16.90 s, and only then did `Tap "Profile"` succeed. Honest caveat: with the guard removed and
+the same test run alone 5×, and its whole class 3×, it passed every time — the blocking is
+intermittent, so the guard is proven necessary in the armed full-suite configuration and proven
+harmless otherwise, not proven necessary on every run.
+
+*2 — `GenesyxUITests.testInsightsOpensLogHistory`, `kAXError -25218 / "Error getting main
+window"`.* Caused by **two agents driving the same simulator UDID at once**; found with
+`pgrep -fl`, which showed a second `GROK_AGENT=1 … xcodebuild test … -destination
+'…id=6EFF8D1E-…'`. Concurrent `xcodebuild test` runs on one UDID corrupt each other's
+accessibility server. **Rule: one agent owns the simulator for the duration of a UI run.**
+The authoritative run above was made with `pgrep` confirming zero other `xcodebuild` processes.
+
+**What the simulator cannot prove.** Every UI test runs `AppContainer.uiTestSeeded()` with
+`backend: nil`. They prove the routing table and the view wiring; they never exercise Supabase's real
+session restore. **Keychain persistence across a genuine cold boot, a token revoked from another
+device, and Sign in with Apple on real hardware are unproven, not passed.** That is the whole content
+of "physical-device QA deferred" — it is a real gap, not a formality.
+
+**Engineering Done; simulator verified; physical-device QA deferred.** Physical
+logout/relaunch is not available hardware, not unfinished engineering.
+
+**H22 is not in build 18.** Build 18 was archived 13 Aug; the gate landed 14 Aug and is
+uncommitted. A **new archive with a new build number** is required before H22 can reach TestFlight,
+and build-18 notes must not be rewritten as though it shipped there. See `TESTFLIGHT_B18.md` row H22.
+
+### 0-FROZEN. Five product decisions the client closed on 14 Aug 2026 — DO NOT REOPEN
+
+These are **settled input, not open questions.** They were frozen specifically to stop every
+assistant, reviewer and future session re-litigating them. Do not re-analyse, re-propose,
+re-estimate or "improve" any of them. If a later request appears to contradict one, **stop and ask**
+rather than assuming it was reversed.
+
+| # | Decision | Ruling | What it closes |
+|---|---|---|---|
+| **D1** | Warm / premium presentation | ✅ **Approved** | The subjective sign-off group 5 / item 2A was blocked on. Group 5 is now 4/4. |
+| **D2** | Deleting a whole daily log | ❌ **Not in this release** | The data-retention ruling item 1B was half-blocked on. **Build no delete path on either client.** |
+| **D3** | Cycle edits + article reads counting toward the streak | ❌ **Not in this release** | H6 / item 7. |
+| **D4** | Occasional streak restore | ❌ **Not in this release** | H7 / item 8. |
+| **D5** | The bundled guide PDF | ⚠️ **Usable internally — NOT App Store-ready** | Ships in internal/TestFlight builds only; a public-submission blocker until §0h is done. |
+
+Three consequences a future agent must not get wrong:
+
+1. **D3 + D4 together cancel the new production column and the Android migration** either one would
+   have required. **No schema change is now needed for the streak.** Do not add one.
+2. **D3, D4 and D2 are descoped, not delivered.** They remain change-list items and are counted as
+   unbuilt. Never report them as done. The honest figures are **37 of 44 (84%)** on the original
+   scope and **37 of 42 (88%)** against the remaining release scope; quote both.
+3. **D1 approves a direction, it does not licence free restyling.** Every visual change still goes
+   through the same tests, accessibility expectations and compliance guards as any other change.
+
+**Website, re-fetched 14 Aug:** two new slugs exist and **must not be wired**.
+`https://genesyx.co.uk/pages/vaginal-ph-fertility-science` is the same uncited product copy
+as `/pages/ph-tracking`. `https://genesyx.co.uk/pages/shettles-method-evidence-limitations`
+is an empty slug title — no “unproven”, no Wilcox. App grep of both paths is 0. **Item 1
+stays BLOCKED.** Detail in `CHANGE_LIST_PLAN.md` §0.1.
+
+### 0a. Where the repository is
+
+```
+git rev-parse --short HEAD   →  1b61e81
+git rev-parse --abbrev-ref HEAD → main
+```
+
+`git status --short` is large because it carries every earlier uncommitted batch as well as this
+one. `git diff --stat` (excluding the `graphify-out/` tooling directory) totals **58 files changed,
+4385 insertions, 531 deletions** as of this audit, plus untracked H21/H22 product files
+(`RootRouting.swift`, `AuthGateUITests.swift`, `FreeGuideView.swift`, recipe images, the bundled
+PDF). Do not reset, stash or discard any of it — batches 1 through 9 plus H22 all live in this tree.
+
+### 0b. The exact task being completed
+
+**H20 audit finding #2 — "Unlock My Free Guide" unlocks nothing.** The client returned a product
+decision, and this session implemented it. Tracked as tasks #48–#54; **#48–#54 are complete.**
+Falsification and the full UI suite were re-run 14 Aug 2026 against a fresh backup of the
+production file. The PDF content blockers in §0h remain open.
+
+### 0c. The decision that was approved — implement exactly this, do not re-litigate it
+
+> **"Open My Free Guide" must open a bundled offline PDF immediately — without login, email,
+> waiting list or Supabase — and the same guide must also be available under Learn → Guides.**
+
+Signed-off in eight points: relabel the CTA to **"Open My Free Guide"**; open the bundled *7-Day
+Fertility Nutrition Starter Guide* immediately; work **before registration, offline, with no email,
+waiting list, authentication or Supabase**; closing it returns to the readiness summary;
+**"Register / Login to continue" stays a separate action**; the same guide is reachable under
+**Learn → Guides**; the CTA **no longer routes to `WaitlistView`**; and the backend waiting-list API
+is **not deleted** — only this CTA is disconnected, because Android shares that backend and no proof
+was attempted that it has no other consumer.
+
+Full text and rationale: `CHANGE_LIST_PLAN.md` §11.1.
+
+### 0d. What was implemented
+
+| File | State | What changed |
+|---|---|---|
+| `App/Genesyx/Resources/Genesyx_7_Day_Fertility_Nutrition_Starter_Guide.pdf` | **new**, untracked | The guide, 6.3 MB. Added under `App/Genesyx`, which `project.yml` sweeps in wholesale, so **XcodeGen** classified it into Copy Bundle Resources automatically — 4 lines of pbxproj, no hand editing. |
+| `App/Genesyx/UI/Learn/FreeGuideView.swift` | **new**, untracked | `enum FreeGuide` (title + resource name + `Bundle.main` URL) and `FreeGuideScreen`, a `NavigationStack` around a SwiftUI-wrapped `PDFView`. Presented as a **sheet** from both entry points, so dismissing returns to the caller by construction. Carries `guide.screen`, `guide.pdf`, `guide.done` accessibility identifiers, and an unavailable-state view for the build-misconfiguration case. |
+| `App/Genesyx/UI/Onboarding/OnboardingFlowView.swift` | modified | 434 → **342 lines**. CTA relabelled; `onUnlockGuide` → `onOpenGuide`; `@State private var showGuide` plus a `.sheet`; the `.waitlist` step, the `@EnvironmentObject container` it needed, and the 81-line `private struct WaitlistView` are **deleted**. |
+| `App/Genesyx/UI/Learn/LearnViews.swift` | modified | `GuideBookRow` shown when the **Guides** category chip is selected, opening the same `FreeGuideScreen`. |
+| `App/GenesyxTests/FreeGuideBundleTests.swift` | **new**, untracked | 3 tests: the URL resolves from the **built app bundle**; PDFKit can actually open what shipped and it is multi-page; the title matches what the UI test asserts. |
+| `App/GenesyxUITests/GenesyxUITests.swift` | modified | `testWaitlistMakesNoUnsendablePromise` **replaced** by `testTheFreeGuideOpensFromOnboardingWithNoWaitingList` and `testTheFreeGuideAlsoOpensFromLearnGuides`, plus a `guideReader(_:)` helper. |
+| `Genesyx.xcodeproj/project.pbxproj` | modified | Regenerated by `xcodegen generate`. Backup at `/tmp/pbxproj.bak`. |
+| `docs/CHANGE_LIST_PLAN.md`, `GENESYX_PROGRESS.md`, `docs/HANDOFF.md` | modified | This batch's documentation. |
+
+Three decisions inside the implementation that are load-bearing — **do not "simplify" them away:**
+
+1. **The guide is deliberately not a `LearnArticle`.** `LearnContentTests` asserts
+   `articles.count == 32`, and `LearnReadLog.markRead(slug)` fires `.onAppear` in `LearnViews.swift`.
+   Modelling the PDF as an article breaks the count *and* makes opening one PDF register as having
+   read the ten written guides — which the brief explicitly forbade.
+2. **`GuidePdfView.Coordinator` implements `pdfViewWillClick(onLink:)` as a no-op.** That is what
+   stops PDFKit handing an embedded link straight to Safari, which would break both the offline and
+   the pre-registration guarantee in a single tap.
+3. **`RemoteBackend.joinWaitlist`, `SupabaseBackend.joinWaitlist`, the `join_waitlist` RPC and
+   `waitlist_emails` are untouched**, and `RemoteError.notAvailable` was left in place — it is a
+   shared error enum, not onboarding-only UI. `EmailValidator` also stays; it has two other consumers.
+
+### 0e. Test commands and totals
+
+Everything below was re-run **against the restored production tree**, after the falsification run —
+not carried over from before it.
+
+| Suite | Command | Result |
+|---|---|---|
+| Domain | `swift test` (~1 s) | ✅ **267 passed / 0 failed** |
+| App | `xcodebuild test -project Genesyx.xcodeproj -scheme Genesyx -destination "platform=iOS Simulator,id=6EFF8D1E-6556-45FA-AB67-1AE6EFF64575" "-only-testing:GenesyxAppTests"` (~25 s) | ✅ **276 passed / 0 failed** after the splash lockup (was 275 after H21; +1 `testBrandLockupArtworkExists`) |
+| `FreeGuideBundleTests` | same, `"-only-testing:GenesyxAppTests/FreeGuideBundleTests"` | ✅ **3 executed / 0 failures**, 0.005 s |
+| The 2 guide UI tests (after restore) | same, `"-only-testing:GenesyxUITests/GenesyxUITests/testTheFreeGuideOpensFromOnboardingWithNoWaitingList"` and `.../testTheFreeGuideAlsoOpensFromLearnGuides` | ✅ **2 executed / 0 failures**, 32.091 s — onboarding 20.740 s, Learn 11.351 s · `** TEST SUCCEEDED **` |
+| Falsification | one-line `onOpenGuide: { }`, then the onboarding guide test | ✅ **failed as required**, exit 65, 28.044 s. `GenesyxUITests.swift:130` `XCTAssertTrue failed - the bundled PDF should render — a blank reader means it is not in the app bundle`. Restored from `/tmp/onb_h21_prod_20260814T104552.swift`; `cmp` byte-identical. |
+| Restored tree compiles | `xcodebuild build-for-testing …` | ✅ `** TEST BUILD SUCCEEDED **`, 0 errors |
+| Full UI suite | `"-only-testing:GenesyxUITests"` (785.545 s, `/tmp/genesyx_h21_full_ui.log`) | ✅ **67 executed, 1 skipped, 0 failures** · `** TEST SUCCEEDED **` |
+
+**The PDF is confirmed in the built product, not merely in the repository:**
+`~/Library/Developer/Xcode/DerivedData/Genesyx-adfpdsulhpkxjwhgqbthjlvpvgrl/Build/Products/Debug-iphonesimulator/Genesyx.app/Genesyx_7_Day_Fertility_Nutrition_Starter_Guide.pdf`
+— 6,568,029 bytes, md5 `618149b77247080cc9061f971886d379`, **byte-identical to the repository
+copy**. `FreeGuideBundleTests` additionally proves PDFKit can open what shipped and that it is
+multi-page, which a filename check alone would not.
+
+### 0f. What is NOT done — read this before claiming the batch is complete
+
+**Both gates are now closed. This section is kept as the evidence trail, not as a to-do list.**
+
+1. ✅ **Falsification completed 14 Aug 2026, 10:46.** Minimal one-line regression: `onOpenGuide: { }`
+   (CTA does not open the guide). `WaitlistView` was not reconstructed. Recorded failure:
+   `GenesyxUITests.swift:130` `XCTAssertTrue failed - the bundled PDF should render — a blank
+   reader means it is not in the app bundle`, exit 65, 28.044 s. Restored from
+   `/tmp/onb_h21_prod_20260814T104552.swift`; byte-identical at restore. Both guide UI tests re-run
+   green (2/0, 32.091 s).
+2. ✅ **The full UI suite was re-run green after the restore** — 67 executed, 1 skipped, 0 failures,
+   **785.545 s**, `** TEST SUCCEEDED **` (`/tmp/genesyx_h21_full_ui.log`, 254,321 bytes, verified by
+   reading the log rather than trusting a claim). **This is the authoritative run — it is the one
+   that post-dates the falsification.** An earlier green run the same day at 10:42
+   (`/tmp/ui_full2.log`, 783.312 s, same 67/1/0) pre-dates it and proves less; cite the 785.545 s
+   run. Earlier still, one run failed `testSignOutClearsHealthDataLocally` because it looked for the
+   old Home empty-state sentence — the cycle wipe was already correct, the test was pointed at the
+   current card, and every run since has been green.
+
+**Hash note, so nobody misreads it as a failed restore.** `OnboardingFlowView.swift` no longer
+matches the restore hash `b85686926825890766d64990ae2f747e` (342 lines); it is now
+`9124dd6ef35afe9cd86bf64bcf0fd4bf` (348 lines). Re-diffed 14 Aug: the **only** delta is line 82,
+where the splash `Text("GENESYX")` became `Image("brand_lockup")` — an unrelated later branding
+change, asset present with light and dark variants. `grep -ic waitlist` on that file returns **0**.
+Re-diff before drawing any conclusion from the hash.
+
+What remains is **not** an engineering gate: the four PDF content corrections and the medical
+review in §0h. H21 is Done. The PDF is not App Store-ready (D5).
+
+### 0g. Unfinished code
+
+**None.** There is no half-written code in the tree. `OnboardingFlowView.swift` is the correct
+version — 348 lines, compiling, `waitlist` count 0 — and both gates in §0f are closed.
+
+Scratch files that exist and can be deleted once §0f is closed: `/tmp/onb_correct.swift` (the good
+342-line file), `/tmp/waitlist_block.swift` (the extracted 81-line `WaitlistView`, kept only to make
+re-falsification a copy-paste), `/tmp/pbxproj.bak`.
+
+One tidy-up worth doing but not urgent: `docs/assets/Genesyx-Recipe-Book.pdf` is a 6.3 MB untracked
+copy of the same file, rescued during the audit *before* the decision came back. It is now redundant
+with the copy in `App/Genesyx/Resources` and should be deleted rather than committed.
+
+### 0h. Blockers — the PDF is not App Store-ready, and that is a person's job
+
+The supplied file is a **temporary integration asset**. It is wired in correctly and it renders. It
+must not ship until:
+
+1. **Filename and internal PDF metadata read "7-Day Fertility Nutrition Starter Guide"** — it was
+   supplied as a recipe book, so a user who saves or shares it gets a different title from the one
+   the app showed her.
+2. **Page 20's typo "Download out free app" is corrected to "our".**
+3. **Page 20's QR code / app-download call-to-action is removed or rewritten**, because it tells a
+   reader who is already inside the app to go and download the app — and the QR route is precisely
+   the silent exit to Safari the reader now blocks.
+4. **The PDF is accessibility-tagged, or the app carries an accessible text equivalent.** The reader
+   sets an `.accessibilityLabel` so VoiceOver does not land on an unnamed view, but a label is not a
+   text equivalent.
+
+**And, tracked separately: medical / content-source review of the guide has not been done.** Every
+other piece of shipping content carries a citation, a disclaimer and a sign-off — that is the
+compliance model the banned-phrase guards enforce. This PDF came in through a different door.
+
+### 0i. The exact next implementation step
+
+H21's two engineering gates are closed. H11 / T22 (splash lockup) is closed — see §0k.
+H22 engineering is closed (simulator verified; physical logout/relaunch **DEFERRED**).
+Next product work is a **reviewed commit of the working tree excluding `graphify-out/`**,
+then the five remaining release-scope rows (website content, disposable Profile QA, live
+reset email, edit-control device pass, physical cellular) and the App Store gates outside
+the 44. Do not implement those in a documentation pass.
+
+```bash
+cd /Users/lucasvalenca_sf/genesxy_apple.V1.02
+
+# Review product files only. Do not stage graphify-out/.
+git status --short -- . ':!graphify-out'
+git diff --stat -- . ':!graphify-out'
+
+# Optional tidy: the rescued recipe-book copy is redundant with the bundled guide.
+# rm docs/assets/Genesyx-Recipe-Book.pdf
+
+# Commit only after a person has reviewed the product set.
+```
+
+### 0j. Copy-paste continuation prompt for the next agent
+
+> Continue the Genesyx **iOS** delivery from the current working tree at HEAD `1b61e81` on branch
+> `main`. **Preserve every uncommitted change — batches 1–9 all live in this tree. Do not reset,
+> stash or discard anything.** Read `docs/HANDOFF.md` §0 first.
+>
+> H21 (free guide) is **Done** as engineering: falsification recorded
+> (`GenesyxUITests.swift:130`, exit 65, 28.044 s), both guide UI tests green after restore
+> (2/0, 32.091 s), full UI suite green after the restore (67 executed, 1 skip, 0 failures,
+> 785.545 s, `/tmp/genesyx_h21_full_ui.log`). H11 / T22 is also **Done**: splash
+> `Text("GENESYX")` is now `Image("brand_lockup")` at 220×54. H22 is **Engineering Done;
+> simulator verified; physical-device QA deferred.** Authoritative current baseline:
+> **267 domain / 288 app / 79 UI (1 skip)**, `/tmp/genesyx_h22i_full_ui.log` (14 Aug 14:16).
+> The four PDF content blockers and the medical review in §0h / §11.1c stay open —
+> **do not mark the guide App Store-ready.**
+>
+> **Five product decisions were frozen on 14 Aug and are settled input, not open questions —
+> see §0-FROZEN.** D1 warm/premium **approved** (group 5 now 4/4). D2 daily-log deletion, D3 cycle
+> edits + article reads toward the streak, and D4 streak restore are all **not in this release** —
+> **descoped, not delivered; never report them as done.** D5: the guide PDF is usable internally
+> but not App Store-ready. **D3 + D4 cancel the new production column and the Android migration —
+> do not add a schema change for the streak.** Do not re-analyse, re-estimate or "improve" any of
+> the five; if a request seems to contradict one, stop and ask. Current figures: **37 of 44 (84%)**
+> original scope, **37 of 42 (88%)** release scope — quote both.
+>
+> **Do not wire the website pH-science or Shettles links.** Live 14 Aug slugs
+> `/pages/vaginal-ph-fertility-science` (same marketing copy as `/pages/ph-tracking`, no
+> citations) and `/pages/shettles-method-evidence-limitations` (empty slug title) are **not**
+> the required pages. Item 1 stays BLOCKED (§0-FROZEN, `CHANGE_LIST_PLAN.md` §0.1).
+>
+> Next step is a **reviewed product commit excluding `graphify-out/`**. Do not
+> include `.claude/scheduled_tasks.lock` or the redundant `docs/assets/Genesyx-Recipe-Book.pdf`.
+> Physical cellular and physical H22 logout/relaunch are **DEFERRED** (no iPhone).
+>
+> **Constraints that are still in force and are not yours to change:** iOS only, do not touch the
+> Android app. Do not push, or deploy any Supabase change. Do not delete
+> `RemoteBackend.joinWaitlist`, `SupabaseBackend.joinWaitlist`, the `join_waitlist` RPC or
+> `waitlist_emails` — Android shares that backend. Do not make the PDF a `LearnArticle`
+> (`LearnContentTests` asserts 32 articles, and it would pollute `markRead`). Never pass `-quiet` to
+> xcodebuild. Banned-phrase guards are compliance controls — a failing one is a decision for a
+> person, never a quiet test edit.
+
+### 0k. H11 / T22 — splash lockup, 14 Aug 2026
+
+**Approved the same day:** the bounded warm/premium presentation; all eight recipe photographs;
+the full Genesyx lockup on the initial splash. Group 5 is 4/4. T22 and H11 are Done.
+
+**Production file first.** `OnboardingFlowView.swift` is the restored H21 production route
+(342 lines, `onOpenGuide: { showGuide = true }`, `grep -ic waitlist` = 0) plus the splash
+edit only. It is now 348 lines, md5 `9124dd6ef35afe9cd86bf64bcf0fd4bf`. The H21 backup
+`/tmp/onb_h21_prod_20260814T104552.swift` (`b85686926825890766d64990ae2f747e`) still
+matches the pre-lockup file; the only delta is `Text("GENESYX")` → `Image("brand_lockup")`.
+
+**What changed (product, this batch):**
+
+| File | Change |
+|---|---|
+| `App/Genesyx/UI/Onboarding/OnboardingFlowView.swift` | In private `SplashView` only: `Image("brand_lockup").resizable().renderingMode(.original).scaledToFit().frame(width: 220, height: 54)` with `accessibilityLabel("Genesyx")` and `accessibilityIdentifier("onboarding.brandLogo")`. Four eggs, copy, quiz/sign-in, disclaimer, quiz route and guide sheet are unchanged. |
+| `App/GenesyxTests/BrandAssetTests.swift` | `testBrandLockupArtworkExists` — `UIImage(named: "brand_lockup")` must load. |
+| `App/GenesyxUITests/GenesyxUITests.swift` | `testTheOnboardingQuizRunsEndToEnd` now asserts `onboarding.brandLogo` **before** tapping the quiz. |
+| `brand_lockup.imageset` | **Not imported.** Existing light (`brand_lockup.png`) and dark (`brand_lockup_dark.png`) variants used as-is. The supplied `~/Downloads/genesyx-logo.svg` was not copied. |
+
+**Measured results (iPhone 17 sim `6EFF8D1E-6556-45FA-AB67-1AE6EFF64575` unless noted):**
+
+| Check | Result |
+|---|---|
+| Asset falsify (`UIImage(named: "brand_lockup_missing")`) | ✅ failed as required, `BrandAssetTests.swift:47` `XCTAssertNotNil failed - Missing brand asset "brand_lockup"`, **0.066 s**, exit 65 |
+| Restore + `BrandAssetTests` | ✅ **5 executed / 0 failures**, 0.003 s |
+| `testTheOnboardingQuizRunsEndToEnd` | ✅ **passed 15.552 s** — logo exists before the quiz tap |
+| `GenesyxAppTests` | ✅ **276 passed / 0 failed**, 0.547 s |
+| Full UI #1 (`/tmp/genesyx_h11_full_ui.log`) | 67 exec, 1 skip, **1 fail** — `CitationE2ETests.testCitationTapOpensBrowser` (button at y=658, hit `{-1,-1}`, under the tab bar). **Not a splash regression.** |
+| Isolated citation rerun | ✅ **passed 5.633 s** |
+| Full UI #2 (`/tmp/genesyx_h11_full_ui2.log`) | ✅ **67 executed, 1 skipped, 0 failures**, **785.772 s**, `** TEST SUCCEEDED **` |
+
+**Smallest supported iPhone.** SE3-375pt sim `E22639B5-9ACA-4F23-BF89-F9F18658FC84`. Light
+screenshot `docs/day-report-assets/splash_se3_light.png`: lockup visible, 220×54 fits, four
+eggs / copy / quiz / sign-in / disclaimer intact. Dark screenshot file
+`splash_se3_dark.png` is **byte-identical** to the light shot (md5
+`582ec22d2463c3714b02a2d3907d3796`) because the seeded theme is `.light` via `LocalStore`
+and system appearance does not apply. The dark catalog asset
+(`brand_lockup_dark.png`, 25,208 bytes) was inspected separately; a live dark splash was
+not captured.
+
+**Nothing committed. Nothing pushed.**
 
 ---
 
@@ -392,11 +807,21 @@ ovulatory salad at the period food "Iron-rich foods" — the failure names the r
 checked against. `testRecipeCopyMakesNoHealthClaim` is the other half: the day a recipe starts saying
 *why* it helps, it has begun making a new claim and needs everything `phaseFoods` has.
 
-**No photography, deliberately.** The catalogue holds Learn heroes and brand art and nothing edible.
-Shipping stock food photos as placeholder art is the Guideline 2.1 risk documented in
-`docs/FIX_REPORT_2026-07-12_data_honesty.md`, so each card renders on the phase accent and
-`Recipe.imageName` is a nil seam. `testNoRecipeClaimsAnImageTheAppDoesNotHave` asserts that and gets
-deleted in the same commit as real assets.
+**Photography now ships — all eight recipes.** It did not until 14 Aug; the original position was to
+render on the phase accent rather than ship stock photos of somebody else's food, the Guideline 2.1
+risk documented in `docs/FIX_REPORT_2026-07-12_data_honesty.md`, with `Recipe.imageName` left as a nil
+seam. That seam has now been filled and **the guard was swapped, not dropped** —
+`testNoRecipeClaimsAnImageTheAppDoesNotHave` no longer exists; `testEveryRecipeHasAUniqueImageMapping`
+(domain) proves no recipe is imageless and no two share a plate, and `testEveryRecipeImageAssetExists`
+(app target) loads each name through `UIImage(named:)`.
+
+**Why that second test has to live in the app target, and why it is not ceremony.** SwiftUI's
+string-based `Image(_:)` lookup **fails silently** — a misspelled asset name yields a blank card, and
+crucially *not* the phase-gradient fallback, because the fallback is keyed on `imageName == nil`
+rather than on the lookup failing. A domain test cannot catch this: it has no bundle to load from and
+can only compare strings to strings. So the two tests are checking genuinely different things, and
+deleting the app-target one would leave a category of defect with no coverage at all while the domain
+suite stayed green. If photography is ever extended, both must be.
 
 **`logFoodGroups` is additive on purpose** — see the note on it in `DailyLogRepository`. Wiring the
 button to `toggleFoodGroup` per group compiles, looks identical, and silently *un*-ticks groups she
@@ -889,6 +1314,692 @@ scroll-until-hittable loop pointed the wrong way converts that race into a perma
 than a retry. If a UI test fails on a change that cannot reach it, suspect the harness before the
 change — and do not re-run until it passes.
 
+## 4s. The Profile audit, actually performed (2026-08-13)
+
+`H8` had been recorded as "needs live QA" and left there. Reading the section instead found **five**
+defects, one of them serious, and none of them requiring an account to find. Full detail lives in
+`CHANGE_LIST_PLAN.md` §6A rows H13 and H14; what belongs here is the part that generalises.
+
+**The owed-write contract now has a third member.** `display_name` had never been in it: the rename
+was fire-and-forget, sign-up never pushed at all, and nothing ever read the column back. It now
+follows `PreferencesRepository` exactly — persisted flag, drained on launch/foreground/reconnect,
+push before pull, cleared on sign-out and on identity change. Two traps were designed out rather
+than discovered in production: only a name she actually **typed** is ever owed (pushing the resolved
+name would send the email prefix and overwrite "Ada Lovelace" with "ada" on every sign-in), and a
+row whose `display_name` is null **leaves hers alone** (every account predating the fix has one, so
+letting null win would blank the name for all 18 at their next hydrate).
+
+**A label can disable a feature.** The reminders master switch said "Weekly reminders". It gates all
+eight categories through `NotificationService.isActive`, so the woman who declined what read as a
+weekly digest also declined the daily supplement reminder, the evening check-in and the
+fertile-window nudge the brief calls critical. Nothing was broken in code; the copy was the bug.
+Worth carrying: **a control's blast radius is part of its correctness**, and `grep` for a toggle's
+label is not the same as reading what it sets.
+
+**A "coming soon" teaser was persisting and syncing state.** Tapping Pregnancy wrote
+`focusMode = .pregnancy` to the device *and the server* — so to Android too — while its own sheet
+said "Coming soon" and its button said "Keep tracking". No screen implements pregnancy mode, so the
+segment sat there claiming a state nothing honoured, permanently. A teaser must store nothing.
+
+**Silent input rejection reads as success.** A glass size outside 50–1000 ml was dropped by the
+per-keystroke rule and left in the field, so "3000" looked exactly like a setting that had taken
+while the glass was still 250 ml. Clamped on blur, not reverted — the keystroke rule stores the
+in-range prefix on the way, so reverting would have answered her with "300", a number she neither
+typed nor had.
+
+### The XCUITest mechanics that made two assertions pass for the wrong reason
+
+This is the §4r lesson again in a different disguise, and both halves are now written into the
+`enterGlassSize` helper so the next person does not rediscover them:
+
+- **`coordinate(withNormalizedOffset:).tap()` does not scroll an element into view.** Only
+  `element.tap()` does. A raw coordinate tap fires at those screen coordinates whatever is there —
+  after a few `swipeUp()`s, that was the tab bar.
+- **`XCUIKeyboardKey.delete` is a no-op when the caret is at position 0**, and a centre tap in a
+  trailing-aligned 56 pt field puts it there. The deletes did nothing and the new digits were
+  **prepended**: "10" became "101000", which clamped back to 1000 — the value under test — so the
+  assertion passed. `field.doubleTap()` selects the whole number (one word, no spaces) and typing
+  replaces it. The helper now also asserts the field reads what she typed *while she is still in
+  it*, so it can no longer mis-enter a value in silence.
+
+A related one, found in the same pass: **`XCUIElement.isSelected` needs
+`.accessibilityAddTraits(.isSelected)`.** The focus segments expressed selection in colour and
+background alone — invisible to VoiceOver and to every test.
+
+### Falsification choice worth copying
+
+For the past-day edit test I broke `populate()`'s prefill rather than `upsert(entry, on:)`. Breaking
+the upsert also fails the pre-existing back-fill test, which proves nothing about the new one;
+breaking the prefill fails **exactly one** test with the back-fill test still green — which is what
+demonstrates the new test covers a guarantee nothing else did. When falsifying, break the narrowest
+thing only the new test depends on.
+
+### Left open deliberately
+
+`HydrationDetailSheet` (`TrackView.swift:866`) is hardcoded to `today` (line 871), so a past day's
+water is correctable only through `LogView` — a missing route, not lost data. And
+`DailyLogRepository` has **no `delete()` at all**: a logged day cannot be removed on either client.
+Both are shared surface and the second is a data-retention decision, so neither was patched quietly.
+*(The hydration half was closed in §4t on 14 Aug; the deletion half stands.)*
+
+## 4t. H15 — the pH surfaces, walked the way she reaches them (2026-08-14)
+
+Six defects, found by opening the pH surfaces in the order a user hits them rather than reading the
+files in the order they are organised. One destroyed data on a single tap, one printed an
+unfollowable safety instruction, and one had a green test certifying a sentence that is false about
+the app's own behaviour.
+
+**The destructive one.** `PhLogSheet` put its delete action in `ToolbarItem(placement:
+.cancellationAction)` — the top-left slot every other screen in iOS gives to Cancel — and called
+`onDelete` immediately, with no confirmation. Opening a reading to adjust it and then deciding
+against the adjustment destroyed the reading. The button moved into the body of the sheet, away from
+Save, behind a confirmation; the toolbar slot is now an unconditional `Cancel` that only dismisses.
+
+**Use `.alert`, not `.confirmationDialog`, when the decline button's wording matters.** The first
+implementation used `.confirmationDialog` with `Button("Keep it", role: .cancel)`. The test could
+never find "Keep it" and I initially misread that as the dialog not presenting. It was presenting —
+a probe showed `sheets=1` and the dialog title present, while the full app-wide button list read
+`Cancel | Save | Delete`. **SwiftUI's `.confirmationDialog` silently discards a custom `.cancel`
+label** and substitutes the system "Cancel". So the decline button rendered as the same word as the
+toolbar button she had just learned does not delete anything — the exact confusion the fix existed to
+remove. `.alert` honours both labels and is queryable unambiguously as
+`app.alerts["title"].buttons["label"]`.
+
+**The Insights pH card had no disclaimer at all.** It is the most clinical-looking surface in the
+app — a pH value, an `ELEVATED` badge and a "speak to a GP" signpost — and `PhCopy.disclaimer`
+appeared in exactly two places in the codebase, both in `PhTrackerSection`. A woman who reads her
+result on Insights and never opens the pH tab got the badge and the signpost with no small print.
+Given the same collapsible "Safety note", under `insights.*` identifiers so it cannot collide with
+the tracker card's.
+
+**An instruction pointing at a control that does not exist.** Two pH cards read "log your cycle day
+alongside each reading". The log sheet has a pH value, a date and a note — there is no cycle-day
+field anywhere. Reworded to name the note field and lifted into `PhCopy.cycleContextCaveat`; that
+file exists precisely so a string shown on two surfaces cannot drift. **The grep found seven
+occurrences, not the four I expected**, and the three in `LearnContent.swift` were left alone on
+purpose: line 335 there ("add a note if you want") immediately precedes the instruction, so the Learn
+prose is truthful in its own context and editing it would have risked the banned-phrase guards for
+nothing.
+
+**A test that certified a false statement as shipped copy.** `PhCopy.oneTimeNotice` said "Your
+earlier readings are kept and marked 'urine (legacy)'", and `testCopyStringsAreVerbatim` asserted it
+character-for-character. But `PhRepository.displayReadings` filters `measurementType != .urine`: iOS
+**hides** legacy readings and marks nothing. Neither that constant nor `legacyMarker` rendered
+anywhere. The test was the trap — a future engineer wiring the notice up would have shipped a
+sentence that is untrue about the app, with a green suite vouching for it. Both constants and their
+three test references are gone. Hiding rather than marking is a deliberate, documented decision and
+was not reversed.
+
+**Hydration history is now actionable**, closing the first of the two items §4s left open. The
+seven-day strip on `HydrationDetailSheet` was inert, so a wrong past total was visible and
+uncorrectable from where she was looking at it; the only route was Track → that day → Edit this day.
+Each tile now opens that day's `LogView`. The sheet stays a today editor by design — this is the
+missing route, not a redesign.
+
+**The range selector gained a state VoiceOver can read.** Which of 7d/30d/90d/all was showing was
+expressed in foreground colour and background fill alone; `.isSelected`/`.isButton` traits and stable
+identifiers make it both audible and assertable.
+
+### The regression the compliance guard caught, and why it was reverted rather than accommodated
+
+An earlier edit in this batch had improved the Home pH card's VoiceOver label to include her last
+reading, because `.accessibilityElement(children: .ignore)` discards the subtitle where that number
+otherwise appears. The full UI suite failed on
+`CitationE2ETests.testHomePhCardHasNoUncitedClaim`, which pins that label to **exactly**
+`"Check your Vaginal pH"` so the card stays a navigational nudge carrying no health claim.
+
+That guard is deliberately an exact-equality assertion so that *any* addition forces a human to look,
+and it worked. The change was **reverted, not accommodated.** The argument for keeping it is real —
+the subtitle already shows "Last reading 6.9 — tap to log again" to sighted users, so the label
+change was parity with shipped visible content rather than new exposure — but putting a pH value into
+that label is a compliance call, and the carried constraint below is unambiguous that relaxing a
+test-enforced guard is a decision, never a quiet test edit. The VoiceOver parity gap is left standing
+and recorded here; the code now carries a comment naming the test so the next person does not
+rediscover this the same way.
+
+### Falsification
+
+Four new UI tests, four breaks, each applied on its own and each failing **exactly one** test with
+the other three green: restoring the one-tap delete failed only the delete test; dropping
+`.isSelected` failed only the range test; suppressing the disclaimer body failed only the Insights
+test; making the hydration tile inert failed only the hydration test.
+
+The hydration test taps the **oldest** tile deliberately. `lastSevenDays` runs today−6 → today, so
+index 0 is six days back — and a tile that opened *today's* log would satisfy a naive "the log
+opened" assertion while leaving the past day exactly as uncorrectable as it was.
+
+### Left open deliberately
+
+**The two clients now disagree about the same pH history.** Android displays legacy urine readings
+labelled "urine (legacy)" (`HomeScreen.kt:659,669`, `TrackerSummaryLogic.kt:99`,
+`LogDaySummary.kt:61`, `PhTrackerCard.kt:141`) and still shows a live migration notice
+(`PhCopy.kt` `NOTICE_TITLE`/`NOTICE_BODY`/`NOTICE_DISMISS`), while iOS hides those readings entirely.
+One account therefore shows a different pH history on an iPhone than on an Android phone. Nothing is
+lost on either side — the rows are stored and synced both ways — but one of the two is wrong. Not
+resolved here: the fix is either an Android change (excluded from this delivery by instruction) or
+reversing a deliberate iOS product decision, and it needs a ruling on which client is right.
+
+**Cycle edits still cannot count toward the streak, and now the reason is precise.** `CycleSettings`
+is three fields and `CycleSettingsRow` mirrors them; there is **no `updated_at` locally or remotely
+and no dated history**, so nothing distinguishes an edit made today from one made in March. Two
+proxies were checked and both break: counting *projected* period days awards a streak to someone who
+never opened the app, because those days are arithmetic from `lastPeriodDate` + `cycleLength` rather
+than logged events; counting the recorded period window is retroactive and hands out a week's streak
+for a range typed in one sitting. Same unblock as dated article reads — a dated table, or at minimum
+an `updated_at` column, plus an Android migration.
+
+## 4u. H16 — the notification queue, and the woman it stopped speaking to (2026-08-14)
+
+Four defects in the notification engine. Three of them are invisible from inside a single session:
+they only appear across a cancel, a foreground and a night, which is exactly why eight categories of
+green tests never caught them. The suite tested what each nudge *says*. Nothing tested what was still
+in the queue tomorrow.
+
+**Read this first, because all four fixes depend on it.** iOS notifications here are
+`UNCalendarNotificationTrigger(repeats: false)` — one-shot. There is no `BGTaskScheduler` and no
+background refresh. **The queue is rebuilt only when the app is foregrounded or a repository
+publisher fires.** So an empty plan is not "nothing to say tonight"; it is "nothing, ever again,
+until she happens to open the app". Every planner branch that returns `nil` is a decision to go
+silent indefinitely, and it has to be read that way.
+
+**The worst one punished the most engaged user.** `NotificationPlanner.hydration()` returned `nil`
+once she had both logged her day and met her water goal. As a sentence about tonight that is
+correct. As a queue it is catastrophic: she completes her day, has no reason to open the app again,
+and never hears from it again. The women who used the app properly were the ones it abandoned. It
+now returns tomorrow's invitation at `dayOffset: 1`, which is still true on the morning it lands,
+because she cannot log tomorrow without opening the app and opening it re-plans.
+
+**The weekly nudges do not save her, and the reason generalises.** The obvious objection to the
+paragraph above is that `plan()` still returns up to four weekly nudges, so the queue is not empty.
+Check what those four actually are for a consistent user: `track()` requires
+`daysSinceLastLog >= trackNudgeAfterDays` and returns nil for someone who never has a gap; `ph()`
+goes quiet once she has logged recently; `insights()` and `learn()` are each rationed to one in seven
+days. Two of the four are written *for a lapse* and have nothing to say to her by design, and the
+other two are weekly at best. Her queue can therefore empty completely — and the emptier it is, the
+less likely anything arrives to refill it. **The general lesson: when the queue is only refilled by
+the user showing up, every rationing rule is also a rule about who gets abandoned, and rules
+conditioned on inactivity abandon the active.**
+
+**Scope the fix honestly when reporting it:** it restores the daily rhythm. It does not make the
+schedule self-sustaining, and a woman who stops opening the app still runs out.
+
+**Cancelling remembered what it had just cancelled.** Delivery cannot be observed while the app is
+closed, so `recordWhatHasFired()` infers it: a scheduled fire time now in the past is counted as
+sent. `cancelAll()` removed the pending requests but left `notification_scheduled_fire` intact — so
+every cancelled-but-not-yet-due nudge was promoted to "sent" at the next foreground, and a slot
+believed to have spoken then serves out its full repeat guard in silence — seven days for the
+evergreen nudges, and fourteen for the fertile one (`fertileRepeatGuardDays = 14`). Turning reminders
+off and back on in the same evening therefore cost her a fortnight of the one nudge the change list
+calls critical. `cancelAll()` now clears the map. **The ordering is
+load-bearing and must not be rearranged:** `replan()` calls `recordWhatHasFired()` *before*
+`cancelAll()`, so fires that genuinely happened are banked before anything is cleared.
+
+**A weekday is a fair proxy for a recurring nudge and a wrong one for a dated nudge.**
+`hydrationRestDays` stood the evening check-in down on any weekday a weekly nudge lands. Sound for
+the four evergreen nudges, which really do recur — but the fertile nudge is a single date, and seven
+days from today is *today's own weekday*, so a fertile nudge at the far edge of its horizon silenced
+tonight for something firing next week. Now excludes `dayOffset == 7`.
+
+**A safety scan pointed at fixtures fails nobody.** `SupplementReminder.allPossibleCopy` is the
+surface the banned-phrase and no-guilt scans walk, and it was built from three invented supplements —
+so the scans cleared a "Magnesium" the app does not ship and **never once read "Time for Folate
+(400–800 mcg)"**, which is what actually reaches her lock screen. An essential carries its dose
+inside its name, which is precisely the shape the fixtures missed. Now built from
+`NutritionContent.supplementPlan` exactly as `all()` builds it. The test added for it pins the
+*coupling*, not the copy: every essential in the shipping plan must appear in the scanned set. This
+generalises — **if a compliance scan reads a hand-written list, the list is the thing to test, not
+the scan.**
+
+### When to rewrite a failing test, and when to obey it
+
+Fixing the hydration `nil` broke `testEveningCheckInSaysNothingWhenTheDayIsComplete`, which asserted
+the plan was empty — the defect, written down as a specification. It was rewritten into two tests
+stating the new contract, with the reasoning kept in the doc comment so the next reader sees the
+argument rather than a silent edit.
+
+**This is the opposite call to §4t's citation pin, and the distinction is the point.** There,
+`CitationE2ETests` caught a regression I had introduced and I reverted the code and left the test
+alone. The rule that separates them: a test that exists so a human must review a change — a
+compliance guard, an exact-equality copy pin — is obeyed, always. A test that merely records how the
+code behaved when it was written can be rewritten when the behaviour was wrong. Ask which kind it is
+*before* touching it, and write the answer down.
+
+**Verify audit findings before fixing them.** A fifth finding was reported — that a fertile nudge is
+lost if the app is opened after 08:00 on the day itself. It is not a defect: `fireDate` returns nil
+for a moment that has already passed, and the reason is written down at
+`NotificationService.swift:293-302` — the plan is only ever rebuilt *because* the app was opened, so
+a nudge about a window that opened this morning would be telling her what the screen in front of her
+is already showing. Read against the source and rejected rather than patched. The finding was right
+about the behaviour and wrong about it being a fault, which is the usual shape: **an audit reports
+what the code does; whether that is a defect is a judgement the audit cannot make for you.**
+
+### Left open deliberately
+
+**The queue still runs out for a woman who stops opening the app.** With no `BGTaskScheduler` and no
+background refresh, the 14-day dormant hand-back can never fire — the one nudge aimed at someone who
+has gone quiet is the one nudge that structurally cannot reach her. Closing it is a
+background-execution change with its own capability, battery and review implications, not a planner
+change, and it was catalogued rather than attempted inside a batch of defect fixes.
+
+## 4v. H17 — the sync contract, checked in all five places rather than three (2026-08-14)
+
+The owed-write contract is the load-bearing promise of this app when the network is bad: **the local
+write always wins**. Every prior batch has cited `PreferencesRepository` as the reference
+implementation of it. This batch checked whether the other four repositories actually implement the
+same thing, instead of assuming a documented pattern had been applied uniformly — and the reference
+implementation turned out to be one of the two that got it wrong.
+
+**The shape of the fault is a TOCTOU, and it is easy to write by accident.** `refresh()` drains what
+is owed, checks `!pendingPush`, then pulls:
+
+```swift
+await drainPending()
+guard !pendingPush else { return }                       // ← read here
+do { fetched = try await backend.fetch() } catch { return }   // ← suspension
+apply(remote)                                            // ← applied here, flag never re-read
+```
+
+The check is correct and it is in the wrong place. Between the guard and the apply there is a real
+network round trip, and anything she changes during it is being measured against an answer given
+before she touched the screen.
+
+**On `PreferencesRepository` this erases the change rather than reverting the display.** `apply` runs
+inside `isApplyingRemote = true`, which exists so that writing pulled values does not bounce them
+straight back up as a fresh push. That is right for a genuine pull. Here it means the overwrite was
+also *un-owed*: her theme, focus mode or push toggle reverted, and nothing anywhere still knew she
+had asked for it. There is no retry, because the retry flag was suppressed by the same code that did
+the damage.
+
+**On `CycleRepository` it is milder, and the difference is worth stating** so the fix is not
+over-sold. `upsert` fires its own `Task` that carries the edit to the server immediately, so in the
+common case the server already has it and only the device reverts — self-healing at the next
+refresh. Same fix, lower stakes.
+
+```swift
+guard !pendingPush, let remote = try? await backend.fetch() else { return }
+guard !pendingPush else { return }   // re-read after the suspension
+settings = remote
+```
+
+**The two that were immune are what made this findable.** `DailyLogRepository.refresh()` re-reads
+inside the loop — `for (date, log) in remote where !pendingDates.contains(date)` — and `PhSync.merge`
+does the equivalent. Three implementations of one contract, two of them re-reading after the await
+and two not, is the kind of divergence that only shows up if you read all of them side by side; each
+one on its own reads as correct.
+
+**Window: launch and sign-in, not foreground — and the narrowness is real.** `refresh()` is reached
+only from `AppContainer.hydrate()` (`AppContainer.swift:70-74`). The foreground path
+(`GenesyxApp.swift:42-51` → `AppContainer.drainPending`, `AppContainer.swift:79-89`) pushes without
+pulling, so it cannot hit this. She had to change a setting in the seconds after a cold start or a
+sign-in — which is exactly the window a slow connection stretches out.
+
+### Falsification
+
+Reverting both guards fails **three** assertions across exactly the two new tests, with the other 82
+tests in `RepositoryTests` green. The third is the one worth reading:
+`testAPreferenceChangedDuringAPullIsNotOverwrittenByWhatComesBack` also asserts that her choice
+reaches the server *afterwards*, and without the fix it never does — the `isApplyingRemote`
+consequence reproduced as evidence rather than asserted in prose.
+
+Two new fakes rather than extending `MidDrainCycleBackend`: that class's name describes the *drain*
+window and these fire during the *fetch* window, so a `duringFetch` hook bolted onto it would have
+made the existing test harder to read for no gain. `MidFetchProfileBackend` flips `online` from
+inside the hook, so the edit's own push fails and the flag stays genuinely owed — otherwise the test
+would be racing the `Task { await drainPending() }` that `pushPrefs()` spawns, and a test that passes
+because a task happened not to run yet is not a test.
+
+### Also audited, and sound
+
+All eight `drainPending` definitions are reachable from a live call site. H13's defined-but-never-
+called pattern has not recurred.
+
+### Left open deliberately
+
+**Custom supplements are outside this contract altogether, and that is the bigger finding.**
+`@AppStorage` JSON, no pending flag, no drain, no read-back — so unlike a write that is merely still
+owed, there is no path to the server at all and a reinstall loses everything she typed. Since 13 Aug
+`user_supplements` exists in production with owner-only RLS and **Android reads and writes it**, so
+the same account now genuinely diverges between her two phones with neither client aware of the
+other.
+
+**I first wrote here that nothing blocks it and it is a day's work. That was wrong, and it is worth
+recording why rather than quietly editing it out** — it is the same failure mode as the P0-15 call
+earlier in this delivery. Both times I costed a piece of work from the shape of the *server* side
+without reading what the *client* would have to send. The server side genuinely is ready. Reading
+the deployed DDL against `NutritionView.swift` is what showed the problem:
+
+`user_supplements.time_of_day` carries
+`check (time_of_day is null or time_of_day in ('morning','afternoon','evening','anytime'))`, and
+Android models it as `enum class SupplementTime` whose `wire` values its own doc comment calls a
+cross-platform contract that must never be renamed after a client ships. **iOS's time field is a
+free-text `TextField`** (`NutritionView.swift:714`, `843-848`). Every value it can produce that is
+not one of those four lowercase words will be rejected by the constraint. `name` is likewise bounded
+1–60 characters server-side and unbounded on iOS, and deletion server-side is a `deleted_at`
+tombstone, which iOS has no concept of — `remove()` drops the item from a local array, so with no
+tombstone the next pull would resurrect it.
+
+So the honest sequence is: **decide the time field first, then build.** Matching Android means a
+four-option picker, which is parity rather than redesign — but it discards whatever an existing iOS
+user typed there, and because these have never synced there is no way to count them or read them
+back first. That is a product call, and it is recorded in `TESTFLIGHT_B18.md` under "What's NOT in
+this build" with the alternatives and why both are worse. Building the repository before it is
+answered means building it twice.
+
+## 4w. H18 — four things the calendar and the countdown were saying wrong (2026-08-14)
+
+Four defects, all in surfaces the client's list calls critical, none of which had a failing test
+because in three of the four cases the test suite had encoded the wrong answer as the expected one.
+
+**1. The countdown was a day short, everywhere.**
+`CycleEngine.cyclePhase` computed `cycleLength - dayOfCycle`. The next period starts on day 1 of the
+*next* cycle — day `cycleLength + 1` counted from this one — so from day `d` it is
+`cycleLength - d + 1` days away. On a 28-day cycle, day 8 reported 20 days when the answer is 21.
+The visible failure is at the end: on the last day of the cycle the old expression returned **0**,
+and 0 is the value Home renders as "Next period: Today" and Track as "Your next period is due
+today". A full day early, on the number a woman tracking her cycle checks first.
+
+`CycleEngineTests` asserted `20`. That is how a countdown that was wrong for every user on every
+cycle passed its own suite for months: the test recorded what the code did, not what was true. It
+was rewritten with the arithmetic spelled out in the comment, and a second test added for the
+last-day case specifically.
+
+**Ported from web and Android, both of which still have the old expression.** The header of
+`CycleEngine.swift` points at `docs/CYCLE_ENGINE.md` for the parity contract — **that file does not
+exist**, so the parity was only ever a code comment. Fixed iOS, flagged the other two, touched
+neither. See the H18 row in `CHANGE_LIST_PLAN.md` §6A.
+
+**2. On a short cycle the calendar refused to name her ovulation day.**
+`ovulationDay = cycleLength - 14`, so a 21/7 cycle ovulates on day 7 — inside the period.
+`CycleEngine.dayType` resolves period before ovulation (deliberate, and shared with Android), so the
+cell drew as a period day: no ovulation fill, no heavier ring, and a screen reader said "7, Period".
+Meanwhile Home, Insights and the cycle sheet all still printed "Predicted ovulation: Day 7". Four of
+the settings sheet's selectable combinations do this — 21/7, 22/8, 23/9, 24/10.
+
+Fixed in the view, not in `dayType`: the cell now asks the *day* whether it is the ovulation day
+(`info.dayOfCycle == info.ovulationDay`) rather than asking the fill, which is the same idiom the
+adjacent `isFertile` line already used. The shared precedence contract is untouched.
+
+**3. The one screen whose job is reading her logs back was dropping days.**
+`InsightsView`'s private `DailyLog.isBlank` was a hand-written copy of `hasAnyEntry` that had
+drifted. It never gained the `foodGroups` term when H4 added one to both streak predicates, and it
+never had `sexualActivity`. So a day she only ticked her meals on drew a calendar dot, was named in
+the day sheet and counted toward her streak — then vanished from history. `LogHistoryCard`, in the
+same file, already knew how to render food groups.
+
+`isBlank` now delegates: `!hasAnyEntry && !sexualActivity`. `sexualActivity` is added **on top**
+rather than folded into `hasAnyEntry`, because that predicate is a cross-platform contract and
+widening it would change her streak numbers against Android's with no error anywhere. Same shape
+`NotificationService.swift:222` already uses, for the same reason. The card also gained an
+"Intimacy" row, since a day whose only entry was that one still reached history as a bare date.
+
+**4. The cycle editor fabricated a date for new users.**
+`CycleSetup.swift`'s header forbids inventing a last-period date in as many words. The editor did it
+anyway — not through the rule, but around it: showing the picker required binding it to a
+non-optional date, so the empty-state button assigned `Date()` purely to have something to bind, and
+that assignment enabled Save on the way past. Asking for the picker and choosing a date were one
+event.
+
+Split by a new pure rule, `CycleSetup.showsDatePicker(lastPeriod:isPicking:)`, with the view holding
+an `isPickingDate` flag that shows the control without writing anything.
+
+### The SwiftUI trap this one hides, and why there is an extra button
+
+A graphical `DatePicker` must still be handed a non-optional date, so it opens on today whether or
+not she means today — and **tapping the day it is already displaying may not move the binding**.
+That would strand the exact woman whose period genuinely did start today: picker on screen, correct
+day highlighted, Save greyed out, nothing explaining why.
+
+Rather than ship an unverifiable change to the control that gates every prediction in the app, the
+empty state now also offers an explicit **"My period started today"** button
+(`cycle.lastPeriodIsToday`). It is one line of UI that makes the ambiguous case unambiguous.
+
+### Falsification
+
+Reverted in two pairs, both exact:
+
+- `+ 1` and `|| isPicking` together → **4 failures across 3 tests of 248** domain. `20 ≠ 21`,
+  `1 ≠ 2`, `0 ≠ 1`, and the picker/Save split. `testPickerIsHiddenUntilAskedForAndAlwaysShownOnce
+  ADateExists` correctly did **not** fail — it guards the other two states.
+- The `isOvulationDay` label branch and `isBlank` together → **6 failures across 2 tests of 22** in
+  `RealInsightsTests`, the messages reproducing the bug verbatim: `7, Period, also in your fertile
+  window` for all four short-cycle combinations, plus both `isBlank` assertions.
+  `testTheOvulationNoteIsAddedOnlyWhereTheFillHasNotAlreadySaidIt` correctly did **not** fail.
+
+All four restored and re-verified afterwards.
+
+### Where the new tests live, and why there
+
+The calendar cell's spoken label moved out of the view into `CyclePredictionCopy` — the file's
+existing internal, testable seam — as `calendarDayLabel(day:type:isFertile:isOvulationDay:isToday:
+markers:)`. The private `cellLabel`/`markerLabel` helpers were deleted and the two `legendLabel`
+overloads now delegate. That is what gives the short-cycle case a seam a test can reach, which
+matters because it is precisely the case no one notices by eye.
+
+### Left open deliberately
+
+**The legend still shows ovulation as a solid swatch**, which on a short cycle points at a fill that
+appears nowhere in that month's grid. Cosmetic, and cycle-aware legend copy is a design decision,
+not a correction.
+
+**Android and web still carry the off-by-one.** Fixing them is a separate, non-iOS change and the
+standing instruction is iOS only.
+
+**`docs/CYCLE_ENGINE.md` still does not exist.** Until it does, "matches web/Android" claims in
+`CycleEngine.swift` are unverifiable assertions in a comment. Worth writing before the next person
+uses one as a reason not to fix something.
+
+## 4x. H19 — the last thing in the app that never left the phone (2026-08-14)
+
+Every other thing she records is written locally and then **owed** to the server until it lands —
+her cycle, her daily logs, her pH readings, her preferences, her name. Custom supplements were
+`@AppStorage` JSON and nothing more. A reinstall lost them. The same account on two phones showed
+two different lists, with neither device aware the other existed.
+
+The table was not the blocker: `user_supplements` has been live since 13 Aug with owner-only RLS, a
+`user_id → auth.users ON DELETE CASCADE`, a `time_of_day` CHECK and H1's deletion backstop, and
+Android has read and written it the whole time. **No schema change and no SQL were needed here.**
+iOS simply never connected to it.
+
+### The two halves
+
+**The sync** follows `PhRepository` exactly, because it is the closest shape and the contract is
+already proven: the device is the source of truth, a failed push stays queued and is retried on
+launch/foreground/reconnect, `refresh` MERGES rather than replaces so an empty cloud cannot wipe
+her, and a delete is a **tombstone** rather than an array removal. That last one is the part that
+was missing conceptually, not just in code — dropping an item from a local array is invisible to
+the server, so the next pull finds a row this device does not have, reads it as new, and puts the
+supplement back. She deletes it and it returns.
+
+**The time field** was free text on iOS. Android offers four fixed options, and the server accepts
+`morning`/`afternoon`/`evening`/`anytime` or null and nothing else. So whatever she typed was
+either refused by the database or arrived at her other phone as a string it had no idea what to do
+with. It is now the same four. The client chose this over widening the server.
+
+`SupplementTime.parse` lowercases and trims, which recovers a typed "Evening" or " morning "
+instead of dropping it. The decision that authorised this batch accepted discarding the old values;
+this keeps the ones that can be kept and discards only what is genuinely unrecognisable.
+
+### Three ways this could have quietly destroyed data, all caught before shipping
+
+**`LocalStore` namespaces every key it writes under `genesyx.`. `@AppStorage` does not.** The
+existing list is under the bare key in `UserDefaults.standard`. The first draft read it back through
+the store — which would have found nothing, decided there was nothing to migrate, and silently
+discarded every supplement on every device that had one. The unprefixed defaults are now injected
+explicitly (`legacyDefaults:`) with the reason written at the property, and
+`testTheListFromBeforeTheSyncIsAdoptedAndCarriedUp` fails with `[]` if that read is ever routed back
+through the store.
+
+**A typed enum with synthesized `Codable` would have lost the list, not the time.** Array decoding
+is all-or-nothing: one device holding `"time":"with breakfast"` and `decodeList` returns `[]`. So
+the natural, tidy change — `String` becomes `SupplementTime`, let the compiler write the decoder —
+converts an unrecognised *time* into the loss of *every supplement she ever added*.
+`CustomSupplement` decodes by hand for this reason alone. The falsification prints it plainly:
+`("[]") is not equal to ("["Magnesium", "Vitamin C"]")`.
+
+**`updated_at` is nullable on purpose, and the fallback is not cosmetic.** The server stamps it only
+on an update, so a row added on Android and never edited arrives with none. `parseISO` answers an
+unparseable string with `Date()` — *now* — so without `?? createdAt` that row would be dated now,
+**win every merge it takes part in**, and overwrite what is on this phone. Note the direction: the
+obvious guess is that a missing timestamp makes a row look old and lose. It makes it look newest and
+win. The falsification measured the gap at 20 hours, and the test now asserts the actual timestamp
+rather than merely that one exists — the first version asserted `> epoch`, which `Date()` satisfies,
+so it could not have failed.
+
+### The migration gets exactly one chance
+
+Everyone with a pre-existing list has it under the old key and an empty `user_supplements`. It is
+adopted as `pendingSync: true` with spaced synthetic timestamps from the epoch, so the order she
+added them in survives the sort and the whole list is pushed up on her next sign-in. The
+alternative — treating an empty server as authoritative — would have made the feature launch by
+deleting her list.
+
+The old key is **left in place rather than deleted**: it costs nothing and is the only copy if a
+downgrade ever happens. But it is not re-read once the store holds records, or deleting her last
+supplement would be undone at the next launch by the copy the old key still holds.
+
+`product_id` and `created_at` are **omitted** from the upsert rather than sent as null, which is
+what preserves a catalogue link Android set. Swift leaves nil optionals out of the encoded body —
+`encodeIfPresent` — so this works by mechanism rather than by intention, which is exactly why
+`testTheSupplementRowLeavesOutTheColumnsItCannotKnow` pins it.
+
+### One coupling that had to be cut
+
+`NotificationService` was reading the supplement list straight out of raw `UserDefaults`. Left
+alone, the repository and the notification schedule would have drifted the first time the list
+changed from the server. It now takes the repository and re-plans when the list changes — the
+reminder hour is device-local and keyed by supplement id, so a supplement she deleted on her Android
+phone would otherwise have kept its alarm on this one, waking her for something the app no longer
+shows her.
+
+Sign-out clears both copies, for the same reason it clears milestones and read articles: the next
+user on the device must not inherit them.
+
+### Falsification
+
+Five breaks, each rebuilt and re-run, each failing exactly its own test and nothing else:
+
+| Break | Fails |
+|---|---|
+| Strict `decodeIfPresent(SupplementTime.self)` | `testAnUnrecognisableStoredTimeCostsTheTimeAndNothingElse` — `[]` for the whole list |
+| `merge` drops local-only rows instead of queuing them | `testAnEmptyCloudKeepsHerListAndQueuesItForUpload` |
+| Legacy read routed through `store.string(forKey:)` | `testTheListFromBeforeTheSyncIsAdoptedAndCarriedUp` |
+| `delete` as an array removal | `testADeletedSupplementDoesNotComeBackOnTheNextPull` |
+| `updatedAt ?? ""` | `testARemoteRowWithNoUpdatedAtIsDatedWhenItWasCreatedNotNow` |
+
+**One test premise was wrong and was corrected rather than made to pass.** The first draft of
+`testADeletionMadeOnAnotherDeviceRemovesItHere` seeded an unpushed local record and expected a
+remote tombstone to beat it. It does not, deliberately: an unpushed local change is one the server
+has never seen, so it outranks anything the server says — the same rule `PhSync` uses. The state was
+also unreachable, since she cannot delete on Android something that was never pushed. The test now
+syncs first, then applies the tombstone, which is the scenario that actually occurs.
+
+### The crash this batch introduced, which 30 green tests could not see
+
+Worth writing down in full, because the next repository migration will hit it identically.
+
+Moving supplements off `@AppStorage` and onto a repository changed how `SupplementPlanSheet` gets
+its data: from a property wrapper that needs nothing, to `@EnvironmentObject private var supplements:
+SupplementsRepository`, which needs the object to have been injected somewhere above it.
+`GenesyxApp.swift` injects nine repositories and `container.supplements` was not among them. SwiftUI
+answers a missing `@EnvironmentObject` with a `fatalError` at body-evaluation time, so **tapping
+"Review Plan" in Nutrition crashed the app outright** — not a blank sheet, a termination.
+
+Both fast suites were green while this was true, and would have stayed green forever:
+
+- The 18 domain tests never touch SwiftUI.
+- The 12 app tests construct `SupplementsRepository` directly and assert on it. That is what makes
+  them fast and what makes them blind here — they supply the dependency the app was failing to
+  supply, so the defect is definitionally outside their reach.
+
+`testEachSupplementCanBeGivenItsOwnReminderTime` caught it on the first run, and its own doc comment
+had predicted the mechanism months earlier: *"a sheet that doesn't inherit them crashes on open
+rather than failing a unit test."* That comment is the reason the diagnosis took one grep instead of
+a bisect. **Leave it there.**
+
+Fixed by adding `.environmentObject(container.supplements)` in `GenesyxApp.swift:39` and
+`PreviewSupport.swift:50` — the previews file matters too, or every `#Preview` touching Nutrition
+crashes in Xcode.
+
+Two rules follow, and they are about ordering rather than coverage:
+
+1. **A new `@EnvironmentObject` in any view is an edit to two files, not one.** Grep
+   `\.environmentObject(` and confirm the new one appears in both `GenesyxApp.swift` and
+   `PreviewSupport.swift` before considering the change done.
+2. **The UI suite runs before a batch is called finished, not after.** It is ~12 minutes against
+   ~1 second, so the temptation is to treat it as a formality once the fast suites are green. This
+   batch is the counter-example: green fast suites, shipping-blocking crash. Budget the 12 minutes.
+
+### Left open deliberately
+
+**Cross-device QA on real hardware is still owed**, and it needs the disposable account (H8). The
+merge rules are proven against fakes; two physical phones on one account are not something a test
+suite can stand in for.
+
+**There is still no edit path** — a supplement can be added and deleted, not renamed. `SupplementSync`
+notes what would need to change if one is added: `updatedAt` currently doubles as insertion order,
+and an edit would break that, so the list would want a `createdAt` of its own.
+
+## 4y. H20 — what one account leaves behind for the next (2026-08-14)
+
+Four areas already marked **Done** were re-audited on the rule this project keeps re-learning: "Done"
+has repeatedly meant *the feature exists*, not *it is safe to use*. Twenty-one findings. Six fixed,
+two rejected on inspection, thirteen recorded in `CHANGE_LIST_PLAN.md` §11 as needing a decision or a
+rebuild rather than a patch.
+
+**The three that matter most all live on the same seam: the moment one person stops using the phone
+and another starts.**
+
+1. **`focusMode` survived sign-out.** It sat in `PreferencesRepository` next to theme and push, and
+   `clearNotificationState()`'s doc comment asserted it "belongs to the device". It does not — Prep
+   vs Pregnancy is a health answer. Nothing cleared it, so the next account opened Profile to find
+   Pregnancy pre-selected. **The severe case is a new sign-up**, whose `profiles` row does not exist
+   yet: `refresh()` seeds one from whatever the device holds and writes a stranger's pregnancy status
+   permanently into her record. Fixed with `clearFocusMode()` called from
+   `AppContainer.clearLocalState()`.
+   **The non-obvious part is why it brackets the write in `isApplyingRemote`.** A plain
+   `focusMode = .prep` fires `didSet` → `pushPrefs()`, which would reset the **departing** user's
+   server row and destroy the answer she gave. Her value stays server-side and returns on her next
+   pull. Any future "clear this on sign-out" on a `@Published` property with a pushing `didSet` has
+   the same trap.
+2. **`deleteAccount()` had both halves of the handover backwards**, and it is the only teardown path
+   that did — `signOut()` was already right, which is exactly what made it findable. Two symmetrical
+   errors:
+   - the owed rename was left set, so the next sign-in resolved a name from the only thing it still
+     had (the email prefix) and drained *that* onto the incoming user's row, over the real name she
+     registered under;
+   - `store.remove(forKey: identityKey)` discarded the marker `applySignIn` uses to detect an owner
+     change. **`previous == nil` is indistinguishable from a device that has never held a session**,
+     so the wipe was skipped and anything logged between the deletion and the next sign-in was filed
+     as the new user's and pushed to her rows.
+
+   The identity key now outlives the account deliberately, and the reasoning is written at the call
+   site so it does not get "tidied up" a second time.
+3. **Home was routing around H18's fix from the other door.** `CycleSetup` exists solely to forbid
+   fabricating a new user's last-period date as today. H18 fixed the sheet; `HomeView` opened the
+   same sheet holding `@State private var lastPeriod = Date()` and passed a fabricated
+   `CycleSettings` in, so `initialLastPeriod` resolved to today, `canSave` was satisfied on open, and
+   the "My period started today" confirmation was hidden. **Carry this forward: a fix to a guarded
+   screen is not done until every caller of that screen has been read.** `TrackView:55` and
+   `ProfileView:79` were checked in the same pass and were already correct — Home was the sole
+   offender, and it offended by pre-answering the question the guard exists to ask.
+
+The other three: the Sunday nudge read raw `learnArticles` instead of `LearnLibrary.articles`, whose
+own doc comment names it as a caller that must go through the gate — and because the "new" pool is
+*exclusive*, it drew **only** from the twelve date-withheld pieces, then spent the slug via
+`markAnnounced` so the real drop was silent. The `.ovulatory` sub-line forecast an event that is
+always today, contradicting its own hero, Home and Track. And `QuizView`'s `@State` was destroyed on
+navigating away, so backing out of the readiness summary cleared all five answers.
+
+**The test-seam lesson is the transferable one.** Every existing Learn test rebuilt the candidate
+list from `LearnLibrary.articles` itself, so the suite was *structurally incapable* of catching the
+single production caller that used something else. `learnCandidates()` was widened from `private` to
+internal specifically to let a test drive the real composition. **When every test constructs the
+input the production code is supposed to derive, the suite proves the helper and not the wiring.**
+
+4 app tests + 1 domain test, all falsified. The app falsification broke all three source fixes
+simultaneously and produced **18 assertion failures across exactly the 4 new tests and nothing else**
+in the 272-test target — the precision is the evidence. Restored and re-run green: 267 / 272 / 66.
+
 ## 5. Still gated on the client — nothing
 
 | Gate | Needs | Blocks |
@@ -933,6 +2044,18 @@ stand in for.
   defaulting it to vaginal corrupts her trend and the shared backend. Recovery comes from the server
   via `PhSync.merge`, never from a local guess. See §4k;
   `testLegacyUrineReadingsStayHiddenAcrossARelaunch` fails if someone flips it.
+- **The Home pH card's accessibility label is pinned to exactly `"Check your Vaginal pH"`** by
+  `CitationE2ETests.testHomePhCardHasNoUncitedClaim`, so the card stays a navigational nudge with no
+  health claim and therefore no citation requirement. The exact-equality assertion is the point: any
+  addition trips it and forces a human to look. Note the guard covers the **label**, not the card —
+  the visible subtitle already shows "Last reading 6.9 — tap to log again", which
+  `.accessibilityElement(children: .ignore)` keeps out of the accessibility tree. Putting that number
+  into the label is a compliance decision; it was attempted and reverted on 14 Aug (§4t).
+- **Use `.alert`, not `.confirmationDialog`, wherever the decline button's wording carries meaning.**
+  SwiftUI's `.confirmationDialog` silently discards a custom `.cancel` label and substitutes the
+  system "Cancel" — so `Button("Keep it", role: .cancel)` renders as "Cancel". This is invisible in
+  code review and looks like a presentation failure in tests. `.alert` honours both labels and is
+  queryable as `app.alerts["title"].buttons["label"]`. See §4t.
 - **Present the pH log sheet with `.sheet(item:)`.** The `isPresented` + separate-`editing` pair
   races: the body is evaluated before the sibling state lands, which silently turns every edit into
   a duplicate new reading. `testPhHistoryListOpensAnOlderReadingForEditing` is the guard.

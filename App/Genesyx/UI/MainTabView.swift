@@ -52,12 +52,17 @@ struct MainTabView: View {
         }
         .animation(.easeInOut(duration: 0.2), value: notifications.celebration)
         // A notification tap lands on its tab — and, for the Learn nudge, on the article itself.
-        .onChange(of: notifications.pendingDestination) { destination in
-            guard let destination else { return }
-            router.selection = destination.tab.rawValue
-            router.pendingLearnSlug = destination.learnSlug
-            notifications.pendingDestination = nil
-        }
+        .onAppear { applyPendingNotification() }
+        .onChange(of: notifications.pendingDestination) { _ in applyPendingNotification() }
+    }
+
+    /// A tap taken while signed out is held on the service and applied the first time this
+    /// view is allowed to exist — after authentication, never before.
+    private func applyPendingNotification() {
+        guard let destination = notifications.pendingDestination else { return }
+        router.selection = destination.tab.rawValue
+        router.pendingLearnSlug = destination.learnSlug
+        notifications.pendingDestination = nil
     }
 
     /// Keeps every tab's view alive so state (scroll position, in-tab nav) survives switching,

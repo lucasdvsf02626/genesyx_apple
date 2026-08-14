@@ -39,8 +39,14 @@ public enum CycleEngine {
             phase = .luteal
         }
 
-        // Matches web cycle.ts: day 1 reports 0 (period just started).
-        let daysUntilNextPeriod = dayOfCycle == 1 ? 0 : cycleLength - dayOfCycle
+        // Day 1 reports 0 (period just started), matching web cycle.ts.
+        //
+        // The `+ 1` is the correction: the next period starts on day 1 of the *next* cycle, which is
+        // day `cycleLength + 1` counted from this one, so from day `d` it is `cycleLength - d + 1`
+        // days away. Without it every countdown was one day short — and on the last day of the cycle
+        // it reached 0, which Home renders as "Next period: Today" and Track as "Your next period is
+        // due today", a full day early. Ported from web/Android, both of which still omit it.
+        let daysUntilNextPeriod = dayOfCycle == 1 ? 0 : cycleLength - dayOfCycle + 1
 
         return CyclePhaseInfo(
             dayOfCycle: dayOfCycle,

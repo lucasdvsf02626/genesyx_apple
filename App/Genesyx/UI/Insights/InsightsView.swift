@@ -270,6 +270,7 @@ private struct PhInsightsCard: View {
     let countLine: String
     /// False with a single reading — there is no previous value to compare against.
     let hasTrend: Bool
+    @State private var disclaimerExpanded = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -317,10 +318,33 @@ private struct PhInsightsCard: View {
                     Text(ph.recommendation).font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground).padding(.top, 6)
                 }
                 Text(countLine).font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground.opacity(0.9)).padding(.top, 6)
-                Text("Vaginal pH naturally shifts across your cycle. Logging your cycle day alongside each reading helps you understand your own patterns.")
+                Text(PhCopy.cycleContextCaveat)
                     .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
                     .fixedSize(horizontal: false, vertical: true).padding(.top, 6)
                     .accessibilityIdentifier("phCaveat")
+                // This card is the most clinical-looking surface in the app — a number, an
+                // ELEVATED badge and a GP signpost — and it was the one pH surface carrying no
+                // disclaimer at all. Collapsed here as it is on the tracker, so the small print
+                // is one tap away rather than absent.
+                Button { withAnimation(.easeInOut(duration: 0.2)) { disclaimerExpanded.toggle() } } label: {
+                    HStack {
+                        Text("Safety note").font(.gxBodySmall.weight(.medium)).foregroundStyle(GenesyxColor.primary)
+                        Spacer()
+                        Image(systemName: "chevron.down").font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(GenesyxColor.mutedForeground)
+                            .rotationEffect(.degrees(disclaimerExpanded ? 180 : 0))
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 10)
+                .accessibilityIdentifier("insights.phDisclaimerToggle")
+                if disclaimerExpanded {
+                    Text(PhCopy.disclaimer)
+                        .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+                        .fixedSize(horizontal: false, vertical: true).padding(.top, 6)
+                        .accessibilityIdentifier("insights.phDisclaimer")
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -898,6 +922,11 @@ private struct LogHistoryCard: View {
             if !groups.isEmpty {
                 metricRow("Food groups", groups.map(\.label).joined(separator: ", "))
             }
+            // Shown for the same reason the calendar draws its marker and the day sheet names it: a
+            // day whose only entry was this one used to reach history as a bare date.
+            if log.sexualActivity {
+                metricRow("Intimacy", "Logged")
+            }
             if let notes = log.notes, !notes.isEmpty {
                 metricRow("Notes", notes)
             }
@@ -935,10 +964,19 @@ private struct LogHistoryCard: View {
     }()
 }
 
-private extension DailyLog {
-    /// A log with no data worth showing in history.
-    var isBlank: Bool {
-        mood == nil && energy == nil && symptoms.isEmpty && sleepMinutes == nil
-            && supplements.isEmpty && (notes?.isEmpty ?? true) && waterMl == 0
-    }
+extension DailyLog {
+    /// A log with no data worth showing in history. Presentation only — never a logic input; the
+    /// streak and tracking engines have their own predicates and those are the cross-platform ones.
+    ///
+    /// Delegates to `hasAnyEntry` rather than restating it. The hand-written copy this replaced had
+    /// drifted: it never gained the `foodGroups` term when H4 added one to both streak predicates and
+    /// to `LogHistoryCard`, so a day she only ticked her meals on drew a calendar dot, was named in
+    /// the day sheet, counted toward her streak — and was then dropped by the one screen whose whole
+    /// job is reading her logs back, by the file that already knew how to render it.
+    ///
+    /// `sexualActivity` is added on top, not folded into `hasAnyEntry`: that predicate is a
+    /// cross-platform contract and widening it would silently change her streak numbers against
+    /// Android's. This is presentation only, and it is the same shape `NotificationService` already
+    /// uses for the same reason.
+    var isBlank: Bool { !hasAnyEntry && !sexualActivity }
 }

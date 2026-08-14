@@ -5,8 +5,8 @@ import XCTest
 /// planner's budget entirely. What is left to get right is which ones exist, and what they say.
 final class SupplementReminderTests: XCTestCase {
 
-    private let magnesium = CustomSupplement(id: "mag", name: "Magnesium", dose: "200 mg", time: "Evening")
-    private let iron = CustomSupplement(id: "iron", name: "Iron", dose: "", time: "")
+    private let magnesium = CustomSupplement(id: "mag", name: "Magnesium", dose: "200 mg", timeOfDay: .evening)
+    private let iron = CustomSupplement(id: "iron", name: "Iron", dose: "")
 
     // MARK: - Which reminders exist
 
@@ -72,5 +72,20 @@ final class SupplementReminderTests: XCTestCase {
 
         XCTAssertEqual(reminder.body, "From your supplement plan.")
         XCTAssertFalse(reminder.body.hasPrefix("."))
+    }
+
+    /// The safety scans walk `allPossibleCopy`, so it has to be the copy that actually ships.
+    ///
+    /// It once held three invented supplements, which meant the banned-phrase scan cleared a
+    /// "Magnesium" the app never sends and never read "Time for Folate (400–800 mcg)", which is
+    /// what genuinely reaches her lock screen. A scan pointed at fixtures fails nobody, so this
+    /// pins the coupling rather than the copy: every essential in the shipping plan must appear.
+    func testTheSafetyScanWalksTheSupplementCopyThatShips() {
+        let copy = SupplementReminder.allPossibleCopy
+
+        for essential in NutritionContent.supplementPlan {
+            XCTAssertTrue(copy.contains("Time for \(essential.name)"),
+                          "\(essential.name) ships but the scan never reads it")
+        }
     }
 }

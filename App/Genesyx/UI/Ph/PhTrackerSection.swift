@@ -123,7 +123,7 @@ private struct PhTrackerCard: View {
                 .buttonStyle(.plain)
             }
 
-            Text("Vaginal pH naturally shifts across your cycle. Logging your cycle day alongside each reading helps you understand your own patterns.")
+            Text(PhCopy.cycleContextCaveat)
                 .font(.caption2).foregroundStyle(GenesyxColor.mutedForeground)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("phCaveat")
@@ -206,10 +206,15 @@ private struct PhTrackerCard: View {
                 let active = r == range
                 Text(r.rawValue).font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(active ? GenesyxColor.foreground : GenesyxColor.mutedForeground)
-                    .frame(maxWidth: .infinity).padding(.vertical, 8)
+                    .frame(maxWidth: .infinity, minHeight: 44)
                     .background(active ? GenesyxColor.card : .clear)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                     .onTapGesture { range = r }
+                    .accessibilityIdentifier("phRange.\(r.rawValue)")
+                    // Which range is showing was said in colour and background alone, so VoiceOver
+                    // read four bare labels with no way to tell the active one — and nothing
+                    // outside the view could drive them either.
+                    .accessibilityAddTraits(active ? [.isButton, .isSelected] : .isButton)
             }
         }
         .padding(4).background(GenesyxColor.muted).clipShape(RoundedRectangle(cornerRadius: 16))
@@ -388,8 +393,8 @@ private struct PhSpine: View {
     }
 }
 
-/// Log / edit a vaginal-pH reading: value tile coloured by status, slider 3.5–7.0 step 0.1 with
-/// ± buttons, when picker, notes, Save (+ Delete when editing).
+/// Log / edit a vaginal-pH reading: value tile coloured by status, slider 3.8–7.0 step 0.1 with
+/// ± buttons, when picker, notes, Save, Cancel (+ a confirmed Delete when editing).
 private struct PhLogSheet: View {
     let existing: PhReading?
     let onSave: (PhReading) -> Void
@@ -399,6 +404,7 @@ private struct PhLogSheet: View {
     @State private var value: Double
     @State private var recordedAt: Date
     @State private var notes: String
+    @State private var confirmingDelete = false
 
     init(existing: PhReading?, onSave: @escaping (PhReading) -> Void, onDelete: @escaping (String) -> Void) {
         self.existing = existing
@@ -455,6 +461,28 @@ private struct PhLogSheet: View {
                         .background(GenesyxColor.card).clipShape(RoundedRectangle(cornerRadius: 12))
                         .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(GenesyxColor.border, lineWidth: 1))
                         .onChange(of: notes) { if $0.count > 500 { notes = String($0.prefix(500)) } }
+
+                    // Deleting belongs down here, away from the two buttons she reaches for by
+                    // reflex, and behind a question. It used to sit in the top-left toolbar slot —
+                    // where every other screen in iOS puts Cancel — and fired on the first tap, so
+                    // backing out of an edit she had decided not to make destroyed the reading.
+                    if let existing {
+                        Button(role: .destructive) { confirmingDelete = true } label: {
+                            Text("Delete this reading")
+                                .font(.gxBodySmall.weight(.medium))
+                                .frame(maxWidth: .infinity, minHeight: 44)
+                        }
+                        .accessibilityIdentifier("ph.deleteReading")
+                        // An alert, not a confirmation dialog: the dialog drops a custom `.cancel`
+                        // label, so "Keep it" rendered as a bare "Cancel" — the same word as the
+                        // toolbar button she just learned does not delete anything.
+                        .alert("Delete this reading?", isPresented: $confirmingDelete) {
+                            Button("Delete", role: .destructive) { onDelete(existing.id) }
+                            Button("Keep it", role: .cancel) {}
+                        } message: {
+                            Text("This removes it from your history everywhere. It cannot be undone.")
+                        }
+                    }
                 }
                 .padding(20)
             }
@@ -477,11 +505,7 @@ private struct PhLogSheet: View {
                     }.fontWeight(.semibold)
                 }
                 ToolbarItem(placement: .cancellationAction) {
-                    if let existing {
-                        Button("Delete", role: .destructive) { onDelete(existing.id) }
-                    } else {
-                        Button("Cancel") { dismiss() }
-                    }
+                    Button("Cancel") { dismiss() }
                 }
             }
         }

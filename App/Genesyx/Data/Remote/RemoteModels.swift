@@ -261,3 +261,69 @@ struct QuizAnswersRow: Codable {
         self.answers = answers
     }
 }
+
+/// A row of `user_supplements` — the table Android has been reading and writing since 13 Aug 2026,
+/// which is why the column names below are a contract rather than a choice.
+///
+/// Two of the columns are nullable on purpose and the mapping has to respect that:
+/// `updated_at` is only stamped on update, so a row inserted and never touched again has none —
+/// falling back to `created_at` is what stops a freshly-created remote row looking infinitely old
+/// and losing every merge. `time_of_day` is null for "she didn't say", and is constrained to the
+/// four `SupplementTime` values, so anything unrecognised is read as unset rather than guessed at.
+///
+/// `product_id` is Android's link to the Genesyx catalogue (`genesyx_products`, `ON DELETE SET
+/// NULL`). iOS has no catalogue picker, so it is never sent — and that omission is what preserves
+/// it. Swift leaves nil optionals out of the encoded body rather than writing null, so an upsert
+/// from this device (in practice only a tombstone) does not touch the column. Encoded as an
+/// explicit null instead, deleting a supplement here would silently unlink one she added on her
+/// other phone. Same reasoning for `created_at`, which is a server default.
+struct UserSupplementRow: Codable {
+    var id: String
+    var userId: String
+    var name: String
+    var dose: String?
+    var timeOfDay: String?
+    var productId: String?
+    var createdAt: String?
+    var updatedAt: String?
+    var deletedAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case userId = "user_id"
+        case name
+        case dose
+        case timeOfDay = "time_of_day"
+        case productId = "product_id"
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+        case deletedAt = "deleted_at"
+    }
+
+    var domain: SupplementRecord {
+        SupplementRecord(
+            supplement: CustomSupplement(id: id, name: name, dose: dose ?? "",
+                                         timeOfDay: SupplementTime.parse(timeOfDay)),
+            updatedAt: parseISO(updatedAt ?? createdAt ?? ""),
+            pendingSync: false,
+            deleted: deletedAt != nil
+        )
+    }
+
+    init(userId: String, record: SupplementRecord, productId: String? = nil) {
+        self.id = record.supplement.id
+        self.userId = userId
+        // Trimmed to satisfy `char_length(btrim(name)) between 1 and 60`. The UI already bounds it;
+        // this is the last gate before a row the server would reject sits in the queue retrying.
+        self.name = String(record.supplement.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            .prefix(CustomSupplement.nameMaxLength))
+        self.dose = record.supplement.dose.isEmpty ? nil : record.supplement.dose
+        self.timeOfDay = record.supplement.timeOfDay?.rawValue
+        self.productId = productId
+        self.createdAt = nil          // server default; never overwritten from the client
+        self.updatedAt = isoFormatter.string(from: record.updatedAt)
+        // The deletion's timestamp is the edit that made it, so a later edit on another device
+        // still wins the merge.
+        self.deletedAt = record.deleted ? isoFormatter.string(from: record.updatedAt) : nil
+    }
+}

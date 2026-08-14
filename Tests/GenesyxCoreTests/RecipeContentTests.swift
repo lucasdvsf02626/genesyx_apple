@@ -80,14 +80,12 @@ final class RecipeContentTests: XCTestCase {
         }
     }
 
-    /// Nil throughout by design — there is no food photography in the asset catalogue, and a card
-    /// pointing at an image that does not exist renders an empty box on her phone. When photography
-    /// arrives this test is deleted in the same commit as the assets.
-    func testNoRecipeClaimsAnImageTheAppDoesNotHave() {
-        for recipe in RecipeContent.all {
-            XCTAssertNil(recipe.imageName,
-                "\(recipe.name) names an image — add the asset and delete this test together")
-        }
+    /// A missing or duplicated mapping silently gives a recipe the phase-gradient fallback or the
+    /// wrong plate. Asset existence itself is checked in the app target, where UIKit can load it.
+    func testEveryRecipeHasAUniqueImageMapping() {
+        let names = RecipeContent.all.compactMap(\.imageName)
+        XCTAssertEqual(names.count, RecipeContent.all.count, "every shipped recipe needs photography")
+        XCTAssertEqual(Set(names).count, names.count, "two recipes point at the same photograph")
     }
 
     // MARK: - Copy

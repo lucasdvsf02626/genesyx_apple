@@ -100,3 +100,43 @@ extension PhRecord {
         )
     }
 }
+
+/// The persisted form of a `SupplementRecord`.
+///
+/// Every sync field is optional with a defaulting read, because the shape it replaced had none of
+/// them: the list used to be a bare `[CustomSupplement]` array, and a decode that insisted on
+/// `updatedAt` would fail on the first launch after upgrading and take her whole list with it.
+/// `pendingSync` defaults to **true** for the same reason it does on `PhReadingDTO` — a record with
+/// no bookkeeping has never been pushed by definition, and assuming it was synced would strand it
+/// on the phone forever.
+struct SupplementRecordDTO: Codable {
+    var id: String
+    var name: String
+    var dose: String?
+    var timeOfDay: String?
+    var updatedAt: Date?
+    var pendingSync: Bool?
+    var deleted: Bool?
+}
+
+extension SupplementRecordDTO {
+    init(_ record: SupplementRecord) {
+        self.id = record.supplement.id
+        self.name = record.supplement.name
+        self.dose = record.supplement.dose
+        self.timeOfDay = record.supplement.timeOfDay?.rawValue
+        self.updatedAt = record.updatedAt
+        self.pendingSync = record.pendingSync
+        self.deleted = record.deleted
+    }
+
+    var record: SupplementRecord {
+        SupplementRecord(
+            supplement: CustomSupplement(id: id, name: name, dose: dose ?? "",
+                                         timeOfDay: SupplementTime.parse(timeOfDay)),
+            updatedAt: updatedAt ?? Date(timeIntervalSince1970: 0),
+            pendingSync: pendingSync ?? true,
+            deleted: deleted ?? false
+        )
+    }
+}

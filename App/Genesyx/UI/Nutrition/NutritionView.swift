@@ -355,9 +355,8 @@ struct NutritionView: View {
     /// and each is built from a focus food named in the card directly above — which is what lets
     /// them ship without a citation or a sign-off of their own (see `Recipe`).
     ///
-    /// No photography: the asset catalogue holds Learn heroes and brand art and nothing edible.
-    /// Rather than ship stock images of somebody else's food, each card carries a gradient in the
-    /// phase accent. `Recipe.imageName` is the seam for real photography later.
+    /// Every shipped recipe has approved food-only photography. The phase gradient remains behind
+    /// it as a safe fallback for a newly-authored recipe whose asset has not landed yet.
     private func recipesSection(_ phase: Phase) -> some View {
         let recipes = RecipeContent.forPhase(phase)
         let accent = Theme.color(for: FoodAccent(rawValue: phase.rawValue) ?? .period)
@@ -389,12 +388,22 @@ struct NutritionView: View {
                     LinearGradient(
                         colors: [accent.opacity(0.85), accent.opacity(0.35)],
                         startPoint: .topLeading, endPoint: .bottomTrailing)
-                    Image(systemName: "fork.knife")
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.9))
-                        .padding(14)
+                    if let imageName = recipe.imageName {
+                        Image(imageName)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 220, height: 92)
+                            .clipped()
+                            .accessibilityHidden(true)
+                    } else {
+                        Image(systemName: "fork.knife")
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.9))
+                            .padding(14)
+                    }
                 }
                 .frame(height: 92)
+                .clipped()
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(recipe.name).font(.gxCardHeadingSmall).foregroundStyle(GenesyxColor.foreground)
@@ -697,14 +706,20 @@ private struct SupplementPlanSheet: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var prefs: PreferencesRepository
 
-    // Custom supplements persist LOCALLY only for now. Remote Supabase persistence is pending the
-    // shared Android schema (see CustomSupplement) — flagged, not applied.
-    @AppStorage(CustomSupplement.storageKey) private var customJSON = "[]"
+    @EnvironmentObject private var supplements: SupplementsRepository
     @State private var newName = ""
     @State private var newDose = ""
-    @State private var newTime = ""
+    @State private var newTime: SupplementTime?
 
-    private var custom: [CustomSupplement] { CustomSupplement.decodeList(customJSON) }
+    private var custom: [CustomSupplement] { supplements.supplements }
+
+    /// The same bound `CustomSupplement.isValid` applies, mirrored here so the button greys out.
+    /// `add` REFUSES an over-long name rather than truncating it, and a button that looks live but
+    /// silently does nothing is worse than one that is visibly unavailable.
+    private var canAdd: Bool {
+        let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !trimmed.isEmpty && trimmed.count <= CustomSupplement.nameMaxLength
+    }
 
     var body: some View {
         NavigationStack {
@@ -755,7 +770,8 @@ private struct SupplementPlanSheet: View {
                             .background(GenesyxColor.primary.opacity(0.12)).clipShape(Circle())
                         VStack(alignment: .leading, spacing: 2) {
                             Text(item.name).font(.gxBody.weight(.medium)).foregroundStyle(GenesyxColor.foreground)
-                            let detail = [item.dose, item.time].filter { !$0.isEmpty }.joined(separator: " · ")
+                            let detail = [item.dose, item.timeOfDay?.label ?? ""]
+                                .filter { !$0.isEmpty }.joined(separator: " · ")
                             if !detail.isEmpty {
                                 Text(detail).font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
                             }
@@ -780,7 +796,7 @@ private struct SupplementPlanSheet: View {
             field("Name (e.g. Magnesium)", text: $newName)
             HStack(spacing: 8) {
                 field("Dose (e.g. 200 mg)", text: $newDose)
-                field("Time (e.g. Evening)", text: $newTime)
+                timePicker
             }
             Button(action: add) {
                 HStack(spacing: 4) {
@@ -789,12 +805,11 @@ private struct SupplementPlanSheet: View {
                 }
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity, minHeight: 44)
-                .background(newName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                            ? GenesyxColor.primary.opacity(0.45) : GenesyxColor.primary)
+                .background(canAdd ? GenesyxColor.primary : GenesyxColor.primary.opacity(0.45))
                 .clipShape(Capsule())
             }
             .buttonStyle(.plain)
-            .disabled(newName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .disabled(!canAdd)
             .accessibilityIdentifier("supplement.add")
         }
         .padding(.top, 4)
@@ -832,18 +847,49 @@ private struct SupplementPlanSheet: View {
             .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(GenesyxColor.border, lineWidth: 1))
     }
 
+    /// The four values Android already writes and the server's `time_of_day` CHECK already accepts.
+    /// This replaced a free-text box, which is why the empty tag is a real option rather than a
+    /// placeholder: leaving it unset has always been allowed, and the column is nullable.
+    private var timePicker: some View {
+        Menu {
+            Picker("Time of day", selection: Binding(
+                get: { newTime?.rawValue ?? "" },
+                set: { newTime = SupplementTime(rawValue: $0) }
+            )) {
+                Text("No time").tag("")
+                ForEach(SupplementTime.allCases, id: \.rawValue) { t in Text(t.label).tag(t.rawValue) }
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Text(newTime?.label ?? "Time")
+                    .font(.gxBodySmall)
+                    .foregroundStyle(newTime == nil ? GenesyxColor.mutedForeground : GenesyxColor.foreground)
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.system(size: 11, weight: .semibold)).foregroundStyle(GenesyxColor.mutedForeground)
+            }
+            .padding(.horizontal, 12).frame(width: 132, height: 44)
+            .background(GenesyxColor.card).clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(GenesyxColor.border, lineWidth: 1))
+        }
+        .accessibilityLabel(newTime.map { "Time of day, \($0.label)" } ?? "Time of day, not set")
+        .accessibilityIdentifier("supplement.time")
+    }
+
     private func add() {
         let item = CustomSupplement(
             name: newName.trimmingCharacters(in: .whitespacesAndNewlines),
             dose: newDose.trimmingCharacters(in: .whitespacesAndNewlines),
-            time: newTime.trimmingCharacters(in: .whitespacesAndNewlines))
-        guard item.isValid else { return }
-        customJSON = CustomSupplement.encodeList(custom + [item])
-        newName = ""; newDose = ""; newTime = ""
+            timeOfDay: newTime)
+        guard supplements.add(item) else { return }
+        newName = ""; newDose = ""; newTime = nil
     }
 
+    /// A tombstone, not an array removal — see `SupplementsRepository.delete`. The reminder goes
+    /// with it: a deleted supplement that kept its alarm would wake her for something the app no
+    /// longer shows her.
     private func remove(_ item: CustomSupplement) {
-        customJSON = CustomSupplement.encodeList(custom.filter { $0.id != item.id })
+        supplements.delete(id: item.id)
         prefs.supplementReminders[item.id] = nil
     }
 }

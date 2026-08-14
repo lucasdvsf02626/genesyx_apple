@@ -28,7 +28,9 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
     private let dailyLog: DailyLogRepository
     private let ph: PhRepository
     private let cycle: CycleRepository
+    private let supplements: SupplementsRepository
     private let store: LocalStore
+    private let session: SessionRepository
     private let center: UNUserNotificationCenter
     private var cancellables: Set<AnyCancellable> = []
 
@@ -41,16 +43,24 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
          dailyLog: DailyLogRepository,
          ph: PhRepository,
          cycle: CycleRepository,
+         supplements: SupplementsRepository,
          store: LocalStore,
+         session: SessionRepository,
          center: UNUserNotificationCenter = .current()) {
         self.prefs = prefs
         self.dailyLog = dailyLog
         self.ph = ph
         self.cycle = cycle
+        self.supplements = supplements
         self.store = store
+        self.session = session
         self.center = center
         super.init()
         center.delegate = self
+        session.onBecameSignedOut = { [weak self] in
+            self?.pendingDestination = nil
+            self?.cancelAll()
+        }
 
         // `@Published` publishes from `willSet`, so a subscriber that runs synchronously reads the
         // property's OLD value — re-planning off the state she just left. Hopping to the next turn
@@ -83,6 +93,13 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
 
         // Setting or clearing a supplement's time is a direct instruction about when to speak.
         onChange(prefs.$supplementReminders) { [weak self] in self?.replan() }
+            .store(in: &cancellables)
+
+        // The list itself now arrives from the server as well as from this phone. The reminder hour
+        // is device-local and keyed by id, so a supplement she deleted on her Android phone would
+        // otherwise keep its alarm here — the entry disappears on the pull, and nothing tells the
+        // schedule.
+        onChange(supplements.$supplements) { [weak self] in self?.replan() }
             .store(in: &cancellables)
     }
 
@@ -121,8 +138,12 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
         checkMilestones()
     }
 
-    private var isActive: Bool {
+    /// Internal rather than private so a test can pin the definition. All three terms matter and
+    /// the third is the one that gets dropped by accident: wanting notifications is not the same as
+    /// having been granted them, and the schedule must not move until the system says yes.
+    var isActive: Bool {
         FeatureFlags.pushNotifications && prefs.pushEnabled && authorizationStatus == .authorized
+            && session.isSignedIn
     }
 
     // MARK: - Permission
@@ -235,11 +256,20 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
 
     /// Read fresh rather than from `LearnProgress`: a replan can happen long after launch, and the
     /// nudge must not offer her something she read an hour ago.
-    private func learnCandidates() -> [LearnCandidate] {
-        LearnProgress.candidates(
-            learnArticles,
+    /// `LearnLibrary.articles`, not the raw `learnArticles`: the raw array includes the pieces that
+    /// are compiled in but date-withheld, and this was the one Learn surface not going through the
+    /// publication gate. Because the "new" pool is exclusive, the nudge picked *only* from unreleased
+    /// articles — a push headed "New this week" naming a piece that resolves to "That article isn't
+    /// available" — and `markAnnounced` then spent the slug, so no badge appeared on the real drop.
+    /// Internal, not private, so a test can reach the production composition. Every other test in
+    /// this area builds its own `LearnProgress` from `LearnLibrary.articles` and so was structurally
+    /// incapable of catching the one caller that did not.
+    func learnCandidates() -> [LearnCandidate] {
+        let published = LearnLibrary.articles
+        return LearnProgress.candidates(
+            published,
             read: LearnReadLog.readSlugs(),
-            arrived: LearnLibraryLog.newSlugs(in: learnArticles.map(\.slug))
+            arrived: LearnLibraryLog.newSlugs(in: published.map(\.slug))
         )
     }
 
@@ -247,19 +277,23 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
 
     private func schedule(_ planned: PlannedNotification, restDays: Set<Int> = []) {
         let fire: Date?
-        if let offset = planned.dayOffset {
+        if planned.slot == .hydration {
+            // The check-in is the one nudge that has to respect the mornings the weekly nudges own,
+            // so it goes through `nextHydrationFire` rather than a flat day offset. An offset on it
+            // means only "not tonight — she has already finished today", which is exactly what
+            // `loggedToday` steps over.
+            fire = Self.nextHydrationFire(
+                now: Date(),
+                hour: planned.hour,
+                loggedToday: (planned.dayOffset ?? 0) > 0,
+                restDays: restDays
+            )
+        } else if let offset = planned.dayOffset {
             fire = Self.fireDate(daysFromNow: offset, hour: planned.hour, now: Date())
         } else if let weekday = planned.weekday {
             fire = Self.nextOccurrence(isoWeekday: weekday, hour: planned.hour, now: Date())
         } else {
-            // Whether the day is "done" is decided by the planner (it returns nil when there's
-            // nothing to say), so the fire time only needs today-at-hour, or tomorrow if it's past.
-            fire = Self.nextHydrationFire(
-                now: Date(),
-                hour: planned.hour,
-                loggedToday: false,
-                restDays: restDays
-            )
+            fire = nil
         }
         guard let fire else { return }
 
@@ -342,7 +376,11 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
         center.removePendingNotificationRequests(withIdentifiers: ids)
         center.removeDeliveredNotifications(withIdentifiers: ids)
         store.save([String](), forKey: scheduledSupplementIdsKey)
-    }
+        // Forget the fire times too. Nothing cancelled here can still go off, so leaving them
+        // remembered lets `recordWhatHasFired` promote them to "sent" once the hour passes — and a
+        // slot believed to have spoken stays quiet for a fortnight. `replan` calls this *after*
+        // recording, so fires that genuinely happened are already banked before we clear.
+        store.save([String: Date](), forKey: scheduledFireKey)    }
 
     // MARK: - What has already fired
     //
@@ -454,7 +492,7 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
         // exists now.
         guard !prefs.mutedNotifications.contains(.supplements) else { return }
 
-        var reminders = SupplementReminder.all(customs: customSupplements(),
+        var reminders = SupplementReminder.all(customs: supplements.supplements,
                                                hours: prefs.supplementReminders)
         if FeatureFlags.personalisedSupplementTiming {
             reminders = SupplementPersonalisation.apply(to: reminders, signals: supplementSignals())
@@ -491,13 +529,6 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
             quizAnswers: prefs.quizAnswers,
             phase: cycle.settings.map { CycleEngine.cyclePhase(settings: $0).phase }
         )
-    }
-
-    /// Written by the Nutrition sheet through `@AppStorage`, which is `UserDefaults.standard` — the
-    /// same place the sign-out wipe clears, so the two cannot drift apart.
-    private func customSupplements() -> [CustomSupplement] {
-        CustomSupplement.decodeList(
-            UserDefaults.standard.string(forKey: CustomSupplement.storageKey) ?? "[]")
     }
 
     // MARK: - Delegate

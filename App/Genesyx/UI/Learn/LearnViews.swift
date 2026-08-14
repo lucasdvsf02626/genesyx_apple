@@ -57,6 +57,7 @@ struct LearnLandingView: View {
     @State private var path: [String] = []
     @State private var showSearch = false
     @State private var selectedCategory: LearnCategory?
+    @State private var showGuide = false
 
     private var rows: [LearnArticle] {
         if let cat = selectedCategory {
@@ -75,6 +76,9 @@ struct LearnLandingView: View {
                     categoryChips
                     if selectedCategory == nil, let featured = LearnLibrary.featured {
                         FeaturedCard(article: featured) { path.append(featured.slug) }
+                    }
+                    if selectedCategory == .guides {
+                        GuideBookRow { showGuide = true }
                     }
                     ForEach(rows) { a in
                         ArticleRow(article: a) { path.append(a.slug) }
@@ -99,6 +103,9 @@ struct LearnLandingView: View {
                     showSearch = false
                     path.append(slug)
                 }
+            }
+            .sheet(isPresented: $showGuide) {
+                FreeGuideScreen()
             }
             .onChange(of: router.pendingLearnSlug) { slug in
                 guard let slug else { return }
@@ -184,6 +191,37 @@ private struct FeaturedCard: View {
             .clipShape(RoundedRectangle(cornerRadius: 20))
         }
         .buttonStyle(.plain)
+    }
+}
+
+/// The bundled PDF guide, sitting alongside the written guides. Deliberately *not* a
+/// `LearnArticle`: the library is a fixed, counted set with publication dates, sources and
+/// disclaimers, and a PDF has none of those. Keeping it out also keeps it out of `markRead`, so
+/// opening it cannot be mistaken for having read the ten written guides.
+private struct GuideBookRow: View {
+    let action: () -> Void
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 14) {
+                Image(systemName: "book.closed.fill")
+                    .font(.system(size: 24)).foregroundStyle(GenesyxColor.primary)
+                    .frame(width: 96, height: 72)
+                    .background(GenesyxColor.primary.tintOnWhite(0.10))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(FreeGuide.title).font(.gxLabel).foregroundStyle(GenesyxColor.foreground)
+                        .multilineTextAlignment(.leading).lineLimit(2)
+                    Text("PDF guide").font(.system(size: 11.5)).foregroundStyle(GenesyxColor.mutedForeground)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").font(.system(size: 14)).foregroundStyle(GenesyxColor.mutedForeground)
+            }
+            .padding(10)
+            .background(GenesyxColor.card)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("learn.guideBook")
     }
 }
 

@@ -70,11 +70,20 @@ public struct SupplementReminder: Identifiable, Equatable, Sendable {
     /// binary is copy that can reach her the day the flag flips, and a scan that only walked the
     /// live path would clear it the day before and fail nobody.
     public static var allPossibleCopy: [String] {
-        let plain = [SupplementReminder(id: "x", name: "Magnesium", dose: "200 mg", hour: 8),
-                     SupplementReminder(id: "y", name: "Folate", dose: "", hour: 20)]
-        let personalised = SupplementPersonalisation.allContexts.map {
-            SupplementReminder(id: "z", name: "Zinc", dose: "15 mg", hour: 9, context: $0)
+        // The real plan, built exactly as `all` builds it. This used to be three invented fixtures —
+        // so the scan cleared a "Magnesium" the app never sends and never once read "Time for
+        // Folate (400–800 mcg)", which is what actually reaches her lock screen. An essential
+        // carries its dose inside the name, which is precisely why the fixtures missed it.
+        let shipping = NutritionContent.supplementPlan.map {
+            SupplementReminder(id: essentialKey(initial: $0.initial), name: $0.name, dose: "", hour: 9)
         }
-        return (plain + personalised).flatMap { [$0.title, $0.body] }
+        // A custom supplement is named and dosed by her, so no scan can vouch for it. This one is
+        // here only to reach the branch where a dose is present, and to carry the personalised
+        // sentences — those are ours, and they are the part a scan can hold to account.
+        let custom = SupplementReminder(id: "custom", name: "Magnesium", dose: "200 mg", hour: 8)
+        let personalised = SupplementPersonalisation.allContexts.map {
+            SupplementReminder(id: "custom", name: "Magnesium", dose: "200 mg", hour: 8, context: $0)
+        }
+        return (shipping + [custom] + personalised).flatMap { [$0.title, $0.body] }
     }
 }

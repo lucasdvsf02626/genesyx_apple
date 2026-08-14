@@ -79,4 +79,29 @@ final class MeaningfulLogTests: XCTestCase {
         XCTAssertTrue(DailyLog(waterMl: 250, foodGroups: ["fruit"]).isMeaningfulLog)
         XCTAssertTrue(DailyLog(mood: .good, foodGroups: ["fruit"]).hasAnyEntry)
     }
+
+    /// Every term of the contract, on both predicates, one field at a time.
+    ///
+    /// Table-driven because the tests above only cover the terms that were argued about, and it is
+    /// the unargued ones that go missing. Falsification found the hole: `symptoms` could be deleted
+    /// from `hasAnyEntry` and all 240 domain tests stayed green — so a day whose only entry was how
+    /// she felt would have quietly stopped counting on iOS while Android went on counting it, which
+    /// is precisely the divergence this file exists to prevent.
+    func testEveryFieldInTheContractMakesADayCountOnBothPredicates() {
+        let logs: [(String, DailyLog)] = [
+            ("water", DailyLog(waterMl: 250)),
+            ("mood", DailyLog(mood: .good)),
+            ("energy", DailyLog(energy: .high)),
+            ("symptoms", DailyLog(symptoms: ["cramps"])),
+            ("sleep", DailyLog(sleepMinutes: 0)),
+            ("supplements", DailyLog(supplements: ["folate"])),
+            ("notes", DailyLog(notes: "felt good today")),
+            ("food groups", DailyLog(foodGroups: ["vegetables"])),
+        ]
+
+        for (field, log) in logs {
+            XCTAssertTrue(log.isMeaningfulLog, "\(field) alone should make the day count")
+            XCTAssertTrue(log.hasAnyEntry, "\(field) alone should make the day count")
+        }
+    }
 }

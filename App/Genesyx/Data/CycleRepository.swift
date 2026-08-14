@@ -43,6 +43,9 @@ final class CycleRepository: ObservableObject {
         guard let backend else { return }
         await drainPending()
         guard !pendingPush, let remote = try? await backend.fetch() else { return }
+        // Re-read after the fetch's suspension: an edit made while it was in flight is newer than
+        // what came back, and overwriting it would revert her cycle dates on screen.
+        guard !pendingPush else { return }
         settings = remote
         store.save(remote, forKey: key)
     }

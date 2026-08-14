@@ -3,9 +3,6 @@ import Foundation
 /// User-facing vaginal-pH copy (British English). Single source of truth so the same strings are
 /// used by the pure insight logic and every UI surface (no drift).
 public enum PhCopy {
-    /// Canonical legacy marker — lowercase, used verbatim on every surface (no casing drift).
-    public static let legacyMarker = "urine (legacy)"
-
     /// Insight line when recent readings are in the healthy band.
     public static let healthy = "Your recent readings sit within the typical healthy range."
 
@@ -24,8 +21,10 @@ public enum PhCopy {
     /// truer picture of her own pattern.
     public static let accuracyCaveat = "For an accurate reading, test away from your period and at least 24 hours after sex. Lubricants, douches, and recent antibiotics can also shift the result."
 
-    /// One-time migration notice, shown on the first visit to the pH section after the update.
-    public static let oneTimeNotice = "This tracker now records vaginal pH. Your earlier readings are kept and marked 'urine (legacy)'. New readings are saved as vaginal pH, on a different scale."
+    /// Cycle-context caveat shown on the pH tracker card and the Insights pH card. It names the
+    /// note field on purpose: there is no cycle-day control on the log sheet, so copy that said
+    /// "log your cycle day alongside each reading" was pointing at a field that does not exist.
+    public static let cycleContextCaveat = "Vaginal pH naturally shifts across your cycle. Add your cycle day to the note when you log a reading — that context is what makes your own pattern readable."
 
     // ── pH "product spine" sections (shown on the full pH detail view; all cited) ──
 

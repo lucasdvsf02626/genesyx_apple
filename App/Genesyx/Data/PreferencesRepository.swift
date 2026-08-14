@@ -83,7 +83,8 @@ final class PreferencesRepository: ObservableObject {
 
     /// Wipe the notification state derived from the signed-out user's data. Her milestone flags are
     /// as personal as a log — leaving them behind would mean the next user on this device found her
-    /// celebrations already spent. Theme/focus/push preferences belong to the device, so they stay.
+    /// celebrations already spent. Theme and push are device preferences and stay; focus mode is
+    /// not one, and leaves via `clearFocusMode()`.
     func clearNotificationState() {
         celebratedMilestones = []
         store.remove(forKey: celebratedKey)
@@ -133,6 +134,22 @@ final class PreferencesRepository: ObservableObject {
         store.remove(forKey: quizAnswersKey)
     }
 
+    /// Fertility Prep vs Pregnancy is a health answer about her body, not a preference about this
+    /// phone, so it leaves with her — it was sitting alongside theme and push, and the next user on
+    /// the device opened Profile to find "Pregnancy" already selected. Worse for a new sign-up:
+    /// there is no `profiles` row yet, so `refresh()` seeds one from whatever this device still
+    /// holds, writing the previous user's pregnancy status permanently into hers.
+    ///
+    /// Suppresses the push for the reason `clearQuizAnswers` gives, plus one of its own: pushing
+    /// `.prep` at sign-out would reset the *departing* user's row and lose the answer she gave.
+    /// Her value stays on the server and comes back on her next profile pull.
+    func clearFocusMode() {
+        isApplyingRemote = true
+        focusMode = .prep
+        isApplyingRemote = false
+        store.remove(forKey: focusKey)
+    }
+
     /// Drop a profile write the server never received. Sign-out only: the flag outlived the session
     /// that owed it, so the next account's first refresh drained *her* theme, focus mode and push
     /// flag up into *their* row, then pulled the clobbered values back down.
@@ -157,6 +174,11 @@ final class PreferencesRepository: ObservableObject {
         // `try?` would flatten them into the same nil.
         let fetched: ProfilePrefs?
         do { fetched = try await backend.fetch() } catch { return }
+
+        // Re-read after the suspension. If she changed a preference while the fetch was in flight,
+        // hers is newer than what came back and `apply` would silently overwrite it — and because
+        // `apply` sets `isApplyingRemote`, the overwrite would not even be re-queued.
+        guard !pendingPush else { return }
 
         guard let remote = fetched else {       // nothing up there yet: seed it from this device
             pendingPush = true

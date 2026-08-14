@@ -744,10 +744,40 @@ final class RepositoryTests: XCTestCase {
             .authenticate(email: "ada@x.com", password: "password123", name: "Ada", signUp: false)
 
         let relaunched = SessionRepository(store: store, auth: auth)   // SDK restored the session
+        await relaunched.waitUntilResolved()
 
         XCTAssertTrue(relaunched.isSignedIn)
         XCTAssertEqual(relaunched.displayName, "Ada")
         XCTAssertEqual(relaunched.email, "ada@x.com")
+        XCTAssertEqual(relaunched.state, .signedIn)
+    }
+
+    /// A cached user object is not a credential. If validation says the session is expired or
+    /// revoked, the repository must come up signed out — otherwise RootView would mount the tabs
+    /// from a dead token.
+    func testAnExpiredSessionDoesNotRestoreAsSignedIn() async {
+        let auth = FakeAuthBackend()
+        auth.currentUserId = "stale"
+        auth.sessionInvalid = true
+        let session = SessionRepository(store: makeStore(), auth: auth)
+        XCTAssertEqual(session.state, .resolving)
+        await session.waitUntilResolved()
+        XCTAssertFalse(session.isSignedIn)
+        XCTAssertEqual(session.state, .signedOut)
+    }
+
+    /// A remote sign-out / revocation after launch must drop `.signedIn` without waiting for
+    /// the next foreground.
+    func testARemoteSignOutDropsTheSession() async throws {
+        let auth = FakeAuthBackend()
+        let session = SessionRepository(store: makeStore(), auth: auth)
+        try await session.authenticate(email: "ada@x.com", password: "password123", name: "Ada", signUp: false)
+        await session.waitUntilResolved()
+        XCTAssertTrue(session.isSignedIn)
+
+        auth.emit(.signedOut)
+        XCTAssertFalse(session.isSignedIn)
+        XCTAssertEqual(session.state, .signedOut)
     }
 
     /// Sign-in never asks for a name, so a re-authentication carries none. Falling straight through
@@ -761,9 +791,9 @@ final class RepositoryTests: XCTestCase {
         XCTAssertEqual(session.displayName, "Ada")
     }
 
-    /// Sign-out leaves the app usable — onboarding does not re-run, so the tabs are still there and
-    /// every write queues. Those writes belong to whoever last held the session, and hydrating them
-    /// into the next account files one person's cycle and logs into another person's history.
+    /// Sign-out removes the private tabs. Writes can still land locally from a leftover
+    /// repository handle. Those writes belong to whoever last held the session, and hydrating
+    /// them into the next account files one person's cycle and logs into another person's history.
     func testADifferentAccountSigningInWipesTheDeviceFirst() async throws {
         let store = makeStore()
         let auth = FakeAuthBackend()
@@ -811,6 +841,198 @@ final class RepositoryTests: XCTestCase {
         XCTAssertEqual(wipes, 0, "signing back in as yourself must not wipe your own logs")
     }
 
+    // MARK: - Display name sync (her name is an owed write like any other)
+
+    /// Wires the push hook exactly as `AppContainer` does, including the part that matters: the
+    /// closure reports whether the server actually took the write.
+    private func wirePush(_ session: SessionRepository, to backend: FakeProfileBackend) {
+        session.onPushDisplayName = { name in
+            do { try await backend.upsert(displayName: name); return true } catch { return false }
+        }
+        session.onFetchDisplayName = { try? await backend.fetchDisplayName() }
+    }
+
+    /// The rename was fire-and-forget — pushed once, never retried, absent from every drain. A woman
+    /// who corrected her name on the train simply lost it: the device showed the new one and the
+    /// server kept the old one forever.
+    func testARenameMadeOfflineIsStillOwedAndReachesTheServerOnTheNextDrain() async throws {
+        let profile = FakeProfileBackend()
+        let session = SessionRepository(store: makeStore(), auth: FakeAuthBackend())
+        wirePush(session, to: profile)
+        try await session.authenticate(email: "ada@x.com", password: "password123", name: nil, signUp: false)
+
+        profile.online = false
+        session.updateDisplayName("Ada Lovelace")
+        await session.drainPendingName()
+
+        XCTAssertNil(profile.displayName, "offline, the server cannot have taken it")
+        XCTAssertEqual(session.displayName, "Ada Lovelace", "but the local write wins immediately")
+
+        profile.online = true
+        await session.drainPendingName()
+
+        XCTAssertEqual(profile.displayName, "Ada Lovelace")
+    }
+
+    /// Sign-up is the only screen that asks for a name, and it never pushed it. Her `profiles` row
+    /// was created without one, so her partner's app read `display_name` as null and showed her as
+    /// the literal word "Partner".
+    func testTheNameSheRegisteredUnderReachesHerProfileRow() async throws {
+        let profile = FakeProfileBackend()
+        let session = SessionRepository(store: makeStore(), auth: FakeAuthBackend())
+        wirePush(session, to: profile)
+
+        try await session.authenticate(email: "ada@x.com", password: "password123", name: "Ada", signUp: true)
+        await session.drainPendingName()
+
+        XCTAssertEqual(profile.displayName, "Ada")
+    }
+
+    /// A name owed at sign-up when the network was down is owed after the relaunch too — the flag is
+    /// persisted, not held in memory, so the next launch's hydrate finishes what sign-up started.
+    func testAnOwedNameSurvivesTheRelaunch() async throws {
+        let store = makeStore()
+        let auth = FakeAuthBackend()
+        let profile = FakeProfileBackend()
+        profile.online = false
+
+        let session = SessionRepository(store: store, auth: auth)
+        wirePush(session, to: profile)
+        try await session.authenticate(email: "ada@x.com", password: "password123", name: "Ada", signUp: true)
+        await session.drainPendingName()
+        XCTAssertNil(profile.displayName)
+
+        profile.online = true
+        let relaunched = SessionRepository(store: store, auth: auth)   // SDK restored the session
+        await relaunched.waitUntilResolved()
+        wirePush(relaunched, to: profile)
+        await relaunched.drainPendingName()
+
+        XCTAssertEqual(profile.displayName, "Ada")
+    }
+
+    /// The destructive case. Sign-in asks for no name, so `displayName` falls back to the part of
+    /// the address before the @. Pushing that would rewrite the real name already on her row — on
+    /// a reinstall, "Ada" would become "ada". Only a name she actually typed is ever owed.
+    func testTheEmailPrefixFallbackIsNeverPushed() async throws {
+        let profile = FakeProfileBackend()
+        profile.displayName = "Ada"                       // her real name, already on the server
+        let session = SessionRepository(store: makeStore(), auth: FakeAuthBackend())
+        wirePush(session, to: profile)
+
+        try await session.authenticate(email: "ada@x.com", password: "password123", name: nil, signUp: false)
+        await session.drainPendingName()
+
+        XCTAssertEqual(session.displayName, "ada", "the address is all the device has to show")
+        XCTAssertEqual(profile.displayName, "Ada", "but it must never overwrite the name on her row")
+    }
+
+    /// An owed write outlives the session that owed it, and sign-out is where that becomes
+    /// destructive *to her own row*: sign-out forgets the stored name, so signing back in resolves
+    /// her to the part before the @. A rename still owed from before would then push "ada" over the
+    /// "Ada Lovelace" her row may already hold. The owed flag goes out with the session.
+    func testSignOutDropsARenameSoSigningBackInCannotPushTheFallback() async throws {
+        let store = makeStore()
+        let auth = FakeAuthBackend()
+        let profile = FakeProfileBackend()
+        profile.displayName = "Ada Lovelace"          // an earlier drain, on another device, landed
+
+        let session = SessionRepository(store: store, auth: auth)
+        wirePush(session, to: profile)
+        try await session.authenticate(email: "ada@x.com", password: "password123", name: "Ada", signUp: true)
+        profile.online = false
+        session.updateDisplayName("Ada Lovelace")
+        await session.drainPendingName()
+
+        session.signOut()
+        profile.online = true
+
+        let again = SessionRepository(store: store, auth: auth)   // same account, name not asked for
+        wirePush(again, to: profile)
+        try await again.authenticate(email: "ada@x.com", password: "password123", name: nil, signUp: false)
+        await again.drainPendingName()
+
+        XCTAssertEqual(again.displayName, "ada", "sign-out forgot the name, so the address is all that is left")
+        XCTAssertEqual(profile.displayName, "Ada Lovelace", "which must not be pushed over her real name")
+    }
+
+    /// The same contamination without a sign-out: she hands the phone over and he signs straight in.
+    /// The identity changed, so whatever the last owner still owed the server is not his to push.
+    func testADifferentAccountSigningInDropsTheOwedRename() async throws {
+        let store = makeStore()
+        let auth = FakeAuthBackend()
+        let profile = FakeProfileBackend()
+
+        let session = SessionRepository(store: store, auth: auth)
+        wirePush(session, to: profile)
+        try await session.authenticate(email: "ada@x.com", password: "password123", name: "Ada", signUp: true)
+        profile.online = false
+        session.updateDisplayName("Ada Lovelace")
+        await session.drainPendingName()
+
+        profile.online = true
+        auth.signInUserId = "user-2"
+        let next = SessionRepository(store: store, auth: auth)
+        wirePush(next, to: profile)
+        try await next.authenticate(email: "bea@x.com", password: "password123", name: nil, signUp: false)
+        await next.drainPendingName()
+
+        XCTAssertNil(profile.displayName, "an owed rename belongs to the account that made it")
+    }
+
+    /// The other half of the same defect: the name was write-only. Sign-in asks for no name, so a
+    /// new phone had nothing to show but the part of her address before the @ — she reinstalled and
+    /// the app started calling her "ada".
+    func testANewPhoneRestoresHerNameFromHerProfileRow() async throws {
+        let store = makeStore()
+        let auth = FakeAuthBackend()
+        let profile = FakeProfileBackend()
+        profile.displayName = "Ada Lovelace"          // set on the phone she no longer has
+
+        let session = SessionRepository(store: store, auth: auth)
+        wirePush(session, to: profile)
+        try await session.authenticate(email: "ada@x.com", password: "password123", name: nil, signUp: false)
+        XCTAssertEqual(session.displayName, "ada", "before the pull the address is all this device has")
+
+        await session.refreshDisplayName()
+
+        XCTAssertEqual(session.displayName, "Ada Lovelace")
+        let relaunched = SessionRepository(store: store, auth: auth)
+        await relaunched.waitUntilResolved()
+        XCTAssertEqual(relaunched.displayName, "Ada Lovelace",
+                       "and it is stored, so the next launch does not need the network to greet her properly")
+    }
+
+    /// Push before pull, or the pull undoes the push. The server here refuses the write but still
+    /// serves the old name — an RLS or validation rejection, not a dropped connection — which is the
+    /// one shape where a pull can reach a device that still owes a rename.
+    func testAPullDoesNotUndoARenameTheServerHasNotTakenYet() async throws {
+        let session = SessionRepository(store: makeStore(), auth: FakeAuthBackend())
+        session.onPushDisplayName = { _ in false }
+        session.onFetchDisplayName = { "Ada" }
+        try await session.authenticate(email: "ada@x.com", password: "password123", name: "Ada", signUp: true)
+
+        session.updateDisplayName("Ada Lovelace")
+        await session.refreshDisplayName()
+
+        XCTAssertEqual(session.displayName, "Ada Lovelace", "a rename still owed outranks the copy it replaces")
+    }
+
+    /// Every account created before the name was ever pushed has a null `display_name`. Letting that
+    /// null win would blank the name on the screen of every existing user at their next hydrate.
+    func testARowWithNoNameDoesNotBlankTheOneSheIsLookingAt() async throws {
+        let profile = FakeProfileBackend()
+        let session = SessionRepository(store: makeStore(), auth: FakeAuthBackend())
+        wirePush(session, to: profile)
+        try await session.authenticate(email: "ada@x.com", password: "password123", name: "Ada", signUp: true)
+        await session.drainPendingName()
+        profile.displayName = nil                     // the row predates the name ever syncing
+
+        await session.refreshDisplayName()
+
+        XCTAssertEqual(session.displayName, "Ada")
+    }
+
     // MARK: - Cycle, daily-log and profile sync (same contract: a stale cloud never wins)
 
     func testCycleOfflineEditIsNotOverwrittenByAStalePull() async {
@@ -852,6 +1074,23 @@ final class RepositoryTests: XCTestCase {
         await repo.refresh()
 
         XCTAssertEqual(repo.settings, corrected, "a correction the server never got must not be pulled away")
+    }
+
+    /// The same window one step later. `refresh` checked what was owed, then awaited the fetch — and
+    /// the check was never repeated, so a date she corrected while that fetch was in flight was
+    /// overwritten on screen by the copy that came back.
+    func testACycleEditMadeDuringAPullIsNotOverwrittenByWhatComesBack() async {
+        let backend = MidFetchCycleBackend()
+        backend.remote = CycleSettings(lastPeriodDate: CalendarDate(2026, 1, 1), cycleLength: 28, periodLength: 5)
+        let repo = CycleRepository(store: makeStore(), backend: backend)
+
+        let corrected = CycleSettings(lastPeriodDate: CalendarDate(2026, 6, 3), cycleLength: 30, periodLength: 4)
+        backend.refuse = corrected                      // her correction's own push hasn't landed yet
+        backend.duringFetch = { repo.upsert(corrected) }
+
+        await repo.refresh()
+
+        XCTAssertEqual(repo.settings, corrected, "an edit made while the pull was in flight is the newer one")
     }
 
     func testDailyLogOfflineEditIsNotOverwrittenByAStalePull() async {
@@ -915,6 +1154,28 @@ final class RepositoryTests: XCTestCase {
         XCTAssertEqual(repo.themeMode, .dark)
         XCTAssertEqual(repo.focusMode, .pregnancy)
         XCTAssertFalse(repo.pushEnabled)
+    }
+
+    /// Worse here than on the cycle, because `apply` runs under `isApplyingRemote` to stop a pull
+    /// bouncing back up as a push. A preference she changed while the fetch was in flight was
+    /// therefore overwritten *and* un-queued — not reverted pending a retry, simply gone.
+    func testAPreferenceChangedDuringAPullIsNotOverwrittenByWhatComesBack() async {
+        let backend = MidFetchProfileBackend()
+        backend.remote = ProfilePrefs(focusMode: .pregnancy, themeMode: .light, pushEnabled: true)
+        let repo = PreferencesRepository(store: makeStore(), backend: backend)
+        backend.duringFetch = {
+            backend.online = false                      // her own push can't get out yet, so it stays owed
+            repo.focusMode = .prep
+        }
+
+        await repo.refresh()
+
+        XCTAssertEqual(repo.focusMode, .prep, "a choice made while the pull was in flight is the newer one")
+
+        backend.online = true
+        await repo.refresh()
+
+        XCTAssertEqual(backend.remote?.focusMode, .prep, "and it still reaches the server afterwards")
     }
 
     /// The light default shipped, and still nobody who already had an account could see it. A first
@@ -1105,21 +1366,31 @@ final class RepositoryTests: XCTestCase {
 
     /// Sign-out must also wipe locally-stored custom supplements — they are user-entered and as
     /// personal as a log, so the next user on the device must not inherit them.
+    ///
+    /// Both copies go. The list now lives in the store under `custom_supplement_records`, but the
+    /// pre-sync key is still on every device that has not migrated yet, and a list left behind by
+    /// the previous account is exactly what the next sign-in would adopt as its own.
     func testSignOutClearsCustomSupplements() {
         let key = CustomSupplement.storageKey
         let saved = UserDefaults.standard.string(forKey: key)
         defer { if let saved { UserDefaults.standard.set(saved, forKey: key) } else { UserDefaults.standard.removeObject(forKey: key) } }
 
-        let container = AppContainer(store: makeStore(), backend: nil)
+        let store = makeStore()
+        let container = AppContainer(store: store, backend: nil)
+        container.supplements.add(CustomSupplement(name: "Magnesium", dose: "200 mg", timeOfDay: .evening))
         UserDefaults.standard.set(CustomSupplement.encodeList([
-            CustomSupplement(name: "Magnesium", dose: "200 mg", time: "Evening")
+            CustomSupplement(name: "Iron", dose: "14 mg")
         ]), forKey: key)
-        XCTAssertFalse(CustomSupplement.decodeList(UserDefaults.standard.string(forKey: key) ?? "[]").isEmpty)
+        XCTAssertFalse(container.supplements.supplements.isEmpty)
 
         container.session.signOut()
 
-        XCTAssertTrue(CustomSupplement.decodeList(UserDefaults.standard.string(forKey: key) ?? "[]").isEmpty,
+        XCTAssertTrue(container.supplements.supplements.isEmpty,
                       "custom supplements must not survive sign-out")
+        XCTAssertNil(store.load([SupplementRecordDTO].self, forKey: "custom_supplement_records"),
+                     "and they must not come back from the store on next launch")
+        XCTAssertTrue(CustomSupplement.decodeList(UserDefaults.standard.string(forKey: key) ?? "[]").isEmpty,
+                      "nor from the pre-sync key an unmigrated device still holds")
     }
 
     /// No supplement is reminded about until she says so, and what she chose has to survive a
@@ -1148,6 +1419,203 @@ final class RepositoryTests: XCTestCase {
                       "and it must not come back from the store on next launch")
     }
 
+    // MARK: - Custom supplements (the last thing in the app that never left the phone)
+
+    /// The migration, and it only gets one chance. Every existing user has her list under the
+    /// pre-sync `@AppStorage` key and an empty `user_supplements` row. It has to be adopted as owed
+    /// and pushed up — the alternative is her list being replaced by an empty server.
+    ///
+    /// `LocalStore` namespaces everything it writes under `genesyx.`; `@AppStorage` did not. Reading
+    /// the old list through the store finds nothing, which is silent and total data loss, so the
+    /// unprefixed defaults are passed in explicitly and this test pins that they are what is read.
+    func testTheListFromBeforeTheSyncIsAdoptedAndCarriedUp() async {
+        let legacy = UserDefaults(suiteName: "legacy.\(UUID().uuidString)")!
+        legacy.set(CustomSupplement.encodeList([
+            CustomSupplement(id: "a", name: "Magnesium", dose: "200 mg", timeOfDay: .evening),
+            CustomSupplement(id: "b", name: "Iron", dose: "14 mg"),
+        ]), forKey: CustomSupplement.storageKey)
+        let backend = FakeSupplementBackend()
+
+        let repo = SupplementsRepository(store: makeStore(), backend: backend, legacyDefaults: legacy)
+        XCTAssertEqual(repo.supplements.map(\.id), ["a", "b"], "the order she added them in survives")
+
+        await repo.refresh()
+
+        XCTAssertEqual(backend.remote.map(\.id), ["a", "b"], "her existing list is carried up")
+        XCTAssertEqual(repo.supplements.map(\.id), ["a", "b"])
+    }
+
+    /// The same guard the pH history has. Signing in on a device that already has supplements must
+    /// not hand the empty cloud the last word.
+    func testAnEmptyCloudDoesNotWipeHerSupplements() async {
+        let backend = FakeSupplementBackend()
+        let repo = SupplementsRepository(store: makeStore(), backend: backend)
+        repo.add(CustomSupplement(id: "a", name: "Magnesium", dose: "200 mg", timeOfDay: .evening))
+
+        await repo.refresh()
+
+        XCTAssertEqual(repo.supplements.map(\.id), ["a"])
+        XCTAssertEqual(backend.remote.map(\.id), ["a"])
+    }
+
+    /// A supplement added on her Android phone appears here.
+    func testASupplementAddedOnAnotherDeviceArrives() async {
+        let backend = FakeSupplementBackend()
+        backend.remote = [SupplementRecord(
+            supplement: CustomSupplement(id: "droid", name: "CoQ10", dose: "100 mg", timeOfDay: .morning),
+            updatedAt: Date(), pendingSync: false)]
+
+        let repo = SupplementsRepository(store: makeStore(), backend: backend)
+        await repo.refresh()
+
+        XCTAssertEqual(repo.supplements.map(\.name), ["CoQ10"])
+        XCTAssertEqual(repo.supplements.first?.timeOfDay, .morning)
+    }
+
+    /// The resurrection bug. Deleting locally used to be an array removal, which the server never
+    /// hears about — so the next pull found a row this device did not have, read it as new, and put
+    /// the supplement back. The delete has to travel as a tombstone.
+    func testADeletedSupplementDoesNotComeBackOnTheNextPull() async {
+        let backend = FakeSupplementBackend()
+        let repo = SupplementsRepository(store: makeStore(), backend: backend)
+        repo.add(CustomSupplement(id: "a", name: "Magnesium", dose: "200 mg", timeOfDay: .evening))
+        await repo.refresh()
+        XCTAssertEqual(backend.remote.count, 1)
+
+        repo.delete(id: "a")
+        await repo.refresh()
+
+        XCTAssertTrue(repo.supplements.isEmpty, "a deleted supplement must not reappear")
+        XCTAssertTrue(backend.remote.allSatisfy(\.deleted), "and the server is told it was deleted")
+    }
+
+    /// A deletion made on her other phone has to reach this one as a deletion. Absence would not
+    /// do it — absence is indistinguishable from "this device never pushed it".
+    ///
+    /// It is deleted on Android only after it has synced, which is why the local copy is pushed
+    /// first: an unpushed local record deliberately outranks anything the server says, so a test
+    /// that skipped the push would be asserting against a state that cannot occur.
+    func testADeletionMadeOnAnotherDeviceRemovesItHere() async {
+        let backend = FakeSupplementBackend()
+        let repo = SupplementsRepository(store: makeStore(), backend: backend)
+        repo.add(CustomSupplement(id: "a", name: "Magnesium", dose: "200 mg", timeOfDay: .evening))
+        await repo.refresh()
+        XCTAssertEqual(repo.supplements.map(\.id), ["a"])
+
+        backend.remote = [SupplementRecord(
+            supplement: CustomSupplement(id: "a", name: "Magnesium", dose: "200 mg", timeOfDay: .evening),
+            updatedAt: Date().addingTimeInterval(60), pendingSync: false, deleted: true)]
+        await repo.refresh()
+
+        XCTAssertTrue(repo.supplements.isEmpty)
+    }
+
+    /// Offline: the add still succeeds locally and the push is owed, not dropped.
+    func testAnOfflineAddIsKeptAndLandsWhenTheNetworkReturns() async {
+        let backend = FakeSupplementBackend()
+        backend.online = false
+        let repo = SupplementsRepository(store: makeStore(), backend: backend)
+
+        repo.add(CustomSupplement(id: "a", name: "Magnesium", dose: "200 mg", timeOfDay: .evening))
+        await repo.drainPending()
+
+        XCTAssertEqual(repo.supplements.map(\.id), ["a"], "an offline add is never dropped")
+        XCTAssertTrue(backend.remote.isEmpty)
+
+        backend.online = true
+        await repo.drainPending()
+
+        XCTAssertEqual(backend.remote.map(\.id), ["a"])
+    }
+
+    /// Same guard as the pH and daily-log queues: a row the server rejects is stepped over, so one
+    /// poisoned write cannot starve everything newer behind it.
+    func testAServerRejectedSupplementIsSteppedOverSoNewerOnesStillSync() async {
+        let store = makeStore()
+        let seeder = SupplementsRepository(store: store, backend: nil)
+        seeder.add(CustomSupplement(id: "aaaa-poison", name: "Magnesium", dose: ""))
+        seeder.add(CustomSupplement(id: "bbbb-good", name: "Iron", dose: ""))
+
+        let backend = FakeSupplementBackend()
+        backend.reject = "aaaa-poison"
+        await SupplementsRepository(store: store, backend: backend).drainPending()
+
+        XCTAssertEqual(backend.remote.map(\.id), ["bbbb-good"],
+                       "the good supplement must get past the poisoned one")
+    }
+
+    /// A name the server's `char_length(btrim(name)) between 1 and 60` would reject is refused
+    /// here. Accepting it would queue a write that can never succeed and will be retried forever.
+    func testANameTheServerWouldRejectIsRefusedRatherThanQueued() {
+        let repo = SupplementsRepository(store: makeStore(), backend: nil)
+
+        XCTAssertFalse(repo.add(CustomSupplement(name: String(repeating: "a", count: 61), dose: "")))
+        XCTAssertFalse(repo.add(CustomSupplement(name: "   ", dose: "")))
+        XCTAssertTrue(repo.add(CustomSupplement(name: "Magnesium", dose: "")))
+        XCTAssertEqual(repo.supplements.map(\.name), ["Magnesium"])
+    }
+
+    func testSupplementsSurviveARelaunch() {
+        let store = makeStore()
+        SupplementsRepository(store: store, backend: nil)
+            .add(CustomSupplement(id: "a", name: "Magnesium", dose: "200 mg", timeOfDay: .evening))
+
+        let relaunched = SupplementsRepository(store: store, backend: nil)
+
+        XCTAssertEqual(relaunched.supplements.map(\.id), ["a"])
+        XCTAssertEqual(relaunched.supplements.first?.timeOfDay, .evening)
+    }
+
+    /// Once the store holds records, the pre-sync key is no longer consulted — otherwise deleting
+    /// her last supplement would be undone on the next launch by the copy that key still holds.
+    func testTheOldKeyIsNotRereadOnceTheStoreHasRecords() {
+        let legacy = UserDefaults(suiteName: "legacy.\(UUID().uuidString)")!
+        legacy.set(CustomSupplement.encodeList([CustomSupplement(id: "old", name: "Iron", dose: "")]),
+                   forKey: CustomSupplement.storageKey)
+        let store = makeStore()
+
+        let first = SupplementsRepository(store: store, backend: nil, legacyDefaults: legacy)
+        first.delete(id: "old")
+
+        let relaunched = SupplementsRepository(store: store, backend: nil, legacyDefaults: legacy)
+        XCTAssertTrue(relaunched.supplements.isEmpty, "a deleted supplement must not be re-migrated")
+    }
+
+    /// The row the server actually stores. `product_id` and `created_at` belong to whoever wrote
+    /// the row first — iOS has no catalogue picker and cannot know either — so they must be OMITTED
+    /// from the upsert rather than sent as null, which would blank a link Android had set.
+    func testTheSupplementRowLeavesOutTheColumnsItCannotKnow() throws {
+        let record = SupplementRecord(
+            supplement: CustomSupplement(id: "a", name: "Magnesium", dose: "200 mg", timeOfDay: .evening),
+            updatedAt: Date(), pendingSync: true)
+
+        let columns = try encodedColumns(UserSupplementRow(userId: "u", record: record))
+
+        XCTAssertTrue(columns.isSuperset(of: ["id", "user_id", "name", "time_of_day"]))
+        XCTAssertFalse(columns.contains("product_id"), "an omitted product_id leaves Android's link alone")
+        XCTAssertFalse(columns.contains("created_at"), "the row's own creation time is not ours to move")
+    }
+
+    /// `updated_at` is nullable on purpose — the server only stamps it on an update, so a row added
+    /// on Android and never edited arrives with none. It has to fall back to `created_at`.
+    ///
+    /// The failure mode if it does not is worse than it sounds, and it is not "the row looks old":
+    /// `parseISO` answers an unparseable string with `Date()`. A row with no `updated_at` would be
+    /// dated NOW, win every merge it is part of, and overwrite whatever she has on this phone. So
+    /// this asserts the actual timestamp rather than merely that one exists.
+    func testARemoteRowWithNoUpdatedAtIsDatedWhenItWasCreatedNotNow() throws {
+        let json = """
+        {"id":"a","user_id":"u","name":"CoQ10","dose":"100 mg","time_of_day":"morning",
+         "created_at":"2026-08-13T09:00:00Z","updated_at":null,"deleted_at":null}
+        """
+        let row = try JSONDecoder().decode(UserSupplementRow.self, from: Data(json.utf8))
+        let created = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-08-13T09:00:00Z"))
+
+        XCTAssertEqual(row.domain.updatedAt.timeIntervalSince1970, created.timeIntervalSince1970,
+                       accuracy: 1, "a row the server never stamped must date to its creation")
+        XCTAssertEqual(row.domain.supplement.timeOfDay, .morning)
+    }
+
     /// Account deletion (success path) must wipe the same on-device health data.
     func testDeleteAccountClearsLocalHealthData() async throws {
         let store = makeStore()
@@ -1164,6 +1632,81 @@ final class RepositoryTests: XCTestCase {
         XCTAssertNil(store.load(CycleSettings.self, forKey: "cycle_settings"))
         XCTAssertNil(store.load([PhReadingDTO].self, forKey: "ph_readings"))
         XCTAssertNil(store.load([String: DailyLogDTO].self, forKey: "daily_logs"))
+    }
+
+    /// Deletion is the one teardown that used to leave the owed rename set. Sign-out clears it (see
+    /// `testSignOutDropsARenameSoSigningBackInCannotPushTheFallback`); deletion did not, so the next
+    /// woman to sign in on this phone had her real name overwritten with the part of her address
+    /// before the @ — the exact fallback push `applySignIn` is written to forbid.
+    func testDeletionDropsTheOwedRenameSoTheNextAccountKeepsItsName() async throws {
+        let store = makeStore()
+        let auth = FakeAuthBackend()
+        let profile = FakeProfileBackend()
+
+        let session = SessionRepository(store: store, auth: auth)
+        wirePush(session, to: profile)
+        try await session.authenticate(email: "ada@x.com", password: "password123", name: "Ada", signUp: true)
+        profile.online = false
+        session.updateDisplayName("Ada Lovelace")      // owed, and still owed when she deletes
+        await session.drainPendingName()
+
+        try await session.deleteAccount()
+        profile.online = true
+        profile.displayName = "Bea Nightingale"        // her real name, already on her row
+
+        auth.signInUserId = "user-2"
+        let next = SessionRepository(store: store, auth: auth)
+        wirePush(next, to: profile)
+        try await next.authenticate(email: "bea@x.com", password: "password123", name: nil, signUp: false)
+        await next.drainPendingName()
+
+        XCTAssertEqual(profile.displayName, "Bea Nightingale",
+                       "a rename owed by a deleted account must never be drained onto the next one")
+    }
+
+    /// The data half of the same defect. `deleteAccount` also removed `session_identity`, which is
+    /// how a device that has never held a session looks — so `applySignIn` could not tell a new
+    /// owner from a first-ever install and skipped the wipe. `onboardingComplete` is device-local
+    /// and is not an auth credential; anything logged through a leftover handle in that window
+    /// must still not be handed to whoever signs in next.
+    func testDeletionLeavesTheOwnerGuardArmedForTheNextAccount() async throws {
+        let store = makeStore()
+        let auth = FakeAuthBackend()
+        let c = AppContainer(store: store, backend: nil)
+        let session = SessionRepository(store: store, auth: auth)
+        session.onClearLocalState = { c.clearLocalState() }
+
+        try await session.authenticate(email: "ada@x.com", password: "password123", name: "Ada", signUp: true)
+        try await session.deleteAccount()
+
+        // The window between the deletion and the next sign-in: the app is still usable and every
+        // write queues locally.
+        c.dailyLog.setWater(750)
+        c.cycle.upsert(CycleSettings(lastPeriodDate: .today(), cycleLength: 30, periodLength: 4))
+
+        auth.signInUserId = "user-2"
+        try await session.authenticate(email: "bea@x.com", password: "password123", name: nil, signUp: false)
+
+        XCTAssertTrue(c.dailyLog.logByDate.isEmpty,
+                      "a log written after a deletion is not the next account's to inherit")
+        XCTAssertNil(c.cycle.settings)
+    }
+
+    /// Fertility Prep vs Pregnancy sat with the theme and the push flag, as though it were a
+    /// preference about the phone. It is an answer about her body: the next user on the device
+    /// opened Profile to find "Pregnancy" already selected, and — with no `profiles` row yet for a
+    /// new sign-up — `refresh()` would seed one from it and make the previous user's status hers.
+    func testSignOutClearsTheFocusMode() {
+        let store = makeStore()
+        let container = AppContainer(store: store, backend: nil)
+        container.prefs.focusMode = .pregnancy
+
+        container.session.signOut()
+
+        XCTAssertEqual(container.prefs.focusMode, .prep,
+                       "the next user must not be shown the previous user's pregnancy status")
+        XCTAssertEqual(PreferencesRepository(store: store).focusMode, .prep,
+                       "and it must not come back from the store on next launch")
     }
 }
 
@@ -1182,6 +1725,26 @@ private final class FakePhBackend: PhBackend {
 
     func upsert(_ record: PhRecord) async throws {
         guard online else { throw RemoteError.notConfigured }
+        remote = remote.filter { $0.id != record.id } + [record.marking(pendingSync: false)]
+    }
+}
+
+/// `online = false` fails the way an offline device does. `reject` refuses one id with a
+/// non-transport error, standing in for a row the server will not accept.
+@MainActor
+private final class FakeSupplementBackend: SupplementBackend {
+    var remote: [SupplementRecord] = []
+    var online = true
+    var reject: String?
+
+    func list() async throws -> [SupplementRecord] {
+        guard online else { throw RemoteError.notConfigured }
+        return remote
+    }
+
+    func upsert(_ record: SupplementRecord) async throws {
+        guard online else { throw RemoteError.notConfigured }
+        if record.id == reject { throw DrainProbeError.serverRejected }
         remote = remote.filter { $0.id != record.id } + [record.marking(pendingSync: false)]
     }
 }
@@ -1236,6 +1799,10 @@ private final class FakeAuthBackend: AuthBackend {
     var grantsSessionOnSignUp = true
     /// Who the next sign-in lands as, so a second account on the same device can be exercised.
     var signInUserId = "user-1"
+    /// When true, `validatedSession` returns nil even if `currentUserId` is set — an expired
+    /// or revoked token that the SDK still has a user object for.
+    var sessionInvalid = false
+    var lastLifecycleHandler: (@MainActor (AuthLifecycleEvent) -> Void)?
 
     func signUp(email: String, password: String) async throws {
         if grantsSessionOnSignUp { currentUserId = signInUserId }
@@ -1243,6 +1810,19 @@ private final class FakeAuthBackend: AuthBackend {
 
     func signIn(email: String, password: String) async throws { currentUserId = signInUserId }
     func signOut() async throws { currentUserId = nil }
+
+    func validatedSession() async -> AuthSessionSnapshot? {
+        guard !sessionInvalid, let id = currentUserId else { return nil }
+        return AuthSessionSnapshot(userId: id)
+    }
+
+    func observeAuthState(_ handler: @escaping @MainActor (AuthLifecycleEvent) -> Void) {
+        lastLifecycleHandler = handler
+    }
+
+    func emit(_ event: AuthLifecycleEvent) {
+        lastLifecycleHandler?(event)
+    }
 }
 
 @MainActor
@@ -1277,6 +1857,59 @@ private final class MidDrainCycleBackend: CycleBackend {
         remote = settings
         duringUpsert?()
         duringUpsert = nil
+    }
+}
+
+/// Runs `duringFetch` while a *pull* is in flight, so a test can reproduce her editing something in
+/// the window between `refresh` checking what is owed and the server's answer arriving. `refuse`
+/// stands in for that edit's own push not having landed yet.
+@MainActor
+private final class MidFetchCycleBackend: CycleBackend {
+    var remote: CycleSettings?
+    var refuse: CycleSettings?
+    var duringFetch: (() -> Void)?
+
+    func fetch() async throws -> CycleSettings? {
+        duringFetch?()
+        duringFetch = nil
+        return remote
+    }
+
+    func upsert(_ settings: CycleSettings) async throws {
+        if settings == refuse { throw URLError(.notConnectedToInternet) }
+        remote = settings
+    }
+}
+
+/// The profile equivalent. Toggling `online` from inside `duringFetch` is how a test keeps her edit
+/// owed: the push it triggers fails, exactly as it would on a dropped connection.
+@MainActor
+private final class MidFetchProfileBackend: ProfileBackend {
+    var remote: ProfilePrefs?
+    var displayName: String?
+    var online = true
+    var duringFetch: (() -> Void)?
+
+    func fetch() async throws -> ProfilePrefs? {
+        guard online else { throw RemoteError.notConfigured }
+        duringFetch?()
+        duringFetch = nil
+        return remote
+    }
+
+    func upsert(_ prefs: ProfilePrefs) async throws {
+        guard online else { throw RemoteError.notConfigured }
+        remote = prefs
+    }
+
+    func fetchDisplayName() async throws -> String? {
+        guard online else { throw RemoteError.notConfigured }
+        return displayName
+    }
+
+    func upsert(displayName: String) async throws {
+        guard online else { throw RemoteError.notConfigured }
+        self.displayName = displayName
     }
 }
 
@@ -1315,6 +1948,11 @@ private final class FakeProfileBackend: ProfileBackend {
     func upsert(_ prefs: ProfilePrefs) async throws {
         guard online else { throw RemoteError.notConfigured }
         remote = prefs
+    }
+
+    func fetchDisplayName() async throws -> String? {
+        guard online else { throw RemoteError.notConfigured }
+        return displayName
     }
 
     func upsert(displayName: String) async throws {

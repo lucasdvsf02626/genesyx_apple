@@ -63,7 +63,7 @@ final class SupplementPersonalisationTests: XCTestCase {
     /// it produced before this file existed. A regression here ships a changed notification to
     /// everyone the day the code lands, flag or no flag.
     func testTheUnpersonalisedPathIsUnchanged() {
-        let custom = CustomSupplement(id: "mag", name: "Magnesium", dose: "200 mg", time: "Evening")
+        let custom = CustomSupplement(id: "mag", name: "Magnesium", dose: "200 mg", timeOfDay: .evening)
         let reminders = SupplementReminder.all(customs: [custom], hours: ["mag": 8])
 
         XCTAssertEqual(reminders.map(\.context), [nil])

@@ -273,6 +273,36 @@ final class NotificationTests: XCTestCase {
         XCTAssertEqual(sunday.unreadNewCount, 0, "reading it clears the badge")
     }
 
+    /// The fourth piece of that chain, and the one the test above cannot see: what the Sunday nudge
+    /// is allowed to *name*. Asserted against the service's own composition rather than a rebuilt
+    /// one, because rebuilding it is exactly how this went unnoticed — `learnCandidates()` was the
+    /// single caller passing the raw `learnArticles`, withheld articles and all.
+    ///
+    /// Two consequences, both silent. The "new" pool is exclusive, so the nudge picked *only* from
+    /// unreleased pieces: a push headed "New this week" whose tap resolves through the published-only
+    /// `articleBySlug` to nil and lands on "That article isn't available". And `markAnnounced` then
+    /// spent that slug, so when the article genuinely revealed weeks later the badge stayed at zero.
+    @MainActor
+    func testTheSundayNudgeCanOnlyNameAnArticleTheAppCanOpen() {
+        let withheld = Set(LearnLibrary.allArticles
+            .filter { $0.publishedAt != nil }
+            .map(\.slug))
+            .subtracting(LearnLibrary.articles.map(\.slug))
+        XCTAssertFalse(withheld.isEmpty, "this asserts nothing once every article has been released")
+
+        let store = LocalStore(defaults: UserDefaults(suiteName: "test.\(UUID().uuidString)")!)
+        let container = AppContainer(store: store, backend: nil, monitorNetwork: false)
+        let candidates = service(for: container).learnCandidates()
+        XCTAssertFalse(candidates.isEmpty)
+
+        for candidate in candidates {
+            XCTAssertNotNil(LearnLibrary.articleBySlug(candidate.slug),
+                            "the nudge may name \(candidate.slug), which the app cannot open")
+        }
+        XCTAssertTrue(withheld.isDisjoint(with: candidates.map(\.slug)),
+                      "a date-withheld article must not be offered before it lands")
+    }
+
     /// The badge is the *persistent* half of the pair. If it tracked `markAnnounced` live it would
     /// vanish the instant the Sunday nudge delivered — she dismisses the banner and the article is
     /// gone from both surfaces at once, with nothing left pointing at it.
@@ -336,5 +366,117 @@ final class NotificationTests: XCTestCase {
 
         XCTAssertEqual(progress.nextRead?.article.slug, added.slug)
         XCTAssertEqual(progress.nextRead?.headline, "New this week")
+    }
+
+    // MARK: - Milestones without notification permission
+
+    /// Seven consecutive days ending today, logged the way most people log: something real, no
+    /// water, no pH.
+    @MainActor
+    private func containerWithAWeekOfLogging() -> AppContainer {
+        let store = LocalStore(defaults: UserDefaults(suiteName: "test.\(UUID().uuidString)")!)
+        let container = AppContainer(store: store, backend: nil, monitorNetwork: false)
+        let today = CalendarDate.today()
+        for i in 0..<7 {
+            container.dailyLog.upsert(DailyLog(mood: .good, foodGroups: ["vegetables"]),
+                                      on: today.addingDays(-i))
+        }
+        return container
+    }
+
+    @MainActor
+    private func service(for container: AppContainer) -> NotificationService {
+        NotificationService(prefs: container.prefs, dailyLog: container.dailyLog,
+                            ph: container.ph, cycle: container.cycle,
+                            supplements: container.supplements, store: container.store,
+                            session: container.session)
+    }
+
+    /// The whole point of the in-app celebration, asserted at the service rather than through the
+    /// UI: push is off, so `isActive` is false and nothing will ever be scheduled — and she must
+    /// still be congratulated. `GenesyxUITests` covers the other way in, a fresh install that has
+    /// never been asked for permission at all.
+    ///
+    /// `pushEnabled` is the term used to shut the gate because it is the only one a test can
+    /// control. The system's own authorization is host state: this suite was written expecting
+    /// `notDetermined` and found `authorized`, so anything asserted on that term passes or fails
+    /// according to which simulator it lands on.
+    @MainActor
+    func testAMilestoneIsCelebratedInAppEvenWithPushTurnedOff() async {
+        let container = containerWithAWeekOfLogging()
+        container.prefs.pushEnabled = false
+        let service = service(for: container)
+
+        await service.reconcile()
+
+        XCTAssertFalse(service.isActive, "nothing can be scheduled")
+        XCTAssertNotNil(service.celebration,
+                        "and that must not cost her the in-app moment")
+    }
+
+    /// A signed-out session cannot keep a schedule, even if she left the toggle on.
+    @MainActor
+    func testSignOutMakesTheScheduleInactiveAndDropsAHeldDestination() {
+        let container = containerWithAWeekOfLogging()
+        container.session.signIn(email: "maya@example.com", name: "Maya")
+        container.prefs.pushEnabled = true
+        let service = service(for: container)
+        service.pendingDestination = .init(tab: .home, learnSlug: nil)
+
+        container.session.signOut()
+
+        XCTAssertFalse(service.isActive)
+        XCTAssertNil(service.pendingDestination, "logout must drop a held private destination")
+    }
+
+    /// Muting is defined here, because the definition is not obvious and both halves of it matter.
+    ///
+    /// Muted means *none* — someone who turned milestones off did not ask for a quieter
+    /// celebration, so the modal goes too, not just the banner. And the flag is still spent, so
+    /// switching them back on months later delivers the milestones she passed in silence as
+    /// silence, not as a backlog of modals.
+    @MainActor
+    func testMutingMilestonesRemovesTheModalTooAndStillSpendsTheFlag() async {
+        let container = containerWithAWeekOfLogging()
+        container.prefs.pushEnabled = false
+        container.prefs.mutedNotifications = [.milestones]
+        let service = service(for: container)
+
+        await service.reconcile()
+
+        XCTAssertNil(service.celebration, "muted is none, not quieter")
+        XCTAssertTrue(container.prefs.celebratedMilestones.contains(Milestone.day7.flagKey),
+                      "unmuting must not deliver a backlog of everything she passed")
+    }
+
+    // MARK: - Cancelling has to forget, not just cancel
+
+    /// Delivery can't be observed while the app is closed, so a scheduled fire time that has passed
+    /// is counted as delivered. That inference is sound only if cancelling forgets the time too.
+    ///
+    /// It didn't. Switching reminders off, muting a category or revoking permission in Settings all
+    /// cancel the pending request and used to leave the fire time remembered — so the next time she
+    /// opened the app, a notification that never existed was banked as sent. The fertile, insights
+    /// and track nudges each stand down for a fortnight after they last spoke, so each went quiet
+    /// for one; and a Sunday Learn drop was marked announced, losing its "New this week" badge
+    /// without her ever having been told.
+    ///
+    /// The key is spelled out rather than reached through the service because that is the thing
+    /// being pinned: the record outlives the process, so the fault outlived it too.
+    @MainActor
+    func testCancellingForgetsTheFireTimesSoNothingCountsAsDelivered() {
+        let container = containerWithAWeekOfLogging()
+        let service = service(for: container)
+        let key = "notification_scheduled_fire"
+        let neverFired: [String: Date] = [
+            NotificationKind.cycleFertile.rawValue: Date().addingTimeInterval(-3600)
+        ]
+        container.store.save(neverFired, forKey: key)
+
+        service.cancelAll()
+
+        let remembered = container.store.load([String: Date].self, forKey: key) ?? [:]
+        XCTAssertTrue(remembered.isEmpty,
+                      "a cancelled notification never fired, so it must not be remembered as sent")
     }
 }

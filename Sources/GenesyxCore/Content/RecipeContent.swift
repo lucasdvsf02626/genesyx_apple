@@ -16,12 +16,11 @@ import Foundation
 /// starts explaining *why* it helps, it has stopped repeating a reviewed claim and started making a
 /// new one, and it needs what `phaseFoods` has. `testRecipeCopyMakesNoHealthClaim` is what notices.
 ///
-/// ## Why there is no photography
+/// ## Photography
 ///
-/// The asset catalogue has Learn hero images and brand art, and no food photography at all. Rather
-/// than ship placeholder stock, `Recipe` carries an `imageName: String?` that is nil throughout and
-/// the cards render on the phase accent. Dropping real photography in later is a content change and
-/// an `if let`, not a rewrite.
+/// Each shipped recipe names its own approved food photograph. `imageName` remains optional so the
+/// phase-gradient fallback still works for a newly-authored recipe while its final artwork is being
+/// prepared, but the shipped content tests require all current recipes to have unique mappings.
 public struct Recipe: Identifiable, Hashable, Sendable {
     public let name: String
     /// The `PhaseFood.name` this meal is built around. Must exist in `NutritionContent.phaseFoods`
@@ -35,7 +34,7 @@ public struct Recipe: Identifiable, Hashable, Sendable {
     /// What she can tick off in the food log once she has eaten it. Closes the loop between the two
     /// cards rather than making her re-enter what the recipe already knows.
     public let groups: [FoodGroup]
-    /// Always nil today. See the type's note on photography.
+    /// Asset-catalogue name for the food-only recipe photograph.
     public let imageName: String?
 
     public var id: String { name }
@@ -133,7 +132,8 @@ public enum RecipeContent {
                 "Stir the spinach through until it wilts.",
                 "Take off the heat and add the lemon juice. Season to taste.",
             ],
-            groups: [.protein, .vegetables, .oilsAndFats]
+            groups: [.protein, .vegetables, .oilsAndFats],
+            imageName: "recipe_lentil_spinach_lemon_dal"
         ),
         Recipe(
             "Ginger and sweet potato soup",
@@ -155,7 +155,8 @@ public enum RecipeContent {
                 "Blend until smooth, adding a splash of hot water if it is thicker than you want.",
                 "Season with black pepper and serve hot.",
             ],
-            groups: [.vegetables, .starchyCarbs, .oilsAndFats]
+            groups: [.vegetables, .starchyCarbs, .oilsAndFats],
+            imageName: "recipe_ginger_sweet_potato_soup"
         ),
 
         // ── Follicular ──
@@ -176,7 +177,8 @@ public enum RecipeContent {
                 "Top with the berries and seeds.",
                 "Add honey if you want it sweeter. If the berries are frozen, leave it to stand for five minutes.",
             ],
-            groups: [.dairy, .fruit, .oilsAndFats]
+            groups: [.dairy, .fruit, .oilsAndFats],
+            imageName: "recipe_kefir_berry_breakfast_bowl"
         ),
         Recipe(
             "Sprouted seed and tofu traybake",
@@ -198,7 +200,8 @@ public enum RecipeContent {
                 "Scatter over the pumpkin seeds and roast for a further 5 minutes.",
                 "Sprinkle the ground flaxseed over just before serving.",
             ],
-            groups: [.protein, .vegetables, .oilsAndFats]
+            groups: [.protein, .vegetables, .oilsAndFats],
+            imageName: "recipe_sprouted_seed_tofu_traybake"
         ),
 
         // ── Ovulatory ──
@@ -221,7 +224,8 @@ public enum RecipeContent {
                 "Toss the leaves, quinoa and avocado with the dressing.",
                 "Finish with the pumpkin seeds.",
             ],
-            groups: [.vegetables, .starchyCarbs, .oilsAndFats]
+            groups: [.vegetables, .starchyCarbs, .oilsAndFats],
+            imageName: "recipe_big_green_quinoa_salad"
         ),
         Recipe(
             "Rainbow pepper and bean bowl",
@@ -241,7 +245,8 @@ public enum RecipeContent {
                 "Add the beans and tomatoes and warm through for 3 minutes.",
                 "Spoon over the rice and finish with the lime juice.",
             ],
-            groups: [.vegetables, .protein, .starchyCarbs, .oilsAndFats]
+            groups: [.vegetables, .protein, .starchyCarbs, .oilsAndFats],
+            imageName: "recipe_rainbow_pepper_bean_bowl"
         ),
 
         // ── Luteal ──
@@ -265,7 +270,8 @@ public enum RecipeContent {
                 "Press firmly into the tin and bake for 25 minutes, until golden at the edges.",
                 "Cool completely in the tin before cutting, or the bars will crumble.",
             ],
-            groups: [.starchyCarbs, .fruit, .oilsAndFats]
+            groups: [.starchyCarbs, .fruit, .oilsAndFats],
+            imageName: "recipe_dark_chocolate_almond_oat_bars"
         ),
         Recipe(
             "Salmon, oats and greens traybake",
@@ -286,7 +292,8 @@ public enum RecipeContent {
                 "Toss the broccoli in the rest of the oil and spread on a tray with the salmon.",
                 "Bake for 15–18 minutes, until the salmon flakes with a fork. Squeeze the lemon over to serve.",
             ],
-            groups: [.protein, .vegetables, .starchyCarbs, .oilsAndFats]
+            groups: [.protein, .vegetables, .starchyCarbs, .oilsAndFats],
+            imageName: "recipe_salmon_oats_greens_traybake"
         ),
     ]
 
