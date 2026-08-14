@@ -1,8 +1,8 @@
 # Genesyx iOS — Client Change List: Audit & Execution Plan
 
 > Response to the client's "Simplified Consolidated Changes" list (received 2026-08-10).
-> Historical execution journal for builds 17–18, refreshed against **HEAD `1b61e81` on
-> 14 Aug 2026** plus the large uncommitted working tree. The authoritative baseline is a
+> Historical execution journal for builds 17–18. The working tree was frozen and committed on
+> 14 Aug 2026 as **`8580dd671d95f1eab04cc23ba4175927a4e651b2`** (`8580dd6`) — **the release SHA**. The authoritative baseline is a
 > **single sweep of all three suites over one byte-identical tree** on 14 Aug:
 > **267 domain / 288 app / 79 UI** — 0 failures, 1 pre-existing permission-dependent skip
 > (`NotificationFlowUITests.testTurningOnRemindersExplainsFirstThenAsksPermission`).
@@ -855,7 +855,7 @@ guardrails*) before public release.
 
 ### 11.1d Verification status — honest
 
-Re-verified 14 Aug 2026 against HEAD `1b61e81` plus the current uncommitted tree.
+Re-verified 14 Aug 2026 against the release commit `8580dd6`.
 Fresh backup `/tmp/onb_h21_prod_20260814T104552.swift`. `WaitlistView` was not reconstructed.
 
 | Check | Result |

@@ -1,7 +1,8 @@
 # Genesyx iOS — Progress Checklist
 
-> Last verified: **14 Aug 2026**, against HEAD `1b61e81` plus the current uncommitted working tree
-> (batches 1–9). Verification includes that tree, not the commit alone.
+> Last verified: **14 Aug 2026**, against the release commit `8580dd6` — batches 1–9 are now
+> committed, and the working tree is clean apart from `graphify-out/`, `.claude/` and the
+> deliberately excluded duplicate `docs/assets/` copy of the guide PDF.
 > The date below is the last verification date, not necessarily the original implementation date.
 > Only **Done** rows are ticked. Section 4 is deferred and excluded from the Sections 1–3 total.
 

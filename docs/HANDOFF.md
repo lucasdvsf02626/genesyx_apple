@@ -4,15 +4,18 @@
 > before this could be saved). Companion to `CHANGE_LIST_PLAN.md`, which tracks the client's
 > change list task-by-task. This file tracks **what is in flight right now**.
 
-**Branch:** `main` · **HEAD:** `1b61e81` *"Food groups, the in-app celebration, and the sleep
-predicate"* (plus a large uncommitted working tree — §0) · **Version:** 1.2.0 (18)
+**Branch:** `main` · **HEAD:** `8580dd6` *"Freeze the 1.2.0 release candidate: the auth gate,
+the free guide, and supplement sync"* — **this is the release SHA**; the tree is now clean apart
+from `graphify-out/`, `.claude/` and the excluded duplicate `docs/assets/` PDF. · **Version:**
+1.2.0, build **still 18 in `project.yml` — must be bumped before archiving**
 · **Test baseline:** 267 domain + 288 app + 79 UI (1 skip), 0 failures — **one sweep over one
 byte-identical tree**, 2026-08-14: `/tmp/genesyx_h22_final_domain.log` (267/0, 14:18),
 `/tmp/genesyx_h22_final_app.log` (288/0, 14:20), `/tmp/genesyx_h22i_full_ui.log`
 (886.043 s, 79 exec / 1 skip / 0 fail, 14:16). The UI run was deliberately adversarial:
 `xcrun simctl keychain <UDID> reset` first, to re-arm iOS's "Save Password?" sheet, on a
 simulator with no other `xcodebuild` attached. Historical H21/H11 67/1/0 logs remain valid
-for those batches. All of that is HEAD `1b61e81` **plus** the uncommitted tree.
+for those batches. All of that was measured on the tree that became **`8580dd6`**, which also
+compiles clean in the **Release** configuration (0 errors, `/tmp/genesyx_rc_release_build.log`).
 
 ```bash
 swift test && xcodebuild test -project Genesyx.xcodeproj -scheme Genesyx \
@@ -182,7 +185,7 @@ stays BLOCKED.** Detail in `CHANGE_LIST_PLAN.md` §0.1.
 ### 0a. Where the repository is
 
 ```
-git rev-parse --short HEAD   →  1b61e81
+git rev-parse --short HEAD   →  8580dd6
 git rev-parse --abbrev-ref HEAD → main
 ```
 
@@ -347,7 +350,7 @@ git diff --stat -- . ':!graphify-out'
 
 ### 0j. Copy-paste continuation prompt for the next agent
 
-> Continue the Genesyx **iOS** delivery from the current working tree at HEAD `1b61e81` on branch
+> Continue the Genesyx **iOS** delivery from the release commit `8580dd6` on branch
 > `main`. **Preserve every uncommitted change — batches 1–9 all live in this tree. Do not reset,
 > stash or discard anything.** Read `docs/HANDOFF.md` §0 first.
 >
