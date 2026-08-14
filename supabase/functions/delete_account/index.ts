@@ -1,6 +1,14 @@
 // Permanently delete the caller's account and all their data.
 // REQUIRED by App Store Guideline 5.1.1(v) once the app has accounts.
 //
+// ⚠️ NOT YET DEPLOYED — two edits made 14 Aug 2026 are in this file and NOT on the live project
+// (`epltxklawpcxxbaleswg`). Until someone runs `supabase functions deploy delete_account`, the
+// deployed function still (a) omits the explicit `user_supplements` delete and (b) swallows a
+// `waitlist_emails` failure and returns `{ok: true}`. Neither edit changes what a SUCCESSFUL
+// deletion erases — `user_supplements` cascades on `auth.users` anyway — so the live path is not
+// leaking data today; both close the case where the run does NOT fully succeed. Delete this banner
+// in the same change that deploys it, and not before.
+//
 // NOTHING IS REPORTED DELETED THAT WAS NOT DELETED.
 // Every statement here used to discard its result, so the function could fail to remove a table,
 // carry on, delete the auth user, and return `{ok:true}`. That is the worst available outcome: the
@@ -46,11 +54,21 @@ Deno.serve(async (req) => {
     }
 
     // Rows she owns by id. Extend this list as the schema grows.
+    //
+    // `user_supplements` is here for the same reason `quiz_answers` is: it already cascades
+    // (`user_id uuid not null references auth.users (id) on delete cascade`, created
+    // 13 Aug in `20260813_android_supplements_backend.sql`), so the auth-user step below would
+    // sweep it regardless. But a cascade is the foreign key's promise, not this function's, and
+    // it only fires if the LAST step succeeds. Everything else in this list survives a failed
+    // auth delete already erased; without this line supplements would be the one table that does
+    // not, and they would sit there until she retried. Android's RPC was given exactly this
+    // backstop on 13 Aug (H1) and this path was not — that asymmetry is what this closes.
     for (const [table, column] of [
       ["ph_readings", "user_id"],
       ["daily_logs", "user_id"],
       ["cycle_settings", "user_id"],
       ["quiz_answers", "user_id"],
+      ["user_supplements", "user_id"],
       ["partner_invites", "inviter_id"],
     ] as const) {
       const { error } = await db.from(table).delete().eq(column, uid);
@@ -86,21 +104,21 @@ Deno.serve(async (req) => {
       // The waitlist she may have joined before she had an account at all. `join_waitlist` stores
       // `lower(trim(...))`, so an exact match is sound here and needs no wildcard dance.
       //
-      // The ONE table whose failure does not stop the deletion, and the reason has changed.
+      // This used to be the ONE table whose failure did not stop the deletion. It was written that
+      // way because `waitlist_emails` might not exist on the live project yet, making "relation does
+      // not exist" an expected error. That premise died on 13 Aug 2026, when both the table and
+      // `join_waitlist` were confirmed present — any failure here is a real one.
       //
-      // It was written this way because `waitlist_emails` might not exist on the live project yet,
-      // making "relation does not exist" an expected error. That premise is dead: both the table and
-      // `join_waitlist` were confirmed present on 13 Aug 2026. Any failure here is now a real one.
-      //
-      // It stays non-fatal anyway, because the two risks are not the same size. Blocking deletion
-      // outright would mean an operational fault in a marketing table locks her out of 5.1.1(v)
-      // erasure entirely; the alternative harm is an email address left on a waitlist. The second is
-      // smaller. But `{ok: true}` below is then not quite true, and nobody reads this log — see
-      // P0-15 in TESTFLIGHT_B18.md. Whether to surface it to her is a decision, not an oversight.
+      // It was then left non-fatal on a risk argument: blocking erasure over a marketing table is
+      // worse than leaving an address on a waitlist. That argument is now retired (decision 14 Aug
+      // 2026, P0-15 in TESTFLIGHT_B18.md), because it traded a permanent silent lie for a temporary
+      // one. Swallowing this returns `{ok: true}` for a deletion that did not happen, and she is
+      // the only person entitled to ask for it — after the auth user goes, nobody can even see the
+      // row to retry. Failing here costs her nothing by comparison: this runs BEFORE the profile and
+      // auth-user steps, so her account is untouched, she stays deletable, and the retry is the same
+      // call again — the identical contract every other table in this function already has.
       const wait = await db.from("waitlist_emails").delete().eq("email", lowered);
-      if (wait.error) {
-        console.error("delete_account: waitlist_emails delete failed —", wait.error.message);
-      }
+      if (wait.error) return failed("waitlist_emails delete", wait.error.message);
     }
 
     const profile = await db.from("profiles").delete().eq("id", uid);
