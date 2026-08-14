@@ -58,6 +58,7 @@
 		7E4CD1BF46B1F859F7A9E624 /* LogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49849D9AB56307E72089D622 /* LogView.swift */; };
 		7F826845B793AEFD208F3AF9 /* SessionExpiryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89A702D17E4F743D8FBCC58 /* SessionExpiryTests.swift */; };
 		80E86EC3B5ADC14AABBDB677 /* GenesyxApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40F30A3F8C1E804BE4B86F8F /* GenesyxApp.swift */; };
+		84B56738DE6EA54CD4C985BD /* PasswordResetTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8090EDB3E193E58373847533 /* PasswordResetTests.swift */; };
 		86B9753D403F1175DD52D577 /* DeepLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E5056238C379BFC87EEE98F /* DeepLink.swift */; };
 		92C49067F4CFC43B2EEEC85E /* SupabaseBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = B272F6444F9A44B3497D5370 /* SupabaseBackend.swift */; };
 		95374EE4612300DE8ECB082C /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 31285057904654880C873C5C /* PrivacyInfo.xcprivacy */; };
@@ -164,6 +165,7 @@
 		7F8902F736BE65A51377ABF0 /* QuizContentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuizContentTests.swift; sourceTree = "<group>"; };
 		7FAEDB5BABAF4DB17A1EA885 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		80049AAB53BF065200499100 /* WeeklySummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklySummaryView.swift; sourceTree = "<group>"; };
+		8090EDB3E193E58373847533 /* PasswordResetTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordResetTests.swift; sourceTree = "<group>"; };
 		84C182890D97D31185267B5B /* SleepSmokeUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepSmokeUITests.swift; sourceTree = "<group>"; };
 		894F6388CCC93D23E7C89DBA /* CitationLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CitationLink.swift; sourceTree = "<group>"; };
 		8E3D2B9C5458CBBD4620E47E /* LearnReadLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearnReadLog.swift; sourceTree = "<group>"; };
@@ -286,6 +288,7 @@
 				0A374BA412A71C4681304F6B /* NotificationTests.swift */,
 				04A99C624A4D983AB1E3D538 /* NutritionHydrationTests.swift */,
 				07AB939CB828EB246F36B517 /* PartnerTests.swift */,
+				8090EDB3E193E58373847533 /* PasswordResetTests.swift */,
 				303189AF2EDB7CEDB86E0060 /* PersistenceTests.swift */,
 				C2F8D8EAE8E2F5145C9AE700 /* PhContentGuardTests.swift */,
 				7F8902F736BE65A51377ABF0 /* QuizContentTests.swift */,
@@ -757,6 +760,7 @@
 				3C4025BDDBBFF7E7C4EB068D /* NotificationTests.swift in Sources */,
 				65A5F1876DC627D25E629435 /* NutritionHydrationTests.swift in Sources */,
 				48E3074CD9FFCEC5B1C9F220 /* PartnerTests.swift in Sources */,
+				84B56738DE6EA54CD4C985BD /* PasswordResetTests.swift in Sources */,
 				3D63A628C151330C2E790EF8 /* PersistenceTests.swift in Sources */,
 				1413FE71B9060C273AC9D89C /* PhContentGuardTests.swift in Sources */,
 				023C7A8E010B52705228034E /* QuizContentTests.swift in Sources */,

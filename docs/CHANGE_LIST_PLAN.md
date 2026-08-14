@@ -557,6 +557,14 @@ planning:
   unrelated email session. Three tests in `SessionExpiryTests`, both behaviours falsified.
 - **Deletion behaviour:** after the migration is version-controlled, use disposable accounts to
   prove both the iOS Edge Function and Android SQL RPC erase the same shared-backend data.
+- **Password recovery (P0-20):** ✅ the signed-out half is done — H22 had made a forgotten password a
+  permanent lockout, because the app's only reset control sat inside Profile, behind the session she
+  could not obtain. `AuthView` now carries **Forgot password?** and `sendPasswordReset(email:)` takes
+  the address instead of reading it off a live session. ⬜ **The in-app landing for the emailed link
+  is not built, on purpose.** It needs the Supabase redirect allowlist and email template pointed at
+  `genesyx://`, which live only in the dashboard — there is no `config.toml` in this repo — so the
+  screen would be dead code until that is confirmed. **Needed: where the recovery email currently
+  goes, and whether genesyx.co.uk handles it.**
 
 ## 7. Phase 6 — quote separately (40–60d)
 

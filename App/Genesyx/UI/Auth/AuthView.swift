@@ -36,6 +36,8 @@ struct AuthView: View {
     @State private var confirmPending = false
     @State private var resendNotice: String?
 
+    @State private var resetNotice: String?
+
     private func submit() {
         if !EmailValidator.isValid(email) { error = "Enter a valid email"; return }
         if password.count < 8 { error = "Password must be at least 8 characters"; return }
@@ -63,6 +65,26 @@ struct AuthView: View {
     private func finishSignedIn() {
         onSignedIn?()
         if allowsDismissal { dismiss() }
+    }
+
+    /// The same neutral wording whether or not the address has an account. Saying "no account with
+    /// that email" would turn this screen into an account-enumeration oracle for a health app, and
+    /// Supabase deliberately does not distinguish the two either.
+    private static let resetSent = "If that email has an account, we've sent a reset link. Check your inbox."
+
+    private func sendReset() {
+        resetNotice = nil
+        let address = email.trimmingCharacters(in: .whitespaces)
+        guard EmailValidator.isValid(address) else { error = "Enter your email first, then tap Forgot password"; return }
+        error = nil
+        Task {
+            do {
+                try await session.sendPasswordReset(email: address)
+                resetNotice = Self.resetSent
+            } catch {
+                resetNotice = "We couldn't send the reset email. Please try again."
+            }
+        }
     }
 
     private func resendConfirmation() {
@@ -209,6 +231,21 @@ struct AuthView: View {
                         .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 8)
                 }
 
+                // Sign-in only: there is no password to recover while creating an account, and the
+                // gate makes this her single route back in — Profile's "Change password" sits
+                // behind the very session she cannot obtain.
+                if !signupMode {
+                    Button("Forgot password?", action: sendReset)
+                        .font(.gxBodySmall.weight(.semibold)).foregroundStyle(GenesyxColor.primary)
+                        .frame(maxWidth: .infinity, alignment: .trailing).padding(.top, 8)
+                        .accessibilityIdentifier("auth.forgotPassword")
+                    if let resetNotice {
+                        Text(resetNotice).font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+                            .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 4)
+                            .accessibilityIdentifier("auth.resetNotice")
+                    }
+                }
+
                 if confirmPending {
                     Button("Resend confirmation email", action: resendConfirmation)
                         .font(.gxBodySmall.weight(.semibold)).foregroundStyle(GenesyxColor.primary)
@@ -255,7 +292,7 @@ struct AuthView: View {
                         .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
                     Text(signupMode ? "Sign in" : "Create account")
                         .font(.gxBodySmall.weight(.semibold)).foregroundStyle(GenesyxColor.primary)
-                        .onTapGesture { signupMode.toggle(); error = nil; confirmPending = false; resendNotice = nil }
+                        .onTapGesture { signupMode.toggle(); error = nil; confirmPending = false; resendNotice = nil; resetNotice = nil }
                 }
                 if allowsDismissal {
                     GxGhostButton(title: "Back to app") { dismiss() }

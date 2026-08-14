@@ -309,7 +309,17 @@ final class SessionRepository: ObservableObject {
     /// Emails a password-reset link to the signed-in account. Throws if there's no backend or no
     /// known email, so the UI can tell her instead of silently doing nothing.
     func resetPassword() async throws {
-        guard let auth, let email, !email.isEmpty else { throw RemoteError.notConfigured }
+        guard let email, !email.isEmpty else { throw RemoteError.notConfigured }
+        try await sendPasswordReset(email: email)
+    }
+
+    /// Emails a password-reset link to an address supplied by the caller, for someone who is NOT
+    /// signed in. The signed-in variant above reads `email` off the live session, which is exactly
+    /// what a woman who has forgotten her password does not have — and since the gate made
+    /// `AuthView` the only surface she can reach, without this she has no way to start recovery at
+    /// all. Shaped like `resendConfirmation(email:)`, which takes the address for the same reason.
+    func sendPasswordReset(email: String) async throws {
+        guard let auth, !email.isEmpty else { throw RemoteError.notConfigured }
         try await auth.resetPassword(email: email)
     }
 

@@ -53,6 +53,22 @@ final class AuthGateUITests: XCTestCase {
                       "the Genesyx lockup must be on the Sign In screen")
     }
 
+    /// The way back in for a woman who has forgotten her password.
+    ///
+    /// The gate is what makes this load-bearing. Profile's "Change password" is inside the private
+    /// tabs, so it sits behind the very session she cannot obtain; if this control is not on the
+    /// mandatory screen there is no in-app route to recovery at all, and a forgotten password is a
+    /// permanent lockout. Asserted here rather than only in a unit test because the repository
+    /// method is unreachable if nothing on this screen calls it.
+    func testMandatorySignInOffersPasswordRecovery() {
+        let app = launch(args: ["-uiTestSeed", "YES", "-uiTestSignedOut", "YES"])
+        XCTAssertTrue(authScreen.waitForExistence(timeout: 10))
+        let forgot = app.descendants(matching: .any).matching(identifier: "auth.forgotPassword").firstMatch
+        XCTAssertTrue(forgot.waitForExistence(timeout: 5),
+                      "a woman locked out by the gate must be able to start a password reset from it")
+        assertNoPrivateTabs(app)
+    }
+
     /// Back from the onboarding auth cover must not expose the tabs.
     func testCancellingOnboardingAuthNeverExposesTheTabs() {
         let app = launch(args: ["-uiTestSeed", "YES", "-uiTestOnboarding", "YES"])
