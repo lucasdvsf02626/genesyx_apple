@@ -4,22 +4,28 @@
 > before this could be saved). Companion to `CHANGE_LIST_PLAN.md`, which tracks the client's
 > change list task-by-task. This file tracks **what is in flight right now**.
 
-**Branch:** `main` · **HEAD:** `8580dd6` *"Freeze the 1.2.0 release candidate: the auth gate,
-the free guide, and supplement sync"* — **this is the release SHA**; the tree is now clean apart
-from `graphify-out/`, `.claude/` and the excluded duplicate `docs/assets/` PDF. · **Version:**
-1.2.0, build **still 18 in `project.yml` — must be bumped before archiving**
-· **Test baseline — current working tree, 2026-08-14 16:54:** **267 domain + 301 app + 82 UI
-(1 skip), 0 failures** (`/tmp/gx_scope_app.log`), and the Release configuration builds clean
-(`/tmp/release_build_partner.log`, 16:10 — **before** the 16:54 additions, which are test-target
-only and cannot affect it). The **+13 app / +3 UI over the `8580dd6` sweep below are all additions,
-not drift**, and they account exactly: app +5 `PasswordResetTests`, +3 `SessionExpiryTests`,
-+4 `ReleaseScopeTests` (§0-S), and **+1 `LearnContentTests.testTheTwelveWeekPlanListsEveryWeekly-
-ArticleInOrder`, which belongs to separate uncommitted twelve-week-plan work in the tree and to
-none of the numbered items**; UI +1 `testMandatorySignInOffersPasswordRecovery` (P0-20) and +2
-partner-scope tests (P0-21). The three partner *unit* test files gained comments only, no
-assertions. **These figures were reconciled by diffing the two runs' test names, not by subtracting
-totals** — the earlier draft of §0-S credited release-scope work with all five new app tests, which
-was one too many. If you measure fewer than these, something regressed.
+**Branch:** `main` · **HEAD:** `c9aa8ba` *"Withhold partner linking from the 1.2.0 build, prove
+the release scope, and land the twelve-week plan"* — committed 2026-08-14 22:31 as the verified
+batch of everything that was in flight (partner-scope withholding + `ReleaseScopeTests`, the
+twelve-week plan, Google DEBUG failure staging, and the docs that describe them, including
+`FINAL_APP_STORE_RELEASE_CHECKLIST.md` and the two `docs/website/` drafts, which are content
+drafts only — **not published, not linked from the app**). **This is the current release-candidate
+SHA, superseding `8580dd6`.** The tree is clean apart from the standing exclusions `graphify-out/`
+and the duplicate `docs/assets/` PDF. · **Version:** 1.2.0, build **still 18 in `project.yml` —
+must be bumped before archiving**
+· **Verification over the exact `c9aa8ba` tree, 2026-08-14 22:22–22:29:** domain **267/0**
+(`/tmp/gx_stab_domain.log`), app **301/0** (`/tmp/gx_stab_app.log`), and a targeted UI re-run
+**3/3 + `ReleaseScopeTests` 4/4** (`/tmp/gx_stab_targeted.log`) covering the two tests that failed
+in the 21:14 sweep (`testASupplementIsAddedWithOneOfTheFourSharedTimes`,
+`testDismissingThePhaseChangeCardKeepsItAway` — both event-synthesis timeouts in a 15,197 s run
+under load; `/tmp/gx_scope_ui.log`) and the previously FalsifyWidget-blocked
+`testTheTwelveWeekPlanOpensFromLearn`, which now passes in 9.4 s on a clean simulator. **No
+product change fixed them — the environment did** — so the 21:14 log remains on record as a
+flake, not a regression, and a full 83-test UI sweep over `c9aa8ba` has **not** been run; run one
+before treating UI as fully evidenced (§6 of the release checklist). The Release configuration
+build was last proven at 16:10 (`/tmp/release_build_partner.log`), but the 16:43–16:47 edits
+touched **product** files (`LearnViews`, `LearnContent`, `LearnModels`), so that build does
+**not** evidence `c9aa8ba` — **re-run the Release build over `c9aa8ba` before archiving.**
 
 · **Frozen baseline for the release SHA `8580dd6`:** 267 domain + 288 app + 79 UI (1 skip), 0
 failures — **one sweep over one byte-identical tree**, 2026-08-14:
@@ -41,7 +47,10 @@ Do **not** pass `-quiet` — it has returned exit 0 with no summary and hidden a
 
 ## 0. STOP HERE FIRST — state at handoff, 14 Aug 2026
 
-**Nothing is committed. Nothing is pushed. No Supabase change was made in this session.**
+**The 14 Aug in-flight work is now committed as `c9aa8ba` (see header). Nothing is pushed.
+No Supabase change was made in this session.** The `FalsifyWidget.appex` install blocker is
+resolved: the artifact is gone from DerivedData and the built `.app` embeds only
+`GenesyxAppTests.xctest`; the blocked twelve-week UI test passed in the 22:21 targeted re-run.
 H21 engineering gates are closed. H11 / T22 is closed. **H22 (mandatory authentication
 gate): Engineering Done; simulator verified; physical-device QA deferred.** No physical
 iPhone is available — that absence does not keep H22 In progress. The PDF content
