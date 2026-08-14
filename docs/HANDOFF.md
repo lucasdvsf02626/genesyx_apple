@@ -1102,10 +1102,17 @@ history. Applying it today would try to recreate live objects, and its grant sha
 13 Aug TRUNCATE fix (this project's default privileges hand `authenticated` the full `arwdDxtm` at
 `CREATE TABLE` time, and TRUNCATE is not subject to RLS — see `TESTFLIGHT_B18.md` P1-2).
 
-**Still owed:** the exact applied SQL for
-`supabase/migrations/20260813_user_supplements_delete_backstop_and_push_default_false.sql`, which has
-to come from the session that ran it — it is deliberately not reconstructed here — and the
-disposable-account deletion test. Production DDL is not proof of runtime behaviour.
+**Closed 14 Aug 2026.** The exact applied SQL is now checked in at
+`supabase/migrations/20260813_user_supplements_delete_backstop_and_push_default_false.sql` — md5
+`55c387ecc1fc940b892bd8bdc3e1cfb5`, 3424 bytes, mtime 13 Aug 15:35, `cmp`-identical to the dashboard
+SQL-editor copy that was saved to `~/Downloads/` on the day it ran. It had never existed in git on
+any branch and appears in no session transcript, so refusing to reconstruct it was the right call:
+the real file splices the backstop in with `pg_get_functiondef -> replace -> execute` and asserts the
+owner, the ACL, `prosecdef` and `search_path=""` before committing. A prose reconstruction would have
+retyped the body and silently dropped whichever hardened block the summary omitted.
+
+**Still owed:** the disposable-account deletion test. Production DDL is not proof of runtime
+behaviour, and this file is DDL.
 
 ## 4o. H4 — meals now count, and the silent deletion Android was one save away from (2026-08-13)
 

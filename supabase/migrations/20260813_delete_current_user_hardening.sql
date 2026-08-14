@@ -11,8 +11,18 @@
 -- and does NOT contain that line, so re-running it now would quietly revert H1 and leave account
 -- deletion without its defence-in-depth delete again. The revert would report success.
 --
--- The applied file is not yet checked into this repo. Recover the exact production text before
--- touching this function again — do not reconstruct it from the description above, and do not
+-- ✅ RECOVERED 14 Aug 2026. The superseding migration is now checked in verbatim as
+-- `20260813_user_supplements_delete_backstop_and_push_default_false.sql` (md5
+-- 55c387ecc1fc940b892bd8bdc3e1cfb5, 3424 bytes, mtime 13 Aug 15:35). It was never
+-- reconstructed from prose: it splices the line in with
+-- `pg_get_functiondef -> replace -> execute`, so the deployed body — every hardened block,
+-- the owner, the ACL, SECURITY DEFINER and search_path='' — is preserved byte-for-byte
+-- rather than retyped. That is why it is authoritative and this file is not.
+--
+-- If this function ever has to be rebuilt from source, the ONLY safe sequence is: run this
+-- file first, then that one. Running that one alone aborts by design (it raises
+-- `ABORT: user_supplements already referenced in deployed function` when the backstop is
+-- already present), so it is safe to re-run but is not a repair on its own. Do not
 -- hand-edit the body below into a substitute.
 --
 -- Verified after applying (13 Aug, before the H1 splice): prosecdef = true,

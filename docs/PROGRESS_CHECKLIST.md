@@ -300,7 +300,7 @@ physical cellular (**DEFERRED**). D3 and D4 stay descoped.
 
 **Outside the 44 (do not implement in a checklist pass):**
 
-1. Check the exact applied Supabase file `20260813_user_supplements_delete_backstop_and_push_default_false.sql` into `supabase/migrations/` (it is **not** in that directory today). Then disposable-account deletion QA.
+1. ✅ **Done 14 Aug** — the exact applied Supabase file `20260813_user_supplements_delete_backstop_and_push_default_false.sql` is now in `supabase/migrations/`, verbatim and `cmp`-identical to the recovered original (md5 `55c387ecc1fc940b892bd8bdc3e1cfb5`). **Still owed:** disposable-account deletion QA — never against a live account.
 2. Article 9 explicit-consent / legal-basis decision (TESTFLIGHT P0-13).
 3. Sign in with Apple `/auth/revoke` during deletion — `supabase/functions/delete_account/index.ts` has none.
 4. Bundled guide PDF §11.1c content, accessibility and medical review (D5).
