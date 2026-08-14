@@ -8,8 +8,22 @@
 the free guide, and supplement sync"* — **this is the release SHA**; the tree is now clean apart
 from `graphify-out/`, `.claude/` and the excluded duplicate `docs/assets/` PDF. · **Version:**
 1.2.0, build **still 18 in `project.yml` — must be bumped before archiving**
-· **Test baseline:** 267 domain + 288 app + 79 UI (1 skip), 0 failures — **one sweep over one
-byte-identical tree**, 2026-08-14: `/tmp/genesyx_h22_final_domain.log` (267/0, 14:18),
+· **Test baseline — current working tree, 2026-08-14 16:54:** **267 domain + 301 app + 82 UI
+(1 skip), 0 failures** (`/tmp/gx_scope_app.log`), and the Release configuration builds clean
+(`/tmp/release_build_partner.log`, 16:10 — **before** the 16:54 additions, which are test-target
+only and cannot affect it). The **+13 app / +3 UI over the `8580dd6` sweep below are all additions,
+not drift**, and they account exactly: app +5 `PasswordResetTests`, +3 `SessionExpiryTests`,
++4 `ReleaseScopeTests` (§0-S), and **+1 `LearnContentTests.testTheTwelveWeekPlanListsEveryWeekly-
+ArticleInOrder`, which belongs to separate uncommitted twelve-week-plan work in the tree and to
+none of the numbered items**; UI +1 `testMandatorySignInOffersPasswordRecovery` (P0-20) and +2
+partner-scope tests (P0-21). The three partner *unit* test files gained comments only, no
+assertions. **These figures were reconciled by diffing the two runs' test names, not by subtracting
+totals** — the earlier draft of §0-S credited release-scope work with all five new app tests, which
+was one too many. If you measure fewer than these, something regressed.
+
+· **Frozen baseline for the release SHA `8580dd6`:** 267 domain + 288 app + 79 UI (1 skip), 0
+failures — **one sweep over one byte-identical tree**, 2026-08-14:
+`/tmp/genesyx_h22_final_domain.log` (267/0, 14:18),
 `/tmp/genesyx_h22_final_app.log` (288/0, 14:20), `/tmp/genesyx_h22i_full_ui.log`
 (886.043 s, 79 exec / 1 skip / 0 fail, 14:16). The UI run was deliberately adversarial:
 `xcrun simctl keychain <UDID> reset` first, to re-arm iOS's "Save Password?" sheet, on a
@@ -36,6 +50,92 @@ blockers in §0h remain open. Exclude `graphify-out/` from any product commit.
 **Sections 1–3 remain 37/44 = 84% and 37/42 = 88%.** No release-scope row closed this
 pass. Website science/Shettles stay **BLOCKED**. Profile / name-password / edit-controls
 stay **IN REVIEW**. Physical cellular stays **DEFERRED**. D3 and D4 stay **DESCOPED**.
+
+### 0-P. Partner linking is OUT OF SCOPE for the 1.2.0 public release (14 Aug 2026)
+
+`FeatureFlags.partnerInvites` (`App/Genesyx/UI/Learn/LearnModels.swift:21`) is now `false`. It is a
+compile-time constant, so **no runtime path re-enables it** — not a setting, a gesture, a debug
+menu, or a server response. Restoring it means editing that line and submitting a new binary.
+
+Two gates carry the whole feature, because there are only two ways in:
+
+| Gate | Closes |
+|---|---|
+| `ProfileView.swift:57` | The only UI entry point — the entire Partner section: send, view, revoke, unlink. |
+| `RootView.swift:96` (`receiveInvite`) | Every deep link. It is the **sole writer** of `invite` and `heldInviteCode`, and both the custom-scheme (`.onOpenURL`) and universal-link (`.onContinueUserActivity`) handlers call through it, as does the post-sign-in replay `resumeHeldInvite`. An invite URL now opens the app and does nothing. |
+
+`AppContainer.hydrate()` / `drainPending()` also skip `partner.refresh()`, so the build never reads
+`partner_invites` or a partner's profile row at all — the feature is off at the network layer, not
+just hidden. `partner.clearLocalState()` on sign-out is deliberately **not** gated: it is a wipe.
+
+**Nothing was deleted.** `PartnerRepository`, `PartnerBackend`, `SupabasePartner`, `InviteView`,
+`InviteShareSheet` and the `Partner`/`PartnerInvite` models stay compiled, because the same Supabase
+project serves the Android app, which **does** ship partner linking. The five partner Edge Functions
+stay deployed for the same reason. Deleting any of it here would not remove it there.
+
+Copy that named the feature was changed in four places: `LogView.swift:279`, `AuthView.swift:230`,
+`LearnContent.swift:653`, and the App Store description in `APP_STORE_SUBMISSION.md` (a whole
+"PARTNER LINKING" paragraph — metadata must match the build, guideline 2.3.1). The Learn articles on
+semen analysis and fertility clinics still say "partner"; that is a human being, not this feature,
+and must not be edited.
+
+Tests: `AuthGateUITests` gained `testInviteLinkDoesNothingEvenWhenSignedIn` and
+`testProfileOffersNoPartnerSectionInThisRelease`, and
+`testInviteLinkWhileSignedOutWaitsForAuthentication` was renamed — invites are no longer *held*
+pending a sign-in, they are discarded, so the old name claimed evidence it did not provide.
+`PartnerTests` / `AuthPartnerBackendTests` / `DeepLinkTests` are unchanged but now carry scope notes:
+they exercise the repository and the URL parser directly, neither of which a user of this build can
+reach. **Falsification, 14 Aug:** flipping the flag back to `true` failed both new tests (exit 65),
+which is also what proves the deep link genuinely reaches `InviteView` when it is on.
+
+### 0-S. Health consent, widget and barcode — release scope, 14 Aug 2026
+
+Read this before repeating the survey. **All three are out of 1.2.0, and unlike partner linking
+none of them was removed, gated or reworded — because none of them existed.** Writing this up as a
+withdrawal would be a false claim about work that was never done.
+
+**Home Screen widget.** `project.yml` declares three targets — `Genesyx`, `GenesyxAppTests`,
+`GenesyxUITests` — and none is an extension. No widget source directory (`find` over `App` and
+`Sources` returns nothing), no `WidgetKit`, no user-visible string, no mention in the App Store
+description, subtitle, promotional text or keywords.
+
+**Barcode scanning and photo meal logging.** No `AVFoundation`, `VisionKit` or `Vision`. The fact
+that settles it is narrower and stronger: the Info.plist carries **no `NSCameraUsageDescription`
+and no `NSPhotoLibraryUsageDescription`**, and iOS terminates an app the moment it touches either
+without them. So this is not a feature hidden behind a flag; the capability is absent from the
+bundle. The only two mentions anywhere in the codebase are comments at `NutritionView.swift:519`
+and `NutritionContent.swift:37`, both explaining why nutrient counting is *not* offered.
+
+**Health is the inverse of what a scope-removal brief expects.** There is no half-finished consent
+implementation to disable. The app has **no consent step at all** — `ProfileView.swift:416` links
+the privacy policy and that is the whole of it. The claim that is wrong is on the **live published
+privacy policy**, which asserts UK GDPR Article 9(2)(a) explicit consent for data the app collects
+with no affirmative act and no stored record. That is P0-13, it is open, and it is a legal decision.
+**No placeholder consent screen was added, and none should be:** a screen that records nothing,
+under a basis nobody has confirmed, would convert an honest gap into a false assurance shown to
+every user. Making the branch honest here meant leaving it alone and documenting it, not building
+something.
+
+What was actually added: `App/GenesyxTests/ReleaseScopeTests.swift`, four tests that read the built
+`.app` rather than the source tree, because the bundle is what a reviewer gets. No camera or
+photo-library keys; no Apple Health keys; no `.appex` anywhere in the bundle; no shipping Learn or
+quiz copy advertising a widget, a barcode scan or photo logging. The Apple Health test is
+deliberately narrow and says so in its own doc comment — it proves no HealthKit stream widens the
+special-category data the app holds, and proves **nothing** about Article 9.
+
+Two falsification rounds, and in each exactly two of the four failed while the other two stayed
+green, which is also what proves they are independent. Round A put `NSCameraUsageDescription` and
+`NSHealthShareUsageDescription` into `project.yml`. Round B pointed the bundle walk at `.xctest`
+(the host app always embeds `PlugIns/GenesyxAppTests.xctest` under XCTest, so there is always a real
+embedded bundle to find) and put "scan a barcode" into the `hydration-basics` article. Both
+reverted; `project.yml` is diff-clean.
+
+**Two things learned on the way, worth keeping.** The bundle-walk test carries a self-check
+asserting it can see that `.xctest`, because the failure mode of a search is finding nothing for the
+wrong reason — an absent `PlugIns` directory would have made a directory-listing version pass while
+asserting on an empty list. And a stray `.appex` file dropped under `App/Genesyx/Resources/` does
+not ship quietly: it breaks the Swift build with unrelated "cannot find type in scope" errors, and
+the simulator refuses to install an app containing a malformed extension.
 
 ### 0-H22. Mandatory authentication gate (P0, 14 Aug 2026)
 
@@ -377,6 +477,8 @@ git diff --stat -- . ':!graphify-out'
 > `/pages/vaginal-ph-fertility-science` (same marketing copy as `/pages/ph-tracking`, no
 > citations) and `/pages/shettles-method-evidence-limitations` (empty slug title) are **not**
 > the required pages. Item 1 stays BLOCKED (§0-FROZEN, `CHANGE_LIST_PLAN.md` §0.1).
+> Replacement copy for both is now drafted in `docs/website/` — **unpublished, and awaiting a named
+> clinical reviewer**. Drafting the copy did not unblock the item: the live URLs are unchanged.
 >
 > Next step is a **reviewed product commit excluding `graphify-out/`**. Do not
 > include `.claude/scheduled_tasks.lock` or the redundant `docs/assets/Genesyx-Recipe-Book.pdf`.

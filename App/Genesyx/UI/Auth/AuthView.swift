@@ -140,6 +140,20 @@ struct AuthView: View {
     // MARK: - Continue with Google
 
     #if canImport(GoogleSignIn)
+    /// Three unrelated failures share one sentence on screen, and they have entirely different
+    /// fixes: Google refusing to sign her in, Google returning no ID token, and Supabase rejecting
+    /// a token Google was happy with. The `print`s below name the stage, but a Simulator run
+    /// launched outside Xcode drops `print` output, so in a debug build the stage and the
+    /// underlying error go on screen too. Release keeps the vague copy — a raw provider error is
+    /// not something to show a user.
+    private func googleFailure(_ stage: String, _ underlying: Error?) -> String {
+        #if DEBUG
+        return "Google sign-in failed at: \(stage)\n\(underlying.map { "\($0)" } ?? "no ID token returned")"
+        #else
+        return "Couldn't complete Google sign-in. Please try again."
+        #endif
+    }
+
     private func handleGoogle() {
         guard let root = Self.rootViewController() else { error = "Couldn't start Google sign-in."; return }
         GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: RemoteConfig.googleIOSClientID)
@@ -148,7 +162,7 @@ struct AuthView: View {
                 let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: root)
                 print("[GoogleSignIn] SDK sign-in OK. email=\(result.user.profile?.email ?? "nil") hasIDToken=\(result.user.idToken != nil)")
                 guard let idToken = result.user.idToken?.tokenString else {
-                    error = "Couldn't complete Google sign-in. Please try again."; return
+                    error = googleFailure("Google returned no ID token", nil); return
                 }
                 do {
                     try await session.signInWithSocial(
@@ -158,7 +172,7 @@ struct AuthView: View {
                     )
                 } catch {
                     print("[GoogleSignIn] Supabase exchange FAILED: \(error)")
-                    self.error = "Couldn't complete Google sign-in. Please try again."
+                    self.error = googleFailure("Supabase rejected Google's token", error)
                     return
                 }
                 finishSignedIn()
@@ -169,7 +183,7 @@ struct AuthView: View {
                 // failure was silently treated as "she backed out": no error shown, no state change,
                 // nothing but a tap that did nothing.
                 if (error as? GIDSignInError)?.code == .canceled { return }
-                self.error = "Couldn't complete Google sign-in. Please try again."
+                self.error = googleFailure("Google's own sign-in", error)
             }
         }
     }
@@ -213,7 +227,10 @@ struct AuthView: View {
                 Text(signupMode ? "Create your account" : "Welcome back")
                     .font(.gxDisplayLarge).foregroundStyle(GenesyxColor.foreground).multilineTextAlignment(.center)
                 Spacer().frame(height: 8)
-                Text(signupMode ? "Save your cycle, nutrition, and partner info securely."
+                // "and partner info" was dropped here: partner linking is intentionally excluded
+                // from the 1.2.0 public release, so the sign-up promise must not name it.
+                // See `FeatureFlags.partnerInvites`.
+                Text(signupMode ? "Save your cycle and nutrition securely."
                                 : "Sign in to sync your journey across devices.")
                     .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground).multilineTextAlignment(.center)
 

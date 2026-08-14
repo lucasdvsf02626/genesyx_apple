@@ -647,7 +647,10 @@ let learnArticles: [LearnArticle] = [
                 "Mood — Great, Good, Okay, or Low.",
                 "Energy — Low, Normal, or High.",
                 "Symptoms — headache, fatigue, cramps, nausea, bloating, acne, backache, tender breasts. Tap as many as apply; tap again to remove one.",
-                "Intimacy — a single \"Sex\" chip. It is private to you: a linked partner sees your name, never your logs.",
+                // Partner linking is out of scope for the 1.2.0 public release, so this line no
+                // longer mentions what a linked partner can see. Restore alongside
+                // `FeatureFlags.partnerInvites`.
+                "Intimacy — a single \"Sex\" chip. It is private to you: only you can see your logs.",
                 "Sleep, water and supplements — three small cards that open their own sheets.",
                 "Notes — anything the chips don't cover.",
                 "Then \"Save log\".",

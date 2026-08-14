@@ -5,6 +5,13 @@ import GenesyxCore
 /// Partner linking is the one feature that is NOT local-first: a link is an agreement between two
 /// accounts, so only the server can say it happened. These tests pin the two ways the old code lied
 /// about that — an invented invite code, and an optimistic link — plus the share link itself.
+///
+/// **Scope note.** Partner linking is excluded from the 1.2.0 public iOS release: no UI reaches it
+/// and no deep link opens it (`FeatureFlags.partnerInvites` is `false`). These tests call
+/// `PartnerRepository` directly, so they still hold — they describe the repository, not something a
+/// user of this build can do. They are kept because the same Supabase backend serves the Android
+/// app, which does ship partner linking, and because the feature returns after 1.2.0.
+/// `AuthGateUITests` is what asserts the iOS release scope.
 @MainActor
 final class PartnerTests: XCTestCase {
 

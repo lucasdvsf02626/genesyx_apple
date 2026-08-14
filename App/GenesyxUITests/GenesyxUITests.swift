@@ -169,6 +169,28 @@ final class GenesyxUITests: XCTestCase {
         XCTAssertTrue(row.waitForExistence(timeout: 5), "closing returns to the Guides list")
     }
 
+    /// The 12-week series is date-gated, so the library can look empty of those pieces.
+    /// This card is the contents list people are meant to see first.
+    func testTheTwelveWeekPlanOpensFromLearn() {
+        let app = launchSeeded(tab: 5)
+
+        let card = app.buttons["learn.twelveWeekPlan"]
+        XCTAssertTrue(card.waitForExistence(timeout: 10), "Learn should offer the 12-week plan")
+        card.tap()
+
+        XCTAssertTrue(app.descendants(matching: .any)
+                        .matching(identifier: "learn.twelveWeekPlan.screen")
+                        .firstMatch.waitForExistence(timeout: 5),
+                      "the plan page should open")
+        XCTAssertTrue(app.staticTexts["Your 12-week plan"].exists)
+        XCTAssertTrue(app.staticTexts["Understanding your fertile window"].exists)
+        XCTAssertTrue(app.staticTexts["The Shettles method, and what the evidence shows"].exists)
+        for week in 1...12 {
+            XCTAssertTrue(app.buttons["learn.twelveWeekPlan.week.\(week)"].exists,
+                          "week \(week) should be listed")
+        }
+    }
+
     /// `PDFView` is a wrapped UIKit view, and which XCUIElement type it surfaces as is not worth
     /// depending on — the identifier is.
     private func guideReader(_ app: XCUIApplication) -> XCUIElement {
@@ -282,9 +304,10 @@ final class GenesyxUITests: XCTestCase {
         XCTAssertTrue(chip.waitForExistence(timeout: 10), "Log Today should offer the intimacy chip")
         XCTAssertEqual(chip.label, "Sex, not logged", "nothing is recorded until she says so")
 
-        // The promise made on screen is a real one: partner linking exchanges display names, and
-        // `daily_logs` is owner-only under RLS.
-        XCTAssertTrue(app.staticTexts["Private to you. A linked partner sees your name — never your logs."].exists,
+        // The promise made on screen is a real one: `daily_logs` is owner-only under RLS. The line
+        // no longer qualifies itself with what a linked partner can see, because partner linking is
+        // out of scope for the 1.2.0 public release.
+        XCTAssertTrue(app.staticTexts["Private to you. Only you can see your logs."].exists,
                       "she should be told what becomes of this before she taps it")
 
         chip.tap()

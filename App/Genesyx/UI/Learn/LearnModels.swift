@@ -6,7 +6,19 @@ import SwiftUI
 enum FeatureFlags {
     static let phTracking = true
     static let adminClients = false
-    static let partnerInvites = true
+    /// **OFF for the 1.2.0 public release — partner linking is intentionally out of scope.**
+    ///
+    /// A compile-time constant, so while this is `false` there is no runtime path — no setting,
+    /// gesture, debug menu or server response — that turns partner linking on in a shipped build.
+    /// Re-enabling it means editing this line and submitting a new binary.
+    ///
+    /// The partner code stays compiled (`PartnerRepository`, `PartnerBackend`, `InviteView`,
+    /// `InviteShareSheet`) because the same Supabase backend serves the Android app, which does
+    /// ship partner linking; deleting it here would not remove it there.
+    ///
+    /// To restore: set this to `true` — every gate reads this one flag. To remove permanently:
+    /// `grep -rn partnerInvites` and delete each guarded block plus the files named above.
+    static let partnerInvites = false
     static let pushNotifications = true
     /// Off: supplement reminders fire at the hour she set, with the plain body. On: the hour may
     /// shift by up to two hours toward when she actually logs, and a personalised sentence is
@@ -135,6 +147,13 @@ enum LearnLibrary {
 
     static func articleBySlug(_ slug: String) -> LearnArticle? { articles.first { $0.slug == slug } }
     static func articleById(_ id: String) -> LearnArticle? { articles.first { $0.id == id } }
+
+    /// The twelve-week series in week order, including pieces that have not been revealed yet.
+    /// The plan page lists the whole run; opening a week still goes through `articleBySlug`,
+    /// which only returns a published piece.
+    static let weeklySeries: [LearnArticle] = allArticles
+        .filter { $0.publishedAt != nil }
+        .sorted { ($0.publishedAt ?? CalendarDate(1970, 1, 1)) < ($1.publishedAt ?? CalendarDate(1970, 1, 1)) }
 
     /// Related articles resolved from hand-authored id lists (unknown ids are dropped).
     static func related(_ article: LearnArticle) -> [LearnArticle] {

@@ -138,7 +138,13 @@ final class AuthGateUITests: XCTestCase {
         XCTAssertFalse(app.buttons["Home"].waitForExistence(timeout: 1))
     }
 
-    func testInviteLinkWhileSignedOutWaitsForAuthentication() {
+    /// An invite link arriving at the gate. Two separate things keep it out, and this test only
+    /// evidences the first: the session gate refuses to mount private UI without a credential.
+    ///
+    /// It used to be named "…WaitsForAuthentication", which is no longer true — partner linking is
+    /// excluded from the 1.2.0 public release, so the code is not held pending a sign-in, it is
+    /// discarded. `testInviteLinkDoesNothingEvenWhenSignedIn` is the test that proves that part.
+    func testInviteLinkWhileSignedOutNeverMountsPrivateUI() {
         let app = launch(args: ["-uiTestSeed", "YES", "-uiTestSignedOut", "YES"])
         XCTAssertTrue(authScreen.waitForExistence(timeout: 10))
         if #available(iOS 16.4, *) {
@@ -148,6 +154,47 @@ final class AuthGateUITests: XCTestCase {
                       "an invite must not mount private UI while signed out")
         assertNoPrivateTabs(app)
         XCTAssertFalse(app.staticTexts["You've been invited"].waitForExistence(timeout: 1))
+    }
+
+    /// The release-scope gate, asserted where it can actually fail. Signed out, an invite is
+    /// stopped by the session gate whatever the flag says, so that test proves nothing about
+    /// scope. Signed in, the session gate is satisfied and `FeatureFlags.partnerInvites` is the
+    /// only thing standing between this URL and `InviteView` — so a regression that re-enabled
+    /// partner linking would surface here and nowhere else in the UI suite.
+    ///
+    /// Both handlers route through `RootView.receiveInvite`, which is the sole writer of the
+    /// sheet's state, so the custom scheme exercised here stands for the universal link too.
+    ///
+    /// The strings matter: signed IN, `InviteView` heads itself "Partner invite" and offers
+    /// "Accept invite" — "You've been invited" is the signed-OUT branch and would never appear
+    /// here, so asserting its absence would pass whether the feature were gated or not.
+    /// `TESTCODE12AB` is 12 characters, over the 8 `InviteView` requires, so a working invite path
+    /// would reach the accept screen rather than the malformed-code one.
+    func testInviteLinkDoesNothingEvenWhenSignedIn() {
+        let app = launch(args: ["-uiTestSeed", "YES", "-uiTestTab", "0"])
+        XCTAssertTrue(app.buttons["Home"].waitForExistence(timeout: 10), "signed-in launch should reach the tabs")
+        if #available(iOS 16.4, *) {
+            app.open(URL(string: "genesyx://invite/TESTCODE12AB")!)
+        }
+        XCTAssertFalse(app.staticTexts["Partner invite"].waitForExistence(timeout: 3),
+                       "partner invites are out of scope for this release: the link must open nothing")
+        XCTAssertFalse(app.buttons["Accept invite"].exists, "no control may accept an invite in this build")
+        XCTAssertTrue(app.buttons["Home"].waitForExistence(timeout: 5),
+                      "the app should simply carry on where she was")
+    }
+
+    /// Profile is the app's only partner entry point, so with the flag off there is no control
+    /// anywhere that creates, accepts, revokes or displays an invite. The account rows are
+    /// asserted alongside as the control: without them a Profile that failed to render at all
+    /// would pass this test by accident.
+    func testProfileOffersNoPartnerSectionInThisRelease() {
+        let app = launch(args: ["-uiTestSeed", "YES", "-uiTestTab", "6"])   // Profile
+        XCTAssertTrue(app.staticTexts["Personal Details"].waitForExistence(timeout: 15),
+                      "Profile itself must have rendered, or the absences below prove nothing")
+        XCTAssertFalse(app.staticTexts["Partner"].exists, "the Partner heading must not be on Profile")
+        XCTAssertFalse(app.staticTexts["Add your partner"].exists)
+        XCTAssertFalse(app.staticTexts["Linked partner"].exists)
+        XCTAssertFalse(app.textFields["partner@example.com"].exists, "no invite form may be reachable")
     }
 
     /// A notification tapped while she is signed out must not open its tab. The destination is

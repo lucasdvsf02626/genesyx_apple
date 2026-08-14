@@ -31,6 +31,7 @@ If a future request appears to contradict one, stop and ask rather than assuming
 | **D3** | Cycle edits and article reads counting toward the streak | ❌ **No — not in this release** | H6 / item 7. **No new production column, no Android migration.** |
 | **D4** | Occasional streak restore | ❌ **No — not in this release** | H7 / item 8. Same descoped column and migration as D3. |
 | **D5** | The bundled guide PDF | ⚠️ **Usable internally — NOT App Store-ready** | The guide ships in internal/TestFlight builds. It is a release blocker for public submission until §11.1c's four content corrections and the medical/content-source review are done. |
+| **D6** | Partner linking in the public release | ❌ **Out of scope — removed from the user-facing flow** | Requested 14 Aug 2026. Every visible entry point is gone and every deep link is inert; `FeatureFlags.partnerInvites` is a compile-time `false`. The code stays compiled because Android shares the backend and does ship it. See §0.2 and `HANDOFF.md` §0-P. |
 
 **D3 and D4 are descoped, not done.** Do not present them as delivered. They are two of the 44 items
 and they are being consciously left unbuilt for this release, which is a different thing from being
@@ -39,6 +40,36 @@ finished. The same applies to D2.
 **What D1 does *not* license.** Approval is of the presentation direction and closes the sign-off
 gate. It is not a licence to restyle screens freely: every visual change still goes through the same
 tests, the same accessibility expectations and the same compliance guards as any other change.
+
+### 0.2 Partner linking is out of the public release (D6, 14 Aug 2026)
+
+Not a descope of unbuilt work like D3/D4 — this feature **is built, tested and working**, and is
+being withheld from the public 1.2.0 flow. That distinction matters for how it is reported: it is
+not "incomplete", it is "complete and deliberately not exposed".
+
+**What a user of this build can do with it: nothing.** There are exactly two ways in and both are
+shut. `ProfileView.swift:57` was the only UI entry point — the Partner section, which sent, listed,
+revoked and unlinked. `RootView.receiveInvite` is the only writer of the invite sheet's state, and
+both URL handlers plus the post-sign-in replay route through it, so one guard closes the custom
+scheme, the universal link and the deferred-until-signed-in case together. There is **no gesture,
+hidden tap target, debug shortcut or server response** that opens it, because the flag is a
+compile-time constant: re-enabling it requires editing one line and shipping a new binary.
+
+**Nothing was deleted, and nothing backend-side moved.** `PartnerRepository`, `PartnerBackend`,
+`InviteView`, `InviteShareSheet` and the `Partner` / `PartnerInvite` models stay compiled, and the
+five partner Edge Functions stay deployed — the same Supabase project serves the Android app, which
+**does** ship partner linking. Removing any of it here would break that client and change nothing
+for this one.
+
+**The App Store description was the real exposure.** `APP_STORE_SUBMISSION.md` carried a
+`PARTNER LINKING` paragraph advertising a feature the submitted build will not have — inaccurate
+metadata under guideline 2.3.1. Removed, with the App Review notes updated to explain why partner
+code is still visible inside the binary.
+
+To restore: set `FeatureFlags.partnerInvites = true`, put back the four copy strings (`LogView`,
+`AuthView`, `LearnContent`, and the Store description), and update the two scope tests in
+`AuthGateUITests`. To remove permanently instead: `grep -rn partnerInvites` and delete each guarded
+block plus the files named above — **but check Android first.**
 
 ### 0.1 Website status — re-fetched 14 Aug 2026, and item 1 is still blocked
 
@@ -54,6 +85,17 @@ Two new slugs appeared today. They were fetched live and **must not be wired**.
 App grep of those two paths: **0**. H12 / item 1 stays **BLOCKED**. Do not substitute a
 marketing page or an empty slug for a cited science page and a framed Shettles page. The
 in-app Shettles article already carries the framing and the Wilcox 1995 citation (§1, G1).
+
+**Update, 14 Aug 2026 — replacement copy drafted, block NOT lifted.** Publication-candidate
+copy for both slugs now exists in the repository at `docs/website/vaginal-ph-fertility-science.md`
+and `docs/website/shettles-method-evidence-limitations.md`. Both carry a disclaimer at the top and
+bottom, a verified reference list, and a header marking them unpublished. Every citation was checked
+against a primary source in-session — three invented citations were caught and corrected during
+drafting, which is the reason each reference now carries a PMID or a resolved DOI.
+
+This changes the *reason* for the block, not the block. The live pages still serve the old content;
+nothing has been published to Shopify; and neither draft has a named clinical reviewer. **Do not
+wire either link.** Item 1 unblocks only when the reviewed copy is live at those URLs.
 
 ---
 
@@ -213,10 +255,14 @@ T1 inherits G2's block. Do not ship T1 alone.
       unilaterally. Until then a sex-only day does not extend her streak. **The dormancy half of that
       problem is solved in T12** — see below.
 - [x] ✅ **T12 — Private logging UI.** An Intimacy chip in `LogView.swift`, between Symptoms and the
-      mini-cards, carrying the promise on screen: *"Private to you. A linked partner sees your name —
-      never your logs."* That claim is literal and now test-asserted — `PartnerRepository` exchanges
-      display names, and `daily_logs` is owner-only under RLS. A partner link is a row in `profiles`,
-      not a read grant.
+      mini-cards, carrying the promise on screen: *"Private to you. Only you can see your logs."*
+      That claim is literal and test-asserted — `daily_logs` is owner-only under RLS.
+
+      ⚠️ **The wording changed on 14 Aug (D6).** It used to read *"Private to you. A linked partner
+      sees your name — never your logs."*, which was equally true — a partner link is a row in
+      `profiles`, not a read grant — but it described a feature this release does not offer, and
+      would only have sent her hunting for it. Restore the longer sentence alongside
+      `FeatureFlags.partnerInvites`. `GenesyxUITests.swift:288` asserts whichever string is current.
 
       The notification layer folds `sexualActivity` in at `NotificationService.snapshot()` and
       `lastActivityDay()`, so a sex-only day no longer reads as silence and she is not nudged to log
@@ -572,6 +618,19 @@ planning:
 - [ ] ⬜ Home-screen widget (~8–12d) — no WidgetKit target in `project.yml`
 - [ ] ⬜ Barcode / photo food logging (~15–20d) — no AVFoundation or VisionKit
 - [ ] ⬜ Partner data-sharing scopes (~5–8d) — no permission model exists; today it is name-only
+
+**Release-scope statement, 14 Aug 2026 — the widget and barcode rows above are NOT in 1.2.0, and
+never were.** Surveyed end to end on 14 Aug: no widget target, no capture framework, and no
+`NSCameraUsageDescription`/`NSPhotoLibraryUsageDescription`, which means the build cannot open a
+camera or photo picker even if code asked it to. Nothing was removed or gated to achieve that —
+there was nothing to remove, and this must not be written up as a withdrawal. What was added is
+`App/GenesyxTests/ReleaseScopeTests.swift`, four tests reading the built `.app` so a widget target,
+a capture key or a line of copy advertising either fails the suite rather than reaching a reviewer.
+Neither feature appears in the App Store description or the listing. **Health is a separate matter
+and is not "out of scope" in the same sense:** the app does collect cycle and pH data, it holds no
+consent record, and the lawful basis is unsettled — that is P0-13 in `TESTFLIGHT_B18.md`, still
+open, still a legal decision. No placeholder consent screen was added, because a consent screen that
+records nothing under a basis nobody has confirmed would be worse than none.
 
 ---
 

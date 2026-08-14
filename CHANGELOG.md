@@ -7,6 +7,35 @@ All notable changes to Genesyx (iOS) are recorded here.
 Version 1.2.0 rather than 1.1.2: this is new surface, not a fix pass. Pre-flight checks and release
 checklist in `docs/TESTFLIGHT_B18.md`; current state of play in `docs/HANDOFF.md`.
 
+### Partner linking withheld from the public release (14 Aug 2026)
+- **Every user-facing route to partner linking is closed, and nothing was deleted.** The feature is
+  built and working; it is being kept out of the 1.2.0 public flow, which is a different thing from
+  being unfinished. `FeatureFlags.partnerInvites` is now a compile-time `false`, so there is no
+  runtime path — no setting, gesture, debug menu or server response — that turns it back on. That
+  needs a new binary.
+- **Two guards carry it, because there are only two ways in.** `ProfileView.swift:57` was the sole
+  UI entry point (send, list, revoke, unlink). `RootView.receiveInvite` is the sole writer of the
+  invite sheet's state, and the custom-scheme handler, the universal-link handler and the
+  post-sign-in replay all route through it — so one guard closes all three, and an invite URL now
+  opens the app and does nothing. `AppContainer` also stops calling `partner.refresh()`, so the
+  build never reads `partner_invites` at all; it is off at the network layer, not merely hidden.
+- **`PartnerRepository`, `PartnerBackend`, `InviteView`, `InviteShareSheet` and the partner models
+  stay compiled, and the five partner Edge Functions stay deployed.** The same Supabase project
+  serves the Android app, which does ship partner linking; deleting any of it here would break that
+  client and change nothing for this one.
+- **The App Store description was the actual exposure.** It carried a `PARTNER LINKING` paragraph
+  describing a feature the submitted build will not have — inaccurate metadata under guideline
+  2.3.1. Removed, and the App Review notes now say why partner code is still visible in the binary.
+- Copy that named the feature changed in three screens (`LogView`, `AuthView`, `LearnContent`). The
+  Learn articles on semen analysis and fertility clinics still say "partner" — that is a human
+  being, not this feature.
+- Two new UI tests assert the scope, and **both were falsified** by flipping the flag back to
+  `true`. The first attempt at the signed-in test passed while the flag was on: it asserted the
+  absence of "You've been invited", which is `InviteView`'s signed-*out* headline and would never
+  have rendered there. Corrected to assert the signed-in strings, after which it failed as it
+  should. `testInviteLinkWhileSignedOutWaitsForAuthentication` was renamed — invites are no longer
+  held pending a sign-in, they are discarded, so the old name claimed evidence it did not provide.
+
 ### Release build — it did not compile, and nothing was going to tell us
 - **`archive` had been broken since `dad4afb`.** `AppContainer.swift` imported `GenesyxCore` inside
   `#if DEBUG` — correct when only the seeding block used the package — and then the sign-out wipe

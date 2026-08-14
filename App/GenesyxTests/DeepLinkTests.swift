@@ -2,6 +2,11 @@ import XCTest
 @testable import Genesyx
 
 /// Verifies partner-invite deep-link parsing for both the custom scheme and Universal Links.
+///
+/// **Scope note.** `DeepLink` still parses these URLs, and that is all these tests claim. Acting on
+/// a parsed code is a separate step in `RootView.receiveInvite`, and it is switched off for the
+/// 1.2.0 public release (`FeatureFlags.partnerInvites`), so on this build a valid invite URL parses
+/// and is then discarded. `AuthGateUITests.testInviteLinkDoesNothingEvenWhenSignedIn` asserts that.
 final class DeepLinkTests: XCTestCase {
 
     func testCustomScheme() {

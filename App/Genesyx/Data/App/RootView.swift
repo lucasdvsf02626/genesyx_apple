@@ -86,7 +86,14 @@ struct RootView: View {
 
     /// A signed-out invite is held, never used to mount private tabs. After a successful
     /// sign-in the same code is presented again.
+    ///
+    /// Partner linking is intentionally excluded from the 1.2.0 public release, and this is the
+    /// only place `invite` or `heldInviteCode` is ever set — both the custom-scheme and the
+    /// universal-link handler call through here, and `resumeHeldInvite` can only replay a code
+    /// this function stored. So the single guard below closes every route to `InviteView`: an
+    /// invite URL opens the app and then does nothing at all. See `FeatureFlags`.
     private func receiveInvite(_ code: String) {
+        guard FeatureFlags.partnerInvites else { return }
         if session.isSignedIn {
             invite = InvitePresentation(code: code)
         } else {

@@ -52,7 +52,11 @@ Supabase; data is wiped locally on sign-out.
 ## Profile
 - **Account**: edit display name, password reset, **sign out**, **delete account** (with full local
   data wipe).
-- **Partner linking**: send an invite by email / share link, accept, and unlink.
+- ~~**Partner linking**: send an invite by email / share link, accept, and unlink.~~
+  ⚠️ **Not in the 1.2.0 public release.** Built and working, but withheld from the user-facing flow:
+  `FeatureFlags.partnerInvites` is a compile-time `false`, so no screen or control reaches it. The
+  code stays compiled because the Android app shares this backend and does ship it. See
+  `CHANGE_LIST_PLAN.md` §0.2.
 - **Preferences**: focus mode, theme (light / dark / system), reminder notifications.
 - **Legal**: privacy & data, privacy policy, help & support, and a **Medical Sources & Disclaimer**
   screen listing all references.
@@ -65,7 +69,9 @@ Supabase; data is wiped locally on sign-out.
   celebrations — with tap routing to the right tab/article.
 - **Streak milestones**: celebrated *in the app* as well as by notification. The in-app half
   deliberately does not require notification permission — it is the only half most people get.
-- **Deep links**: partner invites via custom scheme (`genesyx://invite/{code}`) and universal links.
+- **Deep links**: the custom scheme (`genesyx://invite/{code}`) and universal links are still
+  registered and still parsed, but in the 1.2.0 public release an invite URL opens the app and then
+  does nothing — `RootView.receiveInvite` discards the code. See `CHANGE_LIST_PLAN.md` §0.2.
 - **Medical citations**: an NHS / EFSA / NCBI-StatPearls / PubMed reference system surfaced inline
   next to health content (App Store Guideline 1.4.1).
 

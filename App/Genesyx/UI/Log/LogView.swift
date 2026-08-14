@@ -250,9 +250,12 @@ struct LogView: View {
     }
 
     /// The most private thing she records, so the screen says out loud what becomes of it rather
-    /// than leaving her to guess. The claim is literal: linking a partner exchanges display names
-    /// (`PartnerRepository`), and `daily_logs` is owner-only under RLS — a partner link is a row in
-    /// `profiles`, not a read grant.
+    /// than leaving her to guess. The claim is literal: `daily_logs` is owner-only under RLS.
+    ///
+    /// The copy used to add "a linked partner sees your name — never your logs". Partner linking
+    /// is excluded from the 1.2.0 public release, so that sentence now describes a feature she
+    /// cannot reach and would only prompt her to hunt for it. Restore it alongside
+    /// `FeatureFlags.partnerInvites`.
     private var intimacySection: some View {
         VStack(alignment: .leading, spacing: 0) {
             sectionLabel("Intimacy")
@@ -273,7 +276,7 @@ struct LogView: View {
             .accessibilityIdentifier("log.sexualActivity")
             .accessibilityLabel(sexualActivity ? "Sex, logged" : "Sex, not logged")
 
-            Text("Private to you. A linked partner sees your name — never your logs.")
+            Text("Private to you. Only you can see your logs.")
                 .font(.gxBodySmall)
                 .foregroundStyle(GenesyxColor.mutedForeground)
                 .padding(.top, 8).padding(.leading, 4)

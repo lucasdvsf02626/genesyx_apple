@@ -4,6 +4,10 @@ import GenesyxCore
 
 /// Verifies the auth + partner repositories route through a backend when present, and stay
 /// local-only (mock) when not.
+///
+/// **Scope note.** The partner half exercises `PartnerRepository` directly. Partner linking is
+/// excluded from the 1.2.0 public iOS release (`FeatureFlags.partnerInvites` is `false`), so
+/// nothing here describes a path a user of this build can take — see `PartnerTests`.
 @MainActor
 final class AuthPartnerBackendTests: XCTestCase {
 

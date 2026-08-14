@@ -1,4 +1,5 @@
 import SwiftUI
+import GenesyxCore
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -73,6 +74,7 @@ struct LearnLandingView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     header
                     if !introSeen { introHint }
+                    TwelveWeekPlanCard { path.append(TwelveWeekPlan.route) }
                     categoryChips
                     if selectedCategory == nil, let featured = LearnLibrary.featured {
                         FeaturedCard(article: featured) { path.append(featured.slug) }
@@ -96,7 +98,11 @@ struct LearnLandingView: View {
                 }
             }
             .navigationDestination(for: String.self) { slug in
-                ArticleDetailView(slug: slug, path: $path)
+                if slug == TwelveWeekPlan.route {
+                    TwelveWeekPlanView(path: $path)
+                } else {
+                    ArticleDetailView(slug: slug, path: $path)
+                }
             }
             .sheet(isPresented: $showSearch) {
                 LearnSearchView { slug in
@@ -164,6 +170,115 @@ struct LearnLandingView: View {
             }
             .padding(.vertical, 2)
         }
+    }
+}
+
+// MARK: - 12-week plan
+
+/// Not a `LearnArticle`. The library is a counted, cited, date-gated set; this page is the
+/// contents list for that set. Putting it in `learnArticles` would bump the 32-article
+/// integrity count and register opening the plan as having read a weekly piece.
+enum TwelveWeekPlan {
+    static let route = "twelve-week-plan"
+}
+
+private struct TwelveWeekPlanCard: View {
+    let action: () -> Void
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 14) {
+                Image(systemName: "list.number")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(GenesyxColor.primary)
+                    .frame(width: 44, height: 44)
+                    .background(GenesyxColor.primary.opacity(0.12))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Start your 12-week plan here")
+                        .font(.gxLabel).foregroundStyle(GenesyxColor.foreground)
+                        .multilineTextAlignment(.leading)
+                    Text("One new article each week. Read them as they arrive.")
+                        .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+                        .multilineTextAlignment(.leading)
+                }
+                Spacer(minLength: 8)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14)).foregroundStyle(GenesyxColor.mutedForeground)
+            }
+            .padding(14)
+            .background(GenesyxColor.card)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("learn.twelveWeekPlan")
+    }
+}
+
+private struct TwelveWeekPlanView: View {
+    @Binding var path: [String]
+
+    private static let months = [
+        "", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    ]
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Your 12-week plan")
+                        .font(.gxDisplayLarge).foregroundStyle(GenesyxColor.foreground)
+                    Text("A short, honest article each Sunday. Open a week when it arrives, or come back and pick up where you left off.")
+                        .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+                }
+                ForEach(Array(LearnLibrary.weeklySeries.enumerated()), id: \.element.id) { index, article in
+                    weekRow(week: index + 1, article: article)
+                }
+            }
+            .padding(.horizontal, 20).padding(.bottom, 28)
+        }
+        .frame(maxWidth: .infinity)
+        .gxPageBackground()
+        .navigationBarTitleDisplayMode(.inline)
+        .accessibilityIdentifier("learn.twelveWeekPlan.screen")
+    }
+
+    private func weekRow(week: Int, article: LearnArticle) -> some View {
+        let available = LearnLibrary.articleBySlug(article.slug) != nil
+        return Button {
+            if available { path.append(article.slug) }
+        } label: {
+            HStack(alignment: .top, spacing: 12) {
+                Text("\(week)")
+                    .font(.gxLabel).foregroundStyle(GenesyxColor.primary)
+                    .frame(width: 28, alignment: .leading)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(article.title)
+                        .font(.gxLabel).foregroundStyle(GenesyxColor.foreground)
+                        .multilineTextAlignment(.leading)
+                    Text(available ? "Ready to read" : arrivesLabel(article.publishedAt))
+                        .font(.system(size: 12)).foregroundStyle(GenesyxColor.mutedForeground)
+                }
+                Spacer(minLength: 8)
+                if available {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14)).foregroundStyle(GenesyxColor.mutedForeground)
+                }
+            }
+            .padding(14)
+            .background(GenesyxColor.card)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
+        .disabled(!available)
+        .accessibilityIdentifier("learn.twelveWeekPlan.week.\(week)")
+        .accessibilityLabel("Week \(week), \(article.title), \(available ? "ready to read" : arrivesLabel(article.publishedAt))")
+    }
+
+    private func arrivesLabel(_ date: CalendarDate?) -> String {
+        guard let date else { return "Coming soon" }
+        let month = date.month >= 1 && date.month <= 12 ? Self.months[date.month] : ""
+        return "Arrives \(date.day) \(month)"
     }
 }
 

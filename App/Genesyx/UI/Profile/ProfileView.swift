@@ -1,7 +1,8 @@
 import SwiftUI
 import GenesyxCore
 
-/// Profile — account, focus toggle, partner linking, preferences (theme/push), and about.
+/// Profile — account, focus toggle, preferences (theme/push), and about. Partner linking is
+/// compiled but gated off for the 1.2.0 public release; see `FeatureFlags.partnerInvites`.
 /// Ported from the Android `ProfileScreen` + `ProfileViewModel`.
 struct ProfileView: View {
 
@@ -51,7 +52,12 @@ struct ProfileView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     userCard
                     focusSection
-                    PartnerSectionView(showAuth: $showAuth)
+                    // Partner linking is intentionally excluded from the 1.2.0 public release.
+                    // This is the app's only entry point to it, so with the flag off there is no
+                    // way to create, accept, revoke or view an invite. See `FeatureFlags`.
+                    if FeatureFlags.partnerInvites {
+                        PartnerSectionView(showAuth: $showAuth)
+                    }
                     accountGroup
                     trackingGroup
                     remindersSection

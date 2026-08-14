@@ -137,6 +137,28 @@ final class LearnContentTests: XCTestCase {
 
     /// Every piece in the weekly series states external health facts, so every piece must ship
     /// already cited. They are withheld by date, not by readiness — there is no later pass.
+    func testTheTwelveWeekPlanListsEveryWeeklyArticleInOrder() {
+        let series = LearnLibrary.weeklySeries
+        XCTAssertEqual(series.count, 12)
+        XCTAssertEqual(series.map(\.id), (1...12).map { "w\($0)" })
+        XCTAssertEqual(series.map(\.title), [
+            "Understanding your fertile window",
+            "What your vaginal pH is actually telling you",
+            "Eating in the months before conception",
+            "What cervical mucus can tell you",
+            "Hydration and reproductive health",
+            "Timing sex when you are trying to conceive",
+            "Sleep, stress and your cycle",
+            "Understanding ovulation tests",
+            "Supporting sperm health",
+            "Fertility supplements, and what the evidence says",
+            "When to ask for fertility support",
+            "The Shettles method, and what the evidence shows",
+        ])
+        XCTAssertFalse(LearnLibrary.allArticles.contains { $0.slug == TwelveWeekPlan.route },
+                       "the plan page is a contents list, not a 33rd article")
+    }
+
     func testEveryWeeklyArticleIsCited() {
         let weekly = LearnLibrary.allArticles.filter { $0.publishedAt != nil }
         XCTAssertEqual(weekly.count, 12)

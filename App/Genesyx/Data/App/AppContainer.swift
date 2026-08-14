@@ -85,7 +85,10 @@ final class AppContainer: ObservableObject {
         await dailyLog.refresh()
         await ph.refresh()
         await supplements.refresh()
-        await partner.refresh()
+        // Excluded from the 1.2.0 public release, so this is skipped rather than merely hidden:
+        // with the flag off the app never reads `partner_invites` or a partner's profile row at
+        // all. See `FeatureFlags.partnerInvites`.
+        if FeatureFlags.partnerInvites { await partner.refresh() }
     }
 
     /// Retry everything a failed push left owed to the server. Called when the app is foregrounded
@@ -100,7 +103,8 @@ final class AppContainer: ObservableObject {
         // A partner accepting an invite is a change made on *another* device, so there is nothing
         // owed to push — only something to pull. Without this the inviter had to fully relaunch
         // the app before her partner ever showed up as linked.
-        await partner.refresh()
+        // Skipped for the 1.2.0 public release — see `FeatureFlags.partnerInvites`.
+        if FeatureFlags.partnerInvites { await partner.refresh() }
     }
 
     /// Wipe on-device health data (cycle settings, pH readings, daily logs) from memory and the

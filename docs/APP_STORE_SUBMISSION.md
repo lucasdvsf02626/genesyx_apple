@@ -36,16 +36,28 @@ DAILY LOG & INSIGHTS
 Record mood, energy, symptoms, sleep, water and supplements. Genesyx turns the
 entries you provide into gentle hydration, pH, symptom, sleep, and nutrition insights.
 
-PARTNER LINKING
-Invite a partner to link accounts. Genesyx shows who you are connected with while
-your personal logs and health readings remain private to your account.
-
 Your account and data sync securely so they're there across sign-ins.
 
 Genesyx provides educational wellness information only. It is not a medical device and
 does not provide medical advice, diagnosis, or treatment, and should not be used for
 contraception. Always consult a qualified healthcare professional about your health.
 ```
+
+> **A "PARTNER LINKING" paragraph was removed from the description above on 14 Aug 2026.** Partner
+> linking is intentionally excluded from the 1.2.0 public release — `FeatureFlags.partnerInvites` is
+> `false`, so no screen, control or deep link in the submitted build reaches it. Metadata must only
+> describe what the build does (guideline 2.3.1), so do not paste that paragraph back until the flag
+> ships as `true`. The keywords below never mentioned partners and are unchanged.
+
+> **Widget and barcode/photo food logging are NOT in 1.2.0, and — unlike partner linking — nothing
+> had to be removed here.** Checked line by line on 14 Aug 2026: neither the description above, the
+> subtitle, the promotional text nor the keywords has ever mentioned a Home Screen widget, barcode
+> scanning or photographing a meal, so this metadata already matches the build. Recording it because
+> the risk runs the other way — someone adding "scan your food" or "widget" to the description would
+> be describing a capability the binary structurally does not have (no camera or photo-library usage
+> string, no extension target), and that is guideline 2.3.1. **Do not add either to any field until a
+> build actually ships the feature.** `App/GenesyxTests/ReleaseScopeTests.swift` guards the app-side
+> half; nothing can guard App Store Connect text except this note.
 
 **Keywords (100 char, comma-sep, no spaces)**
 `cycle,period,fertility,ovulation,ph,vaginal,nutrition,supplements,hydration,women,health,tracker,ttc`
@@ -164,10 +176,22 @@ Password: [REVIEWER PASSWORD]
 
 After signing in, the seven tabs are Home, Track, pH, Nutrition, Insights, Learn, and Profile. Sample
 cycle, hydration, pH, sleep, symptom, and supplement entries should already be present in the demo
-account so Insights can be reviewed. Partner linking only shows the linked relationship; personal
-logs and health readings remain private. Account deletion is in Profile → Delete account. The
-privacy policy is in Profile → About → Privacy Policy.
+account so Insights can be reviewed. Account deletion is in Profile → Delete account. The privacy
+policy is in Profile → About → Privacy Policy.
+
+Note on partner linking: this release does not offer it. Our Android app shares one backend with
+this one and does offer it, so the networking code for it is still compiled into this binary and
+you may see it referenced in the app's shared source. It is switched off at compile time for this
+release, and there is no screen, control, setting, gesture, or link in this build that reaches it.
 ```
+
+> **Why there is no equivalent note for the widget or barcode scanning, and why one should not be
+> added.** The partner note exists because partner *networking code is genuinely compiled into this
+> binary* — Android shares the backend — so a reviewer reading the shared source could see it and
+> reasonably ask. Widget and barcode have no counterpart: no target, no framework, no capture
+> permission, not a line of code. There is nothing for a reviewer to notice, so a note explaining
+> their absence would introduce two features into the review conversation that the metadata does not
+> mention and the binary does not contain. Checked 14 Aug 2026; leave this block as it stands.
 
 ---
 
