@@ -115,4 +115,79 @@ final class SessionExpiryTests: XCTestCase {
         XCTAssertEqual(session.state, .signedIn, "a real new session must still be able to sign her in")
         XCTAssertTrue(session.isSignedIn)
     }
+
+    // MARK: - Sign in with Apple revocation
+
+    private func appleSignedIn(_ session: SessionRepository, _ auth: FakeExpiringAuth) async throws {
+        auth.userId = "apple-user"
+        try await session.signInWithSocial(
+            provider: .apple, idToken: "id-token", accessToken: nil,
+            nonce: nil, email: "ada@example.com", name: "Ada"
+        )
+    }
+
+    /// She revokes this app under Settings → Apple ID → Sign in with Apple. Apple's credential is
+    /// gone, but the Supabase refresh token is independent of it and stays valid, and no auth
+    /// lifecycle event fires. Without this handler she remains signed in indefinitely and the
+    /// revocation means nothing.
+    func testRevokingAppleSignInEndsAnAppleSession() async throws {
+        let auth = FakeExpiringAuth()
+        let session = SessionRepository(store: makeStore(), auth: auth)
+        await session.waitUntilResolved()
+        try await appleSignedIn(session, auth)
+        XCTAssertEqual(session.state, .signedIn, "precondition: signed in through Apple")
+
+        var signedOutHookFired = false
+        session.onBecameSignedOut = { signedOutHookFired = true }
+
+        session.handleAppleCredentialRevoked()
+
+        XCTAssertEqual(session.state, .signedOut, "a revoked Apple credential must not leave her signed in")
+        XCTAssertFalse(session.isSignedIn)
+        XCTAssertTrue(signedOutHookFired, "onBecameSignedOut must fire so held private state is dropped")
+    }
+
+    /// The notification is app-wide, not per-session. A woman who used Apple once, signed out, and
+    /// signed back in with her email and password must keep that session when she later tidies up
+    /// her Apple ID settings — otherwise the fix above throws out sessions Apple never governed.
+    func testRevokingAppleSignInLeavesAnEmailSessionAlone() async throws {
+        let auth = FakeExpiringAuth()
+        let session = SessionRepository(store: makeStore(), auth: auth)
+        await session.waitUntilResolved()
+        try await appleSignedIn(session, auth)
+        session.signOut()
+
+        auth.userId = "email-user"
+        try await session.authenticate(
+            email: "ada@example.com", password: "pw", name: nil, signUp: false
+        )
+        XCTAssertEqual(session.state, .signedIn, "precondition: signed in with email and password")
+
+        session.handleAppleCredentialRevoked()
+
+        XCTAssertEqual(session.state, .signedIn, "an Apple revocation must not end an unrelated email session")
+        XCTAssertTrue(session.isSignedIn)
+    }
+
+    /// The handler almost always runs against a session restored from a cached token, not a fresh
+    /// `applySignIn`, so which provider she used has to outlive the process. Held in memory it
+    /// would be lost on the first relaunch and revocation would quietly stop working — the failure
+    /// nobody would notice, because it looks exactly like staying signed in.
+    func testAnAppleSessionIsStillRevocableAfterARelaunch() async throws {
+        let store = makeStore()
+        let auth = FakeExpiringAuth()
+        let first = SessionRepository(store: store, auth: auth)
+        await first.waitUntilResolved()
+        try await appleSignedIn(first, auth)
+
+        // Relaunch: same device store, a validated cached session, a brand-new repository.
+        auth.validated = AuthSessionSnapshot(userId: "apple-user")
+        let relaunched = SessionRepository(store: store, auth: auth)
+        await relaunched.waitUntilResolved()
+        XCTAssertEqual(relaunched.state, .signedIn, "precondition: the cached Apple session restored")
+
+        relaunched.handleAppleCredentialRevoked()
+
+        XCTAssertEqual(relaunched.state, .signedOut, "the provider must survive relaunch or revocation stops working")
+    }
 }

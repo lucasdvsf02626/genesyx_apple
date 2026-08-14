@@ -1,4 +1,5 @@
 import SwiftUI
+import AuthenticationServices
 import GenesyxCore
 #if canImport(GoogleSignIn)
 import GoogleSignIn
@@ -44,6 +45,11 @@ struct RootView: View {
             if let url = activity.webpageURL, let code = DeepLink.inviteCode(from: url) {
                 receiveInvite(code)
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(
+            for: ASAuthorizationAppleIDProvider.credentialRevokedNotification
+        )) { _ in
+            session.handleAppleCredentialRevoked()
         }
         .onChange(of: session.state) { new in
             if new == .signedIn {

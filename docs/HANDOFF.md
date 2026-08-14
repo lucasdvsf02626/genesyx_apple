@@ -909,6 +909,23 @@ site rather than taken on trust — in both directions.
 - **`delete_account` never revokes the Sign in with Apple token.** Read the function end to end;
   there is no call to Apple's revocation endpoint. Also true: the `waitlist_emails` delete is
   best-effort and `{ok: true}` is returned even when it fails (`:84-108`). Both now P0-15.
+  **Update 14 Aug — the waitlist half is closed, the Apple half is not.** The waitlist delete is now
+  checked like every other table and a failure returns 500; because it runs before the profile and
+  auth-user steps her account survives that failure and the retry is the same call again. The same
+  change added the explicit `user_supplements` delete iOS was missing, matching the backstop H1
+  spliced into Android's RPC — that table cascades on `auth.users`, so it was only ever exposed when
+  the final auth delete failed. **Both are repo-only: the live project still runs the old function
+  until `supabase functions deploy delete_account` is run**, and the file carries a banner to be
+  deleted in that same change. The Apple `/auth/revoke` call remains open — it needs the `.p8` in
+  Supabase's secret store, which is a person's action. **The client-side half is done:**
+  `SessionRepository.handleAppleCredentialRevoked`, wired in `RootView` to
+  `ASAuthorizationAppleIDProvider.credentialRevokedNotification`, ends the local session when she
+  revokes the app under Settings → Apple ID. It is guarded on how the *live* session was obtained,
+  because that notification is app-wide and must not end an unrelated email session; the guard is
+  persisted rather than held in memory, because the handler almost always runs against a session
+  restored from a cached token, and in-memory it would be lost on the first relaunch and revocation
+  would silently stop working — the failure nobody notices, because it looks exactly like staying
+  signed in. Three tests in `SessionExpiryTests`, both behaviours falsified.
 - **Article 9(2)(a) is asserted publicly and evidenced nowhere.** The live policy says health data is
   processed on explicit consent. Explicit consent has to be an affirmative act you can produce later;
   onboarding has no consent statement, no tickbox and no stored timestamp. P0-13. This is a lawyer's

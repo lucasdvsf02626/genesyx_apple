@@ -544,7 +544,17 @@ planning:
   basis or engineering must implement an auditable consent record before public submission.
 - **Sign in with Apple deletion:** the iOS `delete_account` Edge Function does not revoke Apple's
   refresh token, and two Apple identities exist live. Add Apple `/auth/revoke` handling and make
-  waitlist cleanup failure honest before public submission.
+  waitlist cleanup failure honest before public submission. **14 Aug — partly closed, and the split
+  matters.** Waitlist cleanup is now honest: a failure returns 500 instead of `{ok: true}`, and
+  because it runs before the profile and auth-user steps her account survives it and the retry is
+  the same call. The same change added the explicit `user_supplements` delete iOS lacked, restoring
+  parity with Android's RPC backstop. **Both are repo-only until `supabase functions deploy
+  delete_account` runs.** The server-side `/auth/revoke` call is **still open** and needs the Apple
+  `.p8` in Supabase's secret store — a person's action, not engineering. The client-side half is
+  done: `SessionRepository.handleAppleCredentialRevoked`, wired in `RootView` to
+  `ASAuthorizationAppleIDProvider.credentialRevokedNotification`, ends the local session on
+  revocation, guarded on how the live session was obtained so an app-wide notification cannot end an
+  unrelated email session. Three tests in `SessionExpiryTests`, both behaviours falsified.
 - **Deletion behaviour:** after the migration is version-controlled, use disposable accounts to
   prove both the iOS Edge Function and Android SQL RPC erase the same shared-backend data.
 

@@ -21,6 +21,10 @@ final class SessionRepository: ObservableObject {
     /// Who the store's contents belong to. Outlives sign-out on purpose — see `applySignIn`.
     private let identityKey = "session_identity"
     private let namePendingKey = "session_name_pending"
+    /// Set only when the live session was obtained through Sign in with Apple. Apple is the one
+    /// provider whose revocation the OS reports back to us, and the notification is app-wide, so
+    /// this is what stops an Apple revocation ending an unrelated email session.
+    private let appleProviderKey = "session_provider_apple"
     /// DEBUG local-only: persist a mock session so a keep-store relaunch can restore it. Never
     /// consulted in Release — Release without a backend fails closed at the root.
     private let mockSignedInKey = "session_mock_signed_in"
@@ -169,7 +173,23 @@ final class SessionRepository: ObservableObject {
             return
         }
         try await auth.signInWithIdToken(provider: provider, idToken: idToken, accessToken: accessToken, nonce: nonce)
-        applySignIn(email: email ?? "", name: name)
+        applySignIn(email: email ?? "", name: name, provider: provider)
+    }
+
+    /// Apple revoked this app's Sign in with Apple credential — she turned it off in
+    /// Settings → Apple ID → Sign in with Apple, or deleted the app's entry there.
+    ///
+    /// Nothing else notices. The Supabase refresh token is independent of Apple's credential and
+    /// stays valid, so without this she can revoke access and remain signed in indefinitely, which
+    /// makes the revocation meaningless and is exactly what Apple requires apps not to do.
+    ///
+    /// Guarded on how the LIVE session was obtained, because the notification is app-wide rather
+    /// than per-session: a woman who used Apple once, signed out, and signed back in with her email
+    /// and password must not be thrown out of that unrelated session when she later tidies up her
+    /// Apple ID settings.
+    func handleAppleCredentialRevoked() {
+        guard state == .signedIn, store.bool(forKey: appleProviderKey, default: false) else { return }
+        signOut()
     }
 
     /// With no backend, "signing in" means accepting whatever was typed — no password is ever
@@ -188,7 +208,8 @@ final class SessionRepository: ObservableObject {
     }
     #endif
 
-    private func applySignIn(email: String, name: String?) {
+    private func applySignIn(email: String, name: String?, provider: SocialProvider? = nil) {
+        store.setBool(provider == .apple, forKey: appleProviderKey)
         let identity = auth?.currentUserId ?? email
         let previous = store.string(forKey: identityKey)
         // After sign-out the private tabs are gone. Writes can still land locally from a leftover
@@ -279,6 +300,7 @@ final class SessionRepository: ObservableObject {
         // drain would push the previous user's name — which is now `nil` — or, worse, theirs.
         pendingNamePush = false
         store.remove(forKey: namePendingKey)
+        store.remove(forKey: appleProviderKey)
         if let auth { Task { try? await auth.signOut() } }
         // Wipe the previous user's on-device health data so a next sign-in starts clean.
         onClearLocalState?()
@@ -325,6 +347,7 @@ final class SessionRepository: ObservableObject {
         // sign-in was filed as the new user's — and pushed to her rows.
         pendingNamePush = false
         store.remove(forKey: namePendingKey)
+        store.remove(forKey: appleProviderKey)
         // Deletion succeeded — wipe the on-device health data too.
         onClearLocalState?()
     }
