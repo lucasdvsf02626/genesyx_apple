@@ -21,6 +21,17 @@ Evidence:
 
 ## TOMORROW — do these in this order
 
+### 2026-08-17 morning check — what moved
+
+- **No new archive.** Newest is still `Genesyx 1.1.1 (17).xcarchive` (2026-07-29); the `2026-07-30` folder is empty. TestFlight is unchanged from 2026-07-29. **This is the single fact that has not moved and it is the one that must.**
+- **P0-2 done — working tree is clean.** `git status --short` returns only `?? docs/assets/` once the `graphify-out/` cache noise is filtered out. All ~40 files from the baseline are committed.
+- **Version bumped as planned.** `project.yml` now reads `MARKETING_VERSION: "1.2.0"` / `CURRENT_PROJECT_VERSION: "19"`. HEAD is `fb37e2a release: prepare Genesyx 1.2.0 build 19`.
+- **26 new commits since baseline `2e07f1f`.** Notable: `c9aa8ba Withhold partner linking from the 1.2.0 build` (release scope narrowed — the lockdown/deploy order for partner_invites is no longer racing this build), `4ff918b` (password reset via the gate), `d554541` (session ended on Sign-in-with-Apple revoke), `308b8ca` (account deletion stops reporting false success), `07bb619` + `d0b3895` (privacy policy declared).
+- **Google `-5` fix is in code**, not just claimed. `AuthView.swift:181-185`: `if (error as? GIDSignInError)?.code == .canceled { return }`. Committed. Not in any shipped build.
+- **Supabase held items are committed** — `supabase/migrations/20260812_partner_invites_write_lockdown.sql` in `2e07f1f`, `supabase/functions/revoke_partner_invite/` in `6000f2d`. Applied/deployed state on production was not probed today (out of scope per standing rules).
+
+**Next blocking action (updated 18 Aug 00:05):** upload `build/Export/Genesyx.ipa` to TestFlight. HEAD `8df44db` (1.2.0 **build 20**) is **archived and exported** — signed `Apple Distribution: SF MEDIA & PR LTD`, IPA contents verified (version, privacy manifest, 1024 icon, entitlements); facts and the two archive traps are in `docs/TESTFLIGHT_B20.md` under "Build facts". Build 19 (`fb37e2a`) was superseded the same day by the password recovery flow (`eded1c7`) and the build bump; do not upload 19. The full green regression is **done** on the build-20 tree — 294 domain (`swift test`) and 430/431 `xcodebuild test` on iPhone 17, 0 failures, 1 declared skip. What remains is the upload itself, the P0-7 theme-default decision, and confirming the Supabase Google provider's **Authorized Client IDs** contains the iOS client `413702980668-tfah1knspa8ip82p51c3i3veuh3ljul4.apps.googleusercontent.com` — the app sends a token whose `aud` is that iOS ID (`AuthView.swift:165`), so Google sign-in fails without it. Sign-in per the 30-second console-read table below is still the gating verification the moment a build reaches a device.
+
 ### 1. Fix Google sign-in (blocks everything else)
 Nothing can be device-verified until someone can sign in. Current state of the diagnosis:
 
@@ -30,6 +41,8 @@ Nothing can be device-verified until someone can sign in. Current state of the d
 - Server-side provider state. `GET /auth/v1/settings` returns HTTP 200 with `"google": true`.
 
 **Leading hypothesis — NOT VERIFIED:** the Google provider's "Authorized Client IDs" list in the Supabase dashboard does not contain the iOS OAuth client ID. Native Google Sign-In mints an ID token whose `aud` is the **iOS** client ID, but Supabase's Google provider is normally configured with the **Web** client ID. `/auth/v1/settings` does not expose that list, so it cannot be checked from here.
+
+**Google Cloud half of the hypothesis — verified 2026-08-17.** The iOS OAuth client "Genesyx iOS" (created 8 Jul 2026, `413702980668-tfah…`) exists and matches `project.yml:67`. Exactly one web client ("Web client 1", `413702980668-ad6b…`) exists — this is what `genesyx.googleWebClientId` should point to. No OAuth errors in the Google Cloud logs, but traffic is TestFlight-level (≤2 requests/day) so absence of errors proves nothing about end-to-end sign-in. **The check that remains is the Supabase side only:** Authentication → Providers → Google → *Authorized Client IDs* must contain the iOS client ID above. Redirect URIs on Web client 1 are not load-bearing while the client uses `signInWithIdToken` — they only matter for a hosted / webview OAuth flow, which iOS does not use.
 
 **30-second way to settle it.** Reproduce the failure with the Xcode console open and read the line:
 
@@ -84,9 +97,7 @@ See the 1A table below for exactly what is In progress.
 The first real-device pass since 29 July. Everything marked Done below is unverified until this happens.
 
 ### Also queued (not blocking the build)
-- Theme-override bug — `apply(remote:)` overwrites the light default coming from the server; the one-shot correction key survives sign-out, so a second account on the same device gets `.system` back. `PreferencesRepository.swift:179-184`, `:194-201`.
 - Real Nutrition text pass (2B).
-- pH history list (1A).
 - Partner clarification + sharing scope (1B / 4).
 - Streak decisions, agreed with Android (3A).
 
@@ -105,8 +116,8 @@ Status vocabulary: To do / In progress / In review / Done / Blocked. Apple Healt
 | Guidance on what the number means | **Done** | `PhCopy.swift:7`, `:28`, `:35` |
 | Educational content on vaginal pH | **Done** | `LearnContent.swift:711-717` |
 | "Why vaginal pH matters for fertility" | **Blocked** | Reverses a medical-review decision. `LearnContent.swift:767` currently states "It is not a fertility score". Needs the client + medical reviewer to sign off, not an engineering call |
-| pH history list | **To do** | Readings are stored and charted; no scrollable history view exists |
-| pH reminders | **In progress** | Notification plumbing exists; pH-specific schedule not wired |
+| pH history list | **Done** | `PhTrackerSection.swift:243-271` — collapsible "Reading history (N)" on the pH tab, newest first, every row opens that reading for edit or delete. Covered by `GenesyxUITests.swift:1181` (an older reading opens for editing) and `:1207` (Cancel keeps it, Delete asks first). Cold-start persistence: `RepositoryTests.swift:433`, `GenesyxUITests.swift:1322` |
+| pH reminders | **Done** | `NotificationPlanner.swift:293-315` — weekly `.ph` slot with its own copy, scheduled only when a reading is actually due (`phDueAfterDays`), silent when she logged recently. Covered by `NotificationPlannerTests.swift:47`, `:158`, `:197`, `:257`, `:264`, `:449` |
 
 Content guard note: `PhContentGuardTests.swift:9` bans "infection", "thrush", "candida", "vaginosis" and "bv" in pH articles. **"obvious" contains "bv"** — this has bitten before.
 
@@ -147,7 +158,7 @@ Content guard note: `PhContentGuardTests.swift:9` bans "infection", "thrush", "c
 | Item | Status | Evidence |
 | --- | --- | --- |
 | Warm / premium visual pass | **Blocked** | No design spec supplied. Cannot start without one |
-| Theme (light/dark/system) | **In review** | `PreferencesRepository.swift:102` — has the override bug noted above |
+| Theme (light/dark/system) | **In review** | `PreferencesRepository.swift:102`. The client-side override bug is fixed and tested (see the two-week plan, item 7). What is still in review is P0-7: the **live** `profiles.theme` default on production, which is a data decision, not a code one |
 | Dynamic Type | **To do** | `HANDOFF.md` §4f: the app has **no Dynamic Type support at all** |
 | Component consistency | **In progress** | `GenesyxControls.swift:53`, `:215` |
 
@@ -262,12 +273,12 @@ No schema, RLS policy, table/column name, enum or function signature has been ch
 1. Fix sign-in
 2. Commit the tree + full green regression
 3. Supabase pre-flight 1–5
-4. Finish the 1A leftovers (history list, reminders)
+4. ~~Finish the 1A leftovers (history list, reminders)~~ — **already in code.** Both landed before build 19; evidence in the 1A table. Device verification still owed
 5. Bump to 1.2.0 (19), archive, upload
 6. Device verification pass
 
 **Week 2 — the amendment list proper.**
-7. Theme-override bug
+7. ~~Theme-override bug~~ — **fixed in code.** `clearThemeMigrationFlag()` (`PreferencesRepository.swift:169-171`) is called on sign-out (`AppContainer.swift:131`), and `migrateLegacySystemTheme()` runs after `apply(remote:)` (`:200-201`, `:213-218`) so the pulled `.system` is corrected rather than left standing. Tests: `RepositoryTests.swift:1185`, `:1200`, `:1212`, `:1231`. The separate P0-7 decision on the **live** `profiles.theme` default is still open
 8. Nutrition text pass (2B)
 9. Partner clarification + sharing scope (1B / 4)
 10. Streak decisions agreed with Android (3A)
@@ -284,7 +295,7 @@ No schema, RLS policy, table/column name, enum or function signature has been ch
 | 2 | Quiz options | **iOS has shipped 4** — `girl` / `boy` / `either` / `private`. Android is still on 3. Android must add `girl` and `boy`, relabel `either` → "No preference" and `private` → "Prefer not to say", retire `hope` without remapping, and drop the "Did you know?" fact. Reusing the two existing ids is what carries stored answers across |
 | 2b | Supplement reminder copy | iOS carries a dormant personalisation layer (`FeatureFlags.personalisedSupplementTiming = false`). No behaviour difference while off; Android needs nothing until it is turned on |
 | 3 | `sexualActivity` in streaks | Excluded on iOS by design; must match Android + `tracking_test_vectors.json` |
-| 4 | Theme default | iOS has a one-shot correction key with the override bug; unknown on Android |
+| 4 | Theme default | iOS corrects a legacy stored `.system` to `.light` once per account and clears the device flag on sign-out, so the next account on the same phone is corrected too (`PreferencesRepository.swift:169-171`, `:213-218`, `AppContainer.swift:131`). Unknown on Android |
 | 5 | Waitlist | iOS calls `join_waitlist`; unknown whether Android has the path |
 | 6 | Anon-role grants | Cleanup applied DB-wide — affects both, but neither can reach it |
 | 7 | Article series | Eleven articles on iOS; Android content set unverified |
