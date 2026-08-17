@@ -86,7 +86,11 @@ targets:
         # (14 was a wording-only WIP, never uploaded.)
         # 19 = 1.2.0 respin. Build 18 was archived 13 Aug and is void: it predates the mandatory
         # auth gate, the free guide, the partner withholding and the password-reset fix (all 14 Aug).
-        CURRENT_PROJECT_VERSION: "19"
+        # 20 = 1.2.0 with the password recovery flow. 19 was archived 17 Aug at 12:48 from fb37e2a
+        # and stays frozen at that tree; it can send a reset email but has no deep-link handler, so
+        # the link in her inbox still dies. Reusing 19 for this code would put two different
+        # binaries behind one build number, and App Store Connect would reject the second anyway.
+        CURRENT_PROJECT_VERSION: "20"
         SWIFT_VERSION: "5.9"
         TARGETED_DEVICE_FAMILY: "1" # iPhone
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
