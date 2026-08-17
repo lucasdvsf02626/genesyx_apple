@@ -30,7 +30,7 @@ Evidence:
 - **Google `-5` fix is in code**, not just claimed. `AuthView.swift:181-185`: `if (error as? GIDSignInError)?.code == .canceled { return }`. Committed. Not in any shipped build.
 - **Supabase held items are committed** — `supabase/migrations/20260812_partner_invites_write_lockdown.sql` in `2e07f1f`, `supabase/functions/revoke_partner_invite/` in `6000f2d`. Applied/deployed state on production was not probed today (out of scope per standing rules).
 
-**Next blocking action (updated 18 Aug 00:05):** upload `build/Export/Genesyx.ipa` to TestFlight. HEAD `8df44db` (1.2.0 **build 20**) is **archived and exported** — signed `Apple Distribution: SF MEDIA & PR LTD`, IPA contents verified (version, privacy manifest, 1024 icon, entitlements); facts and the two archive traps are in `docs/TESTFLIGHT_B20.md` under "Build facts". Build 19 (`fb37e2a`) was superseded the same day by the password recovery flow (`eded1c7`) and the build bump; do not upload 19. The full green regression is **done** on the build-20 tree — 294 domain (`swift test`) and 430/431 `xcodebuild test` on iPhone 17, 0 failures, 1 declared skip. What remains is the upload itself, the P0-7 theme-default decision, and confirming the Supabase Google provider's **Authorized Client IDs** contains the iOS client `413702980668-tfah1knspa8ip82p51c3i3veuh3ljul4.apps.googleusercontent.com` — the app sends a token whose `aud` is that iOS ID (`AuthView.swift:165`), so Google sign-in fails without it. Sign-in per the 30-second console-read table below is still the gating verification the moment a build reaches a device.
+**Next blocking action (updated 18 Aug 00:05):** upload `build/Export/Genesyx.ipa` to TestFlight. HEAD `8df44db` (1.2.0 **build 20**) is **archived and exported** — signed `Apple Distribution: SF MEDIA & PR LTD`, IPA contents verified (version, privacy manifest, 1024 icon, entitlements); facts and the two archive traps are in `docs/TESTFLIGHT_B20.md` under "Build facts". Build 19 (`fb37e2a`) was superseded the same day by the password recovery flow (`eded1c7`) and the build bump; do not upload 19. The full green regression is **done** on the build-20 tree — 294 domain (`swift test`) and 430/431 `xcodebuild test` on iPhone 17, 0 failures, 1 declared skip. The Supabase Google **Authorized Client IDs** question is **settled** — the iOS client is present, see section 1. What remains is the upload itself, the App Store Connect listing (screenshots, privacy labels, age rating — never audited), and the P0-7 theme-default decision. Sign-in per the 30-second console-read table below is still the gating verification the moment a build reaches a device.
 
 ### 1. Fix Google sign-in (blocks everything else)
 Nothing can be device-verified until someone can sign in. Current state of the diagnosis:
@@ -40,7 +40,9 @@ Nothing can be device-verified until someone can sign in. Current state of the d
 - Credentials / config. The built Info.plist carries `SUPABASE_URL`, `SUPABASE_ANON_KEY` and `GIDClientID`. My earlier hypothesis that `Secrets.xcconfig` was unwired is dead — the values live in `project.yml` `settings.base`.
 - Server-side provider state. `GET /auth/v1/settings` returns HTTP 200 with `"google": true`.
 
-**Leading hypothesis — NOT VERIFIED:** the Google provider's "Authorized Client IDs" list in the Supabase dashboard does not contain the iOS OAuth client ID. Native Google Sign-In mints an ID token whose `aud` is the **iOS** client ID, but Supabase's Google provider is normally configured with the **Web** client ID. `/auth/v1/settings` does not expose that list, so it cannot be checked from here.
+**Leading hypothesis — ❌ DISPROVED 2026-08-18.** The theory was that the Google provider's "Authorized Client IDs" list omitted the iOS OAuth client, so a token whose `aud` is the iOS ID would be rejected. Read directly off the dashboard (Authentication → Sign In / Providers → Google), `EXTERNAL_GOOGLE_CLIENT_ID` holds three comma-separated entries and the iOS client is the **third**: `…-ad6b9oe6lsbt3hvhfng6h45vht4eq2ge` (web), `…-foh3v0ssm46stsc5d2klato8ivif96k5` (android), `…-tfah1knspa8ip82p51c3i3veuh3ljul4` (**iOS**, matches `project.yml:67`). The field renders truncated to the first entry, which is why every earlier glance at it looked wrong. "Skip nonce checks" is also **on**, which native iOS Google Sign-In requires because the client cannot supply the nonce Supabase would otherwise verify.
+
+So the server config is correct and this is no longer a candidate cause. If Google sign-in still fails on a device, the fault is client-side or in the Google SDK — read the console table below rather than re-checking this list.
 
 **Google Cloud half of the hypothesis — verified 2026-08-17.** The iOS OAuth client "Genesyx iOS" (created 8 Jul 2026, `413702980668-tfah…`) exists and matches `project.yml:67`. Exactly one web client ("Web client 1", `413702980668-ad6b…`) exists — this is what `genesyx.googleWebClientId` should point to. No OAuth errors in the Google Cloud logs, but traffic is TestFlight-level (≤2 requests/day) so absence of errors proves nothing about end-to-end sign-in. **The check that remains is the Supabase side only:** Authentication → Providers → Google → *Authorized Client IDs* must contain the iOS client ID above. Redirect URIs on Web client 1 are not load-bearing while the client uses `signInWithIdToken` — they only matter for a hosted / webview OAuth flow, which iOS does not use.
 
@@ -129,8 +131,8 @@ Content guard note: `PhContentGuardTests.swift:9` bans "infection", "thrush", "c
 | Daily log entry | **Done** | `LogView.swift:186` |
 | Sexual activity logging | **Done** | `DailyLogRepository.swift:42` — column ⚠️ unconfirmed in prod, see pre-flight 1 |
 | Symptoms / notes | **Done** | `LogView.swift:239-259` |
-| Partner linking | **Done** | `PartnerRepository.swift:41-47`, live in 17 |
-| Partner sees name only | **In review** | True in-app (`ProfileView.swift:173`), but RLS exposes the **whole `profiles` row**. `CHANGE_LIST_PLAN.md:17` overstates the guarantee — needs a decision, see §4 |
+| Partner linking | **Built, WITHHELD from 1.2.0** | Code is complete and was live in 17 (`PartnerRepository.swift:41-47`), but `FeatureFlags.partnerInvites = false` (`LearnModels.swift:21`, commit `c9aa8ba`) gates off the Profile section (`ProfileView.swift:59`), the invite deep link (`RootView.swift:123`) and the refresh (`AppContainer.swift:91,107`). It is a compile-time constant, so **no shipped build can turn it on** — restoring it means editing that line and submitting a new binary. Do not describe this to the client as delivered in 1.2.0 |
+| Partner sees name only | **Built, WITHHELD from 1.2.0** | Moot while the flag above is off. When it is restored: true in-app (`ProfileView.swift:173`), but RLS exposes the **whole `profiles` row**. `CHANGE_LIST_PLAN.md:17` overstates the guarantee — needs a decision, see §4 |
 | Password change | **Done** | `SupabaseBackend.swift:49` `resetPasswordForEmail`, wired and live in 17. `CHANGE_LIST_PLAN.md:206` says this is unbuilt — **that is wrong** |
 | Account deletion | **Done** | `Account.swift:39-42` → `delete_account` edge function |
 
@@ -141,7 +143,7 @@ Content guard note: `PhContentGuardTests.swift:9` bans "infection", "thrush", "c
 | Quiz flow | **Done** | `OnboardingFlowView.swift:224` |
 | Quiz answers persisted | **Done** | `quiz_answers` table ✅ applied (`HANDOFF.md` §2) |
 | Girl/Boy option | **Done, iOS only** | `QuizContent.swift:82`. Now Girl / Boy / No preference / Prefer not to say. No compliance guard was relaxed — "Girl" and "Boy" as separate labels never contained the banned string "boy or girl"; the only real blocker was the parity assertion, now `options.count == 4`. **ANDROID MUST MATCH before release** |
-| Waitlist capture | **In progress** | `join_waitlist` RPC written; ⚠️ unconfirmed applied — pre-flight 2 |
+| Waitlist capture | **Not reachable** | Backend half only. `joinWaitlist` is declared at `RemoteBackend.swift:220` and implemented at `SupabaseBackend.swift:29`, and `grep -rn joinWaitlist` finds **no call site anywhere in the app** — there is no screen, field or button that collects the email. The missing piece is UI, not the migration |
 
 **Do not rename quiz question ids, or option ids.** Both are storage keys; renaming orphans every stored answer on both clients. The Girl/Boy change kept `either` and `private` for exactly that reason and retired `hope` rather than remapping it — `hope` never recorded *which* sex, which is the distinction the change introduces. A stored `hope` stays readable and renders unselected until she picks again.
 
@@ -168,7 +170,7 @@ Content guard note: `PhContentGuardTests.swift:9` bans "infection", "thrush", "c
 | --- | --- | --- |
 | Nutrition screen | **Done** | `NutritionView.swift:133`, live in 17 |
 | Greyed-out text behind disclosures | **In progress** | `CHANGE_LIST_PLAN.md:25` claims this is already done — **overstated**. Only one disclosure exists (`NutritionView.swift:148`) and the line reference is wrong |
-| Recipes / meal content | **Blocked** | No content supplied |
+| Recipes / meal content | **Done** | Eight recipes in `Sources/GenesyxCore/Content/RecipeContent.swift`, selected per cycle phase and rendered at `NutritionView.swift:388-398` with a detail sheet at `:645`. "Blocked — no content supplied" was stale; client content would replace these, not unblock them |
 | Banned-phrase compliance | **Done** | `LearnContentTests.swift:217` green |
 
 ### 2C — Hydration
@@ -200,7 +202,7 @@ Content guard note: `PhContentGuardTests.swift:9` bans "infection", "thrush", "c
 
 | Item | Status | Evidence |
 | --- | --- | --- |
-| Weekly article series | **In progress** | **Eleven** articles exist, not twelve. `LearnContent.swift:5` header says "the twelve-week run" — header is wrong. First article drops 2026-08-23 |
+| Weekly article series | **Done** | **Twelve** articles, `w1`–`w12` at `LearnContent.swift:727-1078`; the header saying "the twelve-week run" is correct and the earlier "eleven" count in this file was wrong. Gated by `LearnModels.swift:229`; first article drops 2026-08-23 |
 | Article model / rendering | **Done** | `LearnModels.swift:129`, `LearnContent.swift:1040-1068` |
 | Science links to the website | **Blocked** | No URLs supplied |
 | Medical compliance guards | **Done** | `LearnContentTests.swift:217`, `PhContentGuardTests.swift:9` green |
