@@ -77,7 +77,10 @@ Reminders: **do not use `-quiet`** (exit 0 with no summary, hides real results).
 From `TESTFLIGHT_B18.md`. **This list said "1–3" and the table now has five rows** — two were added
 after it was written, and both are load-bearing, so do not stop at three:
 1. `daily_logs.sexual_activity` column — ✅ verified present 12 Aug
-2. `join_waitlist` RPC + `waitlist_emails` table — migration written, confirm applied
+2. `join_waitlist` RPC + `waitlist_emails` table — table ✅ **exists in production** (18 Aug probe).
+   The RPC itself was not called, because calling it would insert a row into the live table; that
+   one is still unconfirmed. Moot for 1.2.0 either way — nothing in the app calls `joinWaitlist`,
+   so there is no path to the RPC from a shipped build (see the 1C row in the checklist)
 3. `daily_logs.food_groups` column — ✅ **APPLIED 13 Aug**. Was missing; meal logging was failing
    silently (she ticks groups all week, sees them persist locally, syncs none of it). Now
    `ARRAY / NO / '{}'::text[]`, matching `symptoms` and `supplements`. RLS re-checked: unchanged
@@ -85,6 +88,19 @@ after it was written, and both are load-bearing, so do not stop at three:
    there is no `config.toml`, so the CLI default of `true` applied. Confirmed by probe — all six now
    answer an anonymous POST from the gateway, not from their own catch block
 5. `profiles.theme` live default — ⬜ **still outstanding**, P0-7 (this is what the old "3" meant).
+
+**Whole-schema probe against production, 18 Aug — no drift.** Every table and column the iOS client
+reads or writes exists live. Method: an unauthenticated `GET /rest/v1/<table>?select=<column>&limit=0`
+with the publishable anon key returns no rows and distinguishes the two cases cleanly —
+`400 / 42703` means the column does not exist, `401 / 42501` means it exists and the grant correctly
+denies `anon`. Every probe returned `42501`:
+- `daily_logs` — all eleven: `user_id date mood energy symptoms sleep_minutes water_ml supplements notes sexual_activity food_groups`
+- `ph_readings` — all eight: `id user_id ph_value recorded_at notes updated_at deleted_at measurement_type`
+- `profiles` (`id theme display_name`), plus `cycle_settings`, `user_supplements`, `quiz_answers`,
+  `partner_invites`, `waitlist_emails` all present
+That also confirms **no table is readable by `anon`**, which is the property that matters for a build
+carrying vaginal-pH and sexual-activity rows. Re-run the probe after any migration; it is read-only,
+returns no user data, and takes seconds.
    Needs `select theme, count(*) from public.profiles group by theme;` and then a decision
 
 Apply with `supabase db query --linked -f <file>`. **Never `supabase db push`** — this project has no `supabase_migrations.schema_migrations` table and push would replay every migration.
