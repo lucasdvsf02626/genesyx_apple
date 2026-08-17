@@ -215,3 +215,148 @@ The code is in the best state it has been in: **Core 294 / 0, app 315 / 0, UI 93
 What stands between here and the App Store is **one legal decision (Article 9), two deployments you own, one live check on the password email, one build-number bump, and a data-entry session in App Store Connect.** None of it is engineering risk. All of it is unavoidable.
 
 The one thing I would not skip is **the VoiceOver check** — it is sixty seconds and it is the only finding where I genuinely do not know the answer. Tap the four Profile rows while the phone is in your hand (§4 item 0); that is the second.
+
+---
+
+## 6. Production verification — account deletion, 17 August 2026
+
+Run against the live project `epltxklawpcxxbaleswg` over the REST API using the public anon key. No
+service-role credential was used, retrieved or searched for at any point.
+
+### 6.1 Deployment
+
+| Item | Evidence |
+|---|---|
+| `delete_account` version | **10, ACTIVE** (was 8 at the start of the day) |
+| `verify_jwt` | **true** |
+| Bundle SHA | `2202278b4216a57832ad26b439c23ddafb7ca8e030b2eafc63d2d578415af6af` |
+| Deployed at | 17 Aug 2026, 15:30:24 UTC |
+| Deployed source vs local | **Byte-identical**, including `_shared/client.ts`. Verified by `supabase functions download` into a scratch directory, then diff. |
+| Stale banner | **Gone.** 0 occurrences of "NOT YET DEPLOYED" in the deployed source. |
+| Apple revocation logic | **None present.** Greps for `revoke`, `apple`, `p8`, `client_secret`, `audience` return nothing across all 136 lines. No secret was added or modified. |
+
+The banner was accurate right up until this deployment, which is why v9 still carried it: the first
+deploy went out at 15:13:15 UTC and the comment was removed afterwards. The v10 deploy is the one
+that made the file and the live function agree.
+
+### 6.2 End-to-end deletion, with a bystander control
+
+Two fresh accounts were created and seeded identically with six rows each across `profiles`,
+`cycle_settings`, `daily_logs`, `ph_readings`, `user_supplements` and `partner_invites`. One was
+deleted. The other was touched by nothing.
+
+| Check | Result |
+|---|---|
+| Deletion response | `{"ok":true}`, HTTP 200 |
+| Deleted account can re-authenticate | **No.** `invalid_credentials`. |
+| Bystander kept all six rows | **Yes**, contents intact (`QA-d-supp` present, its invite still `pending`) |
+| Bystander can still authenticate | **Yes** |
+| Test-account cleanup | **Complete.** All five accounts used across the day are deleted. Local tokens and downloaded source wiped. |
+
+Deleted (subject): `6ef14b59-e89f-4134-935c-ecc3be144cb5`
+Bystander (control): `8f2d333b-5241-4b37-a0de-60811c47c90e`
+
+**Limitation, stated plainly.** The zero row counts read back on the deleted account's own token are
+not proof the tables are empty, because that token no longer resolves. What supports the claim is
+the function's fail-closed structure (every delete is checked, and `{ok:true}` is unreachable unless
+all of them succeeded) plus the `on delete cascade` foreign keys in `supabase_schema.sql`. A direct
+service-role row audit would settle it outright and has not been run. The uids are listed in §6.5.
+
+Separately proved live: deleting an account also removed the pending invite addressed **to** its
+email address, so invitee-side cleanup works. That path has no foreign key and would otherwise be
+unreachable forever.
+
+### 6.3 Open production finding — invite write lockdown is NOT applied
+
+All three holes documented in `supabase/migrations/20260812_partner_invites_write_lockdown.sql`
+reproduced against production:
+
+- PATCH `status` to `accepted` succeeded
+- DELETE of the row succeeded
+- on a re-created invite, `declined` → `pending` succeeded, which is hole (a) verbatim
+
+**Bounded, not a leak.** Row-level scoping still holds, so one account cannot touch another's
+invites. Partner linking is withheld from build 19, so nothing shipping today runs against this.
+
+All four gates in that migration's order of operations are now clear: Android emits no UPDATE or
+DELETE on `partner_invites`, `revoke_partner_invite` is deployed (v4 ACTIVE), and
+`SupabaseBackend.swift:274-296` routes every invite write through `functions.invoke`. The file is
+ready to apply by hand in the Dashboard SQL Editor. It has not been applied.
+
+The connected project reports no recorded migrations, which is why `supabase db push` must not be
+used: there is no `supabase_migrations.schema_migrations` table, so a push would replay the entire
+repository history against a database whose migrations were all applied by hand.
+
+**Measured baseline before applying (17 Aug 2026, read-only, live project):**
+
+```
+has_table_privilege('authenticated', 'public.partner_invites', 'UPDATE') = true
+has_table_privilege('authenticated', 'public.partner_invites', 'DELETE') = true
+information_schema.column_privileges: UPDATE present on all seven columns
+```
+
+**Verification after applying.** Use `has_table_privilege` as the primary check, not
+`information_schema.column_privileges`. That view only reports column-grantable privileges
+(SELECT, INSERT, UPDATE, REFERENCES), so DELETE can never appear in it and filtering for DELETE
+there proves nothing. An earlier version of this plan made exactly that mistake.
+
+```sql
+select
+  has_table_privilege('authenticated', 'public.partner_invites', 'UPDATE') as can_update,
+  has_table_privilege('authenticated', 'public.partner_invites', 'DELETE') as can_delete;
+-- expect: can_update = false, can_delete = false
+```
+
+Then, separately, confirm no column-level UPDATE residue survives. A table-level revoke does not
+remove column-level grants, so this is a genuinely independent check rather than a restatement.
+
+```sql
+select privilege_type, column_name
+  from information_schema.column_privileges
+ where table_name = 'partner_invites' and grantee = 'authenticated'
+   and privilege_type = 'UPDATE'
+ order by 2;
+-- expect: zero rows
+```
+
+The migration's own header records `pg_attribute.attacl` as NULL on every column as at 12 Aug, so
+zero column-level grants existed then and no column-level cleanup is expected to be needed.
+
+### 6.4 Open production finding — two orphan Edge Functions
+
+`delete-account` and `change-password` (hyphens, v5, both ACTIVE, both `verify_jwt=true`) were
+deployed on 12 Aug 2026 at 15:41:52 UTC from a flat `source/index.ts` layout this repository has
+never produced. Every maintained function deploys to `source/supabase/functions/<slug>/index.ts`.
+
+Confirmed unused by: iOS source, Android source, the live website and all 12 custom theme scripts,
+and the documentation and deployment scripts in both repositories. Every apparent hit was a false
+positive, either the website URL `genesyx.co.uk/pages/delete-account` or a log string. Auth hooks are
+structurally ruled out, since both functions require a user bearer token rather than a signed GoTrue
+payload. Not yet confirmed: invocation logs and any external or scheduled caller, both of which need
+the dashboard.
+
+`delete-account` matters more than "unused" suggests. It deletes only the auth user and returns
+`{ok:true}`. Cascades sweep most tables, but `partner_invites.invitee_email` and `waitlist_emails`
+have no foreign key, so both survive and become permanently unreachable once the auth user is gone.
+That is the precise failure the maintained function's header comment was written to prevent, live
+under a slug one hyphen away from the one iOS calls.
+
+Recorded before any removal:
+
+```
+delete-account   v5 ACTIVE verify_jwt=true sha 463ecca44125405c6fa74e8f7b6dccab464acdda73059ece6ae751c5867f9a0c
+change-password  v5 ACTIVE verify_jwt=true sha ae292161316979f1a5b8ed846d6247413954c9dfce1a227156d1c7aee35ae69e
+```
+
+### 6.5 Optional service-role row audit
+
+Should you want the outright proof described in §6.2, these are every account used today. All are
+deleted; all should return zero rows in every table.
+
+```
+c6e969bb-aa4f-4112-9f2c-40756a0a063e
+df6db5c6-c754-4ace-92c6-84e3d1bfa305
+a1f1e0dd-44da-471c-8e1c-b9763e6a4ae3
+6ef14b59-e89f-4134-935c-ecc3be144cb5
+8f2d333b-5241-4b37-a0de-60811c47c90e
+```
