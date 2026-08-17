@@ -41,6 +41,8 @@
 		3D63A628C151330C2E790EF8 /* PersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 303189AF2EDB7CEDB86E0060 /* PersistenceTests.swift */; };
 		4108B666B22225121B8DE0F6 /* MedicalSourceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13C6BEC7D425708D2971050B /* MedicalSourceStore.swift */; };
 		48E3074CD9FFCEC5B1C9F220 /* PartnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07AB939CB828EB246F36B517 /* PartnerTests.swift */; };
+		4CEA0388B97943AD41DB7BB5 /* AppGuideTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 289CA7CD505881E3512D358B /* AppGuideTests.swift */; };
+		4E836317F53A104C24EC51B1 /* CustomerWalkthroughUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B555756E30A8616BCB88A1F /* CustomerWalkthroughUITests.swift */; };
 		57380349F4D6348FC2B14FEA /* NotificationFlowUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A792C435055372123D5BEC67 /* NotificationFlowUITests.swift */; };
 		57841B3DEE07C928CEF38FBC /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29302184F2B6D0C0053D36D1 /* Theme.swift */; };
 		5D61FD77753CAD3C6DC9F99A /* TrackView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8235770B012CBBA13E031E3 /* TrackView.swift */; };
@@ -131,8 +133,10 @@
 		18B326C15BF47D3EA69920B6 /* FlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
 		1B2790DAD76D0036331A0789 /* LocalStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalStore.swift; sourceTree = "<group>"; };
 		25158C5D4C95C0D86A2FFC22 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
+		289CA7CD505881E3512D358B /* AppGuideTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppGuideTests.swift; sourceTree = "<group>"; };
 		29302184F2B6D0C0053D36D1 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		2A6A7DAC8C3FC99236B1ADB7 /* RealInsightsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealInsightsTests.swift; sourceTree = "<group>"; };
+		2B555756E30A8616BCB88A1F /* CustomerWalkthroughUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomerWalkthroughUITests.swift; sourceTree = "<group>"; };
 		2FA54BF7FB0AC1AF1C928196 /* RootRoutingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootRoutingTests.swift; sourceTree = "<group>"; };
 		303189AF2EDB7CEDB86E0060 /* PersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceTests.swift; sourceTree = "<group>"; };
 		31285057904654880C873C5C /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
@@ -243,6 +247,7 @@
 			children = (
 				937F0D4815323B0B5E7DA0C1 /* AuthGateUITests.swift */,
 				A2915F9FE693FBE33A7871BC /* CitationE2ETests.swift */,
+				2B555756E30A8616BCB88A1F /* CustomerWalkthroughUITests.swift */,
 				FD452495CEE851EB8D542EDD /* GenesyxUITests.swift */,
 				319A34E30FAB0B26C4DA0DB7 /* LifecycleE2ETests.swift */,
 				A792C435055372123D5BEC67 /* NotificationFlowUITests.swift */,
@@ -280,6 +285,7 @@
 		28476119E04335E1227D0A58 /* GenesyxTests */ = {
 			isa = PBXGroup;
 			children = (
+				289CA7CD505881E3512D358B /* AppGuideTests.swift */,
 				70CFFA90DC002A583118F417 /* AuthPartnerBackendTests.swift */,
 				AEB6BAF8FC459A7A15C72AB8 /* BackendSwapTests.swift */,
 				ED048B54AB44204938AE8902 /* BrandAssetTests.swift */,
@@ -753,6 +759,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4CEA0388B97943AD41DB7BB5 /* AppGuideTests.swift in Sources */,
 				9BAF00B09D32CC497A7FB2A5 /* AuthPartnerBackendTests.swift in Sources */,
 				DE9C3F479BE6E8224ED0C78C /* BackendSwapTests.swift in Sources */,
 				F9D71D8FE7A64E15910D6C54 /* BrandAssetTests.swift in Sources */,
@@ -781,6 +788,7 @@
 			files = (
 				F696DBEE6A663FCD8C05B2D6 /* AuthGateUITests.swift in Sources */,
 				B6E509C4E98BD004D072025C /* CitationE2ETests.swift in Sources */,
+				4E836317F53A104C24EC51B1 /* CustomerWalkthroughUITests.swift in Sources */,
 				7DEE045EA130EDC0364688A0 /* GenesyxUITests.swift in Sources */,
 				D7EED7DE499B033ACFD1633C /* LifecycleE2ETests.swift in Sources */,
 				57380349F4D6348FC2B14FEA /* NotificationFlowUITests.swift in Sources */,
@@ -829,7 +837,7 @@
 				CODE_SIGN_ENTITLEMENTS = App/Genesyx/Genesyx.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 18;
+				CURRENT_PROJECT_VERSION = 19;
 				DEVELOPMENT_TEAM = M5L3MM75SG;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				INFOPLIST_FILE = App/Genesyx/Info.plist;
@@ -855,7 +863,7 @@
 				CODE_SIGN_ENTITLEMENTS = App/Genesyx/Genesyx.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 18;
+				CURRENT_PROJECT_VERSION = 19;
 				DEVELOPMENT_TEAM = M5L3MM75SG;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				INFOPLIST_FILE = App/Genesyx/Info.plist;

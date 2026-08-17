@@ -158,6 +158,18 @@ final class PreferencesRepository: ObservableObject {
         store.remove(forKey: pendingKey)
     }
 
+    /// Let the light-mode migration run again for the next account on this phone.
+    ///
+    /// The flag records that *an* account has been migrated, but the thing it corrects — a stored
+    /// `.system` nobody chose — lives in the **server row**, per account. Latched, it meant: the
+    /// first user signs in and her `.system` is corrected to `.light`; she signs out; a second
+    /// legacy account signs in on the same phone, `refresh()` pulls her uncorrected `.system`, and
+    /// `migrateLegacySystemTheme` returns at the guard. She lands in dark mode having never seen
+    /// the palette.
+    func clearThemeMigrationFlag() {
+        store.remove(forKey: themeMigratedKey)
+    }
+
     private var prefs: ProfilePrefs {
         ProfilePrefs(focusMode: focusMode, themeMode: themeMode, pushEnabled: pushEnabled,
                      quizAnswers: quizAnswers)

@@ -10,7 +10,10 @@ struct NutritionView: View {
     @EnvironmentObject private var ph: PhRepository
 
     private let today = CalendarDate.today()
-    private let waterGoalMl = 2400
+    /// The one goal every other hydration surface is drawn against — the streak, the 7-day "on
+    /// goal" count, the water challenge and the goal-reached notification. Typed out again here,
+    /// this screen would drift from all of them the day the constant changes.
+    private let waterGoalMl = TrackingEngine.defaultWaterGoalMl
 
     @State private var expandedFood: String?
     @State private var planOpen = false
@@ -68,6 +71,8 @@ struct NutritionView: View {
                     waterChallengeCard
                     foodLogCard
                     articlesSection
+                    HowThisWorksLink(slug: AppGuide.nutritionGuide,
+                                     label: "How your focus foods are chosen")
                 }
                 .padding(.horizontal, 20)
                 .padding(.bottom, 24)
@@ -275,18 +280,23 @@ struct NutritionView: View {
                 .accessibilityLabel("Dismiss")
                 .accessibilityIdentifier("nutrition.phaseChangeDismiss")
             }
-            Button {
-                markPhaseSeen(phase)
-                articlePath.append(Self.phaseArticleSlug)
-            } label: {
-                HStack(spacing: 4) {
-                    Text("What changes across your phases").font(.gxBodySmall.weight(.semibold))
-                    Image(systemName: "chevron.right").font(.system(size: 11, weight: .semibold))
+            if let article = Self.phaseArticle(phase) {
+                Button {
+                    markPhaseSeen(phase)
+                    articlePath.append(article.slug)
+                } label: {
+                    HStack(spacing: 4) {
+                        // The article's own title, so the link cannot describe a piece it no longer
+                        // opens — which is what a hand-written label does the day the mapping moves.
+                        Text(article.title).font(.gxBodySmall.weight(.semibold))
+                            .multilineTextAlignment(.leading)
+                        Image(systemName: "chevron.right").font(.system(size: 11, weight: .semibold))
+                    }
+                    .foregroundStyle(GenesyxColor.primary)
                 }
-                .foregroundStyle(GenesyxColor.primary)
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("nutrition.phaseChangeCard")
             }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("nutrition.phaseChangeCard")
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -294,7 +304,25 @@ struct NutritionView: View {
         .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
     }
 
-    static let phaseArticleSlug = "eating-with-your-cycle"
+    /// Reading for the phase she has just entered. The card offered the same nutrition article
+    /// whichever phase she moved into, so the one card whose whole subject is "this has changed"
+    /// pointed at something that had not.
+    static let phaseArticleSlugs: [Phase: String] = [
+        .period: phaseArticleFallbackSlug,          // iron, and eating through the bleed
+        .follicular: "cervical-mucus",              // the sign that predicts the window now approaching
+        .ovulatory: "fertile-window",
+        .luteal: "sleep-stress-and-your-cycle",     // the phase she feels most, and what it is not her fault for
+    ]
+
+    /// The twelve-week series is released by date, so most of the above are not readable yet. A link
+    /// to an unpublished slug pushes a route `articleBySlug` cannot resolve and lands her on a blank
+    /// screen — falling back keeps the card honest until the piece it wants actually exists.
+    static let phaseArticleFallbackSlug = "eating-with-your-cycle"
+
+    static func phaseArticle(_ phase: Phase) -> LearnArticle? {
+        phaseArticleSlugs[phase].flatMap(LearnLibrary.articleBySlug)
+            ?? LearnLibrary.articleBySlug(phaseArticleFallbackSlug)
+    }
 
     /// She has been told. Recorded on either action, so reading and dismissing both settle it.
     private func markPhaseSeen(_ phase: Phase) {
@@ -432,8 +460,10 @@ struct NutritionView: View {
     // MARK: Supplement plan
 
     /// Honest count of today's logged supplements (from the daily log), never a fixed placeholder.
+    /// Counted against the plan rather than the stored set, the same guard the food-group card
+    /// uses, so a supplement logged under an older list cannot render "5 of 4".
     private var supplementsTakenLabel: String {
-        let taken = dailyLog.log(on: today).supplements.count
+        let taken = NutritionDaySignal.knownSupplements(dailyLog.log(on: today).supplements)
         let total = NutritionContent.supplementPlan.count
         return taken > 0 ? "\(taken) of \(total) taken today" : "None logged yet today"
     }

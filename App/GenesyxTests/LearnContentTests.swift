@@ -126,6 +126,52 @@ final class LearnContentTests: XCTestCase {
         }
     }
 
+    /// The phase card's reading, per phase. Two ways this goes wrong and both leave her on a blank
+    /// screen: a typo in a slug, or a piece of the weekly series that is not published yet — the
+    /// card is due the day her phase turns, not the day the article lands.
+    func testEveryPhaseOffersAnArticleSheCanActuallyRead() {
+        let slugs = Set(LearnLibrary.allArticles.map(\.slug))
+        for (phase, slug) in NutritionView.phaseArticleSlugs {
+            XCTAssertTrue(slugs.contains(slug), "\(phase) points at \"\(slug)\", which is not an article")
+        }
+        for phase in Phase.allCases {
+            let article = NutritionView.phaseArticle(phase)
+            XCTAssertNotNil(article, "\(phase) leaves the card with nothing to open")
+            XCTAssertNotNil(article.flatMap { LearnLibrary.articleBySlug($0.slug) },
+                            "\(phase) offers \(article?.slug ?? "-"), which is not published yet")
+            XCTAssertFalse(article?.title.isEmpty ?? true, "the link is labelled with the title")
+        }
+    }
+
+    /// L14. The pH tab now signposts the pH explainer in Learn. The obvious target was
+    /// `vaginal-ph-explained`, and it would have shipped as a dead link: it carries
+    /// `publishedAt: 2026-08-30`, and every Learn deep link resolves through `LearnLibrary.articles`,
+    /// which withholds anything dated ahead. Nothing would have thrown — she would have tapped a
+    /// confident link and arrived at the "unavailable" screen.
+    ///
+    /// So this asserts through `articleBySlug` (published today) rather than against the full set:
+    /// spelling the slug correctly is not the property that matters, being readable is.
+    func testThePhTabSignpostsAnArticleSheCanActuallyOpen() {
+        let slug = PhTabView.learnArticleSlug
+        XCTAssertNotNil(LearnLibrary.allArticles.first { $0.slug == slug },
+                        "the pH tab points at \"\(slug)\", which is not an article at all")
+
+        let article = LearnLibrary.articleBySlug(slug)
+        XCTAssertNotNil(article,
+                        "\"\(slug)\" exists but is not published yet — the pH tab would send her to a blank screen")
+        XCTAssertNil(article?.publishedAt,
+                     "the pH signpost must not depend on a publication date; it is shown from day one")
+    }
+
+    /// Distinct destinations are the whole point of the row — one article for four phases is what
+    /// the card did before. Checked on the mapping rather than on what is published today, because
+    /// the series unlocks by date and this must not start passing for the wrong reason.
+    func testThePhasesDoNotAllPointAtTheSameArticle() {
+        XCTAssertEqual(Set(NutritionView.phaseArticleSlugs.keys), Set(Phase.allCases))
+        XCTAssertEqual(Set(NutritionView.phaseArticleSlugs.values).count, Phase.allCases.count,
+                       "two phases share an article; she is told something changed and shown the same page")
+    }
+
     /// A citation keyed to a slug that no longer exists is dead weight that reads as coverage.
     func testEveryCitationKeyIsARealArticle() {
         let slugs = Set(LearnLibrary.allArticles.map(\.slug))

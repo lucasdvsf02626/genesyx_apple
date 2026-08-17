@@ -223,7 +223,11 @@ struct ProfilePrefsRow: Codable {
     func domain(quizAnswers: [String: String]) -> ProfilePrefs {
         ProfilePrefs(
             focusMode: FocusMode(rawValue: focusMode) ?? .prep,
-            themeMode: ThemeMode(rawValue: theme) ?? .system,
+            // An unrecognised string falls back to the product default, not `.system`. `.system`
+            // stays a valid stored choice, so this branch is only reached by a value no build
+            // understands — and landing that on `.system` put her in the one state the theme
+            // migration in `PreferencesRepository` exists to move people off.
+            themeMode: ThemeMode(rawValue: theme) ?? .light,
             pushEnabled: pushEnabled,
             quizAnswers: quizAnswers
         )

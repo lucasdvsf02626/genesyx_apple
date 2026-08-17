@@ -54,3 +54,61 @@ public enum NutritionConsistencyLogic {
         }
     }
 }
+
+/// A single day of nutrition as the tracker row and its detail sheet report it.
+///
+/// The Daily Log collects **two** things under nutrition — supplements and food groups — and for a
+/// long time every summary surface counted only the first. A woman who ticked six food groups and
+/// no supplements opened the tracker's Nutrition row and was told she had logged nothing. This is
+/// the shared arithmetic that stops any one surface drifting back to half the data.
+///
+/// It states counts and nothing else. Naming how many groups a day contained is a record, not a
+/// claim, which is the same line `FoodLogCopy` holds — see `NutritionContent.FoodGroup`.
+public enum NutritionDaySignal {
+
+    public static var foodGroupCount: Int { FoodGroup.allCases.count }
+
+    /// Counted against the known cases rather than the stored set, so a token written by a newer
+    /// build — or a supplement she has since removed from her plan — cannot render "7 of 6".
+    public static func knownFoodGroups(_ logged: Set<String>) -> Int {
+        FoodGroup.allCases.filter { logged.contains($0.rawValue) }.count
+    }
+
+    public static func knownSupplements(_ logged: Set<String>) -> Int {
+        NutritionContent.supplementLogOptions.filter { logged.contains($0) }.count
+    }
+
+    /// `nil` when she logged neither, so the caller can use its own "nothing yet" copy rather than
+    /// this deciding what an empty day should say.
+    public static func summaryLine(supplements: Int, foodGroups: Int) -> String? {
+        switch (supplements, foodGroups) {
+        case (0, 0):
+            return nil
+        case (let s, 0):
+            return "\(s) of \(NutritionConsistencyLogic.planSize) supplements today"
+        case (0, let f):
+            return "\(f) of \(foodGroupCount) food groups today"
+        case (let s, let f):
+            return "\(s) supplements, \(f) food groups"
+        }
+    }
+
+    /// Both halves weighted equally, so a day of food groups alone fills the same as a day of
+    /// supplements alone. Neither is the more real entry.
+    public static func fill(supplements: Int, foodGroups: Int) -> Double {
+        let supplementShare = min(Double(supplements) / Double(NutritionConsistencyLogic.planSize), 1)
+        let foodShare = min(Double(foodGroups) / Double(foodGroupCount), 1)
+        return (supplementShare + foodShare) / 2
+    }
+
+    /// Everything this type can render, for the food-log claim guard.
+    public static var allStrings: [String] {
+        var out: [String] = []
+        for s in 0...NutritionConsistencyLogic.planSize {
+            for f in 0...foodGroupCount {
+                if let line = summaryLine(supplements: s, foodGroups: f) { out.append(line) }
+            }
+        }
+        return out
+    }
+}

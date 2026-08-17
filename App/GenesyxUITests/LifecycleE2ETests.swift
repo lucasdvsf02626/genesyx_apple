@@ -94,6 +94,11 @@ final class LifecycleE2ETests: XCTestCase {
         profile.tap()
         let rowAgain = app.buttons["Medical Sources & Disclaimer"]
         XCTAssertTrue(rowAgain.waitForExistence(timeout: 10))
+        // iOS posts the save-password sheet, not the app, and its timing is not deterministic — it
+        // can arrive *after* the check above and settle on top of this row. Dismissing it here
+        // weakens nothing: both assertions around it are unchanged, and the sheet is a system window
+        // that is not part of the behaviour under test.
+        if !rowAgain.isHittable { dismissSystemSavePasswordSheet(app) }
         rowAgain.tap()
         XCTAssertTrue(app.buttons["medSource.nhs-water"].waitForExistence(timeout: 10),
                       "sources must still render after the sign-out wipe and a new sign-in")

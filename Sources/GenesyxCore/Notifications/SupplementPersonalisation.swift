@@ -8,13 +8,12 @@ import Foundation
 public struct SupplementSignals: Equatable, Sendable {
     /// Days in the trailing week (0...7) she logged ANY supplement.
     ///
-    /// Deliberately day-level rather than per-supplement, because per-supplement is not computable
-    /// today: `DailyLog.supplements` holds display names from a fixed list in `LogView`
-    /// (Folic acid, Vitamin D, Iron, Omega-3) while a reminder is keyed `essential.<initial>` or a
-    /// custom UUID. The two vocabularies do not even describe the same set — the plan carries Folate
-    /// and Zinc where the log offers Folic acid and Iron, and a custom supplement cannot be logged at
-    /// all. Joining them would mean inventing a name map that is wrong the first time either list is
-    /// edited. Fix the vocabularies first; then this can narrow.
+    /// Deliberately day-level rather than per-supplement. The vocabularies now describe the same
+    /// set — `DailyLog.supplements` holds `NutritionContent.supplementLogOptions` plus the ones she
+    /// added herself, both of which the log can tick — but a reminder is still keyed
+    /// `essential.<initial>` or a custom UUID, neither of which is the stored name. Narrowing this
+    /// to per-supplement means joining a reminder key to a logged name, which is a real change with
+    /// its own tests, not something to infer here.
     public let daysLoggingSupplementsLastWeek: Int
     /// The hour of day she is demonstrably awake and using the app, or nil when there is too little
     /// history to say.

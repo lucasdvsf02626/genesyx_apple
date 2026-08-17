@@ -1224,6 +1224,30 @@ final class RepositoryTests: XCTestCase {
                        "and it survives the relaunch that used to re-run the correction")
     }
 
+    /// The flag records that *an* account on this phone has been migrated, but the thing it corrects
+    /// — a stored `.system` nobody chose — lives in the server row, per account. Latched, the second
+    /// legacy account to sign in on a shared phone pulled her uncorrected `.system` and landed in
+    /// dark mode having never seen the palette.
+    func testTheSecondAccountOnAPhoneStillGetsTheLightMigration() async {
+        let store = makeStore()
+        let first = FakeProfileBackend()
+        first.remote = ProfilePrefs(focusMode: .prep, themeMode: .system, pushEnabled: false)
+        await PreferencesRepository(store: store, backend: first).refresh()   // migrates, sets the flag
+
+        let phone = AppContainer(store: store, backend: nil)   // held: the clear hook is weak
+        phone.session.signOut()
+
+        let second = FakeProfileBackend()
+        second.remote = ProfilePrefs(focusMode: .prep, themeMode: .system, pushEnabled: false)
+        let hers = PreferencesRepository(store: store, backend: second)
+        await hers.refresh()
+
+        XCTAssertEqual(hers.themeMode, .light,
+                       "the correction is per-account, so it owes the next account on this phone too")
+        await hers.drainPending()          // the write it owes; the background one may still be in flight
+        XCTAssertEqual(second.remote?.themeMode, .light, "and her row is corrected, not just this device")
+    }
+
     /// The whole of T8: the quiz is answered *before* she has an account, so at the moment she
     /// answers there is no session to write under. The answers have to sit on the device, owed to
     /// the server, until sign-in provides a user id — which is exactly the offline case the other
@@ -1322,6 +1346,31 @@ final class RepositoryTests: XCTestCase {
 
         XCTAssertFalse(try encodedColumns(ProfilePrefsRow(id: "u", prefs: prefs)).contains("quiz_answers"),
                        "a partner can read this row; her intake answers must live in their own table")
+    }
+
+    /// L13. `theme` is a live column other clients may write, so this build will eventually read a
+    /// value it has never heard of. That fell back to `.system` — the one state the theme migration
+    /// in `PreferencesRepository` exists to move people *off*, and it arrived on the sync path, so
+    /// it could re-appear after the migration had already cleared it. The product default is
+    /// `.light`, and an unrecognised value should land there.
+    ///
+    /// `.system` stays a legitimate stored choice; only genuinely unknown strings take the fallback.
+    /// Built by decoding rather than by an initialiser, so this exercises the same path a real
+    /// `profiles` row takes on the way in.
+    func testAnUnknownThemeFromTheServerLandsOnTheProductDefaultNotSystem() throws {
+        func decodeTheme(_ theme: String) throws -> ThemeMode {
+            let json = #"{"id":"u","focus_mode":"prep","theme":"\#(theme)","push_enabled":true}"#
+            let row = try JSONDecoder().decode(ProfilePrefsRow.self, from: Data(json.utf8))
+            return row.domain(quizAnswers: [:]).themeMode
+        }
+
+        XCTAssertEqual(try decodeTheme("solarized"), .light,
+                       "an unrecognised theme must not drop her into the state the migration clears")
+
+        for known in ThemeMode.allCases {
+            XCTAssertEqual(try decodeTheme(known.rawValue), known,
+                           "\(known.rawValue) is a real choice and must survive the round trip")
+        }
     }
 
     /// A device with no answers has *nothing to say* about the quiz, which is not the same as

@@ -64,25 +64,31 @@ public enum CycleContent {
     // ── Fertile-window overlay (ports lib/cycleEngine.ts). When the day is in the fertile window
     // and it isn't the ovulation day itself, the hero copy switches to "fertile window" messaging.
 
-    public static func phaseSubLabel(_ phase: Phase, inFertile: Bool) -> String {
-        inFertile ? "Fertile window" : phaseLabel[phase]!
+    /// Which copy the hero speaks in. Taken from the day rather than from `phase`, because on a short
+    /// cycle the peak day lands inside the period and `phase` reports `.period` — see
+    /// `CyclePhaseInfo.isOvulationDay`. Home asked the phase and so told a woman on a 21-day cycle
+    /// "Fertile window is open" on the one day it could have named.
+    static func heroPhase(_ info: CyclePhaseInfo) -> Phase {
+        info.isOvulationDay ? .ovulatory : info.phase
     }
 
-    public static func phaseHeroText(_ phase: Phase, inFertile: Bool) -> String {
-        (inFertile && phase != .ovulatory) ? "Fertile window is open" : phaseHeroCopy[phase]!.hero
+    public static func phaseSubLabel(_ info: CyclePhaseInfo) -> String {
+        info.isFertileButNotPeak ? "Fertile window" : phaseLabel[heroPhase(info)]!
     }
 
-    public static func phaseHeroSubtext(_ phase: Phase, inFertile: Bool) -> String {
-        if inFertile && phase != .ovulatory {
-            return "Conception chances are rising — stay hydrated and prioritise rest."
-        } else {
-            return phaseHeroCopy[phase]!.sub
-        }
+    public static func phaseHeroText(_ info: CyclePhaseInfo) -> String {
+        info.isFertileButNotPeak ? "Fertile window is open" : phaseHeroCopy[heroPhase(info)]!.hero
     }
 
-    public static func phaseTags(_ phase: Phase, inFertile: Bool) -> [String] {
-        let base = phaseHeroCopy[phase]!.tags
-        return (inFertile && phase != .ovulatory) ? ["Fertile window"] + base : base
+    public static func phaseHeroSubtext(_ info: CyclePhaseInfo) -> String {
+        info.isFertileButNotPeak
+            ? "Conception chances are rising — stay hydrated and prioritise rest."
+            : phaseHeroCopy[heroPhase(info)]!.sub
+    }
+
+    public static func phaseTags(_ info: CyclePhaseInfo) -> [String] {
+        let base = phaseHeroCopy[heroPhase(info)]!.tags
+        return info.isFertileButNotPeak ? ["Fertile window"] + base : base
     }
 
     public static let phaseFoods: [Phase: [FocusFood]] = [

@@ -152,6 +152,8 @@ struct InsightsView: View {
                     cycleRegularityCard
                     symptomPatternsCard
                     ovulationCard
+                    HowThisWorksLink(slug: AppGuide.insightsGuide,
+                                     label: "Reading your trends without over-reading them")
                 }
                 .padding(.horizontal, 20).padding(.bottom, 24)
             }

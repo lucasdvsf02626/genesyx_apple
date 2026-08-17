@@ -8,7 +8,10 @@ Connect submission so the repository does not maintain two conflicting listings.
 
 - **App:** Genesyx: Cycle & Fertility
 - **Bundle ID:** `com.genesyx.app`
-- **Version:** `1.1.0`
+- **Version:** `1.2.0` — matches `MARKETING_VERSION` in `project.yml`. This line read `1.1.0` while
+  the scope notes below already described 1.2.0; the version is the authoritative one in
+  `project.yml`, not this file. **Build number is a separate field and must be bumped to 19** —
+  build 18 was archived before the auth gate landed, so that archive is void.
 - **Primary category:** Health & Fitness
 - **Price:** Free
 - **Accounts:** Required for cloud sync; email, Google, and Sign in with Apple are supported

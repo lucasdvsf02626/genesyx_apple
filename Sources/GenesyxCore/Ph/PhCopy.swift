@@ -39,7 +39,35 @@ public enum PhCopy {
     public static let spineNextTitle = "What to do next"
     public static let spineNextHealthy = "Keep logging as you go — a steady record is what makes your trend meaningful."
 
+    /// c2. Supporting vaginal health — everyday habits, not treatment.
+    ///
+    /// The pH tab could tell her *when to seek help* in five places and could not tell her one
+    /// thing she might do herself; the only "support" on the tab was a supplements link. This is
+    /// ordinary public-health guidance (NHS), deliberately written to reassure rather than to
+    /// instruct: most of it is about leaving well alone, which is the honest advice.
+    ///
+    /// Names no condition and prescribes no treatment, so it stays inside the banned-phrase guard
+    /// and the wellness framing. It carries the same NHS citation as "Why pH matters".
+    public static let spineSupportTitle = "Supporting your vaginal health"
+    public static let spineSupportBody = "Your body keeps its own balance, and it usually does that best when left alone. Warm water is enough for washing — the outside only, as the inside looks after itself. Unscented products, breathable cotton underwear, and changing out of damp swimwear or gym kit all help. Douching and scented washes work against that balance rather than for it."
+
+    /// The one line that turns the section from advice into a route out. Deliberately lowers the
+    /// bar for asking: no appointment, nothing unusual about the question.
+    public static let spineSupportSignpost = "If you notice a change in discharge, smell, or comfort that is new for you, a pharmacist can help — no appointment needed, and it's a very ordinary thing to ask about."
+
     /// d. Genesyx supplements connection (navigational; no causal pH claim).
     public static let spineSupplementsTitle = "Genesyx supplements"
     public static let spineSupplementsBody = "A consistent daily routine supports your overall wellbeing. Explore your Genesyx supplement plan whenever you're ready."
+
+    /// Every user-facing string in this file, so the banned-phrase guard scans all of them.
+    ///
+    /// The guard used to hold its own hand-written copy of this list, which meant a new constant
+    /// was unguarded until somebody remembered to add it there too — and nothing failed if they
+    /// didn't. Registering here at least puts the omission next to the string it would miss.
+    public static let allSurfaces: [String] = [
+        healthy, elevated, elevatedSignpost, disclaimer, accuracyCaveat, cycleContextCaveat,
+        spineWhyTitle, spineWhyBody, spineMeaningTitle, spineNextTitle, spineNextHealthy,
+        spineSupportTitle, spineSupportBody, spineSupportSignpost,
+        spineSupplementsTitle, spineSupplementsBody,
+    ]
 }

@@ -4,6 +4,130 @@
 > before this could be saved). Companion to `CHANGE_LIST_PLAN.md`, which tracks the client's
 > change list task-by-task. This file tracks **what is in flight right now**.
 
+> ## §0-LAUNCH — launch readiness, 17 Aug 2026 (read this first)
+>
+> **[`LAUNCH_READINESS.md`](LAUNCH_READINESS.md) is the current answer to "can we ship?"**
+> Short version: **the app is ready, the submission is not.** Seven audit defects were closed and
+> falsified on 17 Aug — R1, R2, R4, R5(min), R6, R7, R8 — plus the missing 1A row 6 copy. A new
+> customer walkthrough (`CustomerWalkthroughUITests.swift`) proves **all seven tabs render their
+> own screen**; the pre-existing `testTabNavigation` had only ever asserted that the tab *button*
+> survived a tap, which is true whether the tab rendered or not.
+>
+> Everything still blocking is off-code: the **Article 9 lawful-basis decision**, Sign in with
+> Apple `/auth/revoke`, deploying `delete_account`, one **live password-reset email check**, the
+> build-number bump, fresh screenshots, and App Store Connect data entry.
+>
+> **Later on 17 Aug**, still on the same tree: L12 closed incidentally by R4, **L13 fixed**
+> (`RemoteModels.swift` decoded an unrecognised theme string into `.system` — the one state the
+> theme migration exists to move people off; now `.light`), and L15 partly closed because the new
+> pH support signpost triggers on symptoms with **no reading threshold**, so a woman with symptoms
+> and normal readings is no longer told nothing. The new copy is also covered by a UI test that
+> scrolls to it and requires it to be **hittable**, not merely present — existence alone proves
+> nothing here, because the tab ZStack keeps every tab's text in the tree at all times.
+> `docs/CLINICAL_REVIEW_PACK.md` assembles everything needing clinician sign-off into one
+> forwardable document.
+>
+> **L14 fixed** — the pH tab had no route into the pH Learn content, so its own sections leaned on
+> background she had no way to reach. It now links to *"Understanding your vaginal pH"*, on both the
+> tab and the pH sheet reached from Track. **Read this before adding another Learn link anywhere:**
+> the obvious target was the weekly piece on the same subject, and it would have shipped dead —
+> Learn resolves deep links through the *published* set, and that article is dated 30 Aug, so the
+> link would have compiled, switched tab, and landed on "unavailable" without failing anything.
+> Both new tests were falsified against that real article. Also measured while doing it: the
+> `phSpine.learn` and long-standing `phSpine.supplements` accessibility identifiers are **not in the
+> XCUITest tree** — query those buttons by label, not by identifier. Left unchanged; it is unrelated
+> to this release.
+>
+> **One open question I could not settle from the repo:** all seven tabs are stacked and built at
+> once, so 343 static texts sit in the accessibility tree simultaneously. Touch routing is correct
+> and asserted. Whether **VoiceOver** skips the hidden tabs needs sixty seconds on a device —
+> `.accessibilityHidden(true)` demonstrably does *not* propagate past each tab's `NavigationStack`
+> (both modifier orderings tested, tree identical), so the app relies on the `opacity(0)` behaviour
+> rather than the explicit guard it appears to have.
+>
+> ## §0-GUIDES — in-app teaching + the client-facing product report, 17 Aug 2026
+>
+> **Two deliverables, both complete.**
+>
+> **1. The app now has a findable manual.** The ten `g*` "How X works" guides had shipped months
+> ago and were reachable *only* by knowing to tap the "Guides" chip on the Learn tab. No new
+> content was written — three routes in were added, all reading from one list:
+>
+> - **`AppGuide`** (`LearnModels.swift`) — twelve guides grouped by the tab each explains, each with
+>   a one-line *purpose* saying why she would read it, because the titles say what a thing is and
+>   someone new is asking what it is **for**.
+> - **`HowToUseView`** (`LearnViews.swift`, route `"how-to-use-genesyx"`) — the index screen,
+>   reached from a card at the top of Learn and a row in Profile → About.
+> - **`HowThisWorksLink`** — one reusable component, used by Home, Track, Nutrition and Insights.
+>   **Written once on purpose:** the deep link is two coupled statements (`pendingLearnSlug`, then
+>   `selection = 5`), and getting only the first right leaves her on the Learn list with no
+>   explanation of why she is there. That exact half-written state is what the falsification run
+>   reproduced.
+>
+> **⚠️ READ THIS BEFORE ADDING ANY LEARN LINK — it is the same trap as L14 and it will bite again.**
+> Every route resolves through `LearnLibrary.articles`, which withholds future-dated pieces. A
+> perfectly-spelled slug for one of the twelve date-gated `w*` articles (23 Aug – 8 Nov 2026)
+> compiles, switches tab, and lands on "unavailable" — or, in the index, silently fails to draw the
+> row at all. **Nothing crashes and nothing looks wrong in review.** `AppGuideTests` (8 tests) now
+> asserts every signposted slug both resolves *and* carries no `publishedAt` at all — the weaker
+> "published today" check would pass on a machine run after the reveal date while the shipped build
+> was still hiding the row. Falsified twice, including backdating an article to 1 Aug, because a
+> *future*-dated slug makes `articleBySlug` return nil and so cannot falsify the date assertion.
+>
+> **⚠️ Measured, pre-existing, unresolved: XCUITest cannot fire any Profile `rowItem` button.**
+> `app.buttons["How to use Genesyx"]` reports `exists`, `isHittable`, and a real frame — and tapping
+> it does nothing. **Three rows that have shipped for months behave identically** (`Privacy & Data`,
+> `Health Profile`, `Personal Details`), while `navRow` NavigationLinks on the same screen work
+> fine. `press(forDuration:)`, normalised-coordinate taps, slow scrolling and a 1.5 s settle all
+> failed. Almost certainly a harness limitation, not a defect — but **do not write a test against a
+> Profile `rowItem` expecting it to pass.** Needs 30 seconds on a device; listed as check 0 in
+> `LAUNCH_READINESS.md` §4. The feature is reachable regardless: the Learn card and the four inline
+> links are both proved end to end.
+>
+> **Deliberately not built: first-run coach marks.** Rejected as the highest-risk thing to add
+> immediately before submission, and because people look for help when they are stuck, not on first
+> launch. Do not re-add without asking.
+>
+> **Full sweep over this tree, 17 Aug 10:26–10:44** (`/tmp/fullsuite.log`, `-derivedDataPath
+> /tmp/dd-guides`): Core **294 / 0**, `GenesyxAppTests` **315 / 0**, `GenesyxUITests` **93 / 0** in
+> 1,061 s, `** TEST SUCCEEDED **`, **no flakes and no retries**. This closes the item §0 recorded as
+> owed — *"a full 83-test UI sweep over `c9aa8ba` has **not** been run"*. It is 93 now, over a tree
+> that is ahead of `c9aa8ba` by the 17 Aug work. The **Release-configuration build over the
+> to-be-committed SHA is still owed**, as is the build bump 18 → 19.
+>
+> **2. `docs/HOW_THE_APP_WORKS.md`** — the plain-English product report for Lucas and the client.
+> Every tab's purpose, the goal of each feature, how the parts connect, a real first week, the eight
+> notification categories, where data lives, and what is deliberately out of 1.2.0. Figures were
+> verified against source rather than carried over from notes: five quiz questions and their exact
+> wording, 2,400 ml from `TrackingEngine.defaultWaterGoalMl`, six food groups, four essentials, and
+> the milestone copy verbatim. **One correction made during writing:** milestones are *both* a
+> notification and an in-app celebration, and there is a `.milestones` mute category — an earlier
+> draft called them in-app only.
+>
+> ## §0-AUDIT — full change-list re-audit, 17 Aug 2026
+>
+> **[`CHANGE_LIST_AUDIT_2026-08-17.md`](CHANGE_LIST_AUDIT_2026-08-17.md) is the current statement
+> of what actually works.** Five independent read-only audits over all 45 rows of sections 1A–3B
+> (section 4 excluded by instruction). Result: 31 Done, 11 Partial, 3 Missing — but the material
+> finding is **three release-grade defects inside rows already ticked Done**:
+>
+> 1. ~~`TrackView.swift:588-597` and `:1404-1414` count `supplements` only — the tracker's Nutrition
+>    row tells a woman who logged six food groups *"No entries yet."*~~ **FIXED (R1).**
+> 2. ~~`NutritionContent.supplementPlan` (Folate/Omega-3/Vitamin D/**Zinc**) ≠ `LogView.swift:21`
+>    (Folic acid/Vitamin D/**Iron**/Omega-3). Zinc is unloggable, "4 of 4" is unreachable.~~
+>    **FIXED (R2)** — one list now feeds both.
+> 3. `SupabaseBackend.swift:50` calls `resetPasswordForEmail` with **no `redirectTo`**, and no
+>    recovery deep-link handler or new-password screen exists. **STILL OPEN — needs a live email
+>    test, not a code read.** This is the only one of the three that code cannot close.
+>
+> Also: the pH content guard is **not** what hollowed out 1A row 6 — symptom vocabulary is not
+> banned and the missing guidance is fully writable inside the current guard. No relaxation needed.
+>
+> Five items need a client or clinician decision, not code: article #7 shipping as week 12; the
+> absolute-date release schedule after 8 Nov; two different numbers both labelled "streak"; recipe
+> cards supplementing rather than replacing the text-only foods; and the pH tab rendering
+> "Bacterial vaginosis" as a citation label while the guard bans it in prose.
+
 **Branch:** `main` · **HEAD:** `c9aa8ba` *"Withhold partner linking from the 1.2.0 build, prove
 the release scope, and land the twelve-week plan"* — committed 2026-08-14 22:31 as the verified
 batch of everything that was in flight (partner-scope withholding + `ReleaseScopeTests`, the
@@ -273,7 +397,7 @@ rather than assuming it was reversed.
 | **D2** | Deleting a whole daily log | ❌ **Not in this release** | The data-retention ruling item 1B was half-blocked on. **Build no delete path on either client.** |
 | **D3** | Cycle edits + article reads counting toward the streak | ❌ **Not in this release** | H6 / item 7. |
 | **D4** | Occasional streak restore | ❌ **Not in this release** | H7 / item 8. |
-| **D5** | The bundled guide PDF | ⚠️ **Usable internally — NOT App Store-ready** | Ships in internal/TestFlight builds only; a public-submission blocker until §0h is done. |
+| **D5** | The bundled guide PDF | ⚠️ **Usable internally — NOT App Store-ready** | Ships in internal/TestFlight builds only. §0h blockers 1 and 4 closed 17 Aug 2026; 2 and 3 are with the designer and the medical review is outstanding, so it stays a public-submission blocker. |
 
 Three consequences a future agent must not get wrong:
 
@@ -309,7 +433,8 @@ PDF). Do not reset, stash or discard any of it — batches 1 through 9 plus H22 
 **H20 audit finding #2 — "Unlock My Free Guide" unlocks nothing.** The client returned a product
 decision, and this session implemented it. Tracked as tasks #48–#54; **#48–#54 are complete.**
 Falsification and the full UI suite were re-run 14 Aug 2026 against a fresh backup of the
-production file. The PDF content blockers in §0h remain open.
+production file. Two of the four PDF content blockers in §0h remain open (2 and 3, page-20 artwork),
+along with the medical review.
 
 ### 0c. The decision that was approved — implement exactly this, do not re-litigate it
 
@@ -369,9 +494,15 @@ not carried over from before it.
 
 **The PDF is confirmed in the built product, not merely in the repository:**
 `~/Library/Developer/Xcode/DerivedData/Genesyx-adfpdsulhpkxjwhgqbthjlvpvgrl/Build/Products/Debug-iphonesimulator/Genesyx.app/Genesyx_7_Day_Fertility_Nutrition_Starter_Guide.pdf`
-— 6,568,029 bytes, md5 `618149b77247080cc9061f971886d379`, **byte-identical to the repository
-copy**. `FreeGuideBundleTests` additionally proves PDFKit can open what shipped and that it is
-multi-page, which a filename check alone would not.
+— **6,570,205 bytes, md5 `6ccda16d80dab42905d1da676369ecb5`**, **byte-identical to the repository
+copy**. `FreeGuideBundleTests` additionally proves PDFKit can open what shipped, that it is
+multi-page, and that its internal title is the one the app displays — none of which a filename
+check alone would catch.
+
+> Those figures are the **title-corrected** file (17 Aug 2026, §0h blocker 1). The 14 August
+> evidence rows elsewhere in this document and in `docs/REPORT_OF_THE_DAY_2026-08-14.md` record
+> 6,568,029 / `618149b77247080cc9061f971886d379`; they were accurate when written and are left
+> alone as history.
 
 ### 0f. What is NOT done — read this before claiming the batch is complete
 
@@ -420,16 +551,36 @@ with the copy in `App/Genesyx/Resources` and should be deleted rather than commi
 The supplied file is a **temporary integration asset**. It is wired in correctly and it renders. It
 must not ship until:
 
-1. **Filename and internal PDF metadata read "7-Day Fertility Nutrition Starter Guide"** — it was
-   supplied as a recipe book, so a user who saves or shares it gets a different title from the one
-   the app showed her.
-2. **Page 20's typo "Download out free app" is corrected to "our".**
-3. **Page 20's QR code / app-download call-to-action is removed or rewritten**, because it tells a
-   reader who is already inside the app to go and download the app — and the QR route is precisely
-   the silent exit to Safari the reader now blocks.
-4. **The PDF is accessibility-tagged, or the app carries an accessible text equivalent.** The reader
-   sets an `.accessibilityLabel` so VoiceOver does not land on an unnamed view, but a label is not a
-   text equivalent.
+1. ✅ **CLOSED 17 Aug 2026 — Filename and internal PDF metadata read "7-Day Fertility Nutrition
+   Starter Guide".** The filename was already right; the internal title said "Genesyx - Recipe
+   Book", so a woman who saved or shared it got a different document from the one the app had just
+   shown her. Corrected in both the Info dictionary and the XMP metadata **without re-encoding a
+   single page** — a PDF incremental update appends the new objects and a new xref, and the legacy
+   XMP packet was patched in place at identical byte length by reclaiming insignificant XML
+   indentation. Every original byte is preserved verbatim; verified against the pristine file at
+   0 text and 0 rendered-pixel mismatches across all 20 pages.
+   **New size 6,570,205 bytes, md5 `6ccda16d80dab42905d1da676369ecb5`** (was 6,568,029 /
+   `618149b77247080cc9061f971886d379`). Guarded by
+   `App/GenesyxTests/FreeGuideBundleTests.swift` → `testTheBundledPdfCarriesTheTitleTheAppShows`,
+   which asserts against the built `.app`, not the repository copy.
+2. ⏳ **WITH THE DESIGNER — Page 20's typo "Download out free app" corrected to "our".**
+3. ⏳ **WITH THE DESIGNER — Page 20's QR code / app-download call-to-action removed or rewritten**,
+   because it tells a reader who is already inside the app to go and download the app — and the QR
+   route is precisely the silent exit to Safari the reader now blocks.
+
+   2 and 3 are **artwork**, not metadata: the wording sits in the exported text layer as well as
+   the picture, so a visual patch would leave a screen reader still announcing the mistake. They
+   need an Affinity 3.1.0 re-export. Briefed in **`docs/FREE_GUIDE_DESIGNER_BRIEF.md`**, which also
+   tells the designer how to keep correction 1 alive through the re-export.
+4. ✅ **CLOSED 17 Aug 2026 — the app carries an accessible text equivalent.** `.accessibilityLabel`
+   names the view but is not a text equivalent, so all 20 pages were transcribed as domain content
+   (`Sources/GenesyxCore/Content/FreeGuideContent.swift`) and are rendered as native, navigable,
+   resizable SwiftUI with a **Text / Pages** toggle in the reader; VoiceOver users get the text
+   version by default. Extracting the PDF's own text layer at runtime was rejected deliberately —
+   it would make VoiceOver spell out the decorative `FO O D S FO R F E RT I L I TY` footer twenty
+   times and read blockers 2 and 3 aloud. The transcription therefore departs from the printed page
+   in exactly three recorded places, each pinned by a test in
+   `Tests/GenesyxCoreTests/FreeGuideContentTests.swift`.
 
 **And, tracked separately: medical / content-source review of the guide has not been done.** Every
 other piece of shipping content carries a citation, a disclaimer and a sign-off — that is the
@@ -470,8 +621,9 @@ git diff --stat -- . ':!graphify-out'
 > `Text("GENESYX")` is now `Image("brand_lockup")` at 220×54. H22 is **Engineering Done;
 > simulator verified; physical-device QA deferred.** Authoritative current baseline:
 > **267 domain / 288 app / 79 UI (1 skip)**, `/tmp/genesyx_h22i_full_ui.log` (14 Aug 14:16).
-> The four PDF content blockers and the medical review in §0h / §11.1c stay open —
-> **do not mark the guide App Store-ready.**
+> Of the four PDF content blockers in §0h / §11.1c, **1 and 4 closed 17 Aug 2026**; **2 and 3 are
+> page-20 artwork with the designer** (`docs/FREE_GUIDE_DESIGNER_BRIEF.md`) and the medical review
+> is still open — **do not mark the guide App Store-ready.**
 >
 > **Five product decisions were frozen on 14 Aug and are settled input, not open questions —
 > see §0-FROZEN.** D1 warm/premium **approved** (group 5 now 4/4). D2 daily-log deletion, D3 cycle

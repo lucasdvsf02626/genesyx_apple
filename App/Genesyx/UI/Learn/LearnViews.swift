@@ -74,6 +74,7 @@ struct LearnLandingView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     header
                     if !introSeen { introHint }
+                    HowToUseCard { path.append(HowToUseView.route) }
                     TwelveWeekPlanCard { path.append(TwelveWeekPlan.route) }
                     categoryChips
                     if selectedCategory == nil, let featured = LearnLibrary.featured {
@@ -100,6 +101,8 @@ struct LearnLandingView: View {
             .navigationDestination(for: String.self) { slug in
                 if slug == TwelveWeekPlan.route {
                     TwelveWeekPlanView(path: $path)
+                } else if slug == HowToUseView.route {
+                    HowToUseView { path.append($0) }
                 } else {
                     ArticleDetailView(slug: slug, path: $path)
                 }
@@ -337,6 +340,138 @@ private struct GuideBookRow: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("learn.guideBook")
+    }
+}
+
+// MARK: - How to use Genesyx
+
+/// The table of contents for the app's own how-to guides.
+///
+/// Grouped by tab because the question this answers is *"what is this screen for?"* — asked while
+/// looking at the screen. An alphabetical or chronological list would require her to already know
+/// what the feature is called, which is the thing she is trying to find out.
+struct HowToUseView: View {
+    /// Pushed onto the same `[String]` path the articles use, so it must not collide with a slug.
+    /// `AppGuideTests` asserts it doesn't.
+    static let route = "how-to-use-genesyx"
+
+    let onOpen: (String) -> Void
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                Text("Every part of the app, and what it is for. Start anywhere — nothing here has to be read in order.")
+                    .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                ForEach(AppGuide.byTab, id: \.tab) { group in
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(group.tab.uppercased())
+                            .font(.gxEyebrow).foregroundStyle(GenesyxColor.primary)
+                        // Resolved through `LearnLibrary`, so a guide that is not published simply
+                        // does not appear. A row that opens an "unavailable" screen would be worse
+                        // than a missing row: it looks like a broken app rather than a shorter list.
+                        ForEach(group.entries) { entry in
+                            if let article = LearnLibrary.articleBySlug(entry.slug) {
+                                AppGuideRow(entry: entry, article: article) { onOpen(entry.slug) }
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 24)
+        }
+        .frame(maxWidth: .infinity)
+        .gxPageBackground()
+        .navigationTitle("How to use Genesyx")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct AppGuideRow: View {
+    let entry: AppGuideEntry
+    let article: LearnArticle
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(article.title).font(.gxLabel).foregroundStyle(GenesyxColor.foreground)
+                        .multilineTextAlignment(.leading)
+                    Text(entry.purpose).font(.system(size: 12)).foregroundStyle(GenesyxColor.mutedForeground)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 8)
+                Image(systemName: "chevron.right").font(.system(size: 14))
+                    .foregroundStyle(GenesyxColor.mutedForeground)
+            }
+            .padding(12)
+            .background(GenesyxColor.card)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// The entry point on the Learn tab. Given its own card rather than folded into the category chips
+/// because "I don't know how this app works" is a different need from "I want to read something".
+struct HowToUseCard: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 14) {
+                Image(systemName: "questionmark.circle.fill")
+                    .font(.system(size: 24)).foregroundStyle(GenesyxColor.primary)
+                    .frame(width: 96, height: 72)
+                    .background(GenesyxColor.primary.tintOnWhite(0.10))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("How to use Genesyx").font(.gxLabel).foregroundStyle(GenesyxColor.foreground)
+                        .multilineTextAlignment(.leading)
+                    Text("Every feature, and what it is for")
+                        .font(.system(size: 11.5)).foregroundStyle(GenesyxColor.mutedForeground)
+                        .multilineTextAlignment(.leading)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").font(.system(size: 14)).foregroundStyle(GenesyxColor.mutedForeground)
+            }
+            .padding(10)
+            .background(GenesyxColor.card)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("learn.howToUse")
+    }
+}
+
+/// The "How this works" signpost a tab carries at the foot of its own screen.
+///
+/// One type rather than a hand-rolled button per tab: the deep link is two coupled statements
+/// (`pendingLearnSlug`, then `selection`) and getting only the first right lands her on the Learn
+/// list with no explanation of why she is there. Written once, it cannot be half-written elsewhere.
+struct HowThisWorksLink: View {
+    @EnvironmentObject private var router: TabRouter
+    let slug: String
+    var label = "How this works"
+
+    var body: some View {
+        Button {
+            router.pendingLearnSlug = slug
+            router.selection = 5
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "questionmark.circle").font(.system(size: 13, weight: .semibold))
+                Text(label).font(.system(size: 13, weight: .semibold))
+                    .multilineTextAlignment(.leading)
+                Image(systemName: "arrow.right").font(.system(size: 11, weight: .semibold))
+            }
+            .foregroundStyle(GenesyxColor.primary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .buttonStyle(.plain)
     }
 }
 

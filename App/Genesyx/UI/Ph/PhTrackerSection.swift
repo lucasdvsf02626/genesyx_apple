@@ -7,10 +7,22 @@ import GenesyxCore
 struct PhTabView: View {
     @EnvironmentObject private var router: TabRouter
 
+    /// The explainer the tab signposts. Named rather than inlined so a test can assert it still
+    /// resolves to a *published* article: Learn deep links go through `LearnLibrary.articles`,
+    /// which hides anything dated in the future, so a slug can be spelled correctly and still land
+    /// her on the "unavailable" screen. `guide-understanding-vaginal-ph` carries no `publishedAt`,
+    /// unlike the weekly pieces on the same subject.
+    static let learnArticleSlug = "guide-understanding-vaginal-ph"
+
     var body: some View {
         NavigationStack {
             ScrollView {
-                PhTrackerSection(onOpenSupplements: { router.selection = 3 })
+                PhTrackerSection(
+                    onOpenSupplements: { router.selection = 3 },
+                    onOpenLearn: {
+                        router.pendingLearnSlug = PhTabView.learnArticleSlug
+                        router.selection = 5
+                    })
                     .padding(.horizontal, 20)
                     .padding(.top, 8)
                     .padding(.bottom, 24)
@@ -29,6 +41,9 @@ struct PhTabView: View {
 struct PhTrackerSection: View {
     /// Optional navigation into the supplements area (only wired where a router is available).
     var onOpenSupplements: (() -> Void)? = nil
+    /// Optional navigation into the pH explainer in Learn. Same contract as above: nil where no
+    /// router exists, so previews and embedded uses simply do not show the link.
+    var onOpenLearn: (() -> Void)? = nil
 
     @EnvironmentObject private var ph: PhRepository
     /// One piece of state, presented with `.sheet(item:)`. The pair it replaced — a `showSheet`
@@ -41,6 +56,7 @@ struct PhTrackerSection: View {
         PhTrackerCard(
             readings: ph.readings,
             onOpenSupplements: onOpenSupplements,
+            onOpenLearn: onOpenLearn,
             onLog: { sheet = .new },
             onEdit: { sheet = .edit($0) })
             .sheet(item: $sheet) { mode in
@@ -91,6 +107,7 @@ private enum PhRange: String, CaseIterable, Identifiable {
 private struct PhTrackerCard: View {
     let readings: [PhReading]
     var onOpenSupplements: (() -> Void)? = nil
+    var onOpenLearn: (() -> Void)? = nil
     let onLog: () -> Void
     let onEdit: (PhReading) -> Void
     @State private var range: PhRange = .month
@@ -168,7 +185,7 @@ private struct PhTrackerCard: View {
                 emptyState
             }
 
-            PhSpine(latest: readings.last, onOpenSupplements: onOpenSupplements)
+            PhSpine(latest: readings.last, onOpenSupplements: onOpenSupplements, onOpenLearn: onOpenLearn)
         }
         .padding(20)
         .background(GenesyxColor.card)
@@ -294,16 +311,19 @@ private struct PhTrackerCard: View {
     }
 }
 
-/// Vaginal pH line chart over the 3.5–7.0 domain. Two-band background: healthy (green) 3.8–4.5,
-/// elevated (amber) above 4.5.
+/// Vaginal pH line chart. Two-band background: healthy (green) up to 4.5, elevated (amber) above.
+/// The visible domain is `PhStatus.chartDomain` rather than the full loggable range — see there for
+/// why the full range made the chart unreadable.
 private struct PhChart: View {
     let readings: [PhReading]
+
+    private var domain: ClosedRange<Double> { PhStatus.chartDomain(for: readings.map(\.phValue)) }
 
     var body: some View {
         Chart {
             ForEach(Array(readings.enumerated()), id: \.element.id) { index, reading in
-                // Defensive clamp to the 3.5–7.0 axis so a stray out-of-range value stays on-chart.
-                let y = Swift.min(Swift.max(reading.phValue, PhStatus.min), PhStatus.max)
+                // Defensive clamp so a stray out-of-range value stays on-chart.
+                let y = PhStatus.clamped(reading.phValue)
                 LineMark(x: .value("i", index), y: .value("pH", y))
                     .foregroundStyle(GenesyxColor.primary)
                     .interpolationMethod(.catmullRom)
@@ -312,25 +332,24 @@ private struct PhChart: View {
                     .symbolSize(40)
             }
         }
-        .chartYScale(domain: PhStatus.min...PhStatus.max)
+        .chartYScale(domain: domain)
         .chartXAxis(.hidden)
         .chartYAxis {
-            AxisMarks(values: [PhStatus.min, 4.5, PhStatus.max]) { value in
+            AxisMarks(values: [domain.lowerBound, 4.5, domain.upperBound]) { value in
                 AxisValueLabel { if let v = value.as(Double.self) { Text(String(format: "%.1f", v)).font(.system(size: 9)) } }
                 AxisGridLine()
             }
         }
         .chartBackground { _ in
             GeometryReader { geo in
-                // Two bands only: shade healthy 3.8–4.5 (green) and elevated >4.5 (amber),
-                // proportional to the 3.5–7.0 domain. Below 3.8 is left unshaded.
-                let span = PhStatus.max - PhStatus.min
-                let elevatedHeight = geo.size.height * (PhStatus.max - 4.5) / span
-                let healthyHeight = geo.size.height * (4.5 - 3.8) / span
+                // Two bands, proportional to the visible domain: elevated (>4.5) on top, healthy
+                // beneath it down to the floor. The floor is the bottom of the healthy band, so
+                // there is nothing left to leave unshaded.
+                let span = domain.upperBound - domain.lowerBound
+                let elevatedHeight = geo.size.height * (domain.upperBound - 4.5) / span
                 VStack(spacing: 0) {
                     Theme.color(for: .elevated).opacity(0.10).frame(height: elevatedHeight)
-                    Theme.color(for: .healthy).opacity(0.12).frame(height: healthyHeight)
-                    Color.clear
+                    Theme.color(for: .healthy).opacity(0.12)
                 }
             }
         }
@@ -343,6 +362,7 @@ private struct PhChart: View {
 private struct PhSpine: View {
     let latest: PhReading?
     let onOpenSupplements: (() -> Void)?
+    let onOpenLearn: (() -> Void)?
 
     private static let sourceIDs = ["vaginal-ph", "statpearls-vaginitis"]
 
@@ -355,12 +375,41 @@ private struct PhSpine: View {
                 SourcesFooter(sourceIDs: PhSpine.sourceIDs)
             }
 
+            // The way *into* the pH reading. Four Learn guides send her to this tracker and the
+            // tracker sent her nowhere back, so the sections below lean on background she had no
+            // signposted route to. Placed under "Why pH matters" because that is where the question
+            // it answers actually occurs to her.
+            if let onOpenLearn {
+                Button(action: onOpenLearn) {
+                    HStack(spacing: 4) {
+                        Text("Read: Understanding your vaginal pH")
+                            .font(.system(size: 13, weight: .semibold))
+                            .multilineTextAlignment(.leading)
+                        Image(systemName: "arrow.right").font(.system(size: 12, weight: .semibold))
+                    }
+                    .foregroundStyle(GenesyxColor.primary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("phSpine.learn")
+            }
+
             // b + c. Interpretation and next-steps only when there's a current reading.
             if let latest {
                 let status = PhStatus.classify(latest.phValue)
                 section(PhCopy.spineMeaningTitle, status == .elevated ? PhCopy.elevated : PhCopy.healthy)
                 section(PhCopy.spineNextTitle, status == .elevated ? PhCopy.elevatedSignpost : PhCopy.spineNextHealthy)
             }
+
+            // c2. Supporting vaginal health. Shown unconditionally, unlike b and c: it is the one
+            // section that is useful before she has ever logged a reading, and it is the answer to
+            // "what can I do?" — which the tab previously could not answer at all.
+            section(PhCopy.spineSupportTitle, PhCopy.spineSupportBody) {
+                Text(PhCopy.spineSupportSignpost)
+                    .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 2)
+            }
+            .accessibilityIdentifier("phSpine.support")
 
             // d. Genesyx supplements connection (navigational; no causal pH claim).
             VStack(alignment: .leading, spacing: 8) {

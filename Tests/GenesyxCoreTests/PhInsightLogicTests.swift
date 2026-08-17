@@ -127,15 +127,41 @@ final class PhInsightLogicTests: XCTestCase {
 
     // ── Banned-phrase guard over pH-surface copy (Learn pH content guarded in the app test target) ──
 
+    /// Scans `PhCopy.allSurfaces` rather than a list written out here. The local list silently
+    /// stopped covering anything added to `PhCopy` afterwards, so the guard's reach quietly shrank
+    /// every time the copy grew — a guard that passes because it is looking at less is worse than
+    /// no guard, because it reports success.
     func testPhCopyHasNoBannedClinicalOrDietTerms() {
         let banned = ["bv", "thrush", "infection", "candida", "vaginosis", "leafy greens", "whole grains", "mineral water"]
-        let surfaces = [PhCopy.healthy, PhCopy.elevated, PhCopy.elevatedSignpost, PhCopy.disclaimer, PhCopy.accuracyCaveat, PhCopy.cycleContextCaveat,
-                        PhCopy.spineWhyTitle, PhCopy.spineWhyBody, PhCopy.spineMeaningTitle, PhCopy.spineNextTitle, PhCopy.spineNextHealthy, PhCopy.spineSupplementsTitle, PhCopy.spineSupplementsBody]
-        for s in surfaces {
+        XCTAssertGreaterThanOrEqual(PhCopy.allSurfaces.count, 16, "the registry must not shrink")
+        for s in PhCopy.allSurfaces {
             let lower = s.lowercased()
             for term in banned {
                 XCTAssertFalse(lower.contains(term), "Banned term \"\(term)\" in pH copy: \(s)")
             }
+        }
+    }
+
+    /// 1A row 6. *When to seek help* existed in five places; *supporting vaginal health* existed
+    /// nowhere, and the only "support" on the pH tab was a supplements link. The row was an
+    /// authoring gap, not a compliance constraint — the guard above never banned this vocabulary.
+    func testThePhTabTellsHerSomethingSheCanDoAndNotOnlyWhenToWorry() {
+        let support = PhCopy.spineSupportBody + " " + PhCopy.spineSupportSignpost
+
+        // Everyday habits, in her own words rather than clinical ones.
+        for everyday in ["warm water", "unscented", "cotton", "douching"] {
+            XCTAssertTrue(support.lowercased().contains(everyday),
+                          "the guidance should mention \(everyday)")
+        }
+
+        // A route out that does not require an appointment she may not book.
+        XCTAssertTrue(PhCopy.spineSupportSignpost.lowercased().contains("pharmacist"),
+                      "she needs somewhere to go, not only something to notice")
+
+        // It must not drift into instructing or diagnosing.
+        for clinical in ["treat", "cure", "diagnos", "prescrib", "medicat", "should take"] {
+            XCTAssertFalse(support.lowercased().contains(clinical),
+                           "\"\(clinical)\" turns everyday guidance into medical advice")
         }
     }
 }

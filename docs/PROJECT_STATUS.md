@@ -2,6 +2,13 @@
 
 _Snapshot: 2026-07-16 · branch `main` · version 1.1.0 (build 12)_
 
+> ⚠️ **HISTORICAL SNAPSHOT — do not plan the 1.2.0 submission from this file.** It describes
+> 16 July 2026. The current release is **1.2.0**, the build number must go to **19**, and the auth
+> gate, the client change list and the 17 August fixes all postdate everything below. For the live
+> picture read [`LAUNCH_READINESS.md`](LAUNCH_READINESS.md); for what the code actually does read
+> [`CHANGE_LIST_AUDIT_2026-08-17.md`](CHANGE_LIST_AUDIT_2026-08-17.md). Left otherwise unedited on
+> purpose — it is the record of what was true in July.
+
 This is the "where we are" document: what shipped, what's uploaded, what's live on
 the backend, and what still needs a human. It is a status report, not a spec.
 

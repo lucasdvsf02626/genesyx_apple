@@ -28,4 +28,25 @@ public enum PhStatus: String, CaseIterable, Sendable {
     public static func clamped(_ value: Double) -> Double {
         Swift.min(Swift.max(value, min), max)
     }
+
+    /// Where the trend chart's Y axis stops when nothing forces it higher. Chosen so the 4.5
+    /// threshold lands on the halfway line: healthy is the bottom half, elevated the top half.
+    public static let chartCeiling = 5.2
+
+    /// Visible span of the trend chart — deliberately narrower than the loggable range.
+    ///
+    /// Scaling to the full 3.8–7.0 put the threshold 78% of the way up, so the chart was mostly
+    /// amber and every real reading was crushed into the bottom fifth. Two months of weekly
+    /// logging drew a flat line along the floor of a warning-coloured box — the opposite of the
+    /// "read the shape, not the point" instruction the Learn guide gives her.
+    ///
+    /// The floor stays at `min` so charts from different months are comparable at a glance. The
+    /// ceiling opens up if she has actually logged above it, because clamping a genuinely high
+    /// reading flat against the top would hide the one result that matters most.
+    public static func chartDomain(for values: [Double]) -> ClosedRange<Double> {
+        guard let highest = values.map(clamped).max(), highest + 0.3 > chartCeiling else {
+            return min...chartCeiling
+        }
+        return min...Swift.min(max, highest + 0.3)
+    }
 }

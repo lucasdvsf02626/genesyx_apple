@@ -48,6 +48,8 @@ struct HomeView: View {
                     phNudgeCard
                     learnCard
                     GxPrimaryButton(title: "Log today", leadingSystemImage: "square.and.pencil") { showLog = true }
+                    HowThisWorksLink(slug: AppGuide.homeGuide,
+                                     label: "New here? What your first week looks like")
                     // v1: Pregnancy preview entry hidden (destination intact, unreachable). Restore by uncommenting.
                     // pregnancyPathwayLink
                 }
@@ -113,24 +115,23 @@ struct HomeView: View {
     @ViewBuilder
     private func phaseCard(for settings: CycleSettings) -> some View {
         let info = CycleEngine.cyclePhase(settings: settings)
-        let inFertile = info.fertileWindow.contains(info.dayOfCycle) && info.phase != .ovulatory
 
         VStack(alignment: .leading, spacing: 12) {
-            Text(CycleContent.phaseSubLabel(info.phase, inFertile: inFertile).uppercased())
+            Text(CycleContent.phaseSubLabel(info).uppercased())
                 .font(.gxEyebrow)
                 .tracking(1.6)
                 .foregroundStyle(GenesyxColor.primary)
 
-            Text(CycleContent.phaseHeroText(info.phase, inFertile: inFertile))
+            Text(CycleContent.phaseHeroText(info))
                 .font(.gxTitle)
                 .foregroundStyle(GenesyxColor.foreground)
 
-            Text(CycleContent.phaseHeroSubtext(info.phase, inFertile: inFertile))
+            Text(CycleContent.phaseHeroSubtext(info))
                 .font(.gxBodySmall)
                 .foregroundStyle(GenesyxColor.mutedForeground)
 
             HStack(spacing: 8) {
-                ForEach(CycleContent.phaseTags(info.phase, inFertile: inFertile), id: \.self) { tag in
+                ForEach(CycleContent.phaseTags(info), id: \.self) { tag in
                     Text(tag)
                         .font(.gxEyebrow)
                         .padding(.horizontal, 10)

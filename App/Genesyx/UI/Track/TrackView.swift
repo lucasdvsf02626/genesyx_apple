@@ -44,6 +44,8 @@ struct TrackView: View {
                         logTarget = LogTarget(date: today)
                     }
                     trackersSection
+                    HowThisWorksLink(slug: AppGuide.trackGuide,
+                                     label: "How the log works, and what each entry is for")
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 16)
@@ -59,7 +61,15 @@ struct TrackView: View {
         }
         .sheet(item: $logTarget) { LogView(date: $0.date) }
         .sheet(isPresented: $showHydration) { HydrationDetailSheet() }
-        .sheet(isPresented: $showPhDetail) { PhDetailView(onOpenSupplements: { showPhDetail = false; router.selection = 3 }) }
+        .sheet(isPresented: $showPhDetail) {
+            PhDetailView(
+                onOpenSupplements: { showPhDetail = false; router.selection = 3 },
+                onOpenLearn: {
+                    showPhDetail = false
+                    router.pendingLearnSlug = PhTabView.learnArticleSlug
+                    router.selection = 5
+                })
+        }
         .sheet(isPresented: $showSleepDetail) { SleepDetailView() }
         .sheet(isPresented: $showSymptomsDetail) { SymptomsDetailView() }
         .sheet(isPresented: $showNutritionDetail) { NutritionDetailView() }
@@ -585,14 +595,23 @@ struct TrackSignalSummary: Equatable {
             tint: GenesyxColor.electricPink)
     }
 
+    /// Both halves of what the Daily Log collects under nutrition. This row counted supplements
+    /// alone for a long time, so a day of six food groups and no supplements read "No entries yet"
+    /// — on the one screen whose job is to show her what she has recorded.
     static func nutrition(logs: [CalendarDate: DailyLog], today: CalendarDate) -> TrackSignalSummary {
-        let week = currentWeekDates(today: today).map { logs[$0]?.supplements.count ?? 0 }
-        let todayCount = logs[today]?.supplements.count ?? 0
+        let week = currentWeekDates(today: today).map { date -> Double in
+            NutritionDaySignal.fill(
+                supplements: NutritionDaySignal.knownSupplements(logs[date]?.supplements ?? []),
+                foodGroups: NutritionDaySignal.knownFoodGroups(logs[date]?.foodGroups ?? []))
+        }
+        let line = NutritionDaySignal.summaryLine(
+            supplements: NutritionDaySignal.knownSupplements(logs[today]?.supplements ?? []),
+            foodGroups: NutritionDaySignal.knownFoodGroups(logs[today]?.foodGroups ?? []))
         return TrackSignalSummary(
             title: "Nutrition",
             icon: "pills.fill",
-            value: todayCount > 0 ? "\(todayCount) of \(NutritionConsistencyLogic.planSize) supplements today" : emptyValue,
-            sparkValues: week.map { min(Double($0) / Double(NutritionConsistencyLogic.planSize), 1) },
+            value: line ?? emptyValue,
+            sparkValues: week,
             tint: GenesyxColor.primary)
     }
 
@@ -869,11 +888,12 @@ private struct CycleDetailView: View {
 private struct PhDetailView: View {
     @Environment(\.dismiss) private var dismiss
     var onOpenSupplements: (() -> Void)? = nil
+    var onOpenLearn: (() -> Void)? = nil
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                PhTrackerSection(onOpenSupplements: onOpenSupplements)
+                PhTrackerSection(onOpenSupplements: onOpenSupplements, onOpenLearn: onOpenLearn)
                     .padding(.horizontal, 20)
                     .padding(.top, 8)
                     .padding(.bottom, 24)
@@ -1401,8 +1421,13 @@ private struct NutritionDetailView: View {
     private let today = CalendarDate.today()
 
     var body: some View {
-        let week = TrackSignalSummary.currentWeekDates(today: today).map { dailyLog.log(on: $0).supplements.count }
+        let dates = TrackSignalSummary.currentWeekDates(today: today)
+        let week = dates.map { dailyLog.log(on: $0).supplements.count }
+        let foodWeek = dates.map { NutritionDaySignal.knownFoodGroups(dailyLog.log(on: $0).foodGroups) }
         let todaySupplements = dailyLog.log(on: today).supplements.sorted()
+        let todayFoodGroups = FoodGroup.allCases
+            .filter { dailyLog.log(on: today).foodGroups.contains($0.rawValue) }
+            .map(\.label)
         let insights = NutritionConsistencyLogic.compute(dailyCounts: week)
         NavigationStack {
             ScrollView {
@@ -1412,11 +1437,24 @@ private struct NutritionDetailView: View {
                         title: todaySupplements.isEmpty ? TrackSignalSummary.emptyValue : todaySupplements.joined(separator: ", "),
                         subtitle: "Supplements from today's log",
                         tint: GenesyxColor.primary)
+                    // Food groups are half of what the Daily Log records under nutrition, and this
+                    // sheet used to show none of it.
+                    todayCard(
+                        eyebrow: "Today",
+                        title: todayFoodGroups.isEmpty ? TrackSignalSummary.emptyValue : todayFoodGroups.joined(separator: ", "),
+                        subtitle: "Food groups from today's log",
+                        tint: GenesyxColor.primary)
                     detailHistoryCard(
-                        title: "This week",
+                        title: "Supplements this week",
                         values: week,
                         valueLabel: { $0 > 0 ? "\($0)/\(NutritionConsistencyLogic.planSize)" : "—" },
                         fill: { min(Double($0) / Double(NutritionConsistencyLogic.planSize), 1) },
+                        tint: GenesyxColor.primary)
+                    detailHistoryCard(
+                        title: "Food groups this week",
+                        values: foodWeek,
+                        valueLabel: { $0 > 0 ? "\($0)/\(NutritionDaySignal.foodGroupCount)" : "—" },
+                        fill: { min(Double($0) / Double(NutritionDaySignal.foodGroupCount), 1) },
                         tint: GenesyxColor.primary)
                     insightCard(insights.insight)
                 }

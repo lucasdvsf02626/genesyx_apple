@@ -32,4 +32,18 @@ final class FreeGuideBundleTests: XCTestCase {
     func testTheGuideTitleIsTheOneTheUiAssertsOn() {
         XCTAssertEqual(FreeGuide.title, "7-Day Fertility Nutrition Starter Guide")
     }
+
+    /// The file arrived titled "Genesyx - Recipe Book" internally, so a woman who saved or shared
+    /// it got a different document from the one the app had just shown her. It is corrected now,
+    /// but the correction lives in bytes a designer re-export would overwrite — this is what
+    /// notices if that happens.
+    func testTheBundledPdfCarriesTheTitleTheAppShows() throws {
+        let url = try XCTUnwrap(FreeGuide.url)
+        let document = try XCTUnwrap(PDFDocument(url: url))
+        let title = document.documentAttributes?[PDFDocumentAttribute.titleAttribute] as? String
+        XCTAssertEqual(
+            title, FreeGuide.title,
+            "the PDF's internal title is what Files, Quick Look and the share sheet display"
+        )
+    }
 }

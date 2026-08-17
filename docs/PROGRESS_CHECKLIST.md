@@ -1,5 +1,24 @@
 # Genesyx iOS — Progress Checklist
 
+> ⚠️ **RE-AUDITED 17 Aug 2026 against `main` @ `3a9e934`. Read
+> [`CHANGE_LIST_AUDIT_2026-08-17.md`](CHANGE_LIST_AUDIT_2026-08-17.md) before trusting the
+> tick-marks below.** Five independent read-only audits covering all 45 rows of sections 1A–3B
+> found **three release-grade defects inside rows already ticked Done**. Two are now **fixed and
+> proved by falsification** — the tracker's Nutrition row ignoring `foodGroups` (R1), and the
+> supplement plan and tick-list being different lists, which made Zinc unloggable and "4 of 4"
+> unreachable (R2). The third is **still open**: `resetPasswordForEmail` is called with no
+> `redirectTo` and there is no in-app new-password screen (R3) — it needs one live check against
+> production, not a code change. R4–R8 and 1A row 6 were also fixed the same day, along with L12, L13
+> and L14 — the last of which closed the pH tab's missing route into the pH Learn content, and in
+> doing so came within one slug of shipping a link to a **future-dated article**, which would have
+> opened an "unavailable" screen without failing anything. A further ~10
+> lower-severity defects and 5 client decisions remain itemised there. The counts in this file
+> describe *what exists*; the audit describes *what works*.
+>
+> **For what is left before submission, read
+> [`LAUNCH_READINESS.md`](LAUNCH_READINESS.md)** — it supersedes `WHATS_LEFT.md` and separates
+> engineering work from the off-code items only Lucas or the client can close.
+>
 > Last verified: **14 Aug 2026**, against the release commit `8580dd6` — batches 1–9 are now
 > committed, and the working tree is clean apart from `graphify-out/`, `.claude/` and the
 > deliberately excluded duplicate `docs/assets/` copy of the guide PDF.
@@ -18,6 +37,11 @@ Both percentages are shown on purpose. **84%** is against the client's original 
 against the 42 this release is committed to, once D3 and D4 are removed by decision. Quoting only
 the second would flatter the result.
 
+These counts are deliberately **unchanged** by the 17 Aug fixes. The audit downgraded rows that
+this file had already counted as Done; the fixes restored them. Moving the number up now would
+imply new scope was delivered, when what actually happened is that rows already counted were made
+to work. The per-group table below carries the real movement.
+
 ### The client's ten priority groups, at a glance
 
 The sections below are numbered the way this repo files them (1A…3B). The client's change list is
@@ -26,13 +50,13 @@ recounting.
 
 | Client group | Section | Done | State |
 |---|---|---:|---|
-| 1 · Critical — Vaginal pH | 1A | 7/8 | Website science + Shettles pages still not citable — **BLOCKED** |
-| 2 · Critical — Tracking, calendar, Profile | 1B | 6/9 | Code complete; 3 rows stay **In review** (live account / live email / device QA) |
+| 1 · Critical — Vaginal pH | 1A | 7/8 → 5/8 → **6/8** | Row 6 (supporting vaginal health) **now written** — needs a clinician read, not a rewrite. Still open: row 5 (fertility relevance) **Missing** and row 8 (website links) **Missing**, both **BLOCKED** on the science + Shettles pages going live. The trend chart was also rescaled (R4) so healthy is no longer a fifth of the plot |
+| 2 · Critical — Tracking, calendar, Profile | 1B | 6/9 → 4/9 → **5/9** | Row 1 **fixed** — the tracker's Nutrition row now counts food groups as well as supplements (R1). Row 7 still **Partial** (password reset has no `redirectTo`) and needs one live check. 3 rows stay **In review** (live account / live email / device QA) |
 | 3 · Critical — Gender-preference question | 1C | 2/2 | ✅ Complete |
 | 4 · Critical — Connectivity | 1D | 2/3 | Code complete and audited; physical cellular QA **DEFERRED** (no iPhone) |
 | 5 · UX — Restore intended design | 2A | 4/4 | ✅ Complete — warm/premium **approved** by the client, 14 Aug (D1) |
-| 6 · UX — Nutrition + hydration | 2B, 2C | 8/8 | ✅ Complete — closed by H19, 14 Aug |
-| 7 · UX — Contextual cycle guidance | 2D | 3/3 | ✅ Complete |
+| 6 · UX — Nutrition + hydration | 2B, 2C | 8/8 → 6/8 → **7/8** | Supplement plan and tick-list are **now one list** (R2) — Zinc is loggable and "4 of 4" is reachable. The hydration target is no longer duplicated across two files (R5), but still has no personalisation UI, so this row stays short of 8/8 |
+| 7 · UX — Contextual cycle guidance | 2D | 3/3 → 2/3 → **3/3** | **Fixed** (R7): the phase card now links to a different article per phase. Note the twelve weekly articles are date-gated from 23 Aug, so most phase links currently fall back to a general article — see decision 13 in `LAUNCH_READINESS.md` |
 | 8 · Engagement — Logging streak | 3A | 2/4 | Closed for this release — the other 2 **descoped** by the client, 14 Aug (D3, D4) |
 | 9 · Engagement — Education, 12 weeks | 3B | 3/3 | ✅ Complete |
 | 10 · Partner, Health, widget, barcode | 4 | — | Deliberately not started; the brief defers it. **All four confirmed out of 1.2.0 on 14 Aug** — partner is built but withheld (D6), widget and barcode were never built and are guarded by `ReleaseScopeTests`, and the Health consent question is a legal decision still open at P0-13 |
@@ -48,7 +72,7 @@ questions.** Canonical copy with rationale: `CHANGE_LIST_PLAN.md` §0.0.
 | **D2** | Deleting a whole daily log | ❌ **No, not this release.** Build no delete path on either client. |
 | **D3** | Cycle edits / article reads counting toward the streak | ❌ **No, not this release.** No new production column, no Android migration. |
 | **D4** | Occasional streak restore | ❌ **No, not this release.** Same descoped column and migration as D3. |
-| **D5** | The bundled guide PDF | ⚠️ **Internal use only — not App Store-ready** until §11.1c's four content corrections and the medical review are done. |
+| **D5** | The bundled guide PDF | ⚠️ **Internal use only — not App Store-ready.** §11.1c corrections 1 (internal title) and 4 (accessible text equivalent) closed 17 Aug 2026; **2 and 3 are page-20 artwork and sit with the designer** (`docs/FREE_GUIDE_DESIGNER_BRIEF.md`); the medical review is still outstanding. |
 
 **D2, D3 and D4 are descoped, not delivered.** Never present them as done.
 
@@ -148,11 +172,13 @@ the two guide UI tests 2/0 in 32.091 s after restore (onboarding 20.740 s, Learn
 `** TEST BUILD SUCCEEDED **`; the PDF present inside the built `.app` and byte-identical to the
 repository copy.
 
-**It must still not be called App Store-ready** until four content corrections are made to the PDF
-by a person — filename/metadata, the page-20 typo "Download **out** free app", the page-20
-QR/app-download call-to-action, and accessibility tagging — plus the medical and content-source
-review every other piece of shipping content has had. Those are `CHANGE_LIST_PLAN.md` §11.1c and
-stay open.
+**It must still not be called App Store-ready.** Of the four content corrections
+(`CHANGE_LIST_PLAN.md` §11.1c), two closed on 17 Aug 2026: the internal metadata title now reads
+`7-Day Fertility Nutrition Starter Guide`, and the app carries a full accessible text equivalent of
+all 20 pages. The two that remain are page-20 **artwork** — the typo "Download **out** free app" and
+the QR/app-download call-to-action — which need an Affinity re-export by the designer
+(`docs/FREE_GUIDE_DESIGNER_BRIEF.md`). The medical and content-source review that every other piece
+of shipping content has had is also still outstanding, and is a client action.
 
 Latest clean automated evidence: **267 domain, 288 app and 79 UI tests** — 0 failures and 1
 pre-existing permission-dependent skip
@@ -281,6 +307,8 @@ to both `GenesyxApp.swift` and `PreviewSupport.swift`.
 | ☑ | One new article weekly plus dashboard/in-app discovery | **Done** | 13 Aug 2026 | Weekly reveal schedule, Home card, Learn badge and Sunday notification are implemented. **H20 found the Sunday notification was the one Learn surface not going through the publication gate** (14 Aug): `NotificationService.learnCandidates()` read the raw `learnArticles` array instead of `LearnLibrary.articles`, whose own doc comment names this nudge as a caller that must. Because the "new" pool is *exclusive* — arrived-and-unread — the raw array meant the nudge picked only from the twelve date-withheld pieces, so "New this week" named an article that resolves to "That article isn't available", and `markAnnounced` then spent the slug, so the genuine release day arrived with no notification and no badge. Every existing test in this area rebuilt the candidate list from `LearnLibrary.articles` itself and was therefore structurally incapable of catching the single production caller that differed, so `learnCandidates()` was widened from `private` to internal to open a seam and the new test drives the real composition. |
 | ☑ | Push notifications only after opt-in | **Done** | 14 Aug 2026 | App requires user preference plus system permission; production `push_enabled` now defaults false. **H16 fixed the reverse failure — opted in and still hearing nothing** (14 Aug). Notification requests are one-shot and the queue is only rebuilt when the app is foregrounded, so a planner branch returning "nothing to say tonight" queued nothing at all. The evening check-in did exactly that once she had both logged her day and met her water goal. The weekly nudges do not cover for it: `track()` and `ph()` are conditioned on a *gap* in her logging and return nil for a consistent user by design, and `insights()` and `learn()` are rationed to one in seven days — so her queue can empty completely, and the better she was at using the app the quieter it got. It now queues tomorrow's invitation instead. The supplement-reminder copy that the banned-phrase and no-guilt scans read was also fixture data rather than what ships, so the scans had cleared a supplement the app never sends and had never once read "Time for Folate (400–800 mcg)" — now built from the real plan, with a test pinning the coupling. **Still owed:** with no background refresh, a woman who stops opening the app still runs out of queue, so the 14-day dormant hand-back structurally cannot fire. That needs background execution, not a planner change. |
 | ☑ | Twelve-week content plan scheduled | **Done** | 13 Aug 2026 | All twelve cited topics, including evidence-framed Shettles content, are present and scheduled. |
+| ☑ | In-app teaching — how to use the app | **Done** | 17 Aug 2026 | The ten "How X works" guides already shipped; what did not exist was any way to find them. They were reachable only by knowing to tap the "Guides" chip in Learn, so the manual was in the app and effectively hidden. Three routes added, **no new content written**: (1) **`HowThisWorksLink`** — one reusable component giving Home, Track, Nutrition and Insights an inline signpost into the guide that answers *"what is this screen for?"* (pH keeps its own from L14); (2) **`HowToUseView`** — an index of all twelve guides grouped by the tab each explains, with a one-line *purpose* per row, reached from a card at the top of Learn and a row in Profile → About; (3) `AppGuide` as the single list both read from, so the index and the inline links cannot drift apart. **The trap guarded against:** every route resolves through `LearnLibrary.articles`, which withholds future-dated pieces — a perfectly-spelled slug for one of the twelve date-gated `w*` articles is a silent dead link that fails nothing and looks fine in review. `AppGuideTests` (8 tests) asserts every signposted slug is published *and* carries no publication date at all; two walkthrough tests prove the index opens and its rows open a guide, and that the Insights link lands inside the article rather than on the Learn list. All falsified. ⚠️ **One route is not covered:** XCUITest cannot fire any Profile `rowItem` button, including three that have shipped for months — needs a 30-second device check, see `LAUNCH_READINESS.md` §1. |
+| ☑ | Plain-English product report for the client | **Done** | 17 Aug 2026 | `docs/HOW_THE_APP_WORKS.md` — what each of the seven tabs is for, the goal of every feature, how the parts connect, what a real first week looks like, what she is reminded about, where her data lives, and what is deliberately out of this release. Written to be read and signed off without an engineer present. Figures verified against source rather than assumed: five quiz questions with their exact wording, the 2,400 ml target from `TrackingEngine.defaultWaterGoalMl`, six food groups, four Genesyx essentials. |
 
 ## 4 — Clarify/scope separately (excluded from completion percentage)
 
@@ -303,7 +331,7 @@ physical cellular (**DEFERRED**). D3 and D4 stay descoped.
 1. ✅ **Done 14 Aug** — the exact applied Supabase file `20260813_user_supplements_delete_backstop_and_push_default_false.sql` is now in `supabase/migrations/`, verbatim and `cmp`-identical to the recovered original (md5 `55c387ecc1fc940b892bd8bdc3e1cfb5`). **Still owed:** disposable-account deletion QA — never against a live account.
 2. Article 9 explicit-consent / legal-basis decision (TESTFLIGHT P0-13). **Still open 14 Aug and it is the only one of the three "out of scope" areas that needs a human decision.** The release branch is honest about it rather than fixed: the app has **no consent step and no stored record**, so nothing in the binary claims the work is done, and **no placeholder consent screen was added** — one that records nothing under a basis nobody has confirmed would be worse than none. The claim that is wrong lives on the **live published privacy policy**, which asserts Article 9(2)(a). **Needed from a person: the UK data-protection decision on the lawful basis, and if it is explicit consent, product-approved wording plus an audit trail (`consented_at` + policy version) and defined withdrawal behaviour.** Until then do not describe the app as consent-compliant anywhere. `ReleaseScopeTests.testTheBuiltAppReadsNoAppleHealthData` bounds the problem — it proves no HealthKit stream widens it — and is documented in the test itself as proving nothing about Article 9.
 3. Sign in with Apple `/auth/revoke` during deletion — **still open, and it is the only part of P0-15 that is.** It needs the Apple `.p8` in Supabase's secret store, which is a person's action, not engineering. ✅ **Client-side revocation handling done 14 Aug** — `SessionRepository.handleAppleCredentialRevoked` + `RootView`'s `credentialRevokedNotification` subscription end the local session when she revokes the app under Settings → Apple ID, guarded on how the live session was obtained so the app-wide notification cannot end an unrelated email session; 3 tests, falsified. ✅ **Also 14 Aug, in the same P0-15 row:** `waitlist_emails` failure now returns 500 instead of `{ok: true}`, and the explicit `user_supplements` delete iOS lacked is in. ⚠️ **Both Edge Function fixes are repo-only — `supabase functions deploy delete_account` has NOT been run**, and the file carries a banner to be deleted in that same change.
-4. Bundled guide PDF §11.1c content, accessibility and medical review (D5).
+4. Bundled guide PDF §11.1c content, accessibility and medical review (D5). ✅ **Two of the four closed 17 Aug 2026:** the internal metadata title is corrected (losslessly — the page bytes are untouched, new md5 `6ccda16d80dab42905d1da676369ecb5`), and the accessibility blocker is closed by the route §11.1c permits, the app carrying a full text equivalent of all 20 pages with a Text / Pages toggle and VoiceOver defaulting to text. ⬜ **Still owed:** the two page-20 artwork corrections (typo, QR/download CTA), which cannot be done in-repo without leaving the old wording in the text layer and so need an Affinity re-export — briefed in `docs/FREE_GUIDE_DESIGNER_BRIEF.md`; and the medical/content-source review, which is a client action.
 5. Android food-group editor — iOS-only warning, not this delivery.
 6. ✅ **Password recovery from the gate — done 14 Aug (TESTFLIGHT P0-20).** H22 turned a forgotten password into a permanent lockout: the only reset control lived in Profile, behind the session she could not obtain. `AuthView` now carries **Forgot password?** and `SessionRepository.sendPasswordReset(email:)` takes the address rather than reading it off a live session. 5 unit tests + 1 UI test, both halves falsified. ⬜ **Still owed:** the in-app landing for the emailed link. It needs the Supabase redirect allowlist and email template to point at `genesyx://` — dashboard-only, there is no `config.toml` in this repo — so **do not build the new-password screen until someone confirms where that link currently goes.**
 

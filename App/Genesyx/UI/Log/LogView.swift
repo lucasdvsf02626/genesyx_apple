@@ -18,7 +18,9 @@ struct LogView: View {
     }
 
     private static let defaultSymptoms = ["Headache", "Fatigue", "Cramps", "Nausea", "Bloating", "Acne", "Backache", "Tender breasts"]
-    static let supplements = ["Folic acid", "Vitamin D", "Iron", "Omega-3"]
+    /// Derived from the plan the Nutrition tab shows her, not typed out again — see
+    /// `NutritionContent.supplementLogOptions` for what maintaining two lists cost.
+    static let supplements = NutritionContent.supplementLogOptions
 
     @State private var loaded = false
     @State private var mood: Mood?
@@ -322,7 +324,9 @@ struct LogView: View {
                     .accessibilityIdentifier("log.waterCard")
             }
             HStack(spacing: 12) {
-                miniCard("pills.fill", "Supplements", "\(selectedSupplements.count) of \(Self.supplements.count)", GenesyxColor.primary) { suppOpen = true }
+                // A plain count, not "n of 4": the sheet also offers the supplements she added
+                // herself, and those are hers rather than part of the four-item plan.
+                miniCard("pills.fill", "Supplements", "\(selectedSupplements.count) logged", GenesyxColor.primary) { suppOpen = true }
             }
         }
         .padding(.top, 16)
@@ -439,13 +443,28 @@ private struct WaterSheet: View {
 
 private struct SupplementsSheet: View {
     @Binding var selected: Set<String>
+    @EnvironmentObject private var supplements: SupplementsRepository
     @Environment(\.dismiss) private var dismiss
+
+    /// The plan's four, then the ones she added herself, then anything already recorded for this
+    /// day that is neither.
+    ///
+    /// Her own supplements belong here because "Review Plan" already lets her add one and set a
+    /// reminder for it — so the app would wake her at 8am for a Magnesium it then gave her nowhere
+    /// to tick. The trailing group covers a supplement logged under an older list, which would
+    /// otherwise sit in her day while being invisible and impossible to untick.
+    private var options: [String] {
+        var seen = Set<String>()
+        let known = (LogView.supplements + supplements.supplements.map(\.name))
+            .filter { !$0.isEmpty && seen.insert($0).inserted }
+        return known + selected.subtracting(known).sorted()
+    }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 8) {
-                    ForEach(LogView.supplements, id: \.self) { s in
+                    ForEach(options, id: \.self) { s in
                         let checked = selected.contains(s)
                         HStack {
                             Text(s).font(.gxBody.weight(.medium)).foregroundStyle(GenesyxColor.foreground)

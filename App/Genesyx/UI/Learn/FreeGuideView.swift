@@ -1,3 +1,4 @@
+import GenesyxCore
 import PDFKit
 import SwiftUI
 
@@ -45,27 +46,100 @@ private struct GuidePdfView: UIViewRepresentable {
     }
 }
 
+/// The text equivalent of the guide, rendered as native SwiftUI so VoiceOver can navigate it by
+/// heading and Dynamic Type can resize it. `FreeGuideContent` explains where it deliberately
+/// departs from the printed page.
+private struct GuideTextView: View {
+    var body: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 20) {
+                ForEach(FreeGuideContent.pages) { page in
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text(page.heading)
+                            .font(.gxCardHeading)
+                            .foregroundStyle(GenesyxColor.foreground)
+                            .accessibilityAddTraits(.isHeader)
+                        ForEach(Array(page.blocks.enumerated()), id: \.offset) { _, block in
+                            blockView(block)
+                        }
+                        // Printed page numbers are announced so a VoiceOver user and a sighted
+                        // reader can refer to the same place in the same document.
+                        Text("Page \(page.number)")
+                            .font(.gxBodySmall)
+                            .foregroundStyle(GenesyxColor.mutedForeground)
+                            .padding(.top, 4)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .padding(20)
+        }
+        .gxPageBackground()
+        .accessibilityIdentifier("guide.text")
+    }
+
+    @ViewBuilder
+    private func blockView(_ block: FreeGuideContent.Block) -> some View {
+        switch block {
+        case .subheading(let t):
+            Text(t)
+                .font(.gxBody.weight(.semibold))
+                .foregroundStyle(GenesyxColor.foreground)
+                .accessibilityAddTraits(.isHeader)
+                .padding(.top, 4)
+        case .paragraph(let t):
+            Text(t).font(.gxBody).foregroundStyle(GenesyxColor.foreground.opacity(0.85))
+        case .bullets(let items):
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(Array(items.enumerated()), id: \.offset) { _, item in
+                    HStack(alignment: .top, spacing: 10) {
+                        Circle().fill(GenesyxColor.primary).frame(width: 5, height: 5).padding(.top, 8)
+                        Text(item).font(.gxBody).foregroundStyle(GenesyxColor.foreground.opacity(0.85))
+                    }
+                    // The bullet glyph is decoration; without this VoiceOver reads the dot.
+                    .accessibilityElement(children: .combine)
+                }
+            }
+        }
+    }
+}
+
 /// The guide screen itself. Presented as a sheet from both entry points, so dismissing always
 /// returns to whatever opened it.
 struct FreeGuideScreen: View {
     @Environment(\.dismiss) private var dismiss
+    /// VoiceOver users get the text version by default, because the PDF is untagged and reads to
+    /// them as one unnavigable image. Everyone else gets the designed pages, and can switch.
+    @State private var showsText = UIAccessibility.isVoiceOverRunning
 
     var body: some View {
         NavigationStack {
             Group {
-                if let url = FreeGuide.url {
+                if showsText {
+                    GuideTextView()
+                } else if let url = FreeGuide.url {
                     GuidePdfView(url: url)
                         // The PDF is not accessibility-tagged, so VoiceOver would otherwise land on
-                        // an unlabelled view. This names it; a real text equivalent is still owed.
+                        // an unlabelled view. The text version above is the equivalent; this names
+                        // the image for anyone who switches back to it.
                         .accessibilityLabel(FreeGuide.title)
                 } else {
                     unavailable
                 }
             }
-            .ignoresSafeArea(edges: .bottom)
+            .ignoresSafeArea(edges: showsText ? [] : .bottom)
             .navigationTitle(FreeGuide.title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(showsText ? "Pages" : "Text") {
+                        showsText.toggle()
+                    }
+                    .accessibilityIdentifier("guide.textToggle")
+                    .accessibilityLabel(showsText
+                                        ? "Show the designed pages"
+                                        : "Show the text version")
+                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
                         .accessibilityIdentifier("guide.done")

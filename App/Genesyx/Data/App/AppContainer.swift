@@ -126,6 +126,9 @@ final class AppContainer: ObservableObject {
         // A profile write she owed the server outlives the session that owed it, so the next
         // account's first refresh pushed her theme and focus mode into their row.
         prefs.clearOwedProfileWrite()
+        // The light-mode migration corrects a per-account server value but latched per-device, so
+        // only the first account ever signed in on a phone could receive it.
+        prefs.clearThemeMigrationFlag()
         learn.clear()
         // Nor may the next account inherit her partner link or her pending invites.
         partner.clearLocalState()
@@ -169,7 +172,7 @@ final class AppContainer: ObservableObject {
         container.dailyLog.setWater(750)
         container.dailyLog.upsert(
             DailyLog(mood: .good, energy: .normal, symptoms: ["Fatigue", "Cramps"],
-                     sleepMinutes: 445, supplements: ["Folic acid", "Vitamin D"],
+                     sleepMinutes: 445, supplements: ["Folate", "Vitamin D"],
                      notes: "Felt steady today, gentle walk in the evening.", waterMl: 1_800),
             on: CalendarDate.today().minusDays(1))
         container.dailyLog.upsert(

@@ -110,8 +110,15 @@ public struct SupplementPlanItem: Hashable, Sendable {
     public let initial: String
     public let name: String
     public let rationale: String
-    public init(_ initial: String, _ name: String, _ rationale: String) {
+    /// What the Daily Log ticks and stores for this item. Separate from `name` because `name`
+    /// carries a dose the tick-list has no room for, and because this string is persisted — it is
+    /// the key a logged day is recognised by, so it must not drift when the displayed dose is
+    /// re-worded.
+    public let logLabel: String
+
+    public init(_ initial: String, _ name: String, _ rationale: String, logLabel: String) {
         self.initial = initial; self.name = name; self.rationale = rationale
+        self.logLabel = logLabel
     }
 }
 
@@ -241,11 +248,19 @@ public enum NutritionContent {
     ]
 
     public static let supplementPlan: [SupplementPlanItem] = [
-        SupplementPlanItem("F", "Folate (400–800 mcg)", "Supports egg quality and early cell development."),
-        SupplementPlanItem("O", "Omega-3 (DHA/EPA)", "Hormone balance and reduced inflammation."),
-        SupplementPlanItem("D", "Vitamin D (600–1000 IU)", "Supports ovulation and overall wellbeing."),
-        SupplementPlanItem("Z", "Zinc (8–11 mg)", "Supports the LH surge that triggers ovulation."),
+        SupplementPlanItem("F", "Folate (400–800 mcg)", "Supports egg quality and early cell development.", logLabel: "Folate"),
+        SupplementPlanItem("O", "Omega-3 (DHA/EPA)", "Hormone balance and reduced inflammation.", logLabel: "Omega-3"),
+        SupplementPlanItem("D", "Vitamin D (600–1000 IU)", "Supports ovulation and overall wellbeing.", logLabel: "Vitamin D"),
+        SupplementPlanItem("Z", "Zinc (8–11 mg)", "Supports the LH surge that triggers ovulation.", logLabel: "Zinc"),
     ]
+
+    /// The Daily Log's supplement tick-list — **derived from the plan, never typed out again.**
+    ///
+    /// The two lists were maintained separately and drifted: the plan named Zinc, the tick-list
+    /// offered Iron. Zinc was therefore impossible to log, "4 of 4 taken today" was unreachable, and
+    /// Iron — which is in nobody's plan here — counted toward it. Deriving the list is what makes
+    /// that class of drift unrepresentable rather than merely tested for.
+    public static let supplementLogOptions: [String] = supplementPlan.map(\.logLabel)
 
     public static let articles: [Article] = [
         Article("Eating for your luteal phase", "4 min read"),

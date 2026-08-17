@@ -16,7 +16,7 @@ extension AppContainer {
         container.dailyLog.setWater(750)
         container.dailyLog.upsert(
             DailyLog(mood: .good, energy: .normal, symptoms: ["Fatigue", "Cramps"],
-                     sleepMinutes: 445, supplements: ["Folic acid", "Vitamin D"],
+                     sleepMinutes: 445, supplements: ["Folate", "Vitamin D"],
                      notes: "Felt steady today, gentle walk in the evening.", waterMl: 1_800),
             on: CalendarDate.today().minusDays(1))
         container.dailyLog.upsert(

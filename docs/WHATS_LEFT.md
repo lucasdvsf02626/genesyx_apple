@@ -1,5 +1,14 @@
 # Genesyx iOS — What's Left to App Store (Status & Gap Checklist)
 
+> ## ⚠️ SUPERSEDED — do not plan from this file
+> Last accurate **11 August 2026**, when the plan was still a local-only v1 with no backend.
+> Its central recommendation ("ship v1 local-only, add Supabase in a reviewed v1.x") was
+> overtaken: Supabase, Sign in with Apple, Google and account deletion all shipped, which
+> changes the privacy labels, the age rating and the review path.
+>
+> **Current status lives in [`LAUNCH_READINESS.md`](LAUNCH_READINESS.md).**
+> Kept only as a record of how the v1 scope was originally framed.
+
 > Snapshot of where we are and everything remaining to ship. Updated each session.
 > Legend: ✅ done · 🟡 in progress / partial · ⬜ not started · ⚠️ your action (off-code)
 

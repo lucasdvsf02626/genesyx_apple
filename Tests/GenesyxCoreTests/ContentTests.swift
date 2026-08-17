@@ -81,21 +81,55 @@ final class ContentTests: XCTestCase {
 
     // ── Fertile-window overlay (lib/cycleEngine.ts) ──
 
+    /// Day `n` of a cycle that began on a fixed date, so a test can name the day it means.
+    private func day(_ n: Int, cycleLength: Int = 28, periodLength: Int = 5) -> CyclePhaseInfo {
+        let start = CalendarDate(2026, 1, 1)
+        return CycleEngine.cyclePhase(lastPeriodDate: start, cycleLength: cycleLength,
+                                      periodLength: periodLength, target: start.plusDays(n - 1))
+    }
+
     func testSubLabelIsThePhaseLabelNormallyAndFertileWindowWhenFertile() {
-        for phase in Phase.allCases {
-            XCTAssertEqual(CycleContent.phaseSubLabel(phase, inFertile: false), CycleContent.phaseLabel[phase]!)
-            XCTAssertEqual(CycleContent.phaseSubLabel(phase, inFertile: true), "Fertile window")
-        }
+        XCTAssertEqual(CycleContent.phaseSubLabel(day(2)), CycleContent.phaseLabel[.period]!)
+        XCTAssertEqual(CycleContent.phaseSubLabel(day(20)), CycleContent.phaseLabel[.luteal]!)
+        XCTAssertEqual(CycleContent.phaseSubLabel(day(11)), "Fertile window")   // window opens on day 9
+        XCTAssertEqual(CycleContent.phaseSubLabel(day(14)), CycleContent.phaseLabel[.ovulatory]!)
     }
 
     func testHeroTextOverlaysForNonOvulatoryFertileDaysButNotOvulationItself() {
-        // Ovulatory keeps its own hero even inside the fertile window.
-        XCTAssertEqual(CycleContent.phaseHeroText(.ovulatory, inFertile: true), CycleContent.phaseHeroCopy[.ovulatory]!.hero)
-        // Other phases switch to the fertile-window hero when fertile.
-        XCTAssertEqual(CycleContent.phaseHeroText(.follicular, inFertile: true), "Fertile window is open")
-        XCTAssertEqual(CycleContent.phaseHeroText(.follicular, inFertile: false), CycleContent.phaseHeroCopy[.follicular]!.hero)
-        XCTAssertTrue(CycleContent.phaseHeroSubtext(.follicular, inFertile: true).contains("Conception"))
-        XCTAssertEqual(CycleContent.phaseHeroSubtext(.luteal, inFertile: false), CycleContent.phaseHeroCopy[.luteal]!.sub)
+        // The peak day keeps its own hero even though it sits inside the fertile window.
+        XCTAssertEqual(CycleContent.phaseHeroText(day(14)), CycleContent.phaseHeroCopy[.ovulatory]!.hero)
+        // The days around it switch to the fertile-window hero.
+        XCTAssertEqual(CycleContent.phaseHeroText(day(11)), "Fertile window is open")
+        XCTAssertEqual(CycleContent.phaseHeroText(day(7)), CycleContent.phaseHeroCopy[.follicular]!.hero)
+        XCTAssertTrue(CycleContent.phaseHeroSubtext(day(11)).contains("Conception"))
+        XCTAssertEqual(CycleContent.phaseHeroSubtext(day(20)), CycleContent.phaseHeroCopy[.luteal]!.sub)
+    }
+
+    /// On 21/7, 22/8, 23/9 and 24/10 — all selectable in the settings sheet — ovulation is predicted
+    /// for a day she is still bleeding, so `phase` answers `.period`. Home keyed the peak copy off the
+    /// phase and therefore said "Fertile window is open" on the one day it could have named, on
+    /// exactly the cycles where the timing is hardest to work out unaided. The calendar was fixed for
+    /// this case; the hero was not.
+    func testAShortCyclePeakDayIsNamedEvenWhileSheIsStillBleeding() {
+        for (cycleLength, periodLength) in [(21, 7), (22, 8), (23, 9), (24, 10)] {
+            let peak = day(cycleLength - 14, cycleLength: cycleLength, periodLength: periodLength)
+            XCTAssertEqual(peak.phase, .period, "the premise: this day is inside her period")
+            XCTAssertTrue(peak.isOvulationDay)
+
+            XCTAssertEqual(CycleContent.phaseHeroText(peak), CycleContent.phaseHeroCopy[.ovulatory]!.hero,
+                           "\(cycleLength)/\(periodLength): her peak day must still be named")
+            XCTAssertEqual(CycleContent.phaseSubLabel(peak), CycleContent.phaseLabel[.ovulatory]!)
+            XCTAssertEqual(CycleContent.phaseHeroSubtext(peak), CycleContent.phaseHeroCopy[.ovulatory]!.sub)
+            XCTAssertEqual(CycleContent.phaseTags(peak), CycleContent.phaseHeroCopy[.ovulatory]!.tags)
+        }
+    }
+
+    /// The day before the peak on those same cycles: still bleeding, still fertile, not the peak —
+    /// so it takes the fertile-window copy rather than being promoted with it.
+    func testTheDayBeforeAShortCyclePeakIsStillTheRisingMessage() {
+        let almost = day(6, cycleLength: 21, periodLength: 7)
+        XCTAssertTrue(almost.isFertileButNotPeak)
+        XCTAssertEqual(CycleContent.phaseHeroText(almost), "Fertile window is open")
     }
 
     // ── Food groups (meal logging, T26) ──
@@ -173,13 +207,13 @@ final class ContentTests: XCTestCase {
 
     func testTagsPrependFertileWindowForNonOvulatoryFertileDaysOnly() {
         let base = CycleContent.phaseHeroCopy[.follicular]!.tags
-        let fertile = CycleContent.phaseTags(.follicular, inFertile: true)
+        let fertile = CycleContent.phaseTags(day(11))
         XCTAssertEqual(fertile.first, "Fertile window")
         XCTAssertEqual(fertile.count, base.count + 1)
-        // Ovulatory is not overlaid.
-        XCTAssertEqual(CycleContent.phaseTags(.ovulatory, inFertile: true), CycleContent.phaseHeroCopy[.ovulatory]!.tags)
+        // The peak day is not overlaid.
+        XCTAssertEqual(CycleContent.phaseTags(day(14)), CycleContent.phaseHeroCopy[.ovulatory]!.tags)
         // Not fertile -> unchanged.
-        XCTAssertEqual(CycleContent.phaseTags(.follicular, inFertile: false), base)
+        XCTAssertEqual(CycleContent.phaseTags(day(7)), base)
     }
 
     /// `.ovulatory` is entered on `dayOfCycle == ovulationDay` and left the next day, so it is
@@ -193,7 +227,7 @@ final class ContentTests: XCTestCase {
         XCTAssertEqual(info.dayOfCycle, 14)
         XCTAssertEqual(info.phase, .ovulatory, "day 14 of a 28-day cycle is the ovulation day itself")
 
-        let sub = CycleContent.phaseHeroSubtext(.ovulatory, inFertile: true)
+        let sub = CycleContent.phaseHeroSubtext(info)
         for forecast in ["1–2 days", "1-2 days", "expected in", "days away", "approaching"] {
             XCTAssertFalse(sub.lowercased().contains(forecast.lowercased()),
                            "the one day she is ovulating must not be described as still to come: \(sub)")

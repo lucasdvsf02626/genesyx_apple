@@ -30,7 +30,7 @@ If a future request appears to contradict one, stop and ask rather than assuming
 | **D2** | Deleting a whole daily log | ❌ **No — not in this release** | The data-retention ruling item 1B was half-blocked on. No delete path is to be built on either client. |
 | **D3** | Cycle edits and article reads counting toward the streak | ❌ **No — not in this release** | H6 / item 7. **No new production column, no Android migration.** |
 | **D4** | Occasional streak restore | ❌ **No — not in this release** | H7 / item 8. Same descoped column and migration as D3. |
-| **D5** | The bundled guide PDF | ⚠️ **Usable internally — NOT App Store-ready** | The guide ships in internal/TestFlight builds. It is a release blocker for public submission until §11.1c's four content corrections and the medical/content-source review are done. |
+| **D5** | The bundled guide PDF | ⚠️ **Usable internally — NOT App Store-ready** | The guide ships in internal/TestFlight builds. Of §11.1c's four content corrections, 1 and 4 closed 17 Aug 2026; **2 and 3 (page-20 artwork) are with the designer** and the medical/content-source review is still outstanding. Both remain public-submission blockers. |
 | **D6** | Partner linking in the public release | ❌ **Out of scope — removed from the user-facing flow** | Requested 14 Aug 2026. Every visible entry point is gone and every deep link is inert; `FeatureFlags.partnerInvites` is a compile-time `false`. The code stays compiled because Android shares the backend and does ship it. See §0.2 and `HANDOFF.md` §0-P. |
 
 **D3 and D4 are descoped, not done.** Do not present them as delivered. They are two of the 44 items
@@ -924,17 +924,22 @@ Two deliberate non-changes, both load-bearing:
   no other consumer; Android shares this backend and that proof was not attempted. Only the iOS UI
   was disconnected.
 
-### 11.1c The four content corrections still owed — a person's job, not a code fix
+### 11.1c The four content corrections — two closed 17 Aug, two with the designer
 
 The PDF is a **temporary integration asset**. It is wired in correctly and it renders, but it is
-**not fit to ship** until these are supplied. None can be fixed from the app side.
+**not fit to ship** until these are supplied.
 
-| # | Correction | Why it blocks release |
-|---|---|---|
-| 1 | **Filename and internal PDF metadata must read "7-Day Fertility Nutrition Starter Guide."** | The file was supplied as a recipe book. The app promises a named deliverable; a user who shares or saves the file gets a different title from the one she was shown. |
-| 2 | **Page 20 typo — "Download out free app" → "our".** | A spelling error on the call-to-action page of the first thing a new user is given. |
-| 3 | **Page 20's QR code / app-download call-to-action must be removed or rewritten.** | It tells a reader who is *already inside the app* to go and download the app. In-app it is nonsense, and the QR route is exactly the silent exit to Safari the reader now blocks. |
-| 4 | **The PDF must be accessibility-tagged, or the app must carry an accessible text equivalent.** | VoiceOver currently lands on an untagged document. The reader names it so the user is not stranded on an unlabelled view, but a label is not a text equivalent, and shipping an inaccessible core deliverable is an App Store and equality-of-access risk. |
+| # | Correction | Status | Why it blocks release |
+|---|---|---|---|
+| 1 | **Filename and internal PDF metadata must read "7-Day Fertility Nutrition Starter Guide."** | ✅ **Closed 17 Aug 2026** | The file was supplied as a recipe book. The app promises a named deliverable; a user who shares or saves the file gets a different title from the one she was shown. Corrected in the Info dictionary and the XMP without re-encoding a page; guarded by `testTheBundledPdfCarriesTheTitleTheAppShows`. |
+| 2 | **Page 20 typo — "Download out free app" → "our".** | ⏳ With the designer | A spelling error on the call-to-action page of the first thing a new user is given. |
+| 3 | **Page 20's QR code / app-download call-to-action must be removed or rewritten.** | ⏳ With the designer | It tells a reader who is *already inside the app* to go and download the app. In-app it is nonsense, and the QR route is exactly the silent exit to Safari the reader now blocks. |
+| 4 | **The PDF must be accessibility-tagged, or the app must carry an accessible text equivalent.** | ✅ **Closed 17 Aug 2026** — the app carries the text equivalent | VoiceOver landed on an untagged document; a label is not a text equivalent. All 20 pages are now native, navigable, resizable text (`FreeGuideContent.swift`) behind a Text / Pages toggle, shown by default under VoiceOver. Saving the PDF out to Files still yields an untagged document — tagging at source stays on the designer's optional list. |
+
+Corrections 2 and 3 are **artwork**, not metadata: the wording lives in the exported text layer as
+well as the picture, so a visual patch would leave a screen reader announcing the mistake and the
+file's own search still finding it. They need an Affinity 3.1.0 re-export, briefed in
+`docs/FREE_GUIDE_DESIGNER_BRIEF.md`.
 
 **Plus, separately tracked: medical and content-source review of the guide has not been done.** Every
 other piece of shipping content in this app carries a citation, a disclaimer and a sign-off — that
@@ -961,4 +966,11 @@ Fresh backup `/tmp/onb_h21_prod_20260814T104552.swift`. `WaitlistView` was not r
 
 §11.1c's four PDF content blockers and the medical review **remain open**. This item is Done as an
 engineering delivery, not as an App Store asset.
+
+> **Superseded in part, 17 Aug 2026.** Blockers 1 (internal title) and 4 (accessible text
+> equivalent) are now **closed** — see `docs/HANDOFF.md` §0h. Blockers 2 and 3 are page-20 artwork
+> and are with the designer (`docs/FREE_GUIDE_DESIGNER_BRIEF.md`). The medical review is still
+> outstanding, so the guide is **still not App Store-ready**. The title correction changed the file:
+> it is now **6,570,205 bytes, md5 `6ccda16d80dab42905d1da676369ecb5`**; the row above records the
+> 14 August bytes and is left as history.
 

@@ -13,6 +13,7 @@ struct ProfileView: View {
     @EnvironmentObject private var prefs: PreferencesRepository
     @EnvironmentObject private var notifications: NotificationService
     @EnvironmentObject private var cycle: CycleRepository
+    @EnvironmentObject private var router: TabRouter
 
     @State private var personalOpen = false
     @State private var healthOpen = false
@@ -411,6 +412,14 @@ struct ProfileView: View {
         VStack(alignment: .leading, spacing: 8) {
             groupLabel("About")
             cardGroup {
+                // Above "Help & Support", which is a website. Someone who cannot work out what a
+                // screen does looks here before they email anyone, and the answer is already in
+                // the app.
+                rowItem("How to use Genesyx") {
+                    router.pendingLearnSlug = HowToUseView.route
+                    router.selection = 5
+                }
+                divider
                 rowItem("Privacy & Data") { detail = "Privacy & Data" }
                 divider
                 linkItem("Privacy Policy", destination: Self.privacyPolicyURL)
