@@ -88,8 +88,14 @@ protocol AuthBackend {
     func deleteAccount() async throws
     /// Exchanges a provider ID token (Google/Apple) for a Supabase session.
     func signInWithIdToken(provider: SocialProvider, idToken: String, accessToken: String?, nonce: String?) async throws
-    /// Emails a password-reset link to `email`.
+    /// Emails a password-reset link to `email`, pointed back at `DeepLink.passwordRecoveryURL`.
     func resetPassword(email: String) async throws
+    /// Redeems the recovery deep link, establishing the session that authorises `updatePassword`.
+    /// Throws when the link is expired, already used, or malformed.
+    func completePasswordRecovery(url: URL) async throws
+    /// Sets a new password on the currently authenticated user. Requires a live session — the one
+    /// `completePasswordRecovery` just established, or an ordinary signed-in one.
+    func updatePassword(_ newPassword: String) async throws
     /// Re-sends the sign-up confirmation email to `email` (for an account created but not yet confirmed).
     func resendConfirmation(email: String) async throws
     /// Refreshes when possible; returns a non-expired cached session when offline.
@@ -105,6 +111,12 @@ extension AuthBackend {
     func signInWithIdToken(provider: SocialProvider, idToken: String, accessToken: String?, nonce: String?) async throws {}
     func resetPassword(email: String) async throws {}
     func resendConfirmation(email: String) async throws {}
+    // These two THROW rather than no-op, unlike their neighbours above. A silent default here
+    // would be a backend that reports a password successfully changed while changing nothing —
+    // she would then be locked out by a password only the app believes in. Failing loudly is the
+    // only safe default for a credential write.
+    func completePasswordRecovery(url: URL) async throws { throw RemoteError.notConfigured }
+    func updatePassword(_ newPassword: String) async throws { throw RemoteError.notConfigured }
     func validatedSession() async -> AuthSessionSnapshot? {
         currentUserId.map { AuthSessionSnapshot(userId: $0) }
     }

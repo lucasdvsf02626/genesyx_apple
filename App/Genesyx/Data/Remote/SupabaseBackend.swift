@@ -47,7 +47,25 @@ private struct SupabaseAuth: AuthBackend {
             credentials: .init(provider: supaProvider, idToken: idToken, accessToken: accessToken, nonce: nonce)
         )
     }
-    func resetPassword(email: String) async throws { try await client.auth.resetPasswordForEmail(email) }
+    /// `redirectTo` is the whole fix. Called bare, the SDK omits `redirect_to` and Supabase falls
+    /// back to the project's Site URL — a web page — so the link in her inbox opened Safari and the
+    /// app never saw it. She was told "check your inbox" for a link that could not come home.
+    func resetPassword(email: String) async throws {
+        try await client.auth.resetPasswordForEmail(email, redirectTo: DeepLink.passwordRecoveryURL)
+    }
+
+    /// The client runs the SDK's default PKCE flow, so `resetPasswordForEmail` stashed a code
+    /// verifier on THIS device and only this device can redeem the link. `session(from:)` performs
+    /// that exchange and stores the resulting session. It throws on an expired, reused or
+    /// foreign-device link, which is what lets the UI say so instead of hanging.
+    func completePasswordRecovery(url: URL) async throws {
+        _ = try await client.auth.session(from: url)
+    }
+
+    func updatePassword(_ newPassword: String) async throws {
+        _ = try await client.auth.update(user: UserAttributes(password: newPassword))
+    }
+
     func resendConfirmation(email: String) async throws { try await client.auth.resend(email: email, type: .signup) }
 
     /// `client.auth.session` refreshes when it can. If that throws (typically offline), a

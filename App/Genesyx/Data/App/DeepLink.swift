@@ -59,6 +59,32 @@ enum DeepLink {
         """
     }
 
+    // MARK: - Password recovery
+
+    /// Where Supabase sends her back to after she taps the link in a reset email.
+    ///
+    /// Deliberately the CUSTOM SCHEME and not the https link, even though the `associated-domains`
+    /// entitlement is present. Universal Links need the AASA file served before an https link is
+    /// safe (see `universalLinksLive`), and a recovery link that opens Safari to a 404 is a woman
+    /// locked out of her account. The custom scheme has no such dependency: if the app is installed,
+    /// it opens. She must have the app installed to be resetting its password, so nothing is lost.
+    ///
+    /// **This exact string must be on the Supabase Auth "Redirect URLs" allow-list**, or the
+    /// `redirect_to` parameter is discarded server-side and the email falls back to the Site URL —
+    /// which is the bug this whole path exists to fix. See `docs/SUPABASE.md`.
+    static let passwordRecoveryURL = URL(string: "genesyx://reset-password")!
+
+    /// True when `url` is the recovery callback. Host-checked for the same reason `inviteCode` is:
+    /// any app on the device can open a `genesyx://` URL, so only the shape we issue is honoured.
+    ///
+    /// Note this deliberately does NOT inspect the query. A callback carrying `?error=...` (an
+    /// expired or already-used link) is still a recovery callback — it has to reach the recovery
+    /// screen so she can be told what went wrong, rather than being dropped in silence the way
+    /// every reset URL is dropped today.
+    static func isPasswordRecovery(_ url: URL) -> Bool {
+        url.scheme == "genesyx" && url.host == "reset-password"
+    }
+
     static func inviteCode(from url: URL) -> String? {
         // Custom scheme: genesyx://invite/{code} and nothing else.
         //

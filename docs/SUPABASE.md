@@ -54,6 +54,36 @@ at `docs/schema.sql` (tables: `profiles`, `cycle_settings`, `daily_logs`, `partn
 once accounts exist (Guideline 5.1.1(v)). Auth, cycle, pH, daily-log, and invite list/send/revoke
 go straight through PostgREST under RLS.
 
+## Auth redirect URLs — DASHBOARD SETTING, required for password reset
+
+**Authentication → URL Configuration → Redirect URLs must contain exactly:**
+
+```
+genesyx://reset-password
+```
+
+Without it the password-reset flow is broken end to end, and it fails *silently*. Supabase drops
+any `redirect_to` that is not on the allow-list and substitutes the project **Site URL**, so the
+link in her inbox opens a web page instead of the app, the app never sees the callback, and she is
+left looking at "check your inbox" for a link that cannot come home. That was the state of the app
+before 17 Aug 2026: `resetPasswordForEmail` was called with no `redirectTo` at all.
+
+The string is pinned in code at `DeepLink.passwordRecoveryURL` and asserted by
+`DeepLinkTests.testTheRecoveryRedirectIsTheExactStringAllowListedInSupabase`. **If that test ever
+fails, this dashboard entry has to change in the same breath** — the two are one setting split
+across two systems.
+
+Custom scheme rather than the https Universal Link on purpose. The `associated-domains` entitlement
+is present, but `DeepLink.universalLinksLive` is still `false` because the AASA file is not served
+from `genesyx.co.uk` yet, and an https recovery link with nothing behind it opens Safari to a 404 —
+a woman locked out of her account. The custom scheme has no such dependency.
+
+**One consequence worth knowing before testing.** supabase-swift defaults to the **PKCE** flow, so
+`resetPasswordForEmail` stores a code verifier on the requesting device. The reset link therefore
+only works on the same iPhone that asked for it. Opening it on a desktop or a second phone fails,
+and the app reports it as an expired link. This is correct, and safer than implicit flow, but it
+means the manual test must be done on one device throughout.
+
 ## Apple review implications (important)
 Turning on accounts + cloud health data **changes the App Store story**:
 - App Privacy label flips from "Data Not Collected" to **Health & Fitness + Contact Info + User

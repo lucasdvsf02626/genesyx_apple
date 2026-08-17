@@ -26,6 +26,14 @@ final class PasswordResetTests: XCTestCase {
         private(set) var resetEmails: [String] = []
         var resetError: Error?
 
+        /// Recovery links redeemed, and passwords actually written. Recorded rather than counted
+        /// so a test can prove the NEW password reached the backend — a flow that reports success
+        /// without writing is the failure mode that matters here.
+        private(set) var redeemedLinks: [URL] = []
+        private(set) var updatedPasswords: [String] = []
+        var recoveryError: Error?
+        var updateError: Error?
+
         var currentUserId: String? { userId }
         func signUp(email: String, password: String) async throws { userId = "u1" }
         func signIn(email: String, password: String) async throws { userId = "u1" }
@@ -33,6 +41,16 @@ final class PasswordResetTests: XCTestCase {
         func resetPassword(email: String) async throws {
             if let resetError { throw resetError }
             resetEmails.append(email)
+        }
+        /// Mirrors the real thing: a successful redemption leaves her holding a session.
+        func completePasswordRecovery(url: URL) async throws {
+            if let recoveryError { throw recoveryError }
+            redeemedLinks.append(url)
+            userId = "u1"
+        }
+        func updatePassword(_ newPassword: String) async throws {
+            if let updateError { throw updateError }
+            updatedPasswords.append(newPassword)
         }
     }
 
@@ -105,5 +123,161 @@ final class PasswordResetTests: XCTestCase {
             try await session.sendPasswordReset(email: "ada@example.com")
             XCTFail("with no backend there is nothing to send, and the UI must be told")
         } catch {}
+    }
+
+    // MARK: - Coming back from the email
+
+    private let link = URL(string: "genesyx://reset-password?code=abc123")!
+
+    /// The link redeems, and she is held in recovery rather than released into the app.
+    func testRedeemingTheLinkHoldsHerOnTheResetScreen() async throws {
+        let (session, auth) = await signedOutRepository()
+        XCTAssertFalse(session.passwordRecoveryActive, "precondition: not recovering")
+
+        try await session.beginPasswordRecovery(url: link)
+
+        XCTAssertEqual(auth.redeemedLinks, [link], "the link must be handed to the backend")
+        XCTAssertTrue(session.passwordRecoveryActive,
+                      "the redeemed session must not release her into the app")
+    }
+
+    /// An expired or already-used link must not leave the flag raised. If it did she would sit on
+    /// a reset screen with no session behind it, and every password she typed would fail.
+    func testAnExpiredLinkLeavesNoRecoveryInProgress() async throws {
+        let (session, auth) = await signedOutRepository()
+        auth.recoveryError = RemoteError.notAuthenticated
+
+        do {
+            try await session.beginPasswordRecovery(url: link)
+            XCTFail("an expired link must throw so the UI can say so")
+        } catch {}
+
+        XCTAssertFalse(session.passwordRecoveryActive,
+                       "a failed redemption must not strand her mid-recovery")
+        XCTAssertFalse(session.isSignedIn, "a failed link must never grant a session")
+    }
+
+    /// The whole point: the new password reaches the backend, and she is then signed out so she
+    /// has to prove it works. Staying signed in would leave other sessions alive after a reset.
+    func testSettingANewPasswordWritesItAndReturnsHerToSignIn() async throws {
+        let (session, auth) = await signedOutRepository()
+        try await session.beginPasswordRecovery(url: link)
+
+        try await session.completePasswordRecovery(newPassword: "a-new-password")
+
+        XCTAssertEqual(auth.updatedPasswords, ["a-new-password"],
+                       "the password she chose must be the one written")
+        XCTAssertFalse(session.passwordRecoveryActive, "recovery is over")
+        XCTAssertEqual(session.state, .signedOut, "a reset must end at the sign-in screen")
+        await assertBackendSignedOut(auth, "the recovery session must not outlive the reset")
+    }
+
+    /// A failed write must not report success or drop the recovery. She should be able to try
+    /// again on the same link rather than be told to request another.
+    func testAFailedPasswordWriteKeepsHerInRecovery() async throws {
+        let (session, auth) = await signedOutRepository()
+        try await session.beginPasswordRecovery(url: link)
+        auth.updateError = RemoteError.notAuthenticated
+
+        do {
+            try await session.completePasswordRecovery(newPassword: "a-new-password")
+            XCTFail("a failed write must throw rather than claim the password changed")
+        } catch {}
+
+        XCTAssertTrue(session.passwordRecoveryActive, "she should be able to try again")
+        XCTAssertEqual(auth.updatedPasswords, [], "nothing was written")
+    }
+
+    /// Backing out must discard the session the link created. Otherwise "Cancel" is a way into the
+    /// app on a link she never completed.
+    ///
+    /// Asserted at the BACKEND rather than on `session.state`. The repository is already
+    /// `.signedOut` here (the fake does not drive the auth observer the way Supabase does), so
+    /// checking state alone would pass even if the redeemed token were left alive on the client —
+    /// which is the thing that would actually be dangerous.
+    func testCancellingDiscardsTheSessionTheLinkCreated() async throws {
+        let (session, auth) = await signedOutRepository()
+        try await session.beginPasswordRecovery(url: link)
+        XCTAssertEqual(auth.currentUserId, "u1", "precondition: redemption produced a session")
+
+        session.cancelPasswordRecovery()
+
+        XCTAssertFalse(session.passwordRecoveryActive)
+        XCTAssertEqual(session.state, .signedOut, "cancelling must not leave her signed in")
+        await assertBackendSignedOut(auth, "cancelling must revoke the token the link minted")
+    }
+
+    /// `signOut()` hands the backend call to a detached task, so the revocation lands a hop later.
+    /// Polled rather than slept on, so the test is neither flaky nor artificially slow.
+    private func assertBackendSignedOut(
+        _ auth: FakeResetAuth, _ message: String,
+        file: StaticString = #filePath, line: UInt = #line
+    ) async {
+        for _ in 0..<50 {
+            if auth.currentUserId == nil { return }
+            await Task.yield()
+        }
+        XCTFail(message, file: file, line: line)
+    }
+
+    /// With no backend there is nothing to redeem against, and a silent success would show her a
+    /// password form that could never save.
+    func testRecoveryWithNoBackendThrows() async throws {
+        let session = SessionRepository(store: makeStore(), auth: nil)
+        await session.waitUntilResolved()
+
+        do {
+            try await session.beginPasswordRecovery(url: link)
+            XCTFail("with no backend there is nothing to redeem")
+        } catch {}
+        XCTAssertFalse(session.passwordRecoveryActive)
+    }
+
+    // MARK: - The rule for the new password
+
+    func testAShortPasswordIsRejected() {
+        XCTAssertEqual(NewPasswordRule.problem(password: "short", confirmation: "short"),
+                       "Password must be at least 8 characters")
+    }
+
+    /// 72 is the bcrypt input ceiling. Anything past it is silently truncated by the hasher, so a
+    /// password accepted here could later be matched by a different, shorter string.
+    func testAnOverlongPasswordIsRejected() {
+        let tooLong = String(repeating: "a", count: 73)
+        XCTAssertEqual(NewPasswordRule.problem(password: tooLong, confirmation: tooLong),
+                       "Password is too long")
+        let atTheLimit = String(repeating: "a", count: 72)
+        XCTAssertNil(NewPasswordRule.problem(password: atTheLimit, confirmation: atTheLimit),
+                     "72 itself must be allowed — the boundary is inclusive")
+    }
+
+    func testAMismatchIsRejected() {
+        XCTAssertEqual(NewPasswordRule.problem(password: "correct-horse", confirmation: "correct-hors"),
+                       "Those two passwords don't match")
+    }
+
+    /// An empty confirmation is its own message. Calling it a mismatch would accuse her of a typo
+    /// in a field she has not started filling in.
+    func testAnEmptyConfirmationAsksHerToConfirmRatherThanCallingItAMismatch() {
+        XCTAssertEqual(NewPasswordRule.problem(password: "correct-horse", confirmation: ""),
+                       "Type your new password again to confirm")
+    }
+
+    /// The length rule is checked before the match rule, so a woman typing two identical short
+    /// passwords is told the real problem rather than being told they match and then rejected.
+    func testTheLengthComplaintComesBeforeTheMatchComplaint() {
+        XCTAssertEqual(NewPasswordRule.problem(password: "abc", confirmation: "xyz"),
+                       "Password must be at least 8 characters")
+    }
+
+    func testAValidMatchingPairPasses() {
+        XCTAssertNil(NewPasswordRule.problem(password: "a-new-password", confirmation: "a-new-password"))
+    }
+
+    /// The rule must not drift from the sign-in screen's. If this screen accepted something
+    /// `AuthView.submit` rejects, she would set a password she could not then sign in with.
+    func testTheRuleMatchesTheSignInScreen() {
+        XCTAssertEqual(NewPasswordRule.minimumLength, 8)
+        XCTAssertEqual(NewPasswordRule.maximumLength, 72)
     }
 }

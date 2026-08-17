@@ -18,6 +18,11 @@ struct RootView: View {
     @State private var invite: InvitePresentation?
     @State private var showAuthFromInvite = false
     @State private var heldInviteCode: String?
+    /// Set when a recovery link fails to redeem. Held in the view rather than the repository
+    /// because a failed exchange leaves no session and lowers `passwordRecoveryActive` again — so
+    /// without this she would be bounced back to the sign-in screen with no explanation, which is
+    /// indistinguishable from the link doing nothing at all.
+    @State private var recoveryLinkError: String?
 
     var body: some View {
         Group {
@@ -32,6 +37,9 @@ struct RootView: View {
                 AuthView(allowsDismissal: false)
             case .mainTabs:
                 MainTabView()
+            case .passwordRecovery:
+                ResetPasswordView(linkError: recoveryLinkError,
+                                  onFinished: { recoveryLinkError = nil })
             }
         }
         .preferredColorScheme(colorScheme)
@@ -39,6 +47,9 @@ struct RootView: View {
             #if canImport(GoogleSignIn)
             if GIDSignIn.sharedInstance.handle(url) { return }   // Google OAuth callback
             #endif
+            // Checked before the invite parser: a recovery URL is not an invite, and until now it
+            // fell through both branches and was discarded without a trace.
+            if DeepLink.isPasswordRecovery(url) { receiveRecovery(url); return }
             if let code = DeepLink.inviteCode(from: url) { receiveInvite(code) }
         }
         .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
@@ -80,8 +91,24 @@ struct RootView: View {
         RootRouting.destination(
             session: session.state,
             onboardingComplete: onboardingComplete,
-            serviceAvailable: container.isServiceAvailable
+            serviceAvailable: container.isServiceAvailable,
+            passwordRecovery: session.passwordRecoveryActive || recoveryLinkError != nil
         )
+    }
+
+    /// Redeems a recovery link. Any failure is turned into copy she can act on rather than a
+    /// silent return to the sign-in screen. The underlying error is deliberately not shown or
+    /// logged: it can carry the token and the reason, and neither belongs on screen or in a log.
+    private func receiveRecovery(_ url: URL) {
+        recoveryLinkError = nil
+        Task {
+            do {
+                try await session.beginPasswordRecovery(url: url)
+            } catch {
+                recoveryLinkError = "This reset link has expired or has already been used. "
+                    + "Ask for a new one, and open it on this phone."
+            }
+        }
     }
 
     /// A signed-out invite is held, never used to mount private tabs. After a successful

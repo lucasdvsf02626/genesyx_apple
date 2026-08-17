@@ -84,6 +84,7 @@
 		CE7DC2E3CD51F7D69AA10F61 /* AuthRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD311BB01E946FB3AB4FE7F8 /* AuthRepository.swift */; };
 		D4E0FFE2FE7AE0AABA1FAA13 /* RootRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = B66AE0A68717265089D96482 /* RootRouting.swift */; };
 		D7EED7DE499B033ACFD1633C /* LifecycleE2ETests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 319A34E30FAB0B26C4DA0DB7 /* LifecycleE2ETests.swift */; };
+		D88DA4E0E583B4A9E30F7F6F /* ResetPasswordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45B783DF2E15B614E72F15FF /* ResetPasswordView.swift */; };
 		DE5566C1E61D568E2379FAA9 /* SleepSmokeUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84C182890D97D31185267B5B /* SleepSmokeUITests.swift */; };
 		DE9C3F479BE6E8224ED0C78C /* BackendSwapTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEB6BAF8FC459A7A15C72AB8 /* BackendSwapTests.swift */; };
 		E11E796D15E7BC987E6780E2 /* PersistenceDTOs.swift in Sources */ = {isa = PBXBuildFile; fileRef = C514C0E95E071BDA9843904E /* PersistenceDTOs.swift */; };
@@ -150,6 +151,7 @@
 		40F30A3F8C1E804BE4B86F8F /* GenesyxApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenesyxApp.swift; sourceTree = "<group>"; };
 		41348920BE9C91F44EC334CD /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		43EE7B189D1FA0D84CB24653 /* DeepLinkTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinkTests.swift; sourceTree = "<group>"; };
+		45B783DF2E15B614E72F15FF /* ResetPasswordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResetPasswordView.swift; sourceTree = "<group>"; };
 		48F5A8AF942299142460B70F /* RemoteBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteBackend.swift; sourceTree = "<group>"; };
 		49849D9AB56307E72089D622 /* LogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogView.swift; sourceTree = "<group>"; };
 		4CEF9376EE55F833D33CFEA5 /* PartnerRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PartnerRepository.swift; sourceTree = "<group>"; };
@@ -323,6 +325,7 @@
 			isa = PBXGroup;
 			children = (
 				080CEB58B93445D2DB9D5400 /* AuthView.swift */,
+				45B783DF2E15B614E72F15FF /* ResetPasswordView.swift */,
 			);
 			path = Auth;
 			sourceTree = "<group>";
@@ -742,6 +745,7 @@
 				FDC13A48823289A4B1483BDE /* Reachability.swift in Sources */,
 				02CDDD6278836CD356A2B6E9 /* RemoteBackend.swift in Sources */,
 				9F148CCE3A2DE5173BFFAA39 /* RemoteModels.swift in Sources */,
+				D88DA4E0E583B4A9E30F7F6F /* ResetPasswordView.swift in Sources */,
 				D4E0FFE2FE7AE0AABA1FAA13 /* RootRouting.swift in Sources */,
 				179450D82831FD20FBB06431 /* RootView.swift in Sources */,
 				0A98509A9EDFF1F6335455A5 /* SessionRepository.swift in Sources */,

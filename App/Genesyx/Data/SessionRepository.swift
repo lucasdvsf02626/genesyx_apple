@@ -14,6 +14,13 @@ final class SessionRepository: ObservableObject {
     @Published private(set) var email: String?
     @Published private(set) var displayName: String?
 
+    /// True from the moment a recovery link is redeemed until she has either set a new password or
+    /// cancelled. Redeeming the link produces a REAL session, so without this flag `RootRouting`
+    /// would see `.signedIn` and drop her straight into the app with her old password still live
+    /// and no prompt to change it — the link would silently become a back door past the gate.
+    /// `RootRouting` reads this ahead of session state to keep her on the reset screen instead.
+    @Published private(set) var passwordRecoveryActive = false
+
     private let auth: AuthBackend?
     private let store: LocalStore
     private let emailKey = "session_email"
@@ -321,6 +328,45 @@ final class SessionRepository: ObservableObject {
     func sendPasswordReset(email: String) async throws {
         guard let auth, !email.isEmpty else { throw RemoteError.notConfigured }
         try await auth.resetPassword(email: email)
+    }
+
+    // MARK: - Password recovery
+
+    /// Redeems the `genesyx://reset-password` link and holds her on the reset screen.
+    ///
+    /// Order matters. The flag is raised BEFORE the exchange, because a successful exchange fires
+    /// the auth-state observer synchronously enough that `RootRouting` can see `.signedIn` first
+    /// and mount the private tabs for a frame. On failure it is lowered again so an expired link
+    /// cannot strand her on a screen she has no valid session for.
+    func beginPasswordRecovery(url: URL) async throws {
+        guard let auth else { throw RemoteError.notConfigured }
+        passwordRecoveryActive = true
+        do {
+            try await auth.completePasswordRecovery(url: url)
+        } catch {
+            passwordRecoveryActive = false
+            throw error
+        }
+    }
+
+    /// Sets the new password, then deliberately signs her out.
+    ///
+    /// Signing out is not tidiness. A reset is what you do when the password may be known to
+    /// someone else, so every other session must die with it, and she should prove the new password
+    /// works while she still remembers typing it. `signOut()` also clears on-device health data via
+    /// `onClearLocalState`, and the next sign-in rehydrates from the server.
+    func completePasswordRecovery(newPassword: String) async throws {
+        guard let auth else { throw RemoteError.notConfigured }
+        try await auth.updatePassword(newPassword)
+        passwordRecoveryActive = false
+        signOut()
+    }
+
+    /// Abandons a recovery in progress. The redeemed session is discarded rather than kept, so
+    /// backing out of the reset screen cannot leave her signed in on a link she did not finish.
+    func cancelPasswordRecovery() {
+        passwordRecoveryActive = false
+        signOut()
     }
 
     /// Re-sends the sign-up confirmation email. Used right after a sign-up whose session was

@@ -70,7 +70,13 @@ struct AuthView: View {
     /// The same neutral wording whether or not the address has an account. Saying "no account with
     /// that email" would turn this screen into an account-enumeration oracle for a health app, and
     /// Supabase deliberately does not distinguish the two either.
-    private static let resetSent = "If that email has an account, we've sent a reset link. Check your inbox."
+    ///
+    /// The second sentence is not politeness. The SDK runs the PKCE flow, so requesting the reset
+    /// stores a code verifier on THIS device and the link can only be redeemed here. Opened on a
+    /// laptop or a second phone it fails, and the app can only report it as an expired link — so
+    /// she has to be told before she goes looking for the email somewhere else.
+    private static let resetSent = "If that email has an account, we've sent a reset link. "
+        + "Open it on this phone."
 
     private func sendReset() {
         resetNotice = nil
