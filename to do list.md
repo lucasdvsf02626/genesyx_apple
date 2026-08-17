@@ -11,7 +11,7 @@ Written 2026-08-12. Source: status audit against the client change list of 2026-
 Evidence:
 - `~/Library/Developer/Xcode/Archives/2026-07-29/Genesyx 1.1.1 (17).xcarchive` is the newest archive. The `2026-07-30` folder is empty. No 1.2.0 (18) archive exists anywhere.
 - `docs/HANDOFF.md` §4 task 22: "Ship build 18 to TestFlight | blocked by pre-flight 1–5" (it read "1–3" until 13 Aug, when the table had already grown to five — corrected there and in §3 below).
-- `docs/TESTFLIGHT_B18.md` release checklist: P0-2 (commit the working tree), P0-6 (full green regression) and P0-7 (verify live theme default) are all still unticked.
+- `docs/TESTFLIGHT_B18.md` release checklist: P0-2 (commit the working tree), P0-6 (full green regression) and P0-7 (verify live theme default) are all still unticked **in that file**, but P0-6 and P0-7 are both now done — see §3.
 
 **What this means for the statuses below.** The client's rule was: nothing is "Done" unless it is live in the current TestFlight build and verified on a real device. Build 17 predates the entire change list, so under that rule almost nothing on the list can be Done. Where `HANDOFF.md` and `CHANGE_LIST_PLAN.md` say "shipped", they mean **committed** — not shipped. I have marked **Done** only for items genuinely live in build 17.
 
@@ -30,7 +30,7 @@ Evidence:
 - **Google `-5` fix is in code**, not just claimed. `AuthView.swift:181-185`: `if (error as? GIDSignInError)?.code == .canceled { return }`. Committed. Not in any shipped build.
 - **Supabase held items are committed** — `supabase/migrations/20260812_partner_invites_write_lockdown.sql` in `2e07f1f`, `supabase/functions/revoke_partner_invite/` in `6000f2d`. Applied/deployed state on production was not probed today (out of scope per standing rules).
 
-**Next blocking action (updated 18 Aug 00:05):** upload `build/Export/Genesyx.ipa` to TestFlight. HEAD `8df44db` (1.2.0 **build 20**) is **archived and exported** — signed `Apple Distribution: SF MEDIA & PR LTD`, IPA contents verified (version, privacy manifest, 1024 icon, entitlements); facts and the two archive traps are in `docs/TESTFLIGHT_B20.md` under "Build facts". Build 19 (`fb37e2a`) was superseded the same day by the password recovery flow (`eded1c7`) and the build bump; do not upload 19. The full green regression is **done** on the build-20 tree — 294 domain (`swift test`) and 430/431 `xcodebuild test` on iPhone 17, 0 failures, 1 declared skip. The Supabase Google **Authorized Client IDs** question is **settled** — the iOS client is present, see section 1. What remains is the upload itself, the App Store Connect listing (screenshots, privacy labels, age rating — never audited), and the P0-7 theme-default decision. Sign-in per the 30-second console-read table below is still the gating verification the moment a build reaches a device.
+**Next blocking action (updated 18 Aug 00:05):** upload `build/Export/Genesyx.ipa` to TestFlight. HEAD `8df44db` (1.2.0 **build 20**) is **archived and exported** — signed `Apple Distribution: SF MEDIA & PR LTD`, IPA contents verified (version, privacy manifest, 1024 icon, entitlements); facts and the two archive traps are in `docs/TESTFLIGHT_B20.md` under "Build facts". Build 19 (`fb37e2a`) was superseded the same day by the password recovery flow (`eded1c7`) and the build bump; do not upload 19. The full green regression is **done** on the build-20 tree — 294 domain (`swift test`) and 430/431 `xcodebuild test` on iPhone 17, 0 failures, 1 declared skip. The Supabase Google **Authorized Client IDs** question is **settled** — the iOS client is present, see section 1. P0-7 is **closed** — the live `profiles.theme` default is `'light'::text`, matching the client, verified by direct SQL (§3). What remains is the upload itself and the App Store Connect listing (screenshots, privacy labels, age rating — never audited). Sign-in per the 30-second console-read table below is still the gating verification the moment a build reaches a device.
 
 ### 1. Fix Google sign-in (blocks everything else)
 Nothing can be device-verified until someone can sign in. Current state of the diagnosis:
@@ -99,7 +99,9 @@ after it was written, and both are load-bearing, so do not stop at three:
 4. Deploy all six Edge Functions — ✅ **DEPLOYED 13 Aug**. Note this **turned `verify_jwt` ON**:
    there is no `config.toml`, so the CLI default of `true` applied. Confirmed by probe — all six now
    answer an anonymous POST from the gateway, not from their own catch block
-5. `profiles.theme` live default — ⬜ **still outstanding**, P0-7 (this is what the old "3" meant).
+5. `profiles.theme` live default — ✅ **RESOLVED 18 Aug**, P0-7 (this is what the old "3" meant). The
+   live column default is `'light'::text`, which is the same product default the client falls back to
+   (`RepositoryTests.swift:451`, `:1367`). No decision left to take; see the direct-SQL audit below.
 
 **Whole-schema probe against production, 18 Aug — no drift.** Every table and column the iOS client
 reads or writes exists live. Method: an unauthenticated `GET /rest/v1/<table>?select=<column>&limit=0`
@@ -136,9 +138,35 @@ One NOTE carried forward, **not blocking and not reachable from this binary**:
 link that severs the wrong row. Unreachable while `FeatureFlags.partnerInvites` is `false`, and
 `accept_partner_invite:69-74` now prevents asymmetric links, but **Android shares this database**,
 so fix it there before Android ships partner linking again.
-   Needs `select theme, count(*) from public.profiles group by theme;` and then a decision
 
-Apply with `supabase db query --linked -f <file>`. **Never `supabase db push`** — this project has no `supabase_migrations.schema_migrations` table and push would replay every migration.
+**Direct-SQL audit against production, 18 Aug — the RLS gap is now closed.** The anon-key probe above
+proves a column exists and that `anon` cannot read it, but it can say nothing about the *policies*,
+because those were created by hand in the dashboard and appear in no migration file. Run as `postgres`
+in the dashboard SQL Editor, read-only, no writes:
+- **RLS is on for all 9 public tables**, none off: `cycle_settings daily_logs genesyx_products
+  partner_invites ph_readings profiles quiz_answers user_supplements waitlist_emails`.
+- **Every policy is owner-scoped and none is granted to `anon` or `public`.** Counting policies whose
+  `qual` + `with_check` does not mention `auth.uid()` returns 0 for all eight user tables
+  (`profiles` has 3 policies, the rest 1 each). The single exception is deliberate:
+  `genesyx_products` has one `SELECT` policy, roles `{authenticated}`, `qual = true` — a read-only
+  catalogue for signed-in users, still closed to `anon`.
+- **`waitlist_emails` has RLS on and zero policies**, so no client role can touch it directly at all.
+  Writes only reach it through `join_waitlist`, which is `SECURITY DEFINER` with `search_path=public`
+  explicitly pinned (not the unset variant Supabase's linter flags).
+- **`partner_invites` grants:** `anon` = none; `authenticated` = `INSERT, SELECT, REFERENCES,
+  TRIGGER` — no `UPDATE`, no `DELETE`. Belt and braces on top of `FeatureFlags.partnerInvites=false`.
+- **`profiles.theme` default is `'light'::text`.** Live distribution over 18 rows: `light=8 dark=8
+  system=2`. The two `system` rows are exactly the case the one-time migration handles
+  (`migrateLegacySystemTheme()`, tests `RepositoryTests.swift:1191`, `:1245`) — a user who never
+  chose `.system` is corrected to `.light` on next launch, and one who chooses it herself keeps it.
+  That closes P0-7 with data rather than a guess.
+- **The migration ledger is empty.** `supabase_migrations.schema_migrations` does not exist (`42P01`),
+  and `supabase migration list --linked` reports a blank `remote` for all 16 local files. Production
+  was built by hand in the dashboard, so **the migrations directory is not the source of truth for
+  what is live** — treat the database as authoritative and the files as history. Not a launch
+  blocker: the schema itself was verified column-by-column above.
+
+Apply through the dashboard **SQL Editor**. There is no `supabase db query` subcommand — CLI 2.109.1 offers only `diff dump push pull reset lint` under `db`, and `dump` needs Docker, which is not installed here. **Never `supabase db push`** — confirmed 18 Aug that this project has no `supabase_migrations.schema_migrations` table, so push would replay all 16 migrations against a schema that already has them.
 
 ### 4. Finish the 1A leftovers
 See the 1A table below for exactly what is In progress.
@@ -211,7 +239,7 @@ Content guard note: `PhContentGuardTests.swift:9` bans "infection", "thrush", "c
 | Item | Status | Evidence |
 | --- | --- | --- |
 | Warm / premium visual pass | **Blocked** | No design spec supplied. Cannot start without one |
-| Theme (light/dark/system) | **In review** | `PreferencesRepository.swift:102`. The client-side override bug is fixed and tested (see the two-week plan, item 7). What is still in review is P0-7: the **live** `profiles.theme` default on production, which is a data decision, not a code one |
+| Theme (light/dark/system) | **Done** | `PreferencesRepository.swift:102`. The client-side override bug is fixed and tested (see the two-week plan, item 7). P0-7 closed 18 Aug: the live `profiles.theme` default is `'light'::text`, matching the client's own fallback |
 | Dynamic Type | **To do** | `HANDOFF.md` §4f: the app has **no Dynamic Type support at all** |
 | Component consistency | **In progress** | `GenesyxControls.swift:53`, `:215` |
 
@@ -331,7 +359,7 @@ No schema, RLS policy, table/column name, enum or function signature has been ch
 6. Device verification pass
 
 **Week 2 — the amendment list proper.**
-7. ~~Theme-override bug~~ — **fixed in code.** `clearThemeMigrationFlag()` (`PreferencesRepository.swift:169-171`) is called on sign-out (`AppContainer.swift:131`), and `migrateLegacySystemTheme()` runs after `apply(remote:)` (`:200-201`, `:213-218`) so the pulled `.system` is corrected rather than left standing. Tests: `RepositoryTests.swift:1185`, `:1200`, `:1212`, `:1231`. The separate P0-7 decision on the **live** `profiles.theme` default is still open
+7. ~~Theme-override bug~~ — **fixed in code.** `clearThemeMigrationFlag()` (`PreferencesRepository.swift:169-171`) is called on sign-out (`AppContainer.swift:131`), and `migrateLegacySystemTheme()` runs after `apply(remote:)` (`:200-201`, `:213-218`) so the pulled `.system` is corrected rather than left standing. Tests: `RepositoryTests.swift:1185`, `:1200`, `:1212`, `:1231`. The separate P0-7 question on the **live** `profiles.theme` default is now answered too — the column default is `'light'::text` and the two production rows still holding `system` are precisely what `migrateLegacySystemTheme()` corrects
 8. Nutrition text pass (2B)
 9. Partner clarification + sharing scope (1B / 4)
 10. Streak decisions agreed with Android (3A)
