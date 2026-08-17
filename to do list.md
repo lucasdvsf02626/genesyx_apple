@@ -64,6 +64,18 @@ if (error as? GIDSignInError)?.code == .canceled { return }
 ```
 Build verified (`BUILD SUCCEEDED`, `AuthView.swift` recompiled, so the typed cast is real and not a stale object file).
 
+**Do NOT gate the `[GoogleSignIn]` / `[AppleSignIn]` `print`s behind `#if DEBUG`.** A pre-submission
+review flagged them as un-gated in Release, and `AuthView.swift:169` does print her email address.
+Leave them. TestFlight builds *are* Release, so gating them would delete the console-read table
+above — the only diagnostic that exists for the sign-in question, on the only build type that
+reaches a real phone. The exposure is small and bounded: Swift `print` writes to stdout, which is
+not routed into the unified log for a store build, so nothing is persisted on device or collected
+by a sysdiagnose; it is visible only to someone with the phone attached to Xcode or Console.app.
+The right fix, **once sign-in is confirmed working on hardware and the table is spent**, is to drop
+the `email=` interpolation from `:169` and gate the remaining four stage markers. Doing it before
+then trades a real diagnostic for a theoretical leak, and would invalidate the verified build-20
+archive for a change no reviewer will ever see.
+
 **Do the console read anyway, and do it after this fix.** The table above assumes the failure prints a line. It may not have: the third row — "no `[GoogleSignIn]` line at all" — was exactly what the `-5` swallow produced, so the defect above could have been *hiding* the diagnosis rather than sitting beside it. Row 3 now means something different from what it meant when this was written.
 
 ### 2. Commit the working tree (~40 files) + full green regression
@@ -101,6 +113,29 @@ denies `anon`. Every probe returned `42501`:
 That also confirms **no table is readable by `anon`**, which is the property that matters for a build
 carrying vaginal-pH and sexual-activity rows. Re-run the probe after any migration; it is read-only,
 returns no user data, and takes seconds.
+
+**Password-recovery redirect — ✅ confirmed 18 Aug.** `DeepLink.swift:72` warns that
+`genesyx://reset-password` must be on the Supabase Auth *Redirect URLs* allow-list or `redirect_to`
+is discarded server-side and the email silently falls back to the Site URL, which is the entire bug
+build 20 exists to fix. The allow-list holds three entries and it is there:
+`https://genesyx.co.uk/**`, `genesyx://`, `genesyx://reset-password`. The server half of password
+recovery is therefore correct; what is still unproven is the nine-step walk on hardware.
+
+**Pre-submission security review, 18 Aug — no blockers.** All 16 migrations, all 6 edge functions
+and 125 Swift files read. Clean: no analytics or tracking SDK of any kind (only supabase-swift and
+GoogleSignIn); no health data in any log call, URL or shared container; no committed secrets; all
+nine user tables RLS-on with owner-only `auth.uid()` policies on both `using` and `with check`;
+every edge function resolves the caller from the JWT and none trusts a user id from the request
+body; no `try!`, `fatalError` or force casts, and the `Phase` force-unwraps are total over all four
+cases. `delete_account` removes all nine tables then the auth user last, checking each result, so a
+partial failure leaves the account retryable rather than returning a false success.
+
+One NOTE carried forward, **not blocking and not reachable from this binary**:
+`supabase/functions/delete_account/index.ts:44` unlinks the partner unconditionally, where
+`unlink_partner/index.ts:39-41` deliberately adds `.eq("partner_id", user.id)`. On an asymmetric
+link that severs the wrong row. Unreachable while `FeatureFlags.partnerInvites` is `false`, and
+`accept_partner_invite:69-74` now prevents asymmetric links, but **Android shares this database**,
+so fix it there before Android ships partner linking again.
    Needs `select theme, count(*) from public.profiles group by theme;` and then a decision
 
 Apply with `supabase db query --linked -f <file>`. **Never `supabase db push`** — this project has no `supabase_migrations.schema_migrations` table and push would replay every migration.
