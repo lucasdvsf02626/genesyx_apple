@@ -1,14 +1,6 @@
 // Permanently delete the caller's account and all their data.
 // REQUIRED by App Store Guideline 5.1.1(v) once the app has accounts.
 //
-// ⚠️ NOT YET DEPLOYED — two edits made 14 Aug 2026 are in this file and NOT on the live project
-// (`epltxklawpcxxbaleswg`). Until someone runs `supabase functions deploy delete_account`, the
-// deployed function still (a) omits the explicit `user_supplements` delete and (b) swallows a
-// `waitlist_emails` failure and returns `{ok: true}`. Neither edit changes what a SUCCESSFUL
-// deletion erases — `user_supplements` cascades on `auth.users` anyway — so the live path is not
-// leaking data today; both close the case where the run does NOT fully succeed. Delete this banner
-// in the same change that deploys it, and not before.
-//
 // NOTHING IS REPORTED DELETED THAT WAS NOT DELETED.
 // Every statement here used to discard its result, so the function could fail to remove a table,
 // carry on, delete the auth user, and return `{ok:true}`. That is the worst available outcome: the
