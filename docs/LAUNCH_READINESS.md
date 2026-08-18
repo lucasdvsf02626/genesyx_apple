@@ -198,7 +198,17 @@ Two things joined this item on 18 August:
 Privacy labels · age rating questionnaire · regulated-medical-device declaration · DSA trader status · Privacy Policy URL · content rights & encryption · **a demo account in the Review Notes** (the app is behind an auth gate — without one, review will be rejected on Guideline 2.1 without ever seeing the app).
 
 **8. ~~Fresh screenshots from the release candidate.~~ CAPTURED, 18 August 2026 — six frames replace the July six. Upload still owed.**
-`docs/appstore_screenshots/` holds **1-Home, 2-Track, 3-pH, 4-Nutrition, 5-Insights, 6-Learn**, all 1320 × 2868 with no alpha channel, flattened by `scripts/prepare_store_screenshots.sh`. 1320 × 2868 is the **iPhone 6.9"** slot; the live listing currently has only the 6.5" slot filled, from July. The July set is deleted, and the numbering has shifted because pH is now third — anything referring to "screenshot 3" from the old set means Nutrition, not pH.
+`docs/appstore_screenshots/` holds **1-Home, 2-Track, 3-pH, 4-Nutrition, 5-Insights, 6-Learn**, all 1320 × 2868 with no alpha channel, flattened by `scripts/prepare_store_screenshots.sh`. The July set is deleted, and the numbering has shifted because pH is now third — anything referring to "screenshot 3" from the old set means Nutrition, not pH.
+
+**The size is checked against Apple's published spec, not inferred from the simulator.**
+[Screenshot specifications, App Store Connect Help](https://developer.apple.com/help/app-store-connect/reference/screenshot-specifications/)
+gives **1320 × 2868 portrait as the 6.9" iPhone size**, and states that **6.9" is the required size
+for an iPhone app**; 6.5" (1284 × 2778, or 1242 × 2688) is only required when 6.9" is not supplied.
+It also requires PNG or JPEG **with no alpha channel or transparency**, which is what the flattening
+step is for. This matters beyond bookkeeping: the live listing has **only the 6.5" slot filled**,
+from July, so today the store is serving scaled fallbacks on every current large iPhone. Filling 6.9"
+is the fix, and this set is it. Recorded this way because an earlier draft of this entry asserted
+6.9" from the capture device rather than from the spec — right answer, unearned.
 
 **A seventh frame was captured and then dropped, deliberately.** `7-Profile.png` showed the build 21 consent block — *"Collection is on · You agreed on 18 Aug 2026 · Withdraw consent"*. It is the most compliance-legible frame of the set and the temptation was to keep it for exactly that reason. It is out on two grounds: the brief was six marketing frames with no consent screen, and Profile is a settings list, which is the weakest thing to hand a browsing customer out of seven candidates. The privacy control is evidence for App Review, not a sales frame; it belongs in the review notes, not the carousel. Recoverable from git if that judgement is reversed.
 
@@ -208,10 +218,17 @@ Captured from a Debug simulator build of the build 21 tree on iPhone 17 Pro Max,
 
 Each frame was opened and looked at, not merely size-checked. No placeholder or lorem content appears in any of them, and no real account does either — every name, email and reading on screen is seeded fiction. They show the seven-tab bar, the light default and the new egg artwork.
 
-**Two things visible in these frames are worth a decision before upload, neither of them a defect in the capture.**
+**Three things were raised for decision and all three are now decided. Recorded so they are not re-litigated at upload.**
 
-- **`5-Insights.png` carries "empowered decisions"** (`InsightsView.swift:193`). House style bans "empower"; the banned-phrase test does **not** cover it, so it shipped. It is in-app copy, so fixing it means a new build, and the tree must keep matching the `v1.2.0-b21` archive. Either accept it for this release and fix in 22, or recut. Not fixed here.
-- **`4-Nutrition.png` shows the supplement plan** — Folate, Omega-3, Vitamin D, Zinc. This app has already been rejected once under **Guideline 1.4.1** (health/medical information), so a nutrient-naming frame is on the exact axis App Review is demonstrably sensitive to for Genesyx. It is a screenshot of shipped, clinician-pending copy rather than a new claim, but it is the frame most likely to draw a second look.
+- **`5-Insights.png` carries "empowered decisions"** (`InsightsView.swift:193`). House style bans "empower"; the banned-phrase test does **not** cover it, which is why it shipped, and that gap is the more useful finding — the guard catches unsafe claims, not off-style ones. **Decided: accepted for 1.2.0, deferred to the 1.2.1 copy list.** Fixing it means in-app copy, a new build, and breaking the tree's match with the `v1.2.0-b21` archive, which is not worth it for one adjective.
+- **`4-Nutrition.png` shows the supplement plan** — Folate, Omega-3, Vitamin D, Zinc. This app has already been rejected once under **Guideline 1.4.1** (health/medical information), so a nutrient-naming frame sits on the exact axis App Review is demonstrably sensitive to for Genesyx. It is shipped, clinician-pending copy rather than a new claim. **Decided: stays in the set.**
+- **`7-Profile.png` dropped. Decided: approved.** See the paragraph above for why.
+
+**One cosmetic observation, raised and not acted on.** `1-Home` and `5-Insights` both end on a card
+sliced through by the bottom edge — "Eating with your cycle, not" and "…own pattern readable"
+respectively. That is what a scrolling screen looks like when captured, Apple accepts it, and it
+signals there is more below. It is only worth knowing that it reads as slightly unfinished next to
+`2-Track` and `4-Nutrition`, which happen to end cleanly.
 
 *Two docs disagreed about whether this was ever done: `APP_STORE_SUBMISSION.md` ticked it, `FINAL_APP_STORE_RELEASE_CHECKLIST.md` said take new ones. The checklist was right, and the point is now moot.*
 
@@ -238,6 +255,19 @@ Each frame was opened and looked at, not merely size-checked. No placeholder or 
 **14. Two different numbers are both labelled "streak."**
 **15. The compliance guard bans "vaginosis" in prose, but the pH tab displays it as a link label.** Raise with the medical reviewer.
 **16. Add Resend to the live privacy policy, or move it to the EU region.**
+
+### 🔵 1.2.1 copy list — accepted for this release, fix in the next build
+
+Off-style or imprecise in-app copy that is not worth breaking the `v1.2.0-b21` archive match for.
+Each needs a code change and therefore a build, so they batch.
+
+- **"empowered decisions"** — `App/Genesyx/UI/Insights/InsightsView.swift:193`, the Insights header
+  subtitle. House style bans "empower". Visible in `5-Insights.png`, which ships to the store, so it
+  is the most public instance. **The guard gap is the durable finding:** the banned-phrase test is
+  built for unsafe *claims*, and house-style words like "empower" and "your journey" are not in it,
+  so nothing stopped this. Decide whether to widen the guard when fixing the string, or the next one
+  arrives the same way.
+- **The user-facing em dashes** already logged against house style, still deferred.
 
 ### 🟢 Not blocking — my list, not yours
 
@@ -1110,19 +1140,24 @@ done, performed in the client's own terminal and dashboard rather than from this
 | Five Apple secrets set | ✅ Done | `supabase secrets list`; `.p8` never left the secret manager |
 | `delete_account` deployed | ✅ Done | Client-confirmed |
 | `APPLE_REVOKE_REQUIRED=true` | ✅ Done, kept on deliberately | Early by the documented order; reviewed and accepted — §9.2 |
-| `anon` grant on `consent_events` | ✅ **Applied and verified in-database, 18 Aug** — V4 (over the API) still open | `20260818b_consent_events_grant_cleanup.sql`, run in the Dashboard SQL Editor. V1 pass: no `anon` row in `relacl`, `authenticated` reads `arwdxtm` with TRUNCATE gone. V2 pass: zero column-level `anon` grants in `pg_attribute.attacl`. V3 pass: exactly the two `{authenticated}` policies. `NOTIFY pgrst, 'reload schema'` issued. **Do not re-apply.** |
+| `anon` grant on `consent_events` | ✅ **CLOSED, 18 Aug — applied and verified V1 through V4** | `20260818b_consent_events_grant_cleanup.sql`, run in the Dashboard SQL Editor. V1 pass: no `anon` row in `relacl`, `authenticated` reads `arwdxtm` with TRUNCATE gone. V2 pass: zero column-level `anon` grants in `pg_attribute.attacl`. V3 pass: exactly the two `{authenticated}` policies. `NOTIFY pgrst, 'reload schema'` issued. V4 pass: the anon probe reads **401** where it read 200. **Do not re-apply.** |
 
-**V4 cannot prove what this table says it proves, and that is worth writing down rather than
-quietly dropping.** The migration header records the `consent_events` anon probe reading **HTTP 200**
-before the change, which is the observation the whole file was written to explain. When the same
-probe was run again immediately **before** applying the migration, it read **401 / `42501 permission
-denied`** — already matching `profiles` and `partner_invites`. So the post-apply 401 that V4 will
-read is the correct end state, but it is *not* evidence that this migration caused it. One of two
-things is true: the grant was revoked by something else between the audit and the apply, or the
-original 200 came from a different environment than the one the migration was applied to. Neither
-has been established. The catalog checks above are the real evidence here; V4 is a confirmation that
-the API agrees with the catalog, and nothing more. The header's 200/401 inference should be read
-with that in mind.
+**The 401 is attributable to this migration, and the sequence is recorded because it was briefly
+misread.** In order, on 18 August: the morning audit probe read **200**, which is the observation
+that caused the file to be written; the migration was then applied and V1–V3 verified in the
+catalog, followed by `NOTIFY pgrst, 'reload schema'`; the later probe read **401 / `42501 permission
+denied`**, matching `profiles` and `partner_invites`. One environment, one direction, change in the
+middle. Nothing else touched the table's ACL between the two reads.
+
+An earlier draft of this section claimed the 401 predated the apply and therefore could not be
+attributed. That was a timeline scrambled across sessions, not a finding — the 401 was always the
+post-apply read. The correction is kept rather than silently removed because the failure mode is
+worth recognising: two probes and an apply, reassembled out of order, produced a confident and
+entirely wrong conclusion about causation. Order the evidence before reasoning about it.
+
+**V5 is the only thing still open on this item** — the signed-in device round trip: agree to consent
+on a fresh account, withdraw it in Profile, turn it back on, and confirm three rows with none
+overwritten. It rides with the real-device pass at blocker #6.
 
 Probe shape, so a future re-run matches: `GET {SUPABASE_URL}/rest/v1/{table}?select=id&limit=0` with
 `apikey` and `Authorization: Bearer` both set to the public publishable key, status code read and the
