@@ -133,17 +133,36 @@ Live at **v10 ACTIVE**, bundle byte-identical to the repo, verified by `supabase
 **3b. ~~Deploy the three invite Edge Function fixes.~~ DONE, 17 Aug 2026.**
 `accept_partner_invite` (v8 → **v9**), `decline_partner_invite` (v6 → **v7**) and `unlink_partner` (v7 → **v8**) are deployed to production, all ACTIVE, all `verify_jwt=true`, each deployed on its own with the diff confirmed first and the deployed source downloaded and diffed byte-for-byte against the repo afterwards. Production no longer runs the versions where the invite ownership check failed to fire for an account with no email, or where unlinking could sever a third party's link. Full evidence in §8.6. No other function was redeployed.
 
-**4. Verify the password-reset email end to end.** *One live check — I cannot do it from the repo.*
-`resetPasswordForEmail` is called with **no `redirectTo`**, and the app has no recovery deep-link handler and no set-new-password screen. The email therefore lands on whatever the Supabase project's **Site URL** is — which is outside this repo. Meanwhile the app tells her *"Check your inbox."*
-**→ Trigger a real password reset against production and follow the email.** Tell me what you see. If it does not land somewhere that works, every woman who forgets her password is locked out, and I will build the in-app recovery screen.
+**4. ~~Verify the password-reset email end to end.~~ CLOSED IN CODE, 18 Aug 2026 — this entry was describing build 19.**
+All three gaps it named are filled in build 21, checked against the source rather than assumed:
 
-**5. ~~Bump the build number.~~ DONE, 17 Aug 2026.**
-`project.yml` reads `CURRENT_PROJECT_VERSION: "19"` and `MARKETING_VERSION: "1.2.0"`. `xcodegen` was run: `Genesyx.xcodeproj/project.pbxproj` carries `CURRENT_PROJECT_VERSION = 19` in both configurations with no `18` remaining, and it is committed and clean. The release commit is `fb37e2a`. The staging advice below is kept because it still applies to every future release commit.
+| What this blocker said was missing | Where it is now |
+| --- | --- |
+| `resetPasswordForEmail` called with no `redirectTo` | `SupabaseBackend.swift:71` — `redirectTo: DeepLink.passwordRecoveryURL` |
+| No recovery deep-link handler | `DeepLink.swift:75` declares `genesyx://reset-password`; matched at line 85 |
+| No set-new-password screen | `App/Genesyx/UI/Auth/ResetPasswordView.swift`; `SessionRepository.swift:340` redeems the link and holds her on that screen |
 
-**5b. The release candidate is archived.** *Found 17 Aug 20:00 — `to do list.md` still says "No new archive", and that line is spent.*
-`~/Library/Developer/Xcode/Archives/2026-08-17/Genesyx-1.2.0-b19.xcarchive`, created **12:48 GMT**, `CFBundleShortVersionString 1.2.0`, `CFBundleVersion 19`, `com.genesyx.app`, arm64, signed **Apple Distribution: SF MEDIA & PR LTD (M5L3MM75SG)**.
-**It is a faithful build of the release commit.** `fb37e2a` landed at 12:29, the archive was cut at 12:48, and the only two commits since (`b78eee6` at 16:36, `b6907c5` at 16:50) touched one Supabase function file and one document. No `App/` or `Sources/` file has changed since the archive, so it does not need recutting. The three Edge Function fixes deployed later this evening are server-side and reach this build without a new binary.
-**What is not established from here:** whether it has been uploaded to TestFlight or App Store Connect. That needs the browser. Note also that the signing identity is *SF MEDIA & PR LTD* while the live privacy policy names *Genesyx Ltd* as data controller — those are allowed to differ, but the App Store listing and the policy should be checked to say the same thing as each other.
+The server half was settled on 17 August (`84c8411`): `genesyx://reset-password` is on the Supabase redirect allow-list, so the email no longer falls back to the Site URL. That fallback is the exact bug build 20 was cut to fix, and 21 carries the fix.
+
+**One live confirmation is still owed, and it has moved to #6 rather than standing here** — following a real reset email through to a changed password on a physical device. The code path is complete and the allow-list is correct, so that is confirmation rather than investigation, and it wants the same device session as the Apple sign-in check.
+
+*Struck through rather than deleted: two other documents still cite this as outstanding.*
+
+**5. ~~Bump the build number.~~ DONE, 18 Aug 2026 — now at build 21, not 19.**
+`project.yml` reads `CURRENT_PROJECT_VERSION: "21"` and `MARKETING_VERSION: "1.2.0"`, and `xcodegen` was run so `Genesyx.xcodeproj/project.pbxproj` carries 21 in both configurations. **Build 20 is void for submission** — it predates Article 9 consent capture, Apple token revocation on delete, and the gated pregnancy placeholder, and the consent capture is the one thing both Apple review and the ICO would look for. The reasoning for each number from 13 onward is kept in `project.yml` itself. The staging advice below still applies to every future release commit.
+
+**5b. The release candidate is archived, committed and tagged.** *Updated 18 Aug 2026 — supersedes the build 19 entry.*
+`~/Desktop/Genesyx-b21.xcarchive`, created **18 Aug 11:04:34 UTC**, `CFBundleShortVersionString 1.2.0`, `CFBundleVersion 21`, `com.genesyx.app`, signed **Apple Distribution: SF MEDIA & PR LTD (M5L3MM75SG)**.
+
+**The binary maps to a known commit, which is the whole point of the tag.** The archive was cut from the tree at `93f5a13`, tagged **`v1.2.0-b21`**. One commit sits on top of the tag, `9440534`, and it touches this document only — no `App/`, `Sources/` or `Tests/` file has changed since the archive, so it does not need recutting. Confirmed today by diffing the working tree against the tag: the only non-doc difference is one staged asset file (see the tree note below).
+
+**What is still not established from here:** whether build 21 has been uploaded to TestFlight or App Store Connect. Nothing has been exported locally — there is no `~/Desktop/Genesyx-b21-export` directory — so any upload would have gone through Organizer. **Check App Store Connect for an existing build 21 before uploading:** `ExportOptions.plist` sets `manageAppVersionAndBuildNumber = false`, so a duplicate is rejected outright and recovering costs a bump to 22, an `xcodegen generate` and a fresh archive, voiding the current one.
+
+**A trap in the export path, recorded because it nearly cost a build.** `ExportOptions.plist` has **no `destination` key**, and `xcodebuild -exportArchive` defaults to `destination=export`. `method: app-store` governs how the `.ipa` is signed and packaged, *not* where it goes. Running an export against this plist therefore writes a signed `.ipa` to disk, uploads nothing, and exits 0 — indistinguishable from a successful submission unless you check App Store Connect. Uploading needs either `destination: upload` added to a separate plist, or the Organizer route.
+
+Note also that the signing identity is *SF MEDIA & PR LTD* while the live privacy policy names *Genesyx Ltd* as data controller — those are allowed to differ, but the App Store listing and the policy should be checked to say the same thing as each other.
+
+**Working tree reconciled, 18 Aug 2026.** Five stray uncommitted edits — to `LearnContent.swift`, `CycleContent.swift`, `PhCopy.swift`, `PhInsightLogicTests.swift` and `App_Inventory.md` — were reverted by hand. One of them had rewritten a plain-English Learn callout into dense clinical register; it passed the banned-phrase guards, which is worth knowing, because those guards catch unsafe claims and not unreadable ones. The only change now standing is a staged `brand_lockup/Contents.json`, an Xcode asset reformat, **deliberately kept**. None of the five was in build 21 — the archive predates them all, so the binary was never affected.
 **The thing to know before any release commit:** `graphify-out/` is **tracked and not in `.gitignore`** — it accounts for the overwhelming majority of changed entries at any given moment, so a bare `git add -A` would put more generated cache than product into the commit. `docs/assets/` (a duplicate copy of the guide PDF) is deliberately excluded too. Neither is a mistake to correct: `graphify-out/` is committed at the client's explicit instruction, so do not add it to `.gitignore` and do not `git rm --cached` it.
 
 *The 47-uncommitted-changes warning that stood here is spent — those changes were committed as `fb37e2a`. The staging discipline it argued for is not.*
@@ -159,14 +178,27 @@ git status --short          # expect exactly 47 staged, none under graphify-out/
 
 `project.pbxproj` is named explicitly because it is generated by `xcodegen` but **must** be committed — it is what Xcode actually builds from. Regenerate it *before* staging, since the build-number bump only reaches the build through `xcodegen generate`.
 
-**6. Real-device pass.** *Yours — needs a physical iPhone.*
-Email, Google and Apple sign-in; then delete the account. The simulator cannot prove Sign in with Apple. Your own docs say both must be tested on a real device before submission, and this is currently deferred because there is no device.
+**6. Real-device pass.** *Yours — needs a physical iPhone. Now carries three checks, not two.*
+Email, Google and Apple sign-in; then delete the account. The simulator cannot prove Sign in with Apple. Your own docs say both must be tested on a real device before submission, and this is deferred because there is no device.
+
+Two things joined this item on 18 August:
+
+- **The password-reset round trip**, moved down from #4 now that the code path is complete: request a reset, open the email on the device, follow the link into `ResetPasswordView`, set a new password, sign in with it.
+- **Deleting an Apple-signed account is now the only way to exercise `APPLE_REVOKE_REQUIRED=true` against a real Apple grant.** With the flag on, a delete that cannot revoke is refused outright. That refusal is the correct and deliberate behaviour (§9.2), but it has never been observed against Apple's live endpoint — only reasoned about. Better to see it here than to have the first observation be a stranger's failed deletion.
 
 **7. App Store Connect data entry.** *Yours, all off-code.*
 Privacy labels · age rating questionnaire · regulated-medical-device declaration · DSA trader status · Privacy Policy URL · content rights & encryption · **a demo account in the Review Notes** (the app is behind an auth gate — without one, review will be rejected on Guideline 2.1 without ever seeing the app).
 
-**8. Fresh screenshots from the release candidate.** *Yours.*
-The currently uploaded set predates the auth gate and the partner-flag change. Your two docs disagree about whether this is done — `APP_STORE_SUBMISSION.md` ticks it, `FINAL_APP_STORE_RELEASE_CHECKLIST.md` says take new ones. **The checklist is right; treat the tick as void.**
+**8. ~~Fresh screenshots from the release candidate.~~ DONE, 18 August 2026 — seven captures replace the six.**
+`docs/appstore_screenshots/` now holds **1-Home, 2-Track, 3-pH, 4-Nutrition, 5-Insights, 6-Learn, 7-Profile**, all 1320 × 2868, all alpha-flattened by `scripts/prepare_store_screenshots.sh`. The July set is deleted, and the numbering has shifted because pH is now third — anything referring to "screenshot 3" from the old set means Nutrition, not pH.
+
+Captured from a Debug simulator build of the build 21 tree on iPhone 17 Pro Max, launched per tab with `-uiTestSeed YES -uiTestTab N`. That path is the one `AppContainer.uiTestSeeded()` was written for: it wipes defaults, grants consent, signs in as the fictional **Maya / maya@example.com**, and seeds a cycle, two daily logs and three pH readings. No real account appears in any frame. The status bar is overridden to 9:41, full bars, charged.
+
+**These are a Debug build, not the signed archive** — the pixels are identical because no `#if DEBUG` branch changes layout, but the distinction is the same one that hid the broken Release build on 13 August, so it is worth stating rather than glossing.
+
+Each of the seven was opened and looked at, not merely size-checked. They show the seven-tab bar, the light default, the new egg artwork, and on Profile the build 21 consent block reading *"Collection is on · You agreed on 18 Aug 2026 · Withdraw consent"* — which is a useful frame to have in the listing, since it shows the privacy control rather than describing it.
+
+*Two docs disagreed about whether this was ever done: `APP_STORE_SUBMISSION.md` ticked it, `FINAL_APP_STORE_RELEASE_CHECKLIST.md` said take new ones. The checklist was right, and the point is now moot.*
 
 ### 🟠 Content — needs your clinician, not an engineer
 
@@ -1048,7 +1080,7 @@ done, performed in the client's own terminal and dashboard rather than from this
 | Five Apple secrets set | ✅ Done | `supabase secrets list`; `.p8` never left the secret manager |
 | `delete_account` deployed | ✅ Done | Client-confirmed |
 | `APPLE_REVOKE_REQUIRED=true` | ✅ Done, kept on deliberately | Early by the documented order; reviewed and accepted — §9.2 |
-| `anon` grant on `consent_events` | 🟠 Migration written, not applied | `20260818b_consent_events_grant_cleanup.sql`; RLS covers it meanwhile |
+| `anon` grant on `consent_events` | 🟠 Migration written, **handed off 18 Aug, not yet confirmed applied** | `20260818b_consent_events_grant_cleanup.sql`; RLS covers it meanwhile. Apply and verify it in the Dashboard SQL Editor, never `db push`. It is applied only when V4 reads **401** where it read 200 |
 
 Probe shape, so a future re-run matches: `GET {SUPABASE_URL}/rest/v1/{table}?select=id&limit=0` with
 `apikey` and `Authorization: Bearer` both set to the public publishable key, status code read and the

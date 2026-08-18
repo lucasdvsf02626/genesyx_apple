@@ -126,13 +126,14 @@ yours. Copy for most fields is already drafted in **`docs/APP_STORE_LISTING.md`*
   straight rejection.
 - Category: **Health & Fitness**.
 
-### 4b · Screenshots
-The six in `docs/appstore_screenshots/` are the right size (**1320 × 2868**) but they were taken on
-**18 July** — before the pH tab, the light-mode default, the egg artwork, the seven-tab bar and the
-sign-in gate. **They show an app that no longer exists.** Do not upload them.
+### 4b · Screenshots — ✅ **DONE, this is off your list**
+`docs/appstore_screenshots/` now holds **seven** fresh captures from the build 21 tree, all
+1320 × 2868 and alpha-flattened: 1-Home, 2-Track, **3-pH**, 4-Nutrition, 5-Insights, 6-Learn,
+7-Profile. The July six are deleted. Upload these.
 
-👉 **I can regenerate these for you from the simulator in about 20 minutes — just say the word.**
-That takes this whole sub-task off your list.
+They show the app as it actually is now: seven tabs, light default, egg artwork, and the consent
+control on Profile. The account in them is the fictional Maya, so nothing real is exposed.
+Note the numbering shifted — pH is new at position 3, so old "screenshot 3" meant Nutrition.
 
 ### 4c · App Privacy — answer from the real data flows, not marketing
 We collect, **linked to identity**: health & fitness data (cycle, symptoms, pH, intimacy), contact
@@ -266,7 +267,7 @@ Quick answers; each one changes what build 21 contains.
 | "Article 9 = B" | Consent screen, `consented_at`, Android parity, tests |
 | "Apple secrets are in" | Implement `/auth/revoke` in `delete_account`, deploy, verify version **and** bundle hash |
 | G3/G4/G5 answers | The copy and ordering fixes |
-| "Regenerate screenshots" | Six fresh 1320 × 2868 captures from the release candidate |
+| ~~"Regenerate screenshots"~~ | ✅ Done 18 Aug — seven captures, see 4b |
 | Device pass results | Write them up as evidence, or fix what failed |
 
 ⚠️ **Until you answer, I will not touch `App/` or `Sources/`.** The source tree is byte-identical to
