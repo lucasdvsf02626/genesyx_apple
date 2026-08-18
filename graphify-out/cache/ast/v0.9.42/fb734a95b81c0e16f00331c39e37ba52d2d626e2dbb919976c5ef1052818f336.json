@@ -1,0 +1,1 @@
+{"nodes": [{"id": "$graphify-root$_supabase_migrations_20260812_client_role_grant_cleanup_sql", "label": "20260812_client_role_grant_cleanup.sql", "file_type": "code", "source_file": "supabase/migrations/20260812_client_role_grant_cleanup.sql", "source_location": null}], "edges": []}

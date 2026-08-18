@@ -1,5 +1,1740 @@
 {
-  "generated_at": "2026-08-12T12:54:06.657575+00:00",
-  "nodes": {},
+  "generated_at": "2026-08-14T15:49:12.540541+00:00",
+  "nodes": {
+    "app_genesyx_data_app_appcontainer_appcontainer": {
+      "code_fingerprint": "51f9e26b881fbb16ea684951028eb5e7134ed58c3359a58012edbb81fd774c01",
+      "label": "AppContainer",
+      "last": "2026-08-14T10:07:02.757751+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-14T10:07:02.757751+00:00",
+          "outcome": "useful",
+          "q": "Audit why the Genesyx iOS app is accessible without login and list every fix"
+        },
+        {
+          "date": "2026-08-13T14:49:19.588567+00:00",
+          "outcome": "useful",
+          "q": "Assess Claude's final pH cold-relaunch verification while the full suite runs"
+        }
+      ],
+      "score": 1.970746556,
+      "source_file": "App/Genesyx/Data/App/AppContainer.swift",
+      "status": "preferred",
+      "uses": 2
+    },
+    "app_genesyx_data_app_rootview_rootview": {
+      "code_fingerprint": "d7d2bf94457f81bcafe4eb52701a74d7851b6612620abaff702437eddd034525",
+      "label": "RootView",
+      "last": "2026-08-14T11:56:38.787619+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-14T11:56:38.787619+00:00",
+          "outcome": "useful",
+          "q": "this is my claude what he answer after i posted about GROK"
+        },
+        {
+          "date": "2026-08-14T11:48:57.309842+00:00",
+          "outcome": "useful",
+          "q": "need a prompt to validate the what we need please , what needs to be done do a to do list now"
+        },
+        {
+          "date": "2026-08-14T11:38:33.440128+00:00",
+          "outcome": "useful",
+          "q": "Assess Grok's returned Genesyx iOS logo and mandatory-auth verification result"
+        },
+        {
+          "date": "2026-08-14T10:18:41.383236+00:00",
+          "outcome": "useful",
+          "q": "tell me where we are at, and if we finish this list for real"
+        },
+        {
+          "date": "2026-08-14T10:07:02.757751+00:00",
+          "outcome": "useful",
+          "q": "Audit why the Genesyx iOS app is accessible without login and list every fix"
+        }
+      ],
+      "score": 4.977650194,
+      "source_file": "App/Genesyx/Data/App/RootView.swift",
+      "status": "preferred",
+      "uses": 5
+    },
+    "app_genesyx_data_cyclerepository_cyclerepository": {
+      "code_fingerprint": "95089504ee43c020515cf801d7377399da1e161c84f282e8eea1086f0164c9a4",
+      "label": "CycleRepository",
+      "last": "2026-08-13T10:18:28.089077+00:00",
+      "neg": 1,
+      "provenance": [
+        {
+          "date": "2026-08-13T10:18:28.089077+00:00",
+          "outcome": "useful",
+          "q": "What is next and what prompt should Claude use to do the tasks after discovering the Home fix was made in a stale worktree?"
+        },
+        {
+          "date": "2026-08-13T10:17:14.902826+00:00",
+          "outcome": "corrected",
+          "q": "Review the newest Claude handoff claiming a Home no-cycle fix, T24 never existed, and 180/202/46 tests"
+        }
+      ],
+      "score": 1.9023e-05,
+      "source_file": "App/Genesyx/Data/CycleRepository.swift",
+      "status": "contested",
+      "uses": 1,
+      "verdict": "useful"
+    },
+    "app_genesyx_data_dailylogrepository_dailylogrepository": {
+      "code_fingerprint": "951ae6bbc9911a7f705648d1140f5ccc13571baab2be6ecce2fdcf672c641c32",
+      "label": "DailyLogRepository",
+      "last": "2026-08-13T18:05:57.593876+00:00",
+      "neg": 1,
+      "provenance": [
+        {
+          "date": "2026-08-13T18:05:57.593876+00:00",
+          "outcome": "corrected",
+          "q": "double check if this list make sense, claude code did it"
+        },
+        {
+          "date": "2026-08-13T15:16:35.923286+00:00",
+          "outcome": "useful",
+          "q": "Update CHANGE_LIST_PLAN.md to match Claude Code and production Supabase status"
+        },
+        {
+          "date": "2026-08-13T14:08:05.011161+00:00",
+          "outcome": "useful",
+          "q": "Plan the difficult remaining Genesyx work, update docs/CHANGE_LIST_PLAN.md, and provide a safe prompt for the one shared iOS and Android Supabase backend"
+        },
+        {
+          "date": "2026-08-13T08:48:42.356000+00:00",
+          "outcome": "useful",
+          "q": "Claude code said it made some audit"
+        },
+        {
+          "date": "2026-08-13T08:37:11.040703+00:00",
+          "outcome": "useful",
+          "q": "what can claude do and what can you do please, from this list?"
+        }
+      ],
+      "score": 3.883946805,
+      "source_file": "App/Genesyx/Data/DailyLogRepository.swift",
+      "status": "contested",
+      "uses": 5,
+      "verdict": "useful"
+    },
+    "app_genesyx_data_localstore_localstore": {
+      "code_fingerprint": "b950a021869480d939fce58ee317ebd6cd8a4a29198a3c5a7fb0052f790a5289",
+      "label": "LocalStore",
+      "last": "2026-08-14T08:47:45.247681+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-14T08:47:45.247681+00:00",
+          "outcome": "useful",
+          "q": "the customer can download this online can have in my own machine tell me how to impement this thing"
+        },
+        {
+          "date": "2026-08-13T14:49:19.588567+00:00",
+          "outcome": "useful",
+          "q": "Assess Claude's final pH cold-relaunch verification while the full suite runs"
+        }
+      ],
+      "score": 1.969482083,
+      "source_file": "App/Genesyx/Data/LocalStore.swift",
+      "status": "preferred",
+      "uses": 2
+    },
+    "app_genesyx_data_partnerrepository_partnerrepository": {
+      "code_fingerprint": "eb363ceef22fba585a46657e4949aa39856caacaece76cb66f68d98e41cc8c7d",
+      "label": "PartnerRepository",
+      "last": "2026-08-14T09:05:41.730151+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-14T09:05:41.730151+00:00",
+          "outcome": "useful",
+          "q": "can you confirm where we are now with the eight consolidated Genesyx change groups"
+        },
+        {
+          "date": "2026-08-13T09:36:45.357960+00:00",
+          "outcome": "useful",
+          "q": "Review Claude's full shared-backend diagnostic matrix committed as 8d82e54 and identify remaining corrections before implementation"
+        },
+        {
+          "date": "2026-08-13T09:30:17.123017+00:00",
+          "outcome": "useful",
+          "q": "Live audit found seven tables, six cascades, no profiles.partner_id FK, zero linked profiles, zero legacy quiz rows, and two Apple identities. What is the correct conclusion?"
+        },
+        {
+          "date": "2026-08-13T09:26:58.618023+00:00",
+          "outcome": "useful",
+          "q": "So far Claude's shared-backend audit found the older live delete_current_user body, policies, no waitlist policies, and no user_supplements table. Is the conclusion correct and what remains?"
+        },
+        {
+          "date": "2026-08-13T09:08:48.345298+00:00",
+          "outcome": "useful",
+          "q": "what i need to check in supbase, remember this is for the IOS and I have the andriod as well in 1 supbase, need to do anything?"
+        }
+      ],
+      "score": 5.848798376,
+      "source_file": "App/Genesyx/Data/PartnerRepository.swift",
+      "status": "preferred",
+      "uses": 6
+    },
+    "app_genesyx_data_persistencedtos": {
+      "code_fingerprint": "14d41a2e62f7f04000b9c7af7e23d7e52001886f275cb5aa0e1f61af900386fc",
+      "label": "PersistenceDTOs.swift",
+      "last": "2026-08-13T12:30:10.599334+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-13T12:30:10.599334+00:00",
+          "outcome": "useful",
+          "q": "Which Sections 1-3 and 5 tracker requirements are complete, partial, missing, or blocked, with Section 4 excluded?"
+        }
+      ],
+      "score": 0.974044396,
+      "source_file": "App/Genesyx/Data/PersistenceDTOs.swift",
+      "status": "tentative",
+      "uses": 1
+    },
+    "app_genesyx_data_phrepository": {
+      "code_fingerprint": "0bd4dfb3f7c24df43059d0871fcf362223223a2aded3e5966d34b338aa464afa",
+      "label": "PhRepository.swift",
+      "last": "2026-08-13T12:30:10.599334+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-13T12:30:10.599334+00:00",
+          "outcome": "useful",
+          "q": "Which Sections 1-3 and 5 tracker requirements are complete, partial, missing, or blocked, with Section 4 excluded?"
+        }
+      ],
+      "score": 0.974044396,
+      "source_file": "App/Genesyx/Data/PhRepository.swift",
+      "status": "tentative",
+      "uses": 1
+    },
+    "app_genesyx_data_phrepository_phrepository": {
+      "code_fingerprint": "0bd4dfb3f7c24df43059d0871fcf362223223a2aded3e5966d34b338aa464afa",
+      "label": "PhRepository",
+      "last": "2026-08-13T14:49:19.588567+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-13T14:49:19.588567+00:00",
+          "outcome": "useful",
+          "q": "Assess Claude's final pH cold-relaunch verification while the full suite runs"
+        },
+        {
+          "date": "2026-08-13T14:08:05.011161+00:00",
+          "outcome": "useful",
+          "q": "Plan the difficult remaining Genesyx work, update docs/CHANGE_LIST_PLAN.md, and provide a safe prompt for the one shared iOS and Android Supabase backend"
+        }
+      ],
+      "score": 1.951797292,
+      "source_file": "App/Genesyx/Data/PhRepository.swift",
+      "status": "preferred",
+      "uses": 2
+    },
+    "app_genesyx_data_preferencesrepository_preferencesrepository": {
+      "code_fingerprint": "ca0df6932279a7f6801ca976514a9379b59cf8e3c8fa4a89d2099f1b41bef9f0",
+      "label": "PreferencesRepository",
+      "last": "2026-08-13T14:08:05.011161+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-13T14:08:05.011161+00:00",
+          "outcome": "useful",
+          "q": "Plan the difficult remaining Genesyx work, update docs/CHANGE_LIST_PLAN.md, and provide a safe prompt for the one shared iOS and Android Supabase backend"
+        },
+        {
+          "date": "2026-08-13T08:48:42.356000+00:00",
+          "outcome": "useful",
+          "q": "Claude code said it made some audit"
+        },
+        {
+          "date": "2026-08-13T08:37:11.040703+00:00",
+          "outcome": "useful",
+          "q": "what can claude do and what can you do please, from this list?"
+        },
+        {
+          "date": "2026-08-13T08:12:45.197368+00:00",
+          "outcome": "useful",
+          "q": "do a list of everything needs to be done, deep dive so nothing is left, so we do today"
+        }
+      ],
+      "score": 3.886604372,
+      "source_file": "App/Genesyx/Data/PreferencesRepository.swift",
+      "status": "preferred",
+      "uses": 4
+    },
+    "app_genesyx_data_reachability": {
+      "code_fingerprint": "40115478a910de6a89377b4d3e4797a99ee797b77b9ec0713b27c812971bc45e",
+      "label": "Reachability.swift",
+      "last": "2026-08-13T12:30:10.599334+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-13T12:30:10.599334+00:00",
+          "outcome": "useful",
+          "q": "Which Sections 1-3 and 5 tracker requirements are complete, partial, missing, or blocked, with Section 4 excluded?"
+        }
+      ],
+      "score": 0.974044396,
+      "source_file": "App/Genesyx/Data/Reachability.swift",
+      "status": "tentative",
+      "uses": 1
+    },
+    "app_genesyx_data_reachability_reachability": {
+      "code_fingerprint": "40115478a910de6a89377b4d3e4797a99ee797b77b9ec0713b27c812971bc45e",
+      "label": "Reachability",
+      "last": "2026-08-14T11:48:57.309842+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-14T11:48:57.309842+00:00",
+          "outcome": "useful",
+          "q": "need a prompt to validate the what we need please , what needs to be done do a to do list now"
+        },
+        {
+          "date": "2026-08-14T09:05:41.730151+00:00",
+          "outcome": "useful",
+          "q": "can you confirm where we are now with the eight consolidated Genesyx change groups"
+        },
+        {
+          "date": "2026-08-13T15:29:55.700609+00:00",
+          "outcome": "useful",
+          "q": "how close we are of this finish this list and I need to tick the boxes of this progress checklist"
+        },
+        {
+          "date": "2026-08-13T15:16:35.923286+00:00",
+          "outcome": "useful",
+          "q": "Update CHANGE_LIST_PLAN.md to match Claude Code and production Supabase status"
+        },
+        {
+          "date": "2026-08-13T15:05:46.193040+00:00",
+          "outcome": "useful",
+          "q": "How close are we to finishing the Simplified Consolidated Changes list, excluding Section 4?"
+        }
+      ],
+      "score": 4.91968472,
+      "source_file": "App/Genesyx/Data/Reachability.swift",
+      "status": "preferred",
+      "uses": 5
+    },
+    "app_genesyx_data_remote_remotebackend_authbackend": {
+      "code_fingerprint": "03a550ec447e9726f8af0a501c207db1ed5d857b235e332763fe08dcb427105a",
+      "label": "AuthBackend",
+      "last": "2026-08-14T11:56:38.787619+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-14T11:56:38.787619+00:00",
+          "outcome": "useful",
+          "q": "this is my claude what he answer after i posted about GROK"
+        }
+      ],
+      "score": 0.99627547,
+      "source_file": "App/Genesyx/Data/Remote/RemoteBackend.swift",
+      "status": "tentative",
+      "uses": 1
+    },
+    "app_genesyx_data_remote_remotemodels_codingkeys_pushenabled": {
+      "code_fingerprint": "fa2148cda8e1cbac6e4158a35d0f7b08f32efc4d447954c4c7a324d9b8787a8c",
+      "label": "pushEnabled",
+      "last": "2026-08-13T14:37:14.107314+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-13T14:37:14.107314+00:00",
+          "outcome": "useful",
+          "q": "Reconcile the successful production Supabase migration report with both Genesyx repositories"
+        },
+        {
+          "date": "2026-08-13T14:27:14.116562+00:00",
+          "outcome": "useful",
+          "q": "Compare the Supabase agent proposal against the three local iOS and Android migration files"
+        }
+      ],
+      "score": 1.951907749,
+      "source_file": "App/Genesyx/Data/Remote/RemoteModels.swift",
+      "status": "preferred",
+      "uses": 2
+    },
+    "app_genesyx_data_remote_remotemodels_dailylogrow": {
+      "code_fingerprint": "fa2148cda8e1cbac6e4158a35d0f7b08f32efc4d447954c4c7a324d9b8787a8c",
+      "label": "DailyLogRow",
+      "last": "2026-08-13T09:08:48.345298+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-13T09:08:48.345298+00:00",
+          "outcome": "useful",
+          "q": "what i need to check in supbase, remember this is for the IOS and I have the andriod as well in 1 supbase, need to do anything?"
+        }
+      ],
+      "score": 0.970902327,
+      "source_file": "App/Genesyx/Data/Remote/RemoteModels.swift",
+      "status": "tentative",
+      "uses": 1
+    },
+    "app_genesyx_data_remote_remotemodels_profileprefsrow": {
+      "code_fingerprint": "fa2148cda8e1cbac6e4158a35d0f7b08f32efc4d447954c4c7a324d9b8787a8c",
+      "label": "ProfilePrefsRow",
+      "last": "2026-08-13T09:08:48.345298+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-13T09:08:48.345298+00:00",
+          "outcome": "useful",
+          "q": "what i need to check in supbase, remember this is for the IOS and I have the andriod as well in 1 supbase, need to do anything?"
+        }
+      ],
+      "score": 0.970902327,
+      "source_file": "App/Genesyx/Data/Remote/RemoteModels.swift",
+      "status": "tentative",
+      "uses": 1
+    },
+    "app_genesyx_data_remote_supabasebackend_supabasebackend": {
+      "code_fingerprint": "52fe817d85a5127d11446705bed068d238a33c4e875d51830520588826a4040c",
+      "label": "SupabaseBackend",
+      "last": "2026-08-13T09:36:45.357960+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-13T09:36:45.357960+00:00",
+          "outcome": "useful",
+          "q": "Review Claude's full shared-backend diagnostic matrix committed as 8d82e54 and identify remaining corrections before implementation"
+        },
+        {
+          "date": "2026-08-13T09:34:48.904201+00:00",
+          "outcome": "useful",
+          "q": "Live Supabase has neither user_supplements nor genesyx_products. How should the two Android findings be classified?"
+        },
+        {
+          "date": "2026-08-13T09:30:17.123017+00:00",
+          "outcome": "useful",
+          "q": "Live audit found seven tables, six cascades, no profiles.partner_id FK, zero linked profiles, zero legacy quiz rows, and two Apple identities. What is the correct conclusion?"
+        },
+        {
+          "date": "2026-08-13T09:26:58.618023+00:00",
+          "outcome": "useful",
+          "q": "So far Claude's shared-backend audit found the older live delete_current_user body, policies, no waitlist policies, and no user_supplements table. Is the conclusion correct and what remains?"
+        },
+        {
+          "date": "2026-08-13T09:08:48.345298+00:00",
+          "outcome": "useful",
+          "q": "what i need to check in supbase, remember this is for the IOS and I have the andriod as well in 1 supbase, need to do anything?"
+        }
+      ],
+      "score": 4.855970198,
+      "source_file": "App/Genesyx/Data/Remote/SupabaseBackend.swift",
+      "status": "preferred",
+      "uses": 5
+    },
+    "app_genesyx_data_sessionrepository_sessionrepository": {
+      "code_fingerprint": "9af1f1b998cae554ac6694eb45937442f474cf361e6d5fa5554f73206e7a8dc0",
+      "label": "SessionRepository",
+      "last": "2026-08-14T12:32:47.686720+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-14T12:32:47.686720+00:00",
+          "outcome": "useful",
+          "q": "so far im like here"
+        },
+        {
+          "date": "2026-08-14T11:56:38.787619+00:00",
+          "outcome": "useful",
+          "q": "this is my claude what he answer after i posted about GROK"
+        },
+        {
+          "date": "2026-08-14T11:48:57.309842+00:00",
+          "outcome": "useful",
+          "q": "need a prompt to validate the what we need please , what needs to be done do a to do list now"
+        },
+        {
+          "date": "2026-08-14T11:38:33.440128+00:00",
+          "outcome": "useful",
+          "q": "Assess Grok's returned Genesyx iOS logo and mandatory-auth verification result"
+        },
+        {
+          "date": "2026-08-14T10:18:41.383236+00:00",
+          "outcome": "useful",
+          "q": "tell me where we are at, and if we finish this list for real"
+        }
+      ],
+      "score": 5.974503674,
+      "source_file": "App/Genesyx/Data/SessionRepository.swift",
+      "status": "preferred",
+      "uses": 6
+    },
+    "app_genesyx_notifications_learnreadlog_learnprogress": {
+      "code_fingerprint": "ee46f3216c302985b6200632f0e8d838a19b698e8f84343f1f47b0d76d9412bc",
+      "label": "LearnProgress",
+      "last": "2026-08-13T08:37:11.040703+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-13T08:37:11.040703+00:00",
+          "outcome": "useful",
+          "q": "what can claude do and what can you do please, from this list?"
+        },
+        {
+          "date": "2026-08-13T08:12:45.197368+00:00",
+          "outcome": "useful",
+          "q": "do a list of everything needs to be done, deep dive so nothing is left, so we do today"
+        }
+      ],
+      "score": 1.940439365,
+      "source_file": "App/Genesyx/Notifications/LearnReadLog.swift",
+      "status": "preferred",
+      "uses": 2
+    },
+    "app_genesyx_notifications_notificationservice": {
+      "code_fingerprint": "8b243fa539cc793285f5953970c2edaa9b8711f09f5f85a642bd100013b0dc73",
+      "label": "NotificationService.swift",
+      "last": "2026-08-13T12:30:10.599334+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-13T12:30:10.599334+00:00",
+          "outcome": "useful",
+          "q": "Which Sections 1-3 and 5 tracker requirements are complete, partial, missing, or blocked, with Section 4 excluded?"
+        }
+      ],
+      "score": 0.974044396,
+      "source_file": "App/Genesyx/Notifications/NotificationService.swift",
+      "status": "tentative",
+      "uses": 1
+    },
+    "app_genesyx_notifications_notificationservice_notificationservice": {
+      "code_fingerprint": "8b243fa539cc793285f5953970c2edaa9b8711f09f5f85a642bd100013b0dc73",
+      "label": "NotificationService",
+      "last": "2026-08-14T12:32:47.686720+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-14T12:32:47.686720+00:00",
+          "outcome": "useful",
+          "q": "so far im like here"
+        },
+        {
+          "date": "2026-08-14T11:56:38.787619+00:00",
+          "outcome": "useful",
+          "q": "this is my claude what he answer after i posted about GROK"
+        },
+        {
+          "date": "2026-08-14T11:38:33.440128+00:00",
+          "outcome": "useful",
+          "q": "Assess Grok's returned Genesyx iOS logo and mandatory-auth verification result"
+        },
+        {
+          "date": "2026-08-14T10:18:41.383236+00:00",
+          "outcome": "useful",
+          "q": "tell me where we are at, and if we finish this list for real"
+        },
+        {
+          "date": "2026-08-13T20:19:36.519143+00:00",
+          "outcome": "useful",
+          "q": "so far we are like this: advise what to do now"
+        }
+      ],
+      "score": 9.833157662,
+      "source_file": "App/Genesyx/Notifications/NotificationService.swift",
+      "status": "preferred",
+      "uses": 10
+    },
+    "app_genesyx_ui_auth_authview_authview": {
+      "code_fingerprint": "546401d1802e87de7ea1544d6beac1da0233c68237036d11248716819a61809e",
+      "label": "AuthView",
+      "last": "2026-08-14T11:48:57.309842+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-14T11:48:57.309842+00:00",
+          "outcome": "useful",
+          "q": "need a prompt to validate the what we need please , what needs to be done do a to do list now"
+        },
+        {
+          "date": "2026-08-14T11:38:33.440128+00:00",
+          "outcome": "useful",
+          "q": "Assess Grok's returned Genesyx iOS logo and mandatory-auth verification result"
+        },
+        {
+          "date": "2026-08-14T10:18:41.383236+00:00",
+          "outcome": "useful",
+          "q": "tell me where we are at, and if we finish this list for real"
+        },
+        {
+          "date": "2026-08-14T10:13:54.603326+00:00",
+          "outcome": "useful",
+          "q": "the first home page is ok now is only the page when i click the sigin page in the PROFILE tab the last option"
+        },
+        {
+          "date": "2026-08-14T10:07:02.757751+00:00",
+          "outcome": "useful",
+          "q": "Audit why the Genesyx iOS app is accessible without login and list every fix"
+        }
+      ],
+      "score": 8.870339465,
+      "source_file": "App/Genesyx/UI/Auth/AuthView.swift",
+      "status": "preferred",
+      "uses": 9
+    },
+    "app_genesyx_ui_components_genesyxcontrols_brandegg": {
+      "code_fingerprint": "4d96852ff16795f0508d80bb327cbfbc89c2df2a055e879c3968b50357eab028",
+      "label": "BrandEgg",
+      "last": "2026-08-14T09:55:10.193540+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-14T09:55:10.193540+00:00",
+          "outcome": "useful",
+          "q": "Add the supplied Genesyx logo to the very first onboarding page before the quiz"
+        }
+      ],
+      "score": 0.99433552,
+      "source_file": "App/Genesyx/UI/Components/GenesyxControls.swift",
+      "status": "tentative",
+      "uses": 1
+    },
+    "app_genesyx_ui_home_homeview_homeview": {
+      "code_fingerprint": "0cfeaf68f84dfb307caa89f78eeaeb98cf6cbdb4437bcd501cde65c5559b3366",
+      "label": "HomeView",
+      "last": "2026-08-13T10:18:28.089077+00:00",
+      "neg": 1,
+      "provenance": [
+        {
+          "date": "2026-08-13T10:18:28.089077+00:00",
+          "outcome": "useful",
+          "q": "What is next and what prompt should Claude use to do the tasks after discovering the Home fix was made in a stale worktree?"
+        },
+        {
+          "date": "2026-08-13T10:17:14.902826+00:00",
+          "outcome": "corrected",
+          "q": "Review the newest Claude handoff claiming a Home no-cycle fix, T24 never existed, and 180/202/46 tests"
+        }
+      ],
+      "score": 1.9023e-05,
+      "source_file": "App/Genesyx/UI/Home/HomeView.swift",
+      "status": "contested",
+      "uses": 1,
+      "verdict": "useful"
+    },
+    "app_genesyx_ui_insights_insightsview": {
+      "code_fingerprint": "fc93cce4c8e0c0bec7e6315f7812ac244b2b48ec38df54362cc957b3bcad8e06",
+      "label": "InsightsView.swift",
+      "last": "2026-08-13T15:18:59.095142+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-13T15:18:59.095142+00:00",
+          "outcome": "useful",
+          "q": "more context, to understand the logic and where we are at"
+        },
+        {
+          "date": "2026-08-13T14:08:05.011161+00:00",
+          "outcome": "useful",
+          "q": "Plan the difficult remaining Genesyx work, update docs/CHANGE_LIST_PLAN.md, and provide a safe prompt for the one shared iOS and Android Supabase backend"
+        },
+        {
+          "date": "2026-08-13T12:30:10.599334+00:00",
+          "outcome": "useful",
+          "q": "Which Sections 1-3 and 5 tracker requirements are complete, partial, missing, or blocked, with Section 4 excluded?"
+        }
+      ],
+      "score": 2.926306356,
+      "source_file": "App/Genesyx/UI/Insights/InsightsView.swift",
+      "status": "preferred",
+      "uses": 3
+    },
+    "app_genesyx_ui_insights_insightsview_cycleregularitycard": {
+      "code_fingerprint": "fc93cce4c8e0c0bec7e6315f7812ac244b2b48ec38df54362cc957b3bcad8e06",
+      "label": "CycleRegularityCard",
+      "last": "2026-08-13T15:18:59.095142+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-13T15:18:59.095142+00:00",
+          "outcome": "useful",
+          "q": "more context, to understand the logic and where we are at"
+        }
+      ],
+      "score": 0.976686212,
+      "source_file": "App/Genesyx/UI/Insights/InsightsView.swift",
+      "status": "tentative",
+      "uses": 1
+    },
+    "app_genesyx_ui_insights_insightsview_insightsview": {
+      "code_fingerprint": "fc93cce4c8e0c0bec7e6315f7812ac244b2b48ec38df54362cc957b3bcad8e06",
+      "label": "InsightsView",
+      "last": "2026-08-13T15:37:14.824708+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-13T15:37:14.824708+00:00",
+          "outcome": "useful",
+          "q": "this is what claude code done and stoped so far:"
+        }
+      ],
+      "score": 0.97697244,
+      "source_file": "App/Genesyx/UI/Insights/InsightsView.swift",
+      "status": "tentative",
+      "uses": 1
+    },
+    "app_genesyx_ui_insights_insightsview_loghistoryview": {
+      "code_fingerprint": "fc93cce4c8e0c0bec7e6315f7812ac244b2b48ec38df54362cc957b3bcad8e06",
+      "label": "LogHistoryView",
+      "last": "2026-08-13T14:24:56.643175+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-13T14:24:56.643175+00:00",
+          "outcome": "useful",
+          "q": "Review Claude's pH history list and SwiftUI sheet-state race fix"
+        }
+      ],
+      "score": 0.975839704,
+      "source_file": "App/Genesyx/UI/Insights/InsightsView.swift",
+      "status": "tentative",
+      "uses": 1
+    },
+    "app_genesyx_ui_learn_learncontent": {
+      "code_fingerprint": "4e8c3b51d27ef064b1e0e3f446522a21d178a57cfd3ff4232330364e616a5722",
+      "label": "LearnContent.swift",
+      "last": "2026-08-13T12:30:10.599334+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-13T12:30:10.599334+00:00",
+          "outcome": "useful",
+          "q": "Which Sections 1-3 and 5 tracker requirements are complete, partial, missing, or blocked, with Section 4 excluded?"
+        }
+      ],
+      "score": 0.974044396,
+      "source_file": "App/Genesyx/UI/Learn/LearnContent.swift",
+      "status": "tentative",
+      "uses": 1
+    },
+    "app_genesyx_ui_learn_learnmodels_learnarticle": {
+      "code_fingerprint": "5fbe239ce8bb3a4779943955ae6d4e7487cd33509c115c448a0af43bf42a9918",
+      "label": "LearnArticle",
+      "last": "2026-08-14T11:48:57.309842+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-14T11:48:57.309842+00:00",
+          "outcome": "useful",
+          "q": "need a prompt to validate the what we need please , what needs to be done do a to do list now"
+        },
+        {
+          "date": "2026-08-14T10:18:41.383236+00:00",
+          "outcome": "useful",
+          "q": "tell me where we are at, and if we finish this list for real"
+        },
+        {
+          "date": "2026-08-14T09:05:41.730151+00:00",
+          "outcome": "useful",
+          "q": "can you confirm where we are now with the eight consolidated Genesyx change groups"
+        },
+        {
+          "date": "2026-08-13T15:29:55.700609+00:00",
+          "outcome": "useful",
+          "q": "how close we are of this finish this list and I need to tick the boxes of this progress checklist"
+        },
+        {
+          "date": "2026-08-13T15:05:46.193040+00:00",
+          "outcome": "useful",
+          "q": "How close are we to finishing the Simplified Consolidated Changes list, excluding Section 4?"
+        }
+      ],
+      "score": 6.885007819,
+      "source_file": "App/Genesyx/UI/Learn/LearnModels.swift",
+      "status": "preferred",
+      "uses": 7
+    },
+    "app_genesyx_ui_learn_learnmodels_learncategory_guides": {
+      "code_fingerprint": "5fbe239ce8bb3a4779943955ae6d4e7487cd33509c115c448a0af43bf42a9918",
+      "label": "guides",
+      "last": "2026-08-14T08:47:45.247681+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-14T08:47:45.247681+00:00",
+          "outcome": "useful",
+          "q": "the customer can download this online can have in my own machine tell me how to impement this thing"
+        },
+        {
+          "date": "2026-08-14T08:43:59.564348+00:00",
+          "outcome": "useful",
+          "q": "How should Unlock My Free Guide work in Genesyx iOS?"
+        }
+      ],
+      "score": 1.986461133,
+      "source_file": "App/Genesyx/UI/Learn/LearnModels.swift",
+      "status": "preferred",
+      "uses": 2
+    },
+    "app_genesyx_ui_learn_learnmodels_learnlibrary": {
+      "code_fingerprint": "5fbe239ce8bb3a4779943955ae6d4e7487cd33509c115c448a0af43bf42a9918",
+      "label": "LearnLibrary",
+      "last": "2026-08-13T12:05:46.244184+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-13T12:05:46.244184+00:00",
+          "outcome": "useful",
+          "q": "the understanding your Vaginal pH is not there"
+        }
+      ],
+      "score": 0.97366304,
+      "source_file": "App/Genesyx/UI/Learn/LearnModels.swift",
+      "status": "tentative",
+      "uses": 1
+    },
+    "app_genesyx_ui_learn_learnviews_learnhero": {
+      "code_fingerprint": "1bae01585957c002fe7e89eca30e1f6ff4851a2af5b0dc285941e2ad7a9051bb",
+      "label": "LearnHero",
+      "last": "2026-08-13T12:05:46.244184+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-13T12:05:46.244184+00:00",
+          "outcome": "useful",
+          "q": "the understanding your Vaginal pH is not there"
+        }
+      ],
+      "score": 0.97366304,
+      "source_file": "App/Genesyx/UI/Learn/LearnViews.swift",
+      "status": "tentative",
+      "uses": 1
+    },
+    "app_genesyx_ui_learn_learnviews_learnlandingview": {
+      "code_fingerprint": "1bae01585957c002fe7e89eca30e1f6ff4851a2af5b0dc285941e2ad7a9051bb",
+      "label": "LearnLandingView",
+      "last": "2026-08-14T08:47:45.247681+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-14T08:47:45.247681+00:00",
+          "outcome": "useful",
+          "q": "the customer can download this online can have in my own machine tell me how to impement this thing"
+        },
+        {
+          "date": "2026-08-14T08:43:59.564348+00:00",
+          "outcome": "useful",
+          "q": "How should Unlock My Free Guide work in Genesyx iOS?"
+        },
+        {
+          "date": "2026-08-13T12:05:46.244184+00:00",
+          "outcome": "useful",
+          "q": "the understanding your Vaginal pH is not there"
+        }
+      ],
+      "score": 2.960124174,
+      "source_file": "App/Genesyx/UI/Learn/LearnViews.swift",
+      "status": "preferred",
+      "uses": 3
+    },
+    "app_genesyx_ui_maintabview_maintabview": {
+      "code_fingerprint": "3abf9177e51e2e89d8bd215774857fa822e505f3bbc23e2702930375dba13397",
+      "label": "MainTabView",
+      "last": "2026-08-14T10:07:02.757751+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-14T10:07:02.757751+00:00",
+          "outcome": "useful",
+          "q": "Audit why the Genesyx iOS app is accessible without login and list every fix"
+        }
+      ],
+      "score": 0.994525011,
+      "source_file": "App/Genesyx/UI/MainTabView.swift",
+      "status": "tentative",
+      "uses": 1
+    },
+    "app_genesyx_ui_nutrition_nutritionview_nutritionview": {
+      "code_fingerprint": "d4637f487bc2576d90220f21b44ab2e9aad8858748a92176508f3fe9813cf18c",
+      "label": "NutritionView",
+      "last": "2026-08-14T09:05:41.730151+00:00",
+      "neg": 1,
+      "provenance": [
+        {
+          "date": "2026-08-14T09:05:41.730151+00:00",
+          "outcome": "useful",
+          "q": "can you confirm where we are now with the eight consolidated Genesyx change groups"
+        },
+        {
+          "date": "2026-08-13T15:29:55.700609+00:00",
+          "outcome": "useful",
+          "q": "how close we are of this finish this list and I need to tick the boxes of this progress checklist"
+        },
+        {
+          "date": "2026-08-13T10:18:28.089077+00:00",
+          "outcome": "useful",
+          "q": "What is next and what prompt should Claude use to do the tasks after discovering the Home fix was made in a stale worktree?"
+        },
+        {
+          "date": "2026-08-13T10:17:14.902826+00:00",
+          "outcome": "corrected",
+          "q": "Review the newest Claude handoff claiming a Home no-cycle fix, T24 never existed, and 180/202/46 tests"
+        },
+        {
+          "date": "2026-08-13T09:36:45.357960+00:00",
+          "outcome": "useful",
+          "q": "Review Claude's full shared-backend diagnostic matrix committed as 8d82e54 and identify remaining corrections before implementation"
+        }
+      ],
+      "score": 4.883098206,
+      "source_file": "App/Genesyx/UI/Nutrition/NutritionView.swift",
+      "status": "contested",
+      "uses": 6,
+      "verdict": "useful"
+    },
+    "app_genesyx_ui_nutrition_nutritionview_nutritionview_recipecard": {
+      "code_fingerprint": "d4637f487bc2576d90220f21b44ab2e9aad8858748a92176508f3fe9813cf18c",
+      "label": ".recipeCard()",
+      "last": "2026-08-13T21:28:19.722335+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-13T21:28:19.722335+00:00",
+          "outcome": "useful",
+          "q": "Generate bright premium editorial food-only images for all eight Nutrition recipe cards matching the app"
+        }
+      ],
+      "score": 0.982491383,
+      "source_file": "App/Genesyx/UI/Nutrition/NutritionView.swift",
+      "status": "tentative",
+      "uses": 1
+    },
+    "app_genesyx_ui_nutrition_nutritionview_nutritionview_recipessection": {
+      "code_fingerprint": "d4637f487bc2576d90220f21b44ab2e9aad8858748a92176508f3fe9813cf18c",
+      "label": ".recipesSection()",
+      "last": "2026-08-13T21:28:19.722335+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-13T21:28:19.722335+00:00",
+          "outcome": "useful",
+          "q": "Generate bright premium editorial food-only images for all eight Nutrition recipe cards matching the app"
+        }
+      ],
+      "score": 0.982491383,
+      "source_file": "App/Genesyx/UI/Nutrition/NutritionView.swift",
+      "status": "tentative",
+      "uses": 1
+    },
+    "app_genesyx_ui_nutrition_nutritionview_recipesheet": {
+      "code_fingerprint": "d4637f487bc2576d90220f21b44ab2e9aad8858748a92176508f3fe9813cf18c",
+      "label": "RecipeSheet",
+      "last": "2026-08-13T21:28:19.722335+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-13T21:28:19.722335+00:00",
+          "outcome": "useful",
+          "q": "Generate bright premium editorial food-only images for all eight Nutrition recipe cards matching the app"
+        }
+      ],
+      "score": 0.982491383,
+      "source_file": "App/Genesyx/UI/Nutrition/NutritionView.swift",
+      "status": "tentative",
+      "uses": 1
+    },
+    "app_genesyx_ui_onboarding_onboardingflowview": {
+      "code_fingerprint": "548ce76c8135d085b16d7c60616519a95f5219334cf47689946f66db8669836d",
+      "label": "OnboardingFlowView.swift",
+      "last": "2026-08-14T09:55:10.193540+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-14T09:55:10.193540+00:00",
+          "outcome": "useful",
+          "q": "Add the supplied Genesyx logo to the very first onboarding page before the quiz"
+        },
+        {
+          "date": "2026-08-13T12:30:10.599334+00:00",
+          "outcome": "useful",
+          "q": "Which Sections 1-3 and 5 tracker requirements are complete, partial, missing, or blocked, with Section 4 excluded?"
+        }
+      ],
+      "score": 1.968379917,
+      "source_file": "App/Genesyx/UI/Onboarding/OnboardingFlowView.swift",
+      "status": "preferred",
+      "uses": 2
+    },
+    "app_genesyx_ui_onboarding_onboardingflowview_onboardingflowview": {
+      "code_fingerprint": "548ce76c8135d085b16d7c60616519a95f5219334cf47689946f66db8669836d",
+      "label": "OnboardingFlowView",
+      "last": "2026-08-14T09:05:41.730151+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-14T09:05:41.730151+00:00",
+          "outcome": "useful",
+          "q": "can you confirm where we are now with the eight consolidated Genesyx change groups"
+        },
+        {
+          "date": "2026-08-14T08:47:45.247681+00:00",
+          "outcome": "useful",
+          "q": "the customer can download this online can have in my own machine tell me how to impement this thing"
+        },
+        {
+          "date": "2026-08-13T15:29:55.700609+00:00",
+          "outcome": "useful",
+          "q": "how close we are of this finish this list and I need to tick the boxes of this progress checklist"
+        },
+        {
+          "date": "2026-08-13T15:05:46.193040+00:00",
+          "outcome": "useful",
+          "q": "How close are we to finishing the Simplified Consolidated Changes list, excluding Section 4?"
+        },
+        {
+          "date": "2026-08-13T08:48:42.356000+00:00",
+          "outcome": "useful",
+          "q": "Claude code said it made some audit"
+        }
+      ],
+      "score": 6.851172534,
+      "source_file": "App/Genesyx/UI/Onboarding/OnboardingFlowView.swift",
+      "status": "preferred",
+      "uses": 7
+    },
+    "app_genesyx_ui_onboarding_onboardingflowview_readinesssummaryview": {
+      "code_fingerprint": "548ce76c8135d085b16d7c60616519a95f5219334cf47689946f66db8669836d",
+      "label": "ReadinessSummaryView",
+      "last": "2026-08-14T08:43:59.564348+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-14T08:43:59.564348+00:00",
+          "outcome": "useful",
+          "q": "How should Unlock My Free Guide work in Genesyx iOS?"
+        }
+      ],
+      "score": 0.993200595,
+      "source_file": "App/Genesyx/UI/Onboarding/OnboardingFlowView.swift",
+      "status": "tentative",
+      "uses": 1
+    },
+    "app_genesyx_ui_onboarding_onboardingflowview_step_splash": {
+      "code_fingerprint": "548ce76c8135d085b16d7c60616519a95f5219334cf47689946f66db8669836d",
+      "label": "splash",
+      "last": "2026-08-14T09:55:10.193540+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-14T09:55:10.193540+00:00",
+          "outcome": "useful",
+          "q": "Add the supplied Genesyx logo to the very first onboarding page before the quiz"
+        }
+      ],
+      "score": 0.99433552,
+      "source_file": "App/Genesyx/UI/Onboarding/OnboardingFlowView.swift",
+      "status": "tentative",
+      "uses": 1
+    },
+    "app_genesyx_ui_onboarding_onboardingflowview_step_waitlist": {
+      "code_fingerprint": "548ce76c8135d085b16d7c60616519a95f5219334cf47689946f66db8669836d",
+      "label": "waitlist",
+      "last": "2026-08-14T08:43:59.564348+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-14T08:43:59.564348+00:00",
+          "outcome": "useful",
+          "q": "How should Unlock My Free Guide work in Genesyx iOS?"
+        }
+      ],
+      "score": 0.993200595,
+      "source_file": "App/Genesyx/UI/Onboarding/OnboardingFlowView.swift",
+      "status": "tentative",
+      "uses": 1
+    },
+    "app_genesyx_ui_ph_phtrackersection_phsheetmode": {
+      "code_fingerprint": "eac7fd017d9f44fbe67752201732331a48ad6bbc3cda26f4db0e7ba8bfe1d44a",
+      "label": "PhSheetMode",
+      "last": "2026-08-13T15:05:46.193040+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-13T15:05:46.193040+00:00",
+          "outcome": "useful",
+          "q": "How close are we to finishing the Simplified Consolidated Changes list, excluding Section 4?"
+        }
+      ],
+      "score": 0.976479141,
+      "source_file": "App/Genesyx/UI/Ph/PhTrackerSection.swift",
+      "status": "tentative",
+      "uses": 1
+    },
+    "app_genesyx_ui_ph_phtrackersection_phtrackercard": {
+      "code_fingerprint": "eac7fd017d9f44fbe67752201732331a48ad6bbc3cda26f4db0e7ba8bfe1d44a",
+      "label": "PhTrackerCard",
+      "last": "2026-08-14T09:05:41.730151+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-14T09:05:41.730151+00:00",
+          "outcome": "useful",
+          "q": "can you confirm where we are now with the eight consolidated Genesyx change groups"
+        },
+        {
+          "date": "2026-08-13T15:29:55.700609+00:00",
+          "outcome": "useful",
+          "q": "how close we are of this finish this list and I need to tick the boxes of this progress checklist"
+        },
+        {
+          "date": "2026-08-13T14:24:56.643175+00:00",
+          "outcome": "useful",
+          "q": "Review Claude's pH history list and SwiftUI sheet-state race fix"
+        },
+        {
+          "date": "2026-08-13T08:37:11.040703+00:00",
+          "outcome": "useful",
+          "q": "what can claude do and what can you do please, from this list?"
+        },
+        {
+          "date": "2026-08-13T08:12:45.197368+00:00",
+          "outcome": "useful",
+          "q": "do a list of everything needs to be done, deep dive so nothing is left, so we do today"
+        }
+      ],
+      "score": 4.886683301,
+      "source_file": "App/Genesyx/UI/Ph/PhTrackerSection.swift",
+      "status": "preferred",
+      "uses": 5
+    },
+    "app_genesyx_ui_profile_profileview_profileview": {
+      "code_fingerprint": "6432019063ec194241f2031d6365570150f074436a420396f79e758eff0aacb1",
+      "label": "ProfileView",
+      "last": "2026-08-14T11:48:57.309842+00:00",
+      "neg": 1,
+      "provenance": [
+        {
+          "date": "2026-08-14T11:48:57.309842+00:00",
+          "outcome": "useful",
+          "q": "need a prompt to validate the what we need please , what needs to be done do a to do list now"
+        },
+        {
+          "date": "2026-08-14T11:38:33.440128+00:00",
+          "outcome": "useful",
+          "q": "Assess Grok's returned Genesyx iOS logo and mandatory-auth verification result"
+        },
+        {
+          "date": "2026-08-14T10:18:41.383236+00:00",
+          "outcome": "useful",
+          "q": "tell me where we are at, and if we finish this list for real"
+        },
+        {
+          "date": "2026-08-14T10:13:54.603326+00:00",
+          "outcome": "useful",
+          "q": "the first home page is ok now is only the page when i click the sigin page in the PROFILE tab the last option"
+        },
+        {
+          "date": "2026-08-14T09:05:41.730151+00:00",
+          "outcome": "useful",
+          "q": "can you confirm where we are now with the eight consolidated Genesyx change groups"
+        }
+      ],
+      "score": 15.682742317,
+      "source_file": "App/Genesyx/UI/Profile/ProfileView.swift",
+      "status": "contested",
+      "uses": 17,
+      "verdict": "useful"
+    },
+    "app_genesyx_ui_track_trackview_hydrationdetailsheet": {
+      "code_fingerprint": "0e65f819f7fb7aac41ee7680bfc316261699df38ab555a93ec6000638e8fb193",
+      "label": "HydrationDetailSheet",
+      "last": "2026-08-13T15:29:55.700609+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-13T15:29:55.700609+00:00",
+          "outcome": "useful",
+          "q": "how close we are of this finish this list and I need to tick the boxes of this progress checklist"
+        }
+      ],
+      "score": 0.976857721,
+      "source_file": "App/Genesyx/UI/Track/TrackView.swift",
+      "status": "tentative",
+      "uses": 1
+    },
+    "app_genesyx_ui_track_trackview_trackview": {
+      "code_fingerprint": "0e65f819f7fb7aac41ee7680bfc316261699df38ab555a93ec6000638e8fb193",
+      "label": "TrackView",
+      "last": "2026-08-14T09:05:41.730151+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-14T09:05:41.730151+00:00",
+          "outcome": "useful",
+          "q": "can you confirm where we are now with the eight consolidated Genesyx change groups"
+        },
+        {
+          "date": "2026-08-13T15:29:55.700609+00:00",
+          "outcome": "useful",
+          "q": "how close we are of this finish this list and I need to tick the boxes of this progress checklist"
+        },
+        {
+          "date": "2026-08-13T08:12:45.197368+00:00",
+          "outcome": "useful",
+          "q": "do a list of everything needs to be done, deep dive so nothing is left, so we do today"
+        }
+      ],
+      "score": 2.940433754,
+      "source_file": "App/Genesyx/UI/Track/TrackView.swift",
+      "status": "preferred",
+      "uses": 3
+    },
+    "app_genesyxtests_brandassettests": {
+      "code_fingerprint": "693f6e7d7a3f398bbdc2299e8e4105ab0b9fb19953b2461ef2e3b9babe6e6d94",
+      "label": "BrandAssetTests.swift",
+      "last": "2026-08-14T10:13:54.603326+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-14T10:13:54.603326+00:00",
+          "outcome": "useful",
+          "q": "the first home page is ok now is only the page when i click the sigin page in the PROFILE tab the last option"
+        },
+        {
+          "date": "2026-08-14T09:55:10.193540+00:00",
+          "outcome": "useful",
+          "q": "Add the supplied Genesyx logo to the very first onboarding page before the quiz"
+        }
+      ],
+      "score": 1.98897007,
+      "source_file": "App/GenesyxTests/BrandAssetTests.swift",
+      "status": "preferred",
+      "uses": 2
+    },
+    "app_genesyxtests_persistencetests_persistencetests": {
+      "code_fingerprint": "8935913b03377779bd02c4160c79386f9cd3b86f87363b45f2df7860a77ac451",
+      "label": "PersistenceTests",
+      "last": "2026-08-13T15:37:14.824708+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-13T15:37:14.824708+00:00",
+          "outcome": "useful",
+          "q": "this is what claude code done and stoped so far:"
+        },
+        {
+          "date": "2026-08-13T14:49:19.588567+00:00",
+          "outcome": "useful",
+          "q": "Assess Claude's final pH cold-relaunch verification while the full suite runs"
+        }
+      ],
+      "score": 1.953193985,
+      "source_file": "App/GenesyxTests/PersistenceTests.swift",
+      "status": "preferred",
+      "uses": 2
+    },
+    "app_genesyxtests_repositorytests_repositorytests": {
+      "code_fingerprint": "e79d945875fca17c832d271688388a34f88713b75f9a468f44ab17acddb30712",
+      "label": "RepositoryTests",
+      "last": "2026-08-13T14:49:19.588567+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-13T14:49:19.588567+00:00",
+          "outcome": "useful",
+          "q": "Assess Claude's final pH cold-relaunch verification while the full suite runs"
+        }
+      ],
+      "score": 0.976221545,
+      "source_file": "App/GenesyxTests/RepositoryTests.swift",
+      "status": "tentative",
+      "uses": 1
+    },
+    "app_genesyxuitests_genesyxuitests_genesyxuitests": {
+      "code_fingerprint": "8ec9ca7b356f50dcba1a8681e8edf1c80de2a1ca9078963e42ce77f54e79d786",
+      "label": "GenesyxUITests",
+      "last": "2026-08-13T15:18:59.095142+00:00",
+      "neg": 1,
+      "provenance": [
+        {
+          "date": "2026-08-13T15:18:59.095142+00:00",
+          "outcome": "useful",
+          "q": "more context, to understand the logic and where we are at"
+        },
+        {
+          "date": "2026-08-13T10:18:28.089077+00:00",
+          "outcome": "useful",
+          "q": "What is next and what prompt should Claude use to do the tasks after discovering the Home fix was made in a stale worktree?"
+        },
+        {
+          "date": "2026-08-13T10:17:14.902826+00:00",
+          "outcome": "corrected",
+          "q": "Review the newest Claude handoff claiming a Home no-cycle fix, T24 never existed, and 180/202/46 tests"
+        }
+      ],
+      "score": 0.976705235,
+      "source_file": "App/GenesyxUITests/GenesyxUITests.swift",
+      "status": "contested",
+      "uses": 2,
+      "verdict": "useful"
+    },
+    "app_genesyxuitests_lifecyclee2etests_lifecyclee2etests": {
+      "code_fingerprint": "84bbfbc0a3f2d21cda5abd6ad5c0f2ee2f0f5a208bfec85b86361b61b7230a02",
+      "label": "LifecycleE2ETests",
+      "last": "2026-08-14T12:32:47.686720+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-14T12:32:47.686720+00:00",
+          "outcome": "useful",
+          "q": "so far im like here"
+        }
+      ],
+      "score": 0.99685348,
+      "source_file": "App/GenesyxUITests/LifecycleE2ETests.swift",
+      "status": "tentative",
+      "uses": 1
+    },
+    "docs_app_store_submission": {
+      "code_fingerprint": "361851ee7fd35a8846d614f126af74a4bdd4d37593a732536bdc533c5a742533",
+      "label": "APP_STORE_SUBMISSION.md",
+      "last": "2026-08-14T13:07:41.033947+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-14T13:07:41.033947+00:00",
+          "outcome": "useful",
+          "q": "give me a checklist to make it happe and piblish this app"
+        }
+      ],
+      "score": 0.997411673,
+      "source_file": "docs/APP_STORE_SUBMISSION.md",
+      "status": "tentative",
+      "uses": 1
+    },
+    "docs_change_list_plan_6a_1_priority_and_ownership": {
+      "code_fingerprint": "7dfe6632e85a4261e24a13b41cd59baec3e88349680f95302bd188cbff8fa3f4",
+      "label": "6A.1 Priority and ownership",
+      "last": "2026-08-13T18:07:33.448200+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-13T18:07:33.448200+00:00",
+          "outcome": "useful",
+          "q": "ok lets finish the hardest tasks, tell me the top 5"
+        }
+      ],
+      "score": 0.979331488,
+      "source_file": "docs/CHANGE_LIST_PLAN.md",
+      "status": "tentative",
+      "uses": 1
+    },
+    "docs_handoff": {
+      "code_fingerprint": "ea42b13fe25f2b6f9c945aa58410058f9705e48265f80b29f4dab74fe1b5ed05",
+      "label": "HANDOFF.md",
+      "last": "2026-08-13T18:05:57.593876+00:00",
+      "neg": 1,
+      "provenance": [
+        {
+          "date": "2026-08-13T18:05:57.593876+00:00",
+          "outcome": "corrected",
+          "q": "double check if this list make sense, claude code did it"
+        },
+        {
+          "date": "2026-08-13T15:37:14.824708+00:00",
+          "outcome": "useful",
+          "q": "this is what claude code done and stoped so far:"
+        }
+      ],
+      "score": -0.002333945,
+      "source_file": "docs/HANDOFF.md",
+      "status": "contested",
+      "uses": 1,
+      "verdict": "dead end"
+    },
+    "docs_privacy_policy": {
+      "code_fingerprint": "75ce6c2200cf9bd4679f465d9d5fc785c31b6951c2341278f94a02c70b0f6e31",
+      "label": "PRIVACY_POLICY.md",
+      "last": "2026-08-14T13:07:41.033947+00:00",
+      "neg": 1,
+      "provenance": [
+        {
+          "date": "2026-08-14T13:07:41.033947+00:00",
+          "outcome": "useful",
+          "q": "give me a checklist to make it happe and piblish this app"
+        },
+        {
+          "date": "2026-08-13T18:10:26.505142+00:00",
+          "outcome": "corrected",
+          "q": "Evaluate Claude Code's top five hardest remaining Genesyx tasks and decide what should start next"
+        }
+      ],
+      "score": 0.018034862,
+      "source_file": "docs/PRIVACY_POLICY.md",
+      "status": "contested",
+      "uses": 1,
+      "verdict": "useful"
+    },
+    "docs_release_roadmap": {
+      "code_fingerprint": "1a666211de94560d7fbeb5c205f3ad621a8acbd20c41311f2abc2a11b991ac1b",
+      "label": "RELEASE_ROADMAP.md",
+      "last": "2026-08-14T13:07:41.033947+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-14T13:07:41.033947+00:00",
+          "outcome": "useful",
+          "q": "give me a checklist to make it happe and piblish this app"
+        }
+      ],
+      "score": 0.997411673,
+      "source_file": "docs/RELEASE_ROADMAP.md",
+      "status": "tentative",
+      "uses": 1
+    },
+    "docs_session_state_commit_stack_newest_first": {
+      "code_fingerprint": "e8a60ed23cf1485e8b2d835932c4a62cd4ca27dd7d60e6dcd1313f5f5c7534a4",
+      "label": "Commit stack (newest first)",
+      "last": "2026-08-13T20:19:36.519143+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-13T20:19:36.519143+00:00",
+          "outcome": "useful",
+          "q": "so far we are like this: advise what to do now"
+        }
+      ],
+      "score": 0.981408667,
+      "source_file": "docs/SESSION_STATE.md",
+      "status": "tentative",
+      "uses": 1
+    },
+    "docs_testflight_b18_testflight_genesyx_1_2_0_18": {
+      "code_fingerprint": "3c9d9c3d1885bdda62e85ffb64c0b855b8700fbac658e819841b74a3a7c41372",
+      "label": "TestFlight — Genesyx 1.2.0 (18)",
+      "last": "2026-08-14T13:07:41.033947+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-14T13:07:41.033947+00:00",
+          "outcome": "useful",
+          "q": "give me a checklist to make it happe and piblish this app"
+        },
+        {
+          "date": "2026-08-14T12:32:47.686720+00:00",
+          "outcome": "useful",
+          "q": "so far im like here"
+        }
+      ],
+      "score": 1.994265153,
+      "source_file": "docs/TESTFLIGHT_B18.md",
+      "status": "preferred",
+      "uses": 2
+    },
+    "scripts_prepare_store_screenshots": {
+      "code_fingerprint": "8c99c8ff46bf1369fbf3193e62abde20a76b2f5a900fc477f263d50a984f8d92",
+      "label": "prepare_store_screenshots.sh",
+      "last": "2026-08-14T13:07:41.033947+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-14T13:07:41.033947+00:00",
+          "outcome": "useful",
+          "q": "give me a checklist to make it happe and piblish this app"
+        }
+      ],
+      "score": 0.997411673,
+      "source_file": "scripts/prepare_store_screenshots.sh",
+      "status": "tentative",
+      "uses": 1
+    },
+    "sources_genesyxcore_content_nutritioncontent_foodgroup": {
+      "code_fingerprint": "1b1d4e2c622b80c9da6e787763c9e20544ed4ddd8a456f85c2245236b029dfca",
+      "label": "FoodGroup",
+      "last": "2026-08-13T18:10:26.505142+00:00",
+      "neg": 1,
+      "provenance": [
+        {
+          "date": "2026-08-13T18:10:26.505142+00:00",
+          "outcome": "corrected",
+          "q": "Evaluate Claude Code's top five hardest remaining Genesyx tasks and decide what should start next"
+        },
+        {
+          "date": "2026-08-13T18:07:33.448200+00:00",
+          "outcome": "useful",
+          "q": "ok lets finish the hardest tasks, tell me the top 5"
+        },
+        {
+          "date": "2026-08-13T15:05:46.193040+00:00",
+          "outcome": "useful",
+          "q": "How close are we to finishing the Simplified Consolidated Changes list, excluding Section 4?"
+        }
+      ],
+      "score": 0.976433818,
+      "source_file": "Sources/GenesyxCore/Content/NutritionContent.swift",
+      "status": "contested",
+      "uses": 2,
+      "verdict": "useful"
+    },
+    "sources_genesyxcore_content_recipecontent_recipe": {
+      "code_fingerprint": "6ae923efc95d146f8075a0e85c28fe98b22e572a6b2d3511ce89bb6ff5fdf665",
+      "label": "Recipe",
+      "last": "2026-08-13T21:28:19.722335+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-13T21:28:19.722335+00:00",
+          "outcome": "useful",
+          "q": "Generate bright premium editorial food-only images for all eight Nutrition recipe cards matching the app"
+        }
+      ],
+      "score": 0.982491383,
+      "source_file": "Sources/GenesyxCore/Content/RecipeContent.swift",
+      "status": "tentative",
+      "uses": 1
+    },
+    "sources_genesyxcore_content_recipecontent_recipecontent": {
+      "code_fingerprint": "6ae923efc95d146f8075a0e85c28fe98b22e572a6b2d3511ce89bb6ff5fdf665",
+      "label": "RecipeContent",
+      "last": "2026-08-13T21:28:19.722335+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-13T21:28:19.722335+00:00",
+          "outcome": "useful",
+          "q": "Generate bright premium editorial food-only images for all eight Nutrition recipe cards matching the app"
+        }
+      ],
+      "score": 0.982491383,
+      "source_file": "Sources/GenesyxCore/Content/RecipeContent.swift",
+      "status": "tentative",
+      "uses": 1
+    },
+    "sources_genesyxcore_insights_cycleregularitylogic": {
+      "code_fingerprint": "31e4ed2b2ab025184c5838f3cfae1441abdc5aeb71d4a1424004d7a877aeaa64",
+      "label": "CycleRegularityLogic.swift",
+      "last": "2026-08-13T12:30:10.599334+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-13T12:30:10.599334+00:00",
+          "outcome": "useful",
+          "q": "Which Sections 1-3 and 5 tracker requirements are complete, partial, missing, or blocked, with Section 4 excluded?"
+        }
+      ],
+      "score": 0.974044396,
+      "source_file": "Sources/GenesyxCore/Insights/CycleRegularityLogic.swift",
+      "status": "tentative",
+      "uses": 1
+    },
+    "sources_genesyxcore_insights_cycleregularitylogic_cycleregularityinsights": {
+      "code_fingerprint": "31e4ed2b2ab025184c5838f3cfae1441abdc5aeb71d4a1424004d7a877aeaa64",
+      "label": "CycleRegularityInsights",
+      "last": "2026-08-13T15:29:55.700609+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-13T15:29:55.700609+00:00",
+          "outcome": "useful",
+          "q": "how close we are of this finish this list and I need to tick the boxes of this progress checklist"
+        },
+        {
+          "date": "2026-08-13T15:18:59.095142+00:00",
+          "outcome": "useful",
+          "q": "more context, to understand the logic and where we are at"
+        },
+        {
+          "date": "2026-08-13T15:16:35.923286+00:00",
+          "outcome": "useful",
+          "q": "Update CHANGE_LIST_PLAN.md to match Claude Code and production Supabase status"
+        },
+        {
+          "date": "2026-08-13T15:05:46.193040+00:00",
+          "outcome": "useful",
+          "q": "How close are we to finishing the Simplified Consolidated Changes list, excluding Section 4?"
+        },
+        {
+          "date": "2026-08-13T14:08:05.011161+00:00",
+          "outcome": "useful",
+          "q": "Plan the difficult remaining Genesyx work, update docs/CHANGE_LIST_PLAN.md, and provide a safe prompt for the one shared iOS and Android Supabase backend"
+        }
+      ],
+      "score": 4.88224764,
+      "source_file": "Sources/GenesyxCore/Insights/CycleRegularityLogic.swift",
+      "status": "preferred",
+      "uses": 5
+    },
+    "sources_genesyxcore_insights_hydrationunit_hydrationunit": {
+      "code_fingerprint": "aec9332e30744a0edda91bae8a0968a70e2d6c12fcd1e1f749fe4624b64aeb2c",
+      "label": "HydrationUnit",
+      "last": "2026-08-13T18:07:33.448200+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-13T18:07:33.448200+00:00",
+          "outcome": "useful",
+          "q": "ok lets finish the hardest tasks, tell me the top 5"
+        }
+      ],
+      "score": 0.979331488,
+      "source_file": "Sources/GenesyxCore/Insights/HydrationUnit.swift",
+      "status": "tentative",
+      "uses": 1
+    },
+    "sources_genesyxcore_models_account_partner": {
+      "code_fingerprint": "dc253b65948eb69920cad795d84e5ad3b29c902cd0bf2a416379165a59e1b5ab",
+      "label": "Partner",
+      "last": "2026-08-13T08:48:42.356000+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-13T08:48:42.356000+00:00",
+          "outcome": "useful",
+          "q": "Claude code said it made some audit"
+        }
+      ],
+      "score": 0.970589259,
+      "source_file": "Sources/GenesyxCore/Models/Account.swift",
+      "status": "tentative",
+      "uses": 1
+    },
+    "sources_genesyxcore_models_cycle_cyclesettings": {
+      "code_fingerprint": "9511fc23feac3aac68e719aaaaabf21b28348d181a9d555d101c7ae026d0cf78",
+      "label": "CycleSettings",
+      "last": "2026-08-13T15:18:59.095142+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-13T15:18:59.095142+00:00",
+          "outcome": "useful",
+          "q": "more context, to understand the logic and where we are at"
+        }
+      ],
+      "score": 0.976686212,
+      "source_file": "Sources/GenesyxCore/Models/Cycle.swift",
+      "status": "tentative",
+      "uses": 1
+    },
+    "sources_genesyxcore_models_dailylog_dailylog": {
+      "code_fingerprint": "1d51bf6c6908007d57713a72e6afb7aca990eed69006c65d3db0044ff195f03b",
+      "label": "DailyLog",
+      "last": "2026-08-13T14:08:05.011161+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-13T14:08:05.011161+00:00",
+          "outcome": "useful",
+          "q": "Plan the difficult remaining Genesyx work, update docs/CHANGE_LIST_PLAN.md, and provide a safe prompt for the one shared iOS and Android Supabase backend"
+        }
+      ],
+      "score": 0.975575748,
+      "source_file": "Sources/GenesyxCore/Models/DailyLog.swift",
+      "status": "tentative",
+      "uses": 1
+    },
+    "sources_genesyxcore_models_phreading_phreading": {
+      "code_fingerprint": "dcb49df61bfbf44d66a3c041f068992b4ce41ba7e60e1d087b4f842e456a4895",
+      "label": "PhReading",
+      "last": "2026-08-13T15:05:46.193040+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-13T15:05:46.193040+00:00",
+          "outcome": "useful",
+          "q": "How close are we to finishing the Simplified Consolidated Changes list, excluding Section 4?"
+        },
+        {
+          "date": "2026-08-13T14:24:56.643175+00:00",
+          "outcome": "useful",
+          "q": "Review Claude's pH history list and SwiftUI sheet-state race fix"
+        }
+      ],
+      "score": 1.952318845,
+      "source_file": "Sources/GenesyxCore/Models/PhReading.swift",
+      "status": "preferred",
+      "uses": 2
+    },
+    "sources_genesyxcore_ph_phsync_phrecord": {
+      "code_fingerprint": "58f73da15996772b600b04e7f756f31cb9b67e4befa85fae925c2f532dfdfc00",
+      "label": "PhRecord",
+      "last": "2026-08-13T15:16:35.923286+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-13T15:16:35.923286+00:00",
+          "outcome": "useful",
+          "q": "Update CHANGE_LIST_PLAN.md to match Claude Code and production Supabase status"
+        }
+      ],
+      "score": 0.976648818,
+      "source_file": "Sources/GenesyxCore/Ph/PhSync.swift",
+      "status": "tentative",
+      "uses": 1
+    },
+    "sources_genesyxcore_streaks_streakengine": {
+      "code_fingerprint": "091a6f434ccf7f20eb08381cf65191ef8da8dbfd2fda3f3c234863bd3a8fbb62",
+      "label": "StreakEngine.swift",
+      "last": "2026-08-13T20:19:36.519143+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-13T20:19:36.519143+00:00",
+          "outcome": "useful",
+          "q": "so far we are like this: advise what to do now"
+        }
+      ],
+      "score": 0.981408667,
+      "source_file": "Sources/GenesyxCore/Streaks/StreakEngine.swift",
+      "status": "tentative",
+      "uses": 1
+    },
+    "sources_genesyxcore_streaks_streakengine_milestone": {
+      "code_fingerprint": "091a6f434ccf7f20eb08381cf65191ef8da8dbfd2fda3f3c234863bd3a8fbb62",
+      "label": "Milestone",
+      "last": "2026-08-13T20:19:36.519143+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-13T20:19:36.519143+00:00",
+          "outcome": "useful",
+          "q": "so far we are like this: advise what to do now"
+        }
+      ],
+      "score": 0.981408667,
+      "source_file": "Sources/GenesyxCore/Streaks/StreakEngine.swift",
+      "status": "tentative",
+      "uses": 1
+    },
+    "sources_genesyxcore_tracking_trackingengine": {
+      "code_fingerprint": "2f3280bf16b3392d442232e7f010042943637deef9677e675d8f85f85a39847b",
+      "label": "TrackingEngine.swift",
+      "last": "2026-08-13T12:30:10.599334+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-13T12:30:10.599334+00:00",
+          "outcome": "useful",
+          "q": "Which Sections 1-3 and 5 tracker requirements are complete, partial, missing, or blocked, with Section 4 excluded?"
+        }
+      ],
+      "score": 0.974044396,
+      "source_file": "Sources/GenesyxCore/Tracking/TrackingEngine.swift",
+      "status": "tentative",
+      "uses": 1
+    },
+    "sources_genesyxcore_tracking_trackingengine_trackingengine": {
+      "code_fingerprint": "2f3280bf16b3392d442232e7f010042943637deef9677e675d8f85f85a39847b",
+      "label": "TrackingEngine",
+      "last": "2026-08-13T18:07:33.448200+00:00",
+      "neg": 1,
+      "provenance": [
+        {
+          "date": "2026-08-13T18:07:33.448200+00:00",
+          "outcome": "useful",
+          "q": "ok lets finish the hardest tasks, tell me the top 5"
+        },
+        {
+          "date": "2026-08-13T18:05:57.593876+00:00",
+          "outcome": "corrected",
+          "q": "double check if this list make sense, claude code did it"
+        },
+        {
+          "date": "2026-08-13T15:29:55.700609+00:00",
+          "outcome": "useful",
+          "q": "how close we are of this finish this list and I need to tick the boxes of this progress checklist"
+        },
+        {
+          "date": "2026-08-13T15:05:46.193040+00:00",
+          "outcome": "useful",
+          "q": "How close are we to finishing the Simplified Consolidated Changes list, excluding Section 4?"
+        },
+        {
+          "date": "2026-08-13T14:08:05.011161+00:00",
+          "outcome": "useful",
+          "q": "Plan the difficult remaining Genesyx work, update docs/CHANGE_LIST_PLAN.md, and provide a safe prompt for the one shared iOS and Android Supabase backend"
+        }
+      ],
+      "score": 4.869377078,
+      "source_file": "Sources/GenesyxCore/Tracking/TrackingEngine.swift",
+      "status": "contested",
+      "uses": 6,
+      "verdict": "useful"
+    },
+    "supabase": {
+      "code_fingerprint": "52fe817d85a5127d11446705bed068d238a33c4e875d51830520588826a4040c",
+      "label": "Supabase",
+      "last": "2026-08-14T08:47:45.247681+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-14T08:47:45.247681+00:00",
+          "outcome": "useful",
+          "q": "the customer can download this online can have in my own machine tell me how to impement this thing"
+        },
+        {
+          "date": "2026-08-13T18:07:33.448200+00:00",
+          "outcome": "useful",
+          "q": "ok lets finish the hardest tasks, tell me the top 5"
+        },
+        {
+          "date": "2026-08-13T14:08:05.011161+00:00",
+          "outcome": "useful",
+          "q": "Plan the difficult remaining Genesyx work, update docs/CHANGE_LIST_PLAN.md, and provide a safe prompt for the one shared iOS and Android Supabase backend"
+        }
+      ],
+      "score": 2.948167774,
+      "source_file": "App/Genesyx/Data/Remote/SupabaseBackend.swift",
+      "status": "preferred",
+      "uses": 3
+    },
+    "supabase_migrations_20260712_push_enabled_default_false": {
+      "code_fingerprint": "adebced5c9e46b1151787b500c786887093a1df0d684d31e99d5b3f9ef43a1bd",
+      "label": "20260712_push_enabled_default_false.sql",
+      "last": "2026-08-13T15:37:14.824708+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-13T15:37:14.824708+00:00",
+          "outcome": "useful",
+          "q": "this is what claude code done and stoped so far:"
+        }
+      ],
+      "score": 0.97697244,
+      "source_file": "supabase/migrations/20260712_push_enabled_default_false.sql",
+      "status": "tentative",
+      "uses": 1
+    }
+  },
   "version": 1
 }

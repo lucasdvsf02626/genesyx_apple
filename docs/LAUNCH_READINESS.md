@@ -6,9 +6,11 @@
 
 > **Read §9 first if you have read this document before.** On 18 August three of the hard blockers
 > were closed in code — Article 9 consent, Sign in with Apple revocation, and the pregnancy
-> placeholder. Two of them have an operational half that is still outstanding, and one of those is
-> a database migration that has **not** been applied to production. §9 is where that lives; the
-> entries in §3 have been struck through and now point at it.
+> placeholder. Their operational halves were then closed the same day: the `consent_events` migration
+> is applied to production and visible to PostgREST, and the Apple secrets are set with
+> `delete_account` deployed. §9.7 carries the state sync and the probe evidence. What is left before
+> upload is legal sign-off on the consent wording, the on-device passes, and the App Store Connect
+> metadata — not code.
 
 This document supersedes `WHATS_LEFT.md`, which is stale (11 Aug, written when the plan was still a local-only v1 with no backend).
 
@@ -120,8 +122,10 @@ Ordered by what unblocks the most. Items 1–3 are the true critical path.
 **1. ~~Decide the UK GDPR Article 9 lawful basis.~~ BUILT IN CODE, 18 Aug 2026 — copy still needs legal sign-off.**
 The live policy claims **"Article 9(2)(a) explicit consent"**, and as of build 21 the app now does what the policy says: an unticked agreement screen before the first health question, a persisted event trail with version and timestamp, a withdrawal control in Profile, and a repository-level gate that stops every health write the moment she withdraws. **The mechanism is closed; the wording is not.** The copy in `ConsentPolicy` was written to be legally defensible but has not been reviewed by a lawyer — see §9.1 for exactly what it says and what remains open.
 
-**2. ~~Sign in with Apple `/auth/revoke`.~~ CODE COMPLETE both sides, 18 Aug 2026 — needs secrets and a flag.**
-The edge function revokes before it destroys anything, and the iOS client now collects a fresh Apple authorization code at the delete confirmation and sends it. What is left is operational and yours: put `APPLE_TEAM_ID`, `APPLE_CLIENT_ID`, `APPLE_KEY_ID` and `APPLE_PRIVATE_KEY` into Supabase secrets, then flip `APPLE_REVOKE_REQUIRED` to true once build 21 is the only client in the field. **Do not paste the `.p8` into a chat or commit it.** See §9.2 for the deploy order and why it has to be that order.
+**2. ~~Sign in with Apple `/auth/revoke`.~~ CLOSED, 18 Aug 2026 — code, secrets and deploy all done.**
+The edge function revokes before it destroys anything, and the iOS client now collects a fresh Apple authorization code at the delete confirmation and sends it. **Done, 18 August 2026:** all five secrets (`APPLE_TEAM_ID`, `APPLE_CLIENT_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY`, `APPLE_REVOKE_REQUIRED=true`) are set with real values and confirmed present via `supabase secrets list`, and `delete_account` is deployed. The `.p8` was handled through Supabase secrets only — it is not in this repo, this doc, or any transcript.
+
+One consequence of `APPLE_REVOKE_REQUIRED=true` being live now rather than after the upload: the function is no longer inert on that path, so **an Apple-signed user deleting from a build older than 21 will fail the deletion** — those clients send no authorization code, and the flag makes a missing code fatal by design. **Reviewed and kept deliberately on 18 Aug 2026**: nothing has ever shipped publicly, so the only pre-21 installs are the client's own TestFlight accounts; the failure is a refusal before any data is touched, not a partial delete; and it self-closes when 21 goes live rather than leaving a flag someone must remember to flip. Full reasoning in §9.2.
 
 **3. ~~Deploy `delete_account`.~~ DONE, 17 Aug 2026.**
 Live at **v10 ACTIVE**, bundle byte-identical to the repo, verified by `supabase functions download` and diff. Evidence in §6.1; committed as `b78eee6`. This entry is kept struck through rather than deleted because two other documents still reference it as outstanding.
@@ -812,25 +816,47 @@ simply do nothing, which reads as a broken app rather than as her decision. `Con
 sits at the top of Home, Track, Nutrition and the pH tab, and only when she has withdrawn, saying so
 and naming where to change her mind.
 
-**🔴 STILL REQUIRED, AND IT IS A BLOCKER: apply the migration to production.**
-`supabase/migrations/20260818_consent_events.sql` has **not been applied**. Probed against production
-on 18 Aug with the public anon key and no rows read: `consent_events` returns **HTTP 404** (the
-relation is not in PostgREST's schema cache) while `profiles` returns 401 (exists, authentication
-enforced). The client half is complete and wired — `SupabaseConsent` inserts on grant and withdraw,
-`AppContainer` refreshes the trail before the health tables on sign-in — so nothing is lost while the
-table is missing: a rejected insert stays in the pending queue and retries forever. But two things
-are true until it is applied, and the first is the whole reason this work was done:
+**✅ APPLIED TO PRODUCTION, 18 August 2026 ~11:00.** `20260818_consent_events.sql` was run in the
+dashboard SQL Editor and verified there: 5 columns, RLS enabled, exactly the two owner-only policies
+(read and append — no ALL, UPDATE or DELETE policy, which would defeat an append-only trail).
 
-* **The controller cannot demonstrate consent.** The audit trail exists only on her phone. Article
-  7(1) asks the controller to prove it, and a record held solely on the data subject's device is not
-  that proof.
-* **The trail does not survive sign-out.** `clearLocalState()` deliberately wipes it on sign-out and
-  relies on the server copy returning on the next refresh. With no table, it simply does not come
-  back — she is asked again on her next sign-in. That fails safe (she is asked, not assumed) but it
-  is not the intended behaviour.
+This was a blocker until it landed, because the controller could not demonstrate consent from a trail
+held only on the data subject's phone (Article 7(1)), and because `clearLocalState()` wipes the local
+copy on sign-out and depends on the server copy returning. Both are now satisfied.
 
-Apply it in the Supabase dashboard → SQL Editor → paste → Run. The file is idempotent. There is no
-auto-push from this repo.
+Re-probed after the apply and a `NOTIFY pgrst, 'reload schema'`, public anon key, status codes only,
+no rows read:
+
+| Table | HTTP | Reading |
+| --- | --- | --- |
+| `consent_events` | **200** | exists, exposed, RLS filters anon to an empty set |
+| `profiles` | 401 | exists, anon holds no table grant (revoked 20260812) |
+| `partner_invites` | 401 | same |
+| `nonexistent_control` | 404 | what a missing or unexposed relation looks like |
+
+The earlier 404 was the schema cache, as suspected. The control row is the part that makes the 200
+mean something: 404 is still reachable, so a 200 is not a blanket response.
+
+**One discrepancy, not exploitable but worth closing.** `consent_events` answers 200 where the six
+older tables answer 401. The reason is dates, not policy: `20260812_client_role_grant_cleanup.sql`
+revoked `anon`'s table grant on `cycle_settings`, `daily_logs`, `ph_readings`, `quiz_answers`,
+`partner_invites` and `profiles`. `consent_events` was created six days later and inherits Supabase's
+default grant to `anon`, so it never came under that revoke. Its two policies are `TO authenticated`
+and owner-scoped, so `auth.uid()` is null without a session and anon reads nothing — the 200 is an
+empty set, which is why it is not a live exposure. But it leaves RLS as the only thing between `anon`
+and the table, which is exactly the single-point-of-failure posture the August 12 migration was
+written to remove.
+
+**Closed as a migration file, not a one-off statement:**
+`supabase/migrations/20260818b_consent_events_grant_cleanup.sql` — the two revokes, in the same
+documented and idempotent form as the August 12 cleanup, with preconditions that refuse to run if a
+policy has started naming `anon` or if RLS has been disabled. **Not yet applied**; apply via the
+dashboard SQL Editor. Writing it as a file rather than pasting the SQL is the point: today's 404 was
+repo-and-production drift in the other direction, and a statement that only ever existed in a chat
+is the same drift waiting to happen again. V4 in that file re-runs the probe — `consent_events`
+should read 401 afterwards, matching `profiles`.
+
+Not a launch blocker and not needed before the build 21 upload.
 
 **🟠 The copy has not had legal review.** `ConsentPolicy` was written to be defensible and the
 mechanism around it implements the Articles named above, but every sentence she is shown is a legal
@@ -858,15 +884,39 @@ sign-in that created it — `identities` first, then `app_metadata.providers`, t
 `app_metadata.provider` — because she may have signed in with Apple on another device or linked it
 later, and the last of those three names only whichever provider came first.
 
-**🔴 STILL REQUIRED, and the order is not optional.**
+**Deploy order, and where we actually are (18 August 2026).**
 
-1. Put `APPLE_TEAM_ID`, `APPLE_CLIENT_ID`, `APPLE_KEY_ID` and `APPLE_PRIVATE_KEY` into **Supabase
+1. ✅ Put `APPLE_TEAM_ID`, `APPLE_CLIENT_ID`, `APPLE_KEY_ID` and `APPLE_PRIVATE_KEY` into **Supabase
    secrets**. The `.p8` goes through the secret manager and nowhere else — not into a commit, not
-   into a chat.
-2. Leave `APPLE_REVOKE_REQUIRED` **off**. The function is inert on this path while it is off.
-3. Ship build 21, so clients in the field are sending the code.
+   into a chat. Done; all four confirmed present, `delete_account` deployed.
+2. ⚠️ Leave `APPLE_REVOKE_REQUIRED` **off**. The function is inert on this path while it is off.
+   **This step was skipped — the flag was set to true on 18 Aug, before step 3.**
+3. ⏳ Ship build 21, so clients in the field are sending the code. Archived, not yet uploaded.
 4. Only then set `APPLE_REVOKE_REQUIRED=true`. Flipping it before step 3 makes every deletion from an
    older build fail, because those builds send no code.
+
+Steps 2 and 4 were taken out of order, so between now and build 21 reaching users, **an Apple-signed
+user deleting from an older build gets a refused deletion** (`index.ts` returns `failed("apple
+revoke", "apple identity with no authorizationCode in body")`).
+
+**Decision, 18 August 2026: the flag stays true.** The reasoning, recorded so it is not re-litigated
+or mistaken for an oversight:
+
+* **There is no public user to harm.** Nothing has ever shipped to the App Store. The only accounts
+  that could be holding a pre-21 build are the client's own TestFlight installs.
+* **The failure mode is a refusal, not damage.** The check runs before anything is touched, so a
+  refused deletion leaves the account exactly as it was. The alternative ordering trades this for
+  the opposite risk — data destroyed while Apple's grant survives, which is the 5.1.1(v) violation
+  this function exists to prevent.
+* **It self-closes.** Once build 21 is live, every client sends the code and the window is gone
+  without anyone remembering to flip anything. A flag left off is a flag someone has to come back
+  for; §9.2 step 4 becomes a no-op instead of a follow-up.
+* **Only Apple-signed users are in scope at all.** Email and Google deletions never enter this
+  branch — `hasAppleIdentity(user)` gates the whole block.
+
+Reverting to false would remove the window, and was considered. It was rejected because the only
+population it protects is the client's own test accounts, and it reintroduces a manual step whose
+whole cost is that it can be forgotten.
 
 **Not verifiable from here.** Sign in with Apple does not work on the Simulator, so the end-to-end
 path — sign in with Apple, delete, confirm the Apple ID no longer lists Genesyx — is a real-device
@@ -987,6 +1037,23 @@ Distribution: SF MEDIA & PR LTD (M5L3MM75SG), profile "Genesyx App Store", `UIDe
 (iPhone only), minimum iOS 16.0, signature valid and satisfying its Designated Requirement. Not
 uploaded. iPhone-only needed no project change: `TARGETED_DEVICE_FAMILY` was already `1` on the
 shipping target and there is no watchOS target in the project.
+
+**Backend state as of 18 August 2026, ~11:00.** Both items that were blockers in §6 and §9.2 are
+done, performed in the client's own terminal and dashboard rather than from this session:
+
+| Item | State | Evidence |
+| --- | --- | --- |
+| `20260818_consent_events.sql` applied | ✅ Done | Dashboard-verified: 5 columns, RLS on, exactly the two owner-only policies |
+| PostgREST sees the table | ✅ Done | Anon probe **HTTP 200** after `NOTIFY pgrst, 'reload schema'`; was 404 (schema cache) |
+| Five Apple secrets set | ✅ Done | `supabase secrets list`; `.p8` never left the secret manager |
+| `delete_account` deployed | ✅ Done | Client-confirmed |
+| `APPLE_REVOKE_REQUIRED=true` | ✅ Done, kept on deliberately | Early by the documented order; reviewed and accepted — §9.2 |
+| `anon` grant on `consent_events` | 🟠 Migration written, not applied | `20260818b_consent_events_grant_cleanup.sql`; RLS covers it meanwhile |
+
+Probe shape, so a future re-run matches: `GET {SUPABASE_URL}/rest/v1/{table}?select=id&limit=0` with
+`apikey` and `Authorization: Bearer` both set to the public publishable key, status code read and the
+body discarded. No service-role credential was used at any point, and no row contents were read from
+any production table.
 
 **A consent-driven test change, not a test weakening.** `testSignOutDoesNotBlankMedicalSources` now
 agrees to consent again after signing back in. That is real behaviour: sign-out calls
