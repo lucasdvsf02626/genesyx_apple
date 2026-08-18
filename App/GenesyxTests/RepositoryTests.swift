@@ -580,6 +580,110 @@ final class RepositoryTests: XCTestCase {
                        "a rehydrated container must still be permitted to write")
     }
 
+    // MARK: - Article 9: the read gate
+
+    /// Build 21 gated the writes and left the pulls open, so a withdrawn user's phone went on
+    /// fetching her cycle, her logs, her readings and her supplements off the server on every
+    /// launch and every foreground. That is processing of special-category data with no lawful
+    /// basis behind it, and it is the exact claim the App Review notes make about this app.
+    ///
+    /// The gate is set directly here rather than through `AppContainer`, which needs a full
+    /// `GenesyxBackend`. What the container wires is already proven by
+    /// `testWithdrawingConsentStopsEveryHealthWrite`: one closure, assigned to all five.
+    func testWithdrawingConsentStopsThePullOfHerHealthData() async {
+        var permitted = false
+        let gate: HealthDataCollectionGate = { permitted }
+
+        let cycleBackend = FakeCycleBackend()
+        cycleBackend.remote = CycleSettings(lastPeriodDate: .today(), cycleLength: 31, periodLength: 6)
+        let cycle = CycleRepository(store: makeStore(), backend: cycleBackend)
+        cycle.isCollectionPermitted = gate
+
+        let logBackend = FakeDailyLogBackend()
+        logBackend.remote = [.today(): DailyLog(waterMl: 1_500)]
+        let logs = DailyLogRepository(store: makeStore(), backend: logBackend)
+        logs.isCollectionPermitted = gate
+
+        let phBackend = FakePhBackend()
+        phBackend.remote = [PhRecord(reading: PhReading(phValue: 6.5, recordedAt: Date()),
+                                     updatedAt: Date(), pendingSync: false)]
+        let ph = PhRepository(store: makeStore(), backend: phBackend)
+        ph.isCollectionPermitted = gate
+
+        let supplementBackend = FakeSupplementBackend()
+        supplementBackend.remote = [SupplementRecord(supplement: CustomSupplement(name: "Iron", dose: "14 mg"),
+                                                     updatedAt: Date(), pendingSync: false)]
+        let supplements = SupplementsRepository(store: makeStore(), backend: supplementBackend)
+        supplements.isCollectionPermitted = gate
+
+        await cycle.refresh()
+        await logs.refresh()
+        await ph.refresh()
+        await supplements.refresh()
+
+        XCTAssertNil(cycle.settings, "a withdrawn phone must not pull her cycle back down")
+        XCTAssertTrue(logs.logByDate.isEmpty, "nor her daily logs")
+        XCTAssertTrue(ph.readings.isEmpty, "nor her pH readings")
+        XCTAssertTrue(supplements.supplements.isEmpty, "nor her supplements")
+
+        // And the gate is a gate, not an off switch: granting resumes the pull.
+        permitted = true
+        await cycle.refresh()
+        await logs.refresh()
+        await ph.refresh()
+        await supplements.refresh()
+
+        XCTAssertEqual(cycle.settings?.cycleLength, 31, "granting again must resume the pull")
+        XCTAssertEqual(logs.waterMl(on: .today()), 1_500)
+        XCTAssertEqual(ph.readings.count, 1)
+        XCTAssertEqual(supplements.supplements.count, 1)
+    }
+
+    /// The boundary on the other side of the read gate. The pending queue is NOT gated, and must
+    /// not be: it is what carries her deletions to her other devices, and `delete` sits outside
+    /// the write gate for exactly that reason. Gating the drain would make a withdrawal quietly
+    /// cancel an erasure.
+    func testHerDeletionsStillReachTheServerAfterAWithdrawal() async {
+        var permitted = true
+        let backend = FakePhBackend()
+        let ph = PhRepository(store: makeStore(), backend: backend)
+        ph.isCollectionPermitted = { permitted }
+
+        let reading = PhReading(phValue: 6.5, recordedAt: Date())
+        backend.online = false
+        ph.create(reading)
+        backend.online = true
+        await ph.refresh()
+        XCTAssertEqual(backend.remote.count, 1, "precondition: the server has the reading")
+
+        permitted = false
+        backend.online = false
+        ph.delete(id: reading.id)
+        backend.online = true
+        await ph.refresh()
+
+        XCTAssertEqual(backend.remote.filter { !$0.deleted }.count, 0,
+                       "a deletion made after a withdrawal must still reach the server")
+    }
+
+    /// The profile row carries both kinds of value, so the gate there is per-field. Refusing the
+    /// whole pull would take her theme away in order to protect her health data, which is not a
+    /// trade worth making — and applying the whole row would pull her pregnancy status back down
+    /// after she withdrew.
+    func testAWithdrawnProfilePullTakesTheThemeAndLeavesTheHealthAnswers() async {
+        let backend = FakeProfileBackend()
+        backend.remote = ProfilePrefs(focusMode: .pregnancy, themeMode: .dark, pushEnabled: true,
+                                      quizAnswers: ["stage": "pregnant"])
+        let prefs = PreferencesRepository(store: makeStore(), backend: backend)
+        prefs.isCollectionPermitted = { false }
+
+        await prefs.refresh()
+
+        XCTAssertEqual(prefs.themeMode, .dark, "the theme is a setting about this phone, not about her body")
+        XCTAssertEqual(prefs.focusMode, .prep, "her pregnancy status must not be pulled back down")
+        XCTAssertTrue(prefs.quizAnswers.isEmpty, "nor her intake answers")
+    }
+
     // MARK: - Local health-data wipe on auth transitions
 
     /// Seeds cycle/pH/daily-log data into a container, then asserts sign-out clears both the

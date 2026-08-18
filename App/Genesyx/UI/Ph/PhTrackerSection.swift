@@ -49,6 +49,7 @@ struct PhTrackerSection: View {
     var onOpenLearn: (() -> Void)? = nil
 
     @EnvironmentObject private var ph: PhRepository
+    @EnvironmentObject private var consent: ConsentRepository
     /// One piece of state, presented with `.sheet(item:)`. The pair it replaced — a `showSheet`
     /// flag plus a separate `editing` reading — raced: SwiftUI evaluated the sheet body before the
     /// sibling update landed, so `existing` was still nil and every edit opened as a blank new
@@ -60,14 +61,26 @@ struct PhTrackerSection: View {
             readings: ph.readings,
             onOpenSupplements: onOpenSupplements,
             onOpenLearn: onOpenLearn,
+            // Disable-first. With consent withdrawn the repository refuses the write anyway, so
+            // offering "Log pH" only invites her to fill in a reading that cannot be kept.
+            //
+            // The *edit* entry points stay open on purpose. Tapping a reading is also the only way
+            // to reach "Delete this reading", and `PhRepository.delete` sits outside the gate
+            // deliberately: erasing what she already recorded is Article 17 and has to stay
+            // available after a withdrawal. So the sheet still opens; what it refuses is Save.
+            isLoggingEnabled: consent.isActive,
             onLog: { sheet = .new },
             onEdit: { sheet = .edit($0) })
             .sheet(item: $sheet) { mode in
                 PhLogSheet(
                     existing: mode.reading,
+                    canSave: consent.isActive,
                     onSave: { reading in
-                        if mode.reading == nil { ph.create(reading) } else { ph.update(reading) }
-                        sheet = nil
+                        // Defence in depth: `sheet = nil` ran unconditionally, so a refused write
+                        // closed the sheet exactly as a saved one did. Hold the sheet open on a
+                        // refusal — the banner on the tab behind it says why.
+                        let saved = mode.reading == nil ? ph.create(reading) : ph.update(reading)
+                        if saved { sheet = nil }
                     },
                     onDelete: { id in ph.delete(id: id); sheet = nil }
                 )
@@ -111,6 +124,11 @@ private struct PhTrackerCard: View {
     let readings: [PhReading]
     var onOpenSupplements: (() -> Void)? = nil
     var onOpenLearn: (() -> Void)? = nil
+    /// False once she has withdrawn Article 9 consent. The chart and the history stay readable —
+    /// withdrawal stops collection, it does not hide what is already hers — and tapping a reading
+    /// still opens the sheet, because that is the route to deleting it. What goes away is the
+    /// offer to record something new. Defaults true so previews and embedded uses are unaffected.
+    var isLoggingEnabled: Bool = true
     let onLog: () -> Void
     let onEdit: (PhReading) -> Void
     @State private var range: PhRange = .month
@@ -141,6 +159,8 @@ private struct PhTrackerCard: View {
                     .background(GenesyxColor.primary).clipShape(Capsule())
                 }
                 .buttonStyle(.plain)
+                .disabled(!isLoggingEnabled)
+                .opacity(isLoggingEnabled ? 1 : 0.4)
             }
 
             Text(PhCopy.cycleContextCaveat)
@@ -309,6 +329,8 @@ private struct PhTrackerCard: View {
             Text("Log your first pH to start your chart.")
                 .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
             GxPrimaryButton(title: "Log pH", leadingSystemImage: "plus", action: onLog).padding(.top, 4)
+                .disabled(!isLoggingEnabled)
+                .opacity(isLoggingEnabled ? 1 : 0.4)
         }
         .frame(maxWidth: .infinity).padding(.vertical, 24)
     }
@@ -449,6 +471,9 @@ private struct PhSpine: View {
 /// ± buttons, when picker, notes, Save, Cancel (+ a confirmed Delete when editing).
 private struct PhLogSheet: View {
     let existing: PhReading?
+    /// False once Article 9 consent is withdrawn. Save is disabled; Delete is not, because
+    /// removing a reading she already recorded is Article 17 and stays available either way.
+    var canSave: Bool = true
     let onSave: (PhReading) -> Void
     let onDelete: (String) -> Void
 
@@ -458,8 +483,9 @@ private struct PhLogSheet: View {
     @State private var notes: String
     @State private var confirmingDelete = false
 
-    init(existing: PhReading?, onSave: @escaping (PhReading) -> Void, onDelete: @escaping (String) -> Void) {
+    init(existing: PhReading?, canSave: Bool = true, onSave: @escaping (PhReading) -> Void, onDelete: @escaping (String) -> Void) {
         self.existing = existing
+        self.canSave = canSave
         self.onSave = onSave
         self.onDelete = onDelete
         _value = State(initialValue: existing?.phValue ?? 4.2)
@@ -477,6 +503,10 @@ private struct PhLogSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
+                    // Only renders while consent is withdrawn, and it is the same wording the
+                    // tracking tabs carry. The sheet is reachable in that state solely so she can
+                    // delete a reading, so the banner explains the disabled Save before she meets it.
+                    ConsentWithdrawnBanner()
                     Text("Track your vaginal pH from 3.8 to 7.0.")
                         .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
                     Text(PhCopy.accuracyCaveat)
@@ -554,7 +584,9 @@ private struct PhLogSheet: View {
                             // New readings are vaginal; an edit keeps the existing reading's type.
                             measurementType: existing?.measurementType ?? .vaginal
                         ))
-                    }.fontWeight(.semibold)
+                    }
+                    .fontWeight(.semibold)
+                    .disabled(!canSave)
                 }
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }

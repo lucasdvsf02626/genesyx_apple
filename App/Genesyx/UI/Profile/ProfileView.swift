@@ -22,8 +22,7 @@ struct ProfileView: View {
     @State private var detail: String?
     @State private var deleteOpen = false
     @State private var deleteError: String?
-    @State private var resetConfirm = false
-    @State private var resetResult: String?
+    @State private var changePasswordOpen = false
     @State private var showAuth = false
     @State private var showPregnancy = false
     @State private var showReminderPrompt = false
@@ -126,21 +125,8 @@ struct ProfileView: View {
         } message: {
             Text(deleteError ?? "")
         }
-        .alert("Change password", isPresented: $resetConfirm) {
-            Button("Send reset link") {
-                Task {
-                    do { try await session.resetPassword(); resetResult = "Check your inbox — we've emailed you a link to reset your password." }
-                    catch { resetResult = "We couldn't send the reset email. Please try again." }
-                }
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("We'll email a password-reset link to \(session.email ?? "your account").")
-        }
-        .alert("Password reset", isPresented: Binding(get: { resetResult != nil }, set: { if !$0 { resetResult = nil } })) {
-            Button("OK") { resetResult = nil }
-        } message: {
-            Text(resetResult ?? "")
+        .sheet(isPresented: $changePasswordOpen) {
+            ChangePasswordSheet { try await session.changePassword($0) }
         }
     }
 
@@ -155,7 +141,12 @@ struct ProfileView: View {
                 .clipShape(Circle())
             VStack(alignment: .leading, spacing: 2) {
                 Text(name).font(.gxCardHeading).foregroundStyle(GenesyxColor.foreground)
-                Text(session.email ?? "Sign in to sync your data").font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+                // The email is deliberately not shown on this card — a user checks which account
+                // she's in from Personal Details, which is the right place for it. Signed out, the
+                // card still invites her to sign in.
+                if !session.isSignedIn {
+                    Text("Sign in to sync your data").font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+                }
             }
             Spacer()
         }
@@ -206,14 +197,7 @@ struct ProfileView: View {
                 rowItem("Personal Details") { session.isSignedIn ? (personalOpen = true) : (showAuth = true) }
                 divider
                 rowItem("Change password") {
-                    guard session.isSignedIn else { showAuth = true; return }
-                    // A social sign-in can leave us without an address. Offering to email a link
-                    // there anyway ended in "please try again" on a call that could never succeed.
-                    if session.email?.isEmpty == false {
-                        resetConfirm = true
-                    } else {
-                        resetResult = "We don't have an email address for this account. Get in touch through Help & Support and we'll reset your password for you."
-                    }
+                    session.isSignedIn ? (changePasswordOpen = true) : (showAuth = true)
                 }
             }
         }
@@ -817,6 +801,118 @@ private struct PersonalDetailsSheet: View {
                 }
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
             }
+        }
+    }
+}
+
+// MARK: - Change password sheet
+
+/// Sets a new password directly on the signed-in session — no email, no link. Shares
+/// `NewPasswordRule` with the signed-out recovery screen and with sign-up, so a password accepted
+/// here is one every other screen accepts too. The email-link flow still lives on `AuthView`
+/// ("Forgot password?"), which is the only place a user without a session can recover.
+private struct ChangePasswordSheet: View {
+    /// Throws so the sheet can show the backend's failure inline (e.g. a lapsed session).
+    let onSave: (String) async throws -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var password = ""
+    @State private var confirmation = ""
+    @State private var error: String?
+    @State private var submitting = false
+    @State private var succeeded = false
+
+    private var validationMessage: String? {
+        NewPasswordRule.problem(password: password, confirmation: confirmation)
+    }
+    private var canSubmit: Bool { validationMessage == nil && !submitting }
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 16) {
+                if succeeded { successState } else { form }
+                Spacer()
+            }
+            .padding(20)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(GenesyxColor.background)
+            .navigationTitle("Change password").navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                if !succeeded {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button(submitting ? "Saving…" : "Save") { submit() }
+                            .fontWeight(.semibold)
+                            .disabled(!canSubmit)
+                            .accessibilityIdentifier("changePassword.save")
+                    }
+                }
+            }
+        }
+    }
+
+    private var form: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Set a new password for signing in. You'll stay signed in on this device.")
+                .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+            field("New password", text: $password, id: "changePassword.newPassword")
+            field("Confirm new password", text: $confirmation, id: "changePassword.confirm")
+
+            // Held back until she has typed into the second field, so the mismatch line does not
+            // accuse her of an error she is still halfway through not making.
+            if error == nil, !confirmation.isEmpty, let hint = validationMessage {
+                Text(hint).font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+                    .accessibilityIdentifier("changePassword.hint")
+            }
+            if let error {
+                Text(error).font(.gxBodySmall).foregroundStyle(GenesyxColor.destructive)
+                    .accessibilityIdentifier("changePassword.error")
+            }
+        }
+    }
+
+    private var successState: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Password updated").font(.gxCardHeading).foregroundStyle(GenesyxColor.foreground)
+            Text("You'll use this new password next time you sign in. Any other devices you were signed in on keep their session until it expires.")
+                .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+            GxPrimaryButton(title: "Done") { dismiss() }.padding(.top, 8)
+        }
+        .accessibilityIdentifier("changePassword.success")
+    }
+
+    private func submit() {
+        if let problem = validationMessage { error = problem; return }
+        error = nil
+        submitting = true
+        Task {
+            do {
+                try await onSave(password)
+                password = ""
+                confirmation = ""
+                succeeded = true
+            } catch {
+                // The raw error can carry token/account detail — she gets something actionable.
+                self.error = "We couldn't update your password. If this keeps happening, sign out and back in, then try again."
+            }
+            submitting = false
+        }
+    }
+
+    /// Matches `ResetPasswordView.field` — `.newPassword` lets the keychain offer to generate/store.
+    private func field(_ label: String, text: Binding<String>, id: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label).font(.gxBodySmall).foregroundStyle(GenesyxColor.foreground)
+            SecureField("", text: text)
+                .textContentType(.newPassword)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .padding(.horizontal, 14).frame(height: 52)
+                .background(GenesyxColor.card).clipShape(RoundedRectangle(cornerRadius: 12))
+                .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(GenesyxColor.border, lineWidth: 1))
+                .onChange(of: text.wrappedValue) { _ in error = nil }
+                .accessibilityLabel(label)
+                .accessibilityIdentifier(id)
         }
     }
 }

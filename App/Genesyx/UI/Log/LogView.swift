@@ -6,6 +6,7 @@ import GenesyxCore
 struct LogView: View {
 
     @EnvironmentObject private var dailyLog: DailyLogRepository
+    @EnvironmentObject private var consent: ConsentRepository
     @Environment(\.dismiss) private var dismiss
 
     /// The day being logged. Defaults to today, but the calendar passes a past date so a day she
@@ -57,7 +58,17 @@ struct LogView: View {
                     miniCards
                     notesSection
                     Spacer().frame(height: 20)
+                    // Disable-first: the same banner the recording tabs carry, directly above the
+                    // button it explains. The controls that offer a log — Home, Track, the day
+                    // sheet, the Learn CTA — are themselves disabled while consent is withdrawn, so
+                    // this is normally unreachable. It is stated rather than assumed because the
+                    // hydration history strip also opens this sheet, and because she can withdraw
+                    // on another device while it is already on screen.
+                    ConsentWithdrawnBanner()
                     GxPrimaryButton(title: "Save log", action: save)
+                        .disabled(!consent.isActive)
+                        .opacity(consent.isActive ? 1 : 0.5)
+                        .accessibilityIdentifier("log.save")
                     Spacer().frame(height: 24)
                 }
                 .padding(.horizontal, 20)
@@ -136,7 +147,11 @@ struct LogView: View {
         entry.waterMl = waterMl
         entry.sexualActivity = sexualActivity
         entry.foodGroups = foodGroups
-        dailyLog.upsert(entry, on: date)
+        // Defence in depth behind the disabled button. `dismiss()` used to run unconditionally, so a
+        // refused write closed the sheet exactly as a successful one did and the day was lost in
+        // silence. Staying open with the banner showing is the honest failure: nothing is saved, and
+        // she can still see and copy what she typed.
+        guard dailyLog.upsert(entry, on: date) else { return }
         dismiss()
     }
 

@@ -231,12 +231,23 @@ final class PreferencesRepository: ObservableObject {
         if prefs == snapshot { pendingPush = false }   // unless she changed one meanwhile
     }
 
+    /// Note the split. Theme and push are settings about this phone and are applied unconditionally.
+    /// Focus mode (trying vs pregnant) and the intake answers are health data about her body, so
+    /// they sit behind the Article 9 gate exactly as the writes do: after a withdrawal there is no
+    /// lawful basis to pull them back down. Whatever this device already holds is left alone —
+    /// withdrawal stops processing, it is not erasure.
+    ///
+    /// This is a field-level gate rather than a gate on `refresh()` because the row carries both
+    /// kinds of value; refusing the whole profile would take her theme away to protect her health
+    /// data, which is not a trade the gate is for.
     private func apply(_ remote: ProfilePrefs) {
         isApplyingRemote = true
         themeMode = remote.themeMode
         pushEnabled = remote.pushEnabled
-        focusMode = remote.focusMode
-        quizAnswers = remote.quizAnswers
+        if isCollectionPermitted() {
+            focusMode = remote.focusMode
+            quizAnswers = remote.quizAnswers
+        }
         isApplyingRemote = false
     }
 

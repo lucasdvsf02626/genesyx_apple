@@ -244,7 +244,10 @@ final class RealInsightsTests: XCTestCase {
 
     func testNoBannedPhrasesAcrossInsightCopy() {
         let banned = ["alkaline diet", "balance your ph", "boy or girl", "sex selection",
-                      "gender sway", "sway the sex", "choose the sex", "detox", "flush toxins"]
+                      "gender sway", "sway the sex", "choose the sex", "detox", "flush toxins",
+                      // House-style: no marketing hype in insight copy. "boost" is left off — it is
+                      // legitimately used in nutrition guidance ("boost absorption").
+                      "empowered", "empowering"]
         var strings: [String] = []
         for length in [18, 28, 40] {
             if let r = CycleRegularityLogic.compute(settings: CycleSettings(lastPeriodDate: .today(), cycleLength: length)) {

@@ -575,6 +575,7 @@ struct ArticleDetailView: View {
 
     @EnvironmentObject private var tabs: TabRouter
     @EnvironmentObject private var learn: LearnProgress
+    @EnvironmentObject private var consent: ConsentRepository
     @State private var showLog = false
 
     var body: some View {
@@ -661,7 +662,10 @@ struct ArticleDetailView: View {
     }
 
     private func ctaButton(_ cta: ArticleCta) -> some View {
-        GxPrimaryButton(title: cta.label) {
+        // Only the log CTA is gated, and only it should be: the others move her between tabs, which
+        // a withdrawal has no reason to stop. See the note on the same control in `HomeView`.
+        let blocked = cta.type == .openLog && !consent.isActive
+        return GxPrimaryButton(title: cta.label) {
             switch cta.type {
             case .openLog: showLog = true
             case .openTrack: tabs.selection = 1
@@ -672,6 +676,8 @@ struct ArticleDetailView: View {
                 if let target = cta.targetSlug, !path.isEmpty { path[path.count - 1] = target }
             }
         }
+        .disabled(blocked)
+        .opacity(blocked ? 0.5 : 1)
         .padding(.top, 4)
     }
 

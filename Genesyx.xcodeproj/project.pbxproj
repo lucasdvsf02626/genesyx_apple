@@ -72,6 +72,7 @@
 		9BAF00B09D32CC497A7FB2A5 /* AuthPartnerBackendTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CFFA90DC002A583118F417 /* AuthPartnerBackendTests.swift */; };
 		9D27EC5A52BE53D875F4A7AF /* PreviewSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1D34D08C3CECE90DB71985D /* PreviewSupport.swift */; };
 		9F148CCE3A2DE5173BFFAA39 /* RemoteModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 397DC99D1C37CD68DFB1AA05 /* RemoteModels.swift */; };
+		A472B78C77017AD590A45B8A /* LearnSurfaceGuardTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5C7911C1DCF742BF52E33FB /* LearnSurfaceGuardTests.swift */; };
 		A5CFFE487FC1011AC30B6196 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41348920BE9C91F44EC334CD /* HomeView.swift */; };
 		A8CFAFC54BE8362144D42958 /* EmailValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6D3F941F8A48D807333965C /* EmailValidator.swift */; };
 		B07097DA3A3F2D2E4BA97906 /* YearMonth+Foundation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A35F920C88F39DE4A48AA3 /* YearMonth+Foundation.swift */; };
@@ -207,6 +208,7 @@
 		BF1A0DDC1903F444BDA44FC2 /* InviteShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InviteShareSheet.swift; sourceTree = "<group>"; };
 		C2F8D8EAE8E2F5145C9AE700 /* PhContentGuardTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhContentGuardTests.swift; sourceTree = "<group>"; };
 		C514C0E95E071BDA9843904E /* PersistenceDTOs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceDTOs.swift; sourceTree = "<group>"; };
+		C5C7911C1DCF742BF52E33FB /* LearnSurfaceGuardTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearnSurfaceGuardTests.swift; sourceTree = "<group>"; };
 		C89A702D17E4F743D8FBCC58 /* SessionExpiryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionExpiryTests.swift; sourceTree = "<group>"; };
 		C945804E1BB5F3133A5710D6 /* LearnContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearnContent.swift; sourceTree = "<group>"; };
 		CA1FD2DBFCCA2572F4AF84F1 /* PhRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhRepository.swift; sourceTree = "<group>"; };
@@ -301,6 +303,7 @@
 				7F5E81E13FAC805D726F44D3 /* FreeGuideBundleTests.swift */,
 				B18E3F542DC87A9DB38AE90F /* HydrationInsightTests.swift */,
 				3396EA1311B91F430A9A56FC /* LearnContentTests.swift */,
+				C5C7911C1DCF742BF52E33FB /* LearnSurfaceGuardTests.swift */,
 				0A374BA412A71C4681304F6B /* NotificationTests.swift */,
 				04A99C624A4D983AB1E3D538 /* NutritionHydrationTests.swift */,
 				07AB939CB828EB246F36B517 /* PartnerTests.swift */,
@@ -783,6 +786,7 @@
 				CAA6C90C15832BC3A97CC099 /* FreeGuideBundleTests.swift in Sources */,
 				2784F238C500EEF89F459F93 /* HydrationInsightTests.swift in Sources */,
 				5F63C8C182860F732EFAD1B4 /* LearnContentTests.swift in Sources */,
+				A472B78C77017AD590A45B8A /* LearnSurfaceGuardTests.swift in Sources */,
 				3C4025BDDBBFF7E7C4EB068D /* NotificationTests.swift in Sources */,
 				65A5F1876DC627D25E629435 /* NutritionHydrationTests.swift in Sources */,
 				48E3074CD9FFCEC5B1C9F220 /* PartnerTests.swift in Sources */,
@@ -853,7 +857,7 @@
 				CODE_SIGN_ENTITLEMENTS = App/Genesyx/Genesyx.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 21;
+				CURRENT_PROJECT_VERSION = 22;
 				DEVELOPMENT_TEAM = M5L3MM75SG;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				INFOPLIST_FILE = App/Genesyx/Info.plist;
@@ -879,7 +883,7 @@
 				CODE_SIGN_ENTITLEMENTS = App/Genesyx/Genesyx.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 21;
+				CURRENT_PROJECT_VERSION = 22;
 				DEVELOPMENT_TEAM = M5L3MM75SG;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				INFOPLIST_FILE = App/Genesyx/Info.plist;

@@ -48,16 +48,22 @@ final class PhRepository: ObservableObject {
 
     private func round1(_ value: Double) -> Double { (value * 10).rounded() / 10 }
 
-    func create(_ reading: PhReading) {
-        guard isCollectionPermitted() else { return }
+    /// **Returns false when the gate refused the write** — see the note on
+    /// `DailyLogRepository.upsert`. The caller must not report success on a false.
+    @discardableResult
+    func create(_ reading: PhReading) -> Bool {
+        guard isCollectionPermitted() else { return false }
         let normalized = PhReading(id: reading.id, phValue: round1(reading.phValue), recordedAt: reading.recordedAt, notes: reading.notes, measurementType: reading.measurementType)
         save(PhRecord(reading: normalized, updatedAt: Date(), pendingSync: true))
+        return true
     }
 
-    func update(_ reading: PhReading) {
-        guard isCollectionPermitted() else { return }
+    @discardableResult
+    func update(_ reading: PhReading) -> Bool {
+        guard isCollectionPermitted() else { return false }
         let normalized = PhReading(id: reading.id, phValue: round1(reading.phValue), recordedAt: reading.recordedAt, notes: reading.notes, measurementType: reading.measurementType)
         save(PhRecord(reading: normalized, updatedAt: Date(), pendingSync: true))
+        return true
     }
 
     /// Tombstone, not a removal — the deletion has to survive the next pull and reach her other
@@ -69,9 +75,15 @@ final class PhRepository: ObservableObject {
 
     /// Merge the remote snapshot into the local set, then push anything the server is still owed.
     /// A failed fetch still drains the queue (that's the retry path). No-op when local-only.
+    ///
+    /// The pull is gated on consent like the writes are: pulling readings back down is fresh
+    /// processing of special-category data with no lawful basis after a withdrawal. Readings
+    /// already on the device stay visible — withdrawal stops collection, it is not erasure. The
+    /// drain still runs, and must: it is what carries her *deletions* to her other devices, and
+    /// `delete` sits outside the gate for exactly that reason.
     func refresh() async {
         guard let backend else { return }
-        if let remote = try? await backend.list(sinceDays: nil) {
+        if isCollectionPermitted(), let remote = try? await backend.list(sinceDays: nil) {
             records = PhSync.merge(local: records, remote: remote)
             persist()
         }

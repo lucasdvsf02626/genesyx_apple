@@ -91,9 +91,13 @@ final class SupplementsRepository: ObservableObject {
 
     /// Merge the remote snapshot in, then push anything the server is still owed. A failed fetch
     /// still drains the queue — that is the retry path. No-op when local-only.
+    ///
+    /// The pull is gated on consent like the writes are: what she takes is health data, and
+    /// pulling it back down after a withdrawal is fresh processing with no lawful basis. What is
+    /// already on the device stays. The drain runs either way — it carries her deletions.
     func refresh() async {
         guard let backend else { return }
-        if let remote = try? await backend.list() {
+        if isCollectionPermitted(), let remote = try? await backend.list() {
             records = SupplementSync.merge(local: records, remote: remote)
             persist()
         }

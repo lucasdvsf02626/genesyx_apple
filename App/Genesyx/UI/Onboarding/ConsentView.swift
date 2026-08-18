@@ -61,9 +61,11 @@ struct ConsentView: View {
 
 /// Sits at the top of every surface whose purpose is recording, and only after she has withdrawn.
 ///
-/// It exists because the gate is at the repository: the controls are all still on screen and simply
-/// return without writing. Silence there reads as the app being broken rather than as her decision
-/// being honoured, and it hides the one thing she needs to know, which is where to change her mind.
+/// It exists because the gate is at the repository, and a refused write is silent there. Since
+/// build 22 the recording controls on these surfaces are disabled rather than merely inert, so this
+/// banner is the sentence that explains a greyed-out button — without it the disabled state reads
+/// as the app being broken rather than as her decision being honoured, and it hides the one thing
+/// she needs to know, which is where to change her mind.
 struct ConsentWithdrawnBanner: View {
     @EnvironmentObject private var consent: ConsentRepository
 

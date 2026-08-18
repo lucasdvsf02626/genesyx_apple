@@ -1,4 +1,4 @@
-# App Review Notes — Genesyx 1.2.0 (build 21)
+# App Review Notes — Genesyx 1.2.0 (build 22)
 
 Written 18 August 2026. Paste the block below into **App Store Connect → App Review Information →
 Notes**, then fill the password field in ASC directly.
@@ -32,7 +32,11 @@ paywall and it is not skippable, because it is the lawful basis for everything
 after it.
 
 WITHDRAWING CONSENT: Profile tab > "Health Data Permission" > "Withdraw consent".
-This halts all health data writes immediately.
+It takes effect immediately and in both directions: no new health data is
+recorded, and none is fetched back down from the server. Entry controls show a
+blocked state rather than accepting a save that cannot be kept. Data already on
+the device stays readable — withdrawal stops processing, it is not erasure, which
+is what "Delete account" below is for.
 
 DELETING THE ACCOUNT: Profile tab > scroll to the bottom > "Delete account". For
 Sign in with Apple accounts this revokes the Apple token before any data is
@@ -55,13 +59,17 @@ Nothing is region-locked or needs external hardware.
 
 ## Every claim above, and where it is in the source
 
-Checked against the build 21 tree on 18 August 2026, not written from memory. A reviewer following
+Checked against the build 22 tree on 18 August 2026, not written from memory. A reviewer following
 these notes must find what they say they will find, so each line is traceable. Re-verify before
 reusing this for a later build — labels move.
 
 | Claim in the notes | Source |
 | --- | --- |
 | Withdrawal lives in Profile under Health Data Permission | `ProfileView.swift:111` — the comment there names it as the Article 17 neighbour; the control is visible in `docs/appstore_screenshots/` capture 7, since dropped from the store set |
+| No new health data is recorded | The `HealthDataCollectionGate` wired at `AppContainer.swift:49-54` over every write in `CycleRepository`, `DailyLogRepository`, `PhRepository`, `SupplementsRepository` and `PreferencesRepository` |
+| None is fetched back down from the server | The same gate on the *read* side: `CycleRepository.refresh`, `DailyLogRepository.refresh`, `PhRepository.refresh`, `SupplementsRepository.refresh`, and per-field in `PreferencesRepository.apply`. Proved by `RepositoryTests.testWithdrawingConsentStopsThePullOfHerHealthData` — new in build 22; in build 21 the pull was ungated |
+| Entry controls show a blocked state | `ConsentWithdrawnBanner` (`ConsentView.swift:67`) on Home, Track, Nutrition and the pH tab, plus disabled Save on `LogView`, `PhLogSheet` and `CycleSettingsSheet`. Each save path also returns false rather than dismissing, so a refused write cannot look like a successful one |
+| Data already on the device stays readable | Nothing is deleted on withdrawal; only `clearLocalState()` on sign-out and account deletion wipes the store. `RepositoryTests.testHerDeletionsStillReachTheServerAfterAWithdrawal` covers the other half — her Article 17 deletions still propagate |
 | "Delete account" is at the bottom of Profile | `ProfileView.swift:542` (`deleteButton`), placed after `signOutButton` |
 | Deletion revokes the Apple token first | `ProfileView.swift:289` — `session.deleteAccount(appleAuthorizationCode:)`; the edge function revokes before it destroys, §9.2 |
 | Profile → About holds both disclaimer entries | `ProfileView.swift:500-522` (`aboutGroup`) — `"Medical Disclaimer"` at :520 and `navRow("Medical Sources & Disclaimer")` at :520 |
@@ -73,11 +81,13 @@ reusing this for a later build — labels move.
 
 ## Two things to do before submitting
 
-1. **Sign in as the demo account on build 21 first.** Build 21 moved `ConsentPolicy.currentVersion`
+1. **Sign in as the demo account on build 22 first.** Build 21 moved `ConsentPolicy.currentVersion`
    to `2026-08-18.v2` and the pin is invariant by design, so **every** v1 agreement is re-prompted on
    first launch — the demo account included. Consent granted in a build 20 session does not carry
-   over. Agree again inside build 21, then log a cycle start, a daily entry and two or three pH
-   readings, or the reviewer meets an empty Insights tab and an empty pH chart.
+   over. Agree again inside build 22, then log a cycle start, a daily entry and two or three pH
+   readings, or the reviewer meets an empty Insights tab and an empty pH chart. The consent state
+   matters more than it did: with the read gate in build 22, an un-consented session pulls nothing
+   down, so a reviewer who skips the agreement sees an empty app on a populated account.
 2. **Rotate the credentials currently on the 1.1.0 record.** That record holds a personal email and a
    weak plaintext password for a real account. Replace it with the demo account and change that
    password wherever else it is used. The demo password belongs in the ASC field only — not in this

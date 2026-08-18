@@ -507,7 +507,11 @@ struct NutritionView: View {
                     .font(.gxBodySmall.weight(.medium)).foregroundStyle(GenesyxColor.primary)
             }
             .padding(.bottom, 2)
-            ForEach(learnArticles.filter { $0.category == .nutrition }, id: \.slug) { a in
+            // `LearnLibrary.articles`, never the raw `learnArticles`. The raw array carries the
+            // weekly pieces that are written months ahead and dated forward, and this list showed
+            // them: two rows that opened straight onto the "unavailable" screen. Guarded by
+            // `LearnSurfaceGuardTests`.
+            ForEach(LearnLibrary.articles.filter { $0.category == .nutrition }, id: \.slug) { a in
                 Button { articlePath.append(a.slug) } label: {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {

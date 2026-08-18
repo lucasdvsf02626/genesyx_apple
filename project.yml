@@ -93,7 +93,13 @@ targets:
         # 21 = 1.2.0 with Article 9 consent (copy v2), Apple token revocation on delete, and the
         # pregnancy placeholder gated off. Build 20 is void for submission: it predates all three,
         # and the consent capture is the one Apple review and the ICO would both look for.
-        CURRENT_PROJECT_VERSION: "21"
+        # 22 = 1.2.0 with the consent gate made honest at the surface. Build 21 enforced Article 9
+        # correctly at the repositories and invisibly at the UI: every save path dismissed whether or
+        # not the write landed, so a withdrawn user filled a form, tapped Save and lost the entry in
+        # silence. It also left the *read* side ungated, so the app pulled her health data back down
+        # from the server after she had withdrawn. 21 is void for submission on the second point
+        # alone — it is the claim the App Review notes make.
+        CURRENT_PROJECT_VERSION: "22"
         SWIFT_VERSION: "5.9"
         TARGETED_DEVICE_FAMILY: "1" # iPhone
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon

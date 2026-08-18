@@ -4,7 +4,10 @@
 
 **Short answer: the app itself is in good shape. The submission is not.** Every blocker that remains is either off-code work only you can do, a decision only you or the client can make, or one live check I cannot run from the repo. No feature work is outstanding for the agreed scope.
 
-> **Read §9 first if you have read this document before.** On 18 August three of the hard blockers
+> **Read §10 first, then §9, if you have read this document before.** §10 is build 22: build 21 is
+> void for submission, and the reason is a compliance defect rather than a bug.
+>
+> **The §9 summary below stands, with one correction from §10.** On 18 August three of the hard blockers
 > were closed in code — Article 9 consent, Sign in with Apple revocation, and the pregnancy
 > placeholder. Their operational halves were then closed the same day: the `consent_events` migration
 > is applied to production and visible to PostgREST, and the Apple secrets are set with
@@ -120,7 +123,7 @@ Ordered by what unblocks the most. Items 1–3 are the true critical path.
 ### 🔴 Hard blockers — nothing ships until these are done
 
 **1. ~~Decide the UK GDPR Article 9 lawful basis.~~ BUILT IN CODE, 18 Aug 2026 — copy still needs legal sign-off.**
-The live policy claims **"Article 9(2)(a) explicit consent"**, and as of build 21 the app now does what the policy says: an unticked agreement screen before the first health question, a persisted event trail with version and timestamp, a withdrawal control in Profile, and a repository-level gate that stops every health write the moment she withdraws. **The mechanism is closed; the wording is not.** The copy in `ConsentPolicy` was written to be legally defensible but has not been reviewed by a lawyer — see §9.1 for exactly what it says and what remains open.
+The live policy claims **"Article 9(2)(a) explicit consent"**, and as of build 22 the app now does what the policy says: an unticked agreement screen before the first health question, a persisted event trail with version and timestamp, a withdrawal control in Profile, and a repository-level gate that on withdrawal stops every health write **and every health pull from the server**, with the entry controls showing a blocked state rather than accepting a save that cannot be kept. Build 21 had the write half only — §10. **The mechanism is closed; the wording is not.** The copy in `ConsentPolicy` was written to be legally defensible but has not been reviewed by a lawyer — see §9.1 for exactly what it says and what remains open.
 
 **2. ~~Sign in with Apple `/auth/revoke`.~~ CLOSED, 18 Aug 2026 — code, secrets and deploy all done.**
 The edge function revokes before it destroys anything, and the iOS client now collects a fresh Apple authorization code at the delete confirmation and sends it. **Done, 18 August 2026:** all five secrets (`APPLE_TEAM_ID`, `APPLE_CLIENT_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY`, `APPLE_REVOKE_REQUIRED=true`) are set with real values and confirmed present via `supabase secrets list`, and `delete_account` is deployed. The `.p8` was handled through Supabase secrets only — it is not in this repo, this doc, or any transcript.
@@ -148,17 +151,19 @@ The server half was settled on 17 August (`84c8411`): `genesyx://reset-password`
 
 *Struck through rather than deleted: two other documents still cite this as outstanding.*
 
-**5. ~~Bump the build number.~~ DONE, 18 Aug 2026 — now at build 21, not 19.**
-`project.yml` reads `CURRENT_PROJECT_VERSION: "21"` and `MARKETING_VERSION: "1.2.0"`, and `xcodegen` was run so `Genesyx.xcodeproj/project.pbxproj` carries 21 in both configurations. **Build 20 is void for submission** — it predates Article 9 consent capture, Apple token revocation on delete, and the gated pregnancy placeholder, and the consent capture is the one thing both Apple review and the ICO would look for. The reasoning for each number from 13 onward is kept in `project.yml` itself. The staging advice below still applies to every future release commit.
+**5. ~~Bump the build number.~~ DONE, 18 Aug 2026 — now at build 22.** *Was 21; superseded, see §10.*
+`project.yml` reads `CURRENT_PROJECT_VERSION: "22"` and `MARKETING_VERSION: "1.2.0"`. `xcodegen` has been run, so `Genesyx.xcodeproj/project.pbxproj` carries 22 in both configurations (checked, not assumed). **Build 21 is void for submission** — it left the consent *read* side ungated, so a withdrawn phone still pulled her health data back down from the server, and the write gate it did enforce was invisible at the UI: every save path dismissed whether or not the write landed. Full account in §10. **Build 20 is void for submission** — it predates Article 9 consent capture, Apple token revocation on delete, and the gated pregnancy placeholder, and the consent capture is the one thing both Apple review and the ICO would look for. The reasoning for each number from 13 onward is kept in `project.yml` itself. The staging advice below still applies to every future release commit.
 
-**5b. The release candidate is archived, committed and tagged.** *Updated 18 Aug 2026 — supersedes the build 19 entry.*
-`~/Desktop/Genesyx-b21.xcarchive`, created **18 Aug 11:04:34 UTC**, `CFBundleShortVersionString 1.2.0`, `CFBundleVersion 21`, `com.genesyx.app`, signed **Apple Distribution: SF MEDIA & PR LTD (M5L3MM75SG)**.
+**5b. ~~The release candidate is archived, committed and tagged.~~ REOPENED, 18 Aug 2026 — there is no build 22 archive yet.**
+The build 21 archive below is now history, not a candidate: the tree has moved past it (§10) and nothing has been re-archived. **Build 22 must be archived fresh from the current tree.** The record below is kept because the provenance discipline it describes is the discipline to repeat, not because that binary is still the one to upload.
 
-**The binary maps to a known commit, which is the whole point of the tag.** The archive was cut from the tree at `93f5a13`, tagged **`v1.2.0-b21`**. One commit sits on top of the tag, `9440534`, and it touches this document only — no `App/`, `Sources/` or `Tests/` file has changed since the archive, so it does not need recutting. Confirmed today by diffing the working tree against the tag: the only non-doc difference is one staged asset file (see the tree note below).
+*Superseded record —* `~/Desktop/Genesyx-b21.xcarchive`, created **18 Aug 11:04:34 UTC**, `CFBundleShortVersionString 1.2.0`, `CFBundleVersion 21`, `com.genesyx.app`, signed **Apple Distribution: SF MEDIA & PR LTD (M5L3MM75SG)**.
 
-**Settled, 18 August 2026, by reading App Store Connect directly — build 21 has never been uploaded, and the number is free.** TestFlight → iOS builds lists **1.1.1 (16), 24 July 2026** as the highest upload ever made; builds 17 through 21 do not appear. Nothing collides, so `manageAppVersionAndBuildNumber = false` costs nothing here and no bump to 22 is needed. Build 16 is the only one in Testing (65 days left, 9 invites, 3 installs, 26 sessions). This replaces the open question that stood in this entry, which had been inferred from the absence of a local export directory rather than checked.
+**The binary maps to a known commit, which is the whole point of the tag.** The build 21 archive was cut from the tree at `93f5a13`, tagged **`v1.2.0-b21`**. That statement no longer describes the working tree: the §10 changes touch `App/` and `Tests/`, so **the tag/tree match is intentionally broken and build 21 cannot be re-used**. Tag the build 22 tree the same way before archiving it, so the same sentence can be written honestly about the binary that is actually uploaded.
 
-**Do not upload the build-20 archive by mistake.** `build/Archives/Genesyx.xcarchive` and `build/Export/Genesyx.ipa` are both **1.2.0 (20)** from 17 Aug 23:18, i.e. before the consent and Apple-revocation work. The build-21 archive is the one on the **Desktop**, `~/Desktop/Genesyx-b21.xcarchive`, 18 Aug 12:04:34.
+**Settled, 18 August 2026, by reading App Store Connect directly — builds 17 through 21 have never been uploaded, so 22 is free too.** TestFlight → iOS builds lists **1.1.1 (16), 24 July 2026** as the highest upload ever made. Nothing collides, so `manageAppVersionAndBuildNumber = false` costs nothing here. Build 16 is the only one in Testing (65 days left, 9 invites, 3 installs, 26 sessions). This replaces the open question that stood in this entry, which had been inferred from the absence of a local export directory rather than checked.
+
+**Do not upload either archive on this machine.** `build/Archives/Genesyx.xcarchive` and `build/Export/Genesyx.ipa` are both **1.2.0 (20)** from 17 Aug 23:18, before the consent and Apple-revocation work; `~/Desktop/Genesyx-b21.xcarchive` is **1.2.0 (21)**, before the read gate. Both are void. The only uploadable binary is a build 22 archive that does not exist yet.
 
 **A trap in the export path, recorded because it nearly cost a build.** `ExportOptions.plist` has **no `destination` key**, and `xcodebuild -exportArchive` defaults to `destination=export`. `method: app-store` governs how the `.ipa` is signed and packaged, *not* where it goes. Running an export against this plist therefore writes a signed `.ipa` to disk, uploads nothing, and exits 0 — indistinguishable from a successful submission unless you check App Store Connect. Uploading needs either `destination: upload` added to a separate plist, or the Organizer route.
 
@@ -258,16 +263,57 @@ signals there is more below. It is only worth knowing that it reads as slightly 
 
 ### 🔵 1.2.1 copy list — accepted for this release, fix in the next build
 
-Off-style or imprecise in-app copy that is not worth breaking the `v1.2.0-b21` archive match for.
-Each needs a code change and therefore a build, so they batch.
+Off-style or imprecise in-app copy. Each needs a code change and therefore a build, so they batch.
+None of them is wrong data — every number below is computed correctly; it is the *label* over the
+number that overstates or misdescribes it. That is why they are copy items and not defects, and it
+is also why they should not be allowed to ride indefinitely: a label that claims more than the
+figure supports is the kind of thing a careful user notices and stops trusting the rest over.
 
-- **"empowered decisions"** — `App/Genesyx/UI/Insights/InsightsView.swift:193`, the Insights header
-  subtitle. House style bans "empower". Visible in `5-Insights.png`, which ships to the store, so it
-  is the most public instance. **The guard gap is the durable finding:** the banned-phrase test is
-  built for unsafe *claims*, and house-style words like "empower" and "your journey" are not in it,
-  so nothing stopped this. Decide whether to widen the guard when fixing the string, or the next one
-  arrives the same way.
+**Held out of build 22 deliberately.** The build 22 scope was frozen to the Article 9 consent
+defects; these four were found in the same pass and are logged here rather than fixed there.
+
+- **~~"empowered decisions"~~ CLOSED in build 22.** `InsightsView.swift:193` now reads *"Understanding
+  your patterns helps you make sense of your own data and notice what's normal for you."* The
+  deferral above was written when build 21 was the candidate and the archive match was worth
+  protecting; build 22 reopened the tree anyway, so the string was fixed with it. **The guard gap was
+  the durable finding and it is closed too:** `RealInsightsTests.swift:250` now bans "empowered" and
+  "empowering", so the next one cannot arrive the same way. Note `5-Insights.png` in the store set
+  was captured from the build 21 tree and still shows the old subtitle — a marketing screenshot, not
+  a claim about the binary, so it is not a resubmission blocker, but recapture it when convenient.
+- **Two different things are both called a "streak"** — `InsightsView.swift:220-221`. "Daily streak"
+  counts consecutive *days* with any qualifying log; "Weekly streak" counts consecutive *weeks*
+  meeting a weekly bar. They are computed by different predicates in `StreakEngine`, sit side by side
+  as identically-styled tiles, and nothing on the card says they are measuring different things — so
+  the natural reading is that one is a rollup of the other. This is finding 14 in the audit list
+  above; it is a copy fix (retitle the tiles, or caption them), not an engine fix.
+- **"7-day total" is not a rolling seven days** — `InsightsView.swift:418`. The card is headed *"This
+  week"* and the figure is the Monday–Sunday calendar week the chart draws (`InsightsView.swift:18`
+  says so explicitly). On a Tuesday, "7-day total" is two days of water. The neighbouring tile gets
+  it right — "Days on goal · n / 7" is unambiguous. Call it "This week" and the two tiles agree.
+- **The pH insight line restates the badge it sits under** — `PhCopy.healthy` / `PhCopy.elevated`
+  (`PhCopy.swift:7,10`) rendered at `InsightsView.swift:318`, directly below the `HEALTHY` /
+  `ELEVATED` capsule at `:303`. "Your recent readings sit within the typical healthy range" adds
+  nothing to a badge already reading HEALTHY, and it occupies the one slot on the card where a woman
+  is looking for something she did not already know. The elevated path is fine, because the
+  signpost line after it does real work. Worth writing something with content, not just cutting it.
+- **The cycle-length dot is clamped without saying so** — `InsightsView.swift:667-669`. The marker is
+  positioned on a fixed 15–40 day axis and then `min(max(...))`-clamped to the bar, so a 44-day cycle
+  and a 40-day cycle land on the same pixel, hard against the end of the range — which reads as
+  "just outside typical" when it is well outside. The dot also carries no accessibility label, so
+  VoiceOver gets the two `Text` lines and nothing about the position. Both are worth fixing together.
+  Note the card is honestly titled already ("Current cycle length", not "regularity" — see the
+  comment at `:623`), so this is finishing a job that was started carefully.
+- **The quick controls are inert rather than disabled under a withdrawal** — the hydration +/− steppers,
+  the Nutrition food-group toggles, the sleep control and the supplement ticks call through to a
+  repository that refuses the write, so they do nothing at all. This is **not** the build 22 defect:
+  nothing is lost, because there is nothing typed to lose, and each of those surfaces carries the
+  `ConsentWithdrawnBanner` above it saying why. But a button that visibly does nothing is still
+  worse than one that is visibly off. **Build 22 drew the line at controls that can swallow typed
+  input** — the log sheet, the pH sheet, the cycle sheet, and every button that opens one. Finishing
+  the job means threading `consent.isActive` through the steppers and toggles too. Bounded and
+  deliberate, recorded here so it is not mistaken later for something that was missed.
 - **The user-facing em dashes** already logged against house style, still deferred.
+- **Change Password — precise expired-session handling.** The in-app sheet added in build 22 (§10.1) shows one generic failure line — *"sign out and back in, then try again"* — for every write error, including a lapsed session. Detecting an expired session specifically and offering an inline re-auth is the polish; the safe generic message ships now. Not wrong, just coarse — a copy/UX item, not a defect.
 
 ### 🟢 Not blocking — my list, not yours
 
@@ -1157,7 +1203,7 @@ entirely wrong conclusion about causation. Order the evidence before reasoning a
 
 **V5 is the only thing still open on this item** — the signed-in device round trip: agree to consent
 on a fresh account, withdraw it in Profile, turn it back on, and confirm three rows with none
-overwritten. It rides with the real-device pass at blocker #6.
+overwritten. It rides with the real-device pass at blocker #6 — and it now validates the **build 22** binary, not 21, which is void (§10). V1–V4 remain closed (the anon-grant cleanup, verified in the Dashboard); V5 is unchanged by the surface work and stays the one open item on this thread.
 
 Probe shape, so a future re-run matches: `GET {SUPABASE_URL}/rest/v1/{table}?select=id&limit=0` with
 `apikey` and `Authorization: Bearer` both set to the public publishable key, status code read and the
@@ -1169,3 +1215,113 @@ agrees to consent again after signing back in. That is real behaviour: sign-out 
 `consent.clearLocalState()`, and the DEBUG local-only build used by the UI suite has no server to
 restore the trail from, so she is asked again. Asking twice is the safe direction to fail in — the
 alternative is writing to her body data on a permission the app cannot evidence.
+
+---
+
+## 10. Build 22 — the consent gate made honest at the surface (18 August 2026)
+
+**Build 21 is void for submission.** It enforced Article 9 correctly at the repositories and
+invisibly at the UI. Two defects, and the second is the one that matters:
+
+1. **Every save path dismissed whether or not the write landed.** `LogView`, `PhTrackerSection` and
+   `CycleSettingsSheet` all called `dismiss()` unconditionally, and the repositories return without
+   writing when consent is withdrawn. So a withdrawn user filled in a form, tapped Save, watched the
+   sheet close exactly as a successful save closes it, and lost the entry in silence. Nothing told
+   her, and the closing sheet actively told her the opposite.
+2. **The read side was ungated.** Writes stopped; `refresh()` did not. A withdrawn phone still
+   pulled her cycle settings, daily logs, pH readings, supplements and intake answers back down from
+   the server on every launch and every foreground. That is fresh processing of special-category
+   data with no lawful basis behind it, and it makes the App Review Notes line *"halts all health
+   data writes immediately"* true only on a technicality — writes, yes; processing, no.
+
+Point 2 alone voids 21. It is a claim we make to Apple in writing.
+
+### 10.1 What changed
+
+**Disable-first, not error-first.** Where consent is withdrawn the entry controls now show the
+blocked state, so she never fills in a form that cannot be kept. The blocked copy already existed
+(`ConsentPolicy.blockedBody`, rendered by `ConsentWithdrawnBanner`) and is reused rather than
+rewritten — that string is version-pinned, and adding a new one would break the pin test for no
+gain. The loud failure stays underneath as defence in depth: `upsert` / `create` / `update` return
+`Bool`, and no call site dismisses on a `false`.
+
+**Which controls are disabled.** Everything that opens or submits a form that can swallow typed
+input: "Log today" (Home), "Add to today's log" (Track), "Add a log" / "Edit this day" (the day
+sheet), the Learn article's log CTA, and Save inside the log, pH and cycle sheets. The quick
+steppers and toggles are still merely inert — a bounded decision, written up on the 1.2.1 list in §3
+rather than left to be discovered.
+
+**One deliberate exception, and it is worth reading twice.** The pH *edit* entry points stay
+enabled. Tapping a reading is the only route to "Delete this reading", and `PhRepository.delete`
+sits outside the gate on purpose — erasing what she already recorded is Article 17 and has to
+survive a withdrawal, not least because the withdrawal screen promises exactly that. So the sheet
+still opens; what it refuses is Save. Disabling the row would have quietly removed her erasure
+route while claiming to protect her.
+
+**The read gate, and the two exceptions the scope called out:**
+
+- `CycleRepository.refresh`, `DailyLogRepository.refresh`, `PhRepository.refresh` and
+  `SupplementsRepository.refresh` gate their pull on the same `HealthDataCollectionGate` as the
+  writes. `PreferencesRepository.apply` gates **per field**: theme and push are settings about this
+  phone and always apply; focus mode and the intake answers are health data and do not. A gate on
+  the whole profile would take her theme away in order to protect her health answers, which is not
+  a trade the gate is for.
+- **(a) The consent trail itself still refreshes, and is never gated.** `AppContainer.hydrate()`
+  awaits `consent.refresh()` *before* any health pull. Gating it would be a trap with no exit: a
+  withdrawn user could not see her own state and so could never re-grant. Awaiting it first is also
+  what makes every gate below it current — a withdrawal recorded on another phone is known before
+  the first health pull is attempted.
+- **(b) Data already on the device keeps displaying.** Withdrawal stops collection and further
+  processing; it is not erasure, which has its own door at Profile → Delete account. Nothing is
+  wiped on withdrawal — only sign-out and account deletion call `clearLocalState()`.
+- **The pending queues still drain, ungated.** Those writes were made while consent was live, and a
+  withdrawal does not retrospectively unmake the lawfulness of what came before it: draining is
+  finishing a transfer she authorised, not starting a new one. It is also the mechanism that
+  carries her **deletions** — pH and supplement deletes are tombstones — to her other devices.
+  Blocking the drain would strand her erasures on one phone, which serves nobody.
+
+**Nutrition was showing unpublished articles.** `NutritionView.swift:514` read `learnArticles`, the
+raw array, instead of the date-filtered `LearnLibrary.articles`. Two rows opened straight onto the
+"unavailable" screen. One word. The `LearnModels` comment had said a guard test should exist for
+exactly this, and now it does: `LearnSurfaceGuardTests` scans every Swift file under `App/Genesyx/UI`
+for `learnArticles` / `allArticles` outside the two files allowed to use them, and a second test
+asserts something is still being withheld, so the guard cannot pass vacuously once every article's
+date has gone by.
+
+Also carried, all previously approved: the in-app Change Password sheet, the email removed from the
+Profile header card, `ITSAppUsesNonExemptEncryption`, and the "empowered decisions" rewrite with the
+banned-phrase guard widened to catch the next one.
+
+### 10.2 Falsification, because a green suite proves nothing
+
+Both new guards were proved to fail on the bug they exist to catch, then the bug was reverted:
+
+- Read gate: the gate was stripped from `PhRepository.refresh` and `CycleRepository.refresh`.
+  `testWithdrawingConsentStopsThePullOfHerHealthData` **failed** on the two assertions it should —
+  *"a withdrawn phone must not pull her cycle back down"* and *"nor her pH readings"*. Files
+  restored, suite green again.
+- Learn guard: `LearnLibrary.articles` was reverted to `learnArticles` in `NutritionView`. The guard
+  **failed**, naming `NutritionView.swift:514`. Reverted.
+
+### 10.3 Suites
+
+`swift test` **314 / 0**. `GenesyxAppTests` **361 / 0** — that target compiles the whole app, so
+every edit above builds. New coverage: three tests in `RepositoryTests` (the read gate across all
+four health repositories; deletions still reaching the server after a withdrawal; a withdrawn
+profile pull taking the theme and leaving the health answers) and two in `LearnSurfaceGuardTests`.
+
+**Re-run for the surface edits, this session.** The in-app Change Password sheet and the
+Profile-header email removal were added on top of the frozen tree, and the full simulator suite was
+re-run (`iPhone 17 Pro`, signing disabled): every unit suite green — including three new
+`PasswordResetTests` that pin the `changePassword` contract (it writes the password, sends no email,
+and unlike recovery leaves her signed in; a failed write surfaces and keeps the session; no backend
+throws) — and the UI suite green on retry. `testProfileShowsAccountActions` and
+`testSavingTheLogSheetKeepsAMealLoggedFromNutrition` each failed once on a simulator *launch* fault
+("Simulator device failed to launch … No such process"), not an assertion, and both passed in an
+isolated re-run (7.8s / 18.2s). Neither exercises the code this session changed.
+
+### 10.4 Still open
+
+Not archived and not uploaded — stopped here by instruction. The demo account, the ASC data entry
+and the V5 device round trip (§9.7) are unchanged and remain the client's to do. The four Insights
+labelling items found in this pass are on the 1.2.1 list in §3, deliberately not fixed here.

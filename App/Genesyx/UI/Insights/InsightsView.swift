@@ -190,7 +190,7 @@ struct InsightsView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Your Insights").font(.gxDisplayLarge).foregroundStyle(GenesyxColor.foreground)
-            Text("Understanding your patterns helps you make informed, empowered decisions for your wellbeing.")
+            Text("Understanding your patterns helps you make sense of your own data and notice what's normal for you.")
                 .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
         }
         .frame(maxWidth: .infinity, alignment: .leading)

@@ -84,8 +84,15 @@ final class DailyLogRepository: ObservableObject {
 
     /// Every mutator on this repository — water, sleep, food groups, the log sheet — routes through
     /// here, so this one guard is the whole surface. See `HealthDataCollectionGate`.
-    func upsert(_ log: DailyLog, on date: CalendarDate) {
-        guard isCollectionPermitted() else { return }
+    ///
+    /// **Returns false when the gate refused the write.** It returned `Void` until build 22, which
+    /// meant a caller could not tell a refusal from a save: the log sheet wrote nothing, dismissed
+    /// itself, and the day was gone with no error. A gate that is correct at the repository and
+    /// invisible at the UI is worse than no gate, because it spends the user's trust to enforce
+    /// her own decision. Callers must branch on this rather than discard it.
+    @discardableResult
+    func upsert(_ log: DailyLog, on date: CalendarDate) -> Bool {
+        guard isCollectionPermitted() else { return false }
         logByDate[date] = log
         // Owed before saved, deliberately: these are two separate writes to disk, and a kill
         // between them must leave a day queued that the server already has (harmless re-push)
@@ -93,6 +100,7 @@ final class DailyLogRepository: ObservableObject {
         pendingDates.insert(date)
         persist()
         push(log, on: date)
+        return true
     }
 
     /// Adjust a day's hydration by `deltaMl`, clamped to 0...10000.
@@ -148,9 +156,15 @@ final class DailyLogRepository: ObservableObject {
 
     /// Push the days the server is owed, then pull the rest of her history. A day still owed is
     /// left alone — the local copy is the newer one. No-op when local-only.
+    ///
+    /// The pull is gated on consent like the writes are: pulling her logs back down is fresh
+    /// processing of special-category data and has no lawful basis after a withdrawal. What is
+    /// already on the device stays on screen — withdrawal stops collection, it is not erasure, and
+    /// erasure has its own door in Profile. The drain above it is deliberately ungated.
     func refresh() async {
         guard let backend else { return }
         await drainPending()
+        guard isCollectionPermitted() else { return }
         guard let remote = try? await backend.list() else { return }
         for (date, log) in remote where !pendingDates.contains(date) {
             logByDate[date] = log

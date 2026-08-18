@@ -94,10 +94,19 @@ final class AppContainer: ObservableObject {
         // name she registered under reaches her row at all — and, on a new phone, the moment it
         // comes back.
         await session.refreshDisplayName()
-        // Before the health tables, not after. This is the call that reconciles the consent she gave
-        // on this device with the trail on the server, and everything below it is special-category
-        // data whose lawful basis is what this answers.
+        // Before the health tables, not after, and never gated itself. This is the call that
+        // reconciles the consent she gave on this device with the trail on the server, and
+        // everything below it is special-category data whose lawful basis is what this answers.
+        // Gating it would be a trap with no exit: a withdrawn user could not see her own state and
+        // so could never re-grant. Awaiting it here is also what makes the gate below current — a
+        // withdrawal recorded on another phone is known before the first health pull is attempted.
         await consent.refresh()
+        // Each of these gates its own *pull* on consent (see the note on `CycleRepository.refresh`).
+        // Two boundaries hold across all of them, deliberately:
+        //   • Data already on the device keeps displaying. Withdrawal stops collection and further
+        //     processing; it is not erasure, which has its own door at Profile > Delete account.
+        //   • The pending queues still drain. Those writes were made under live consent, and the pH
+        //     and supplement queues are what carry her *deletions* to her other devices.
         await prefs.refresh()
         await cycle.refresh()
         await dailyLog.refresh()

@@ -8,6 +8,7 @@ struct TrackView: View {
     @EnvironmentObject private var cycle: CycleRepository
     @EnvironmentObject private var dailyLog: DailyLogRepository
     @EnvironmentObject private var ph: PhRepository
+    @EnvironmentObject private var consent: ConsentRepository
     @EnvironmentObject private var router: TabRouter
 
     @State private var monthAnchor = YearMonth.current
@@ -41,9 +42,12 @@ struct TrackView: View {
                     ConsentWithdrawnBanner()
                     calendarCard
                     currentPhaseCard
+                    // Disable-first — see the note on the same control in `HomeView`.
                     GxPrimaryButton(title: "Add to today's log", leadingSystemImage: "plus") {
                         logTarget = LogTarget(date: today)
                     }
+                    .disabled(!consent.isActive)
+                    .opacity(consent.isActive ? 1 : 0.5)
                     trackersSection
                     HowThisWorksLink(slug: AppGuide.trackGuide,
                                      label: "How the log works, and what each entry is for")
@@ -1555,6 +1559,10 @@ private struct DayDetailSheet: View {
     /// Raised before dismissing; `TrackView` opens the log sheet once this one is down.
     let onEdit: () -> Void
     @Environment(\.dismiss) private var dismiss
+    /// Disable-first: the sheet this button opens cannot save while consent is withdrawn. Nothing
+    /// is lost by disabling it — a daily log has no delete, so this is not a route to erasure the
+    /// way the pH row is.
+    @EnvironmentObject private var consent: ConsentRepository
 
     var body: some View {
         let isFuture = day.date > today
@@ -1572,6 +1580,8 @@ private struct DayDetailSheet: View {
                     onEdit()
                     dismiss()
                 }
+                .disabled(!consent.isActive)
+                .opacity(consent.isActive ? 1 : 0.5)
                 GxGhostButton(title: "Close") { dismiss() }
             }
         }

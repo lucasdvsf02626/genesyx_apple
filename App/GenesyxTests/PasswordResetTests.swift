@@ -233,6 +233,56 @@ final class PasswordResetTests: XCTestCase {
         XCTAssertFalse(session.passwordRecoveryActive)
     }
 
+    // MARK: - In-app change (signed in, no email)
+
+    /// The in-app "Change password" writes the new password on the live session and — unlike a
+    /// recovery — leaves her signed in. She chose to change it from inside a session we already
+    /// trust; dropping her to the sign-in screen for a routine change would be hostile.
+    func testChangingPasswordWhileSignedInWritesItAndKeepsHerSignedIn() async throws {
+        let auth = FakeResetAuth()
+        let session = SessionRepository(store: makeStore(), auth: auth)
+        await session.waitUntilResolved()
+        try await session.authenticate(email: "ada@example.com", password: "old-password", name: nil, signUp: false)
+        XCTAssertEqual(session.state, .signedIn, "precondition: signed in")
+
+        try await session.changePassword("a-new-password")
+
+        XCTAssertEqual(auth.updatedPasswords, ["a-new-password"], "the chosen password must be written")
+        XCTAssertEqual(auth.resetEmails, [], "an in-app change must not send an email")
+        XCTAssertEqual(session.state, .signedIn, "a voluntary change must not sign her out")
+        XCTAssertEqual(auth.currentUserId, "u1", "her session must survive the change")
+    }
+
+    /// A failed write must surface and must not touch her session, so the sheet can show the error
+    /// inline and she stays exactly where she was.
+    func testAFailedInAppChangeThrowsAndLeavesHerSignedIn() async throws {
+        let auth = FakeResetAuth()
+        let session = SessionRepository(store: makeStore(), auth: auth)
+        await session.waitUntilResolved()
+        try await session.authenticate(email: "ada@example.com", password: "old-password", name: nil, signUp: false)
+        auth.updateError = RemoteError.notAuthenticated
+
+        do {
+            try await session.changePassword("a-new-password")
+            XCTFail("a failed write must throw so the sheet can show it")
+        } catch {}
+
+        XCTAssertEqual(auth.updatedPasswords, [], "nothing was written")
+        XCTAssertEqual(session.state, .signedIn, "a failed change must not sign her out")
+    }
+
+    /// With no backend there is nothing to write, and a silent success would tell her a password
+    /// changed that never did.
+    func testAnInAppChangeWithNoBackendThrows() async throws {
+        let session = SessionRepository(store: makeStore(), auth: nil)
+        await session.waitUntilResolved()
+
+        do {
+            try await session.changePassword("a-new-password")
+            XCTFail("with no backend there is nothing to write, and the UI must be told")
+        } catch {}
+    }
+
     // MARK: - The rule for the new password
 
     func testAShortPasswordIsRejected() {

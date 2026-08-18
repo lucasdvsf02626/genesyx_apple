@@ -35,18 +35,27 @@ final class CycleRepository: ObservableObject {
         self.pendingPush = store.bool(forKey: pendingKey, default: local != nil)
     }
 
-    func upsert(_ settings: CycleSettings) {
-        guard isCollectionPermitted() else { return }
+    /// **Returns false when the gate refused the write** — see the note on
+    /// `DailyLogRepository.upsert`. The caller must not report success on a false.
+    @discardableResult
+    func upsert(_ settings: CycleSettings) -> Bool {
+        guard isCollectionPermitted() else { return false }
         self.settings = settings
         store.save(settings, forKey: key)
         pendingPush = true
         push(settings)
+        return true
     }
 
     /// Push what the server is owed, then pull. No-op when local-only.
+    ///
+    /// The pull sits behind the same gate as the writes: fetching her period dates back down from
+    /// the server is fresh processing of special-category data, and after a withdrawal there is no
+    /// lawful basis for it. The drain above it is deliberately *not* gated — see `drainPending`.
     func refresh() async {
         guard let backend else { return }
         await drainPending()
+        guard isCollectionPermitted() else { return }
         guard !pendingPush, let remote = try? await backend.fetch() else { return }
         // Re-read after the fetch's suspension: an edit made while it was in flight is newer than
         // what came back, and overwriting it would revert her cycle dates on screen.
@@ -56,6 +65,11 @@ final class CycleRepository: ObservableObject {
     }
 
     /// Retry the write the server never received. Called on launch/sign-in and app foreground.
+    ///
+    /// Ungated on purpose. Everything in this queue was recorded while consent was live, and a
+    /// withdrawal does not undo the lawfulness of what came before it — it is finishing a transfer
+    /// she authorised, not starting a new one. Blocking it would also strand the queue on the
+    /// device indefinitely, which serves nobody.
     func drainPending() async {
         guard let backend, pendingPush, let snapshot = settings else { return }
         guard (try? await backend.upsert(snapshot)) != nil else { return }

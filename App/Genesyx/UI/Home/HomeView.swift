@@ -12,6 +12,7 @@ struct HomeView: View {
     @EnvironmentObject private var ph: PhRepository
     @EnvironmentObject private var session: SessionRepository
     @EnvironmentObject private var learn: LearnProgress
+    @EnvironmentObject private var consent: ConsentRepository
 
     @EnvironmentObject private var router: TabRouter
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -48,7 +49,12 @@ struct HomeView: View {
                     hydrationCard
                     phNudgeCard
                     learnCard
+                    // Disable-first: with consent withdrawn the log sheet cannot save, so offering
+                    // it only invites her to fill in a day that will be refused. The banner above
+                    // is the explanation; this is the control it explains.
                     GxPrimaryButton(title: "Log today", leadingSystemImage: "square.and.pencil") { showLog = true }
+                        .disabled(!consent.isActive)
+                        .opacity(consent.isActive ? 1 : 0.5)
                     HowThisWorksLink(slug: AppGuide.homeGuide,
                                      label: "New here? What your first week looks like")
                     if FeatureFlags.pregnancyMode { pregnancyPathwayLink }

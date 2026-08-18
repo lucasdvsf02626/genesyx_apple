@@ -335,6 +335,17 @@ final class SessionRepository: ObservableObject {
         try await auth.resetPassword(email: email)
     }
 
+    /// Sets a new password on the CURRENT signed-in session — the in-app change, with no email
+    /// round-trip. Unlike `completePasswordRecovery`, it deliberately does NOT sign her out: she
+    /// chose to change it from inside a session we already trust, and dropping her to the sign-in
+    /// screen for a routine change would be hostile. The email-link flow (`sendPasswordReset`)
+    /// stays for the signed-out forgot-password case on `AuthView`, which is the only surface a
+    /// user without a session can reach.
+    func changePassword(_ newPassword: String) async throws {
+        guard let auth else { throw RemoteError.notConfigured }
+        try await auth.updatePassword(newPassword)
+    }
+
     // MARK: - Password recovery
 
     /// Redeems the `genesyx://reset-password` link and holds her on the reset screen.

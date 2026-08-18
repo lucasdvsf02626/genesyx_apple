@@ -7,9 +7,13 @@ import GenesyxCore
 struct CycleSettingsSheet: View {
 
     let current: CycleSettings?
-    let onSave: (CycleSettings) -> Void
+    /// Returns false when the write was refused — see `CycleRepository.upsert`. The sheet stays
+    /// open on a false rather than dismissing over a save that never happened.
+    let onSave: (CycleSettings) -> Bool
 
     @Environment(\.dismiss) private var dismiss
+    /// Her period dates are health data, so the Article 9 gate covers them like everything else.
+    @EnvironmentObject private var consent: ConsentRepository
     // nil until a date is actively chosen — a new user's date is NEVER fabricated (e.g. "today").
     @State private var lastPeriod: Date?
     // Whether the picker is on screen, which is NOT the same question as whether she has chosen.
@@ -19,7 +23,7 @@ struct CycleSettingsSheet: View {
     @State private var cycleLength: Int
     @State private var periodLength: Int
 
-    init(current: CycleSettings?, onSave: @escaping (CycleSettings) -> Void) {
+    init(current: CycleSettings?, onSave: @escaping (CycleSettings) -> Bool) {
         self.current = current
         self.onSave = onSave
         // Existing settings prefill; a new user starts empty (see CycleSetup.initialLastPeriod).
@@ -37,6 +41,9 @@ struct CycleSettingsSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
+                    // Disable-first: only renders once she has withdrawn, and it sits above the
+                    // form rather than beside the button so she reads why before filling anything in.
+                    ConsentWithdrawnBanner()
                     Text("We use this to predict your phases and fertile window.")
                         .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
 
@@ -78,17 +85,22 @@ struct CycleSettingsSheet: View {
                     stepper(label: "Period length", value: $periodLength, range: CycleEngine.periodLengthRange)
 
                     Spacer(minLength: 8)
+                    let canSave = CycleSetup.canSave(lastPeriod: lastPeriod.map { CalendarDate(date: $0) })
+                        && consent.isActive
                     GxPrimaryButton(title: "Save") {
                         guard let lastPeriod else { return }   // Save is disabled until a date is chosen
-                        onSave(CycleSettings(
+                        // Defence in depth behind the disabled button: `dismiss()` used to run
+                        // whether or not the write landed, so a refused save closed the sheet
+                        // exactly as a successful one did and her dates were lost in silence.
+                        guard onSave(CycleSettings(
                             lastPeriodDate: CalendarDate(date: lastPeriod),
                             cycleLength: cycleLength,
                             periodLength: periodLength
-                        ))
+                        )) else { return }
                         dismiss()
                     }
-                    .disabled(!CycleSetup.canSave(lastPeriod: lastPeriod.map { CalendarDate(date: $0) }))
-                    .opacity(CycleSetup.canSave(lastPeriod: lastPeriod.map { CalendarDate(date: $0) }) ? 1 : 0.5)
+                    .disabled(!canSave)
+                    .opacity(canSave ? 1 : 0.5)
                 }
                 .padding(20)
             }
