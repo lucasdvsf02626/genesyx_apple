@@ -32,6 +32,11 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
     private let store: LocalStore
     private let session: SessionRepository
     private let center: UNUserNotificationCenter
+    /// How the service learns what iOS has granted. Injectable for one reason: the real answer is
+    /// *host* state, so a test written against the denied path passes or fails according to which
+    /// simulator it lands on rather than according to the code — which is why the denied path had
+    /// no coverage at all. Nothing in production supplies this; the default below is the real read.
+    var readAuthorizationStatus: () async -> UNAuthorizationStatus = { .notDetermined }
     private var cancellables: Set<AnyCancellable> = []
 
     private let lastSentKey = "notification_last_sent"
@@ -56,6 +61,7 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
         self.session = session
         self.center = center
         super.init()
+        readAuthorizationStatus = { await center.notificationSettings().authorizationStatus }
         center.delegate = self
         session.onBecameSignedOut = { [weak self] in
             self?.pendingDestination = nil
@@ -158,7 +164,7 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
     }
 
     private func refreshAuthorizationStatus() async {
-        authorizationStatus = await center.notificationSettings().authorizationStatus
+        authorizationStatus = await readAuthorizationStatus()
     }
 
     // MARK: - Planning

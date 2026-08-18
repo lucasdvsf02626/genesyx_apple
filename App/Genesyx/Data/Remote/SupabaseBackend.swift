@@ -18,6 +18,7 @@ final class SupabaseBackend: GenesyxBackend {
     lazy var dailyLog: DailyLogBackend = SupabaseDailyLog(client: client, auth: auth)
     lazy var profile: ProfileBackend = SupabaseProfile(client: client, auth: auth)
     lazy var partner: PartnerBackend = SupabasePartner(client: client, auth: auth)
+    lazy var consent: ConsentBackend = SupabaseConsent(client: client, auth: auth)
 
     init?() {
         guard RemoteConfig.isConfigured, let url = URL(string: RemoteConfig.url) else { return nil }
@@ -37,9 +38,25 @@ private struct SupabaseAuth: AuthBackend {
     func signUp(email: String, password: String) async throws { _ = try await client.auth.signUp(email: email, password: password) }
     func signIn(email: String, password: String) async throws { _ = try await client.auth.signIn(email: email, password: password) }
     func signOut() async throws { try await client.auth.signOut() }
-    func deleteAccount() async throws {
-        try await client.functions.invoke("delete_account", options: .init(body: [String: String]()))
+    /// The code is sent only when there is one, so the body stays exactly what it was for every
+    /// other account — the edge function reads it as an optional field and has always tolerated
+    /// its absence.
+    func deleteAccount(appleAuthorizationCode: String?) async throws {
+        var body: [String: String] = [:]
+        if let code = appleAuthorizationCode, !code.isEmpty { body["appleAuthorizationCode"] = code }
+        try await client.functions.invoke("delete_account", options: .init(body: body))
         try? await client.auth.signOut()   // clear the now-invalid local session token
+    }
+
+    /// Both halves of the same check the edge function makes: `identities` carries every linked
+    /// provider, while `app_metadata.provider` only names whichever came first — so an account that
+    /// added Apple to an existing email login is invisible to the second and present in the first.
+    var isAppleAccount: Bool {
+        guard let user = client.auth.currentUser else { return false }
+        if (user.identities ?? []).contains(where: { $0.provider == "apple" }) { return true }
+        if case let .array(providers)? = user.appMetadata["providers"],
+           providers.contains(where: { $0 == .string("apple") }) { return true }
+        return user.appMetadata["provider"] == .string("apple")
     }
     func signInWithIdToken(provider: SocialProvider, idToken: String, accessToken: String?, nonce: String?) async throws {
         let supaProvider: OpenIDConnectCredentials.Provider = (provider == .google) ? .google : .apple
@@ -239,6 +256,28 @@ private struct SupabaseProfile: ProfileBackend {
         let uid = try requireUID(auth)
         try await client.from("profiles")
             .upsert(["id": uid, "display_name": displayName]).execute()
+    }
+}
+
+private struct SupabaseConsent: ConsentBackend {
+    let client: SupabaseClient
+    let auth: AuthBackend
+
+    func list() async throws -> [ConsentEvent] {
+        let uid = try requireUID(auth)
+        let rows: [ConsentEventRow] = try await client.from("consent_events")
+            .select().eq("user_id", value: uid).order("occurred_at").execute().value
+        return rows.map(\.domain)
+    }
+
+    /// `insert`, not `upsert`, and that is not a style choice — the table has no UPDATE policy, so
+    /// an upsert's conflict branch would be rejected by RLS rather than silently overwrite. Sending
+    /// the id the device generated is what makes the retry safe: a push that succeeded on the server
+    /// but failed on the way back re-sends the same primary key and collides instead of recording
+    /// her consent twice.
+    func append(_ event: ConsentEvent) async throws {
+        let uid = try requireUID(auth)
+        try await client.from("consent_events").insert(ConsentEventRow(userId: uid, event: event)).execute()
     }
 }
 

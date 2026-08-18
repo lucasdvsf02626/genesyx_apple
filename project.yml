@@ -90,7 +90,10 @@ targets:
         # and stays frozen at that tree; it can send a reset email but has no deep-link handler, so
         # the link in her inbox still dies. Reusing 19 for this code would put two different
         # binaries behind one build number, and App Store Connect would reject the second anyway.
-        CURRENT_PROJECT_VERSION: "20"
+        # 21 = 1.2.0 with Article 9 consent (copy v2), Apple token revocation on delete, and the
+        # pregnancy placeholder gated off. Build 20 is void for submission: it predates all three,
+        # and the consent capture is the one Apple review and the ICO would both look for.
+        CURRENT_PROJECT_VERSION: "21"
         SWIFT_VERSION: "5.9"
         TARGETED_DEVICE_FAMILY: "1" # iPhone
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon

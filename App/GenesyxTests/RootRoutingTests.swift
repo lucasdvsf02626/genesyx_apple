@@ -89,4 +89,59 @@ final class RootRoutingTests: XCTestCase {
                                     serviceAvailable: true, passwordRecovery: false),
             .mandatoryAuth)
     }
+
+    // MARK: Article 9 consent
+
+    /// Every tab behind this gate holds special-category data, so a signed-in woman with no consent
+    /// on record for the wording in force is asked before any of it is on screen.
+    func testConsentOutranksTheTabs() {
+        XCTAssertEqual(
+            RootRouting.destination(session: .signedIn, onboardingComplete: true,
+                                    serviceAvailable: true, consentRequired: true),
+            .consentRequired)
+    }
+
+    /// The ordering that matters: a woman locked out of her account cannot meaningfully answer a
+    /// consent question, and choosing a new password processes no health data.
+    func testARecoveryLinkIsAnsweredBeforeTheConsentQuestion() {
+        XCTAssertEqual(
+            RootRouting.destination(session: .signedIn, onboardingComplete: true,
+                                    serviceAvailable: true, passwordRecovery: true,
+                                    consentRequired: true),
+            .passwordRecovery)
+    }
+
+    /// Fail-closed still wins, for the same reason it does over recovery: there is nowhere to
+    /// record the answer.
+    func testConsentDoesNotOverrideAMissingBackend() {
+        XCTAssertEqual(
+            RootRouting.destination(session: .signedIn, onboardingComplete: true,
+                                    serviceAvailable: false, consentRequired: true),
+            .unavailable)
+    }
+
+    /// There is nobody to ask while the session is unresolved, and onboarding asks on its own
+    /// screen. Neither route may be replaced by the consent gate.
+    func testTheConsentGateOnlyAppliesToASignedInUser() {
+        XCTAssertEqual(
+            RootRouting.destination(session: .resolving, onboardingComplete: true,
+                                    serviceAvailable: true, consentRequired: true),
+            .resolving)
+        XCTAssertEqual(
+            RootRouting.destination(session: .signedOut, onboardingComplete: false,
+                                    serviceAvailable: true, consentRequired: true),
+            .onboarding)
+        XCTAssertEqual(
+            RootRouting.destination(session: .signedOut, onboardingComplete: true,
+                                    serviceAvailable: true, consentRequired: true),
+            .mandatoryAuth)
+    }
+
+    /// The flag defaults false, so every existing route is unchanged by its addition.
+    func testWithoutTheConsentFlagNothingMoves() {
+        XCTAssertEqual(
+            RootRouting.destination(session: .signedIn, onboardingComplete: true,
+                                    serviceAvailable: true, consentRequired: false),
+            .mainTabs)
+    }
 }

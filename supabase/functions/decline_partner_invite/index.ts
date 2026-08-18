@@ -38,7 +38,12 @@ Deno.serve(async (req) => {
     // Already accepted, revoked, or declined — nothing pending to refuse. Deliberately the same 409
     // wording accept uses, so a client cannot tell the two states apart by the message.
     if (invite.status !== "pending") return json({ error: "Invite is not pending" }, 409);
-    if (invite.invitee_email?.toLowerCase() !== user.email?.toLowerCase()) {
+    // Present AND equal — see the same guard in accept_partner_invite. An account with no email made
+    // this `undefined !== undefined`, so the check was skipped and a stranger holding a code could
+    // close someone else's invite. A missing email refuses.
+    const inviteeEmail = invite.invitee_email?.trim().toLowerCase();
+    const callerEmail = user.email?.trim().toLowerCase();
+    if (!inviteeEmail || !callerEmail || inviteeEmail !== callerEmail) {
       return json({ error: "This invite was sent to a different email" }, 403);
     }
 

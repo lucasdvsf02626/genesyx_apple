@@ -19,6 +19,21 @@ enum FeatureFlags {
     /// To restore: set this to `true` — every gate reads this one flag. To remove permanently:
     /// `grep -rn partnerInvites` and delete each guarded block plus the files named above.
     static let partnerInvites = false
+    /// **OFF for the public release — there is no pregnancy feature, only a teaser for one.**
+    ///
+    /// `PregnancyView` is honest about that, but a "Pregnancy" segment sitting beside "Fertility
+    /// Prep" in Profile reads as a mode she can switch into, and the entry on Home read as a
+    /// pathway. Neither leads anywhere: no screen in the app behaves differently in pregnancy mode.
+    /// Shipping that is a placeholder in a paid-for surface, which is exactly what App Store review
+    /// guideline 2.1 rejects.
+    ///
+    /// A compile-time constant for the same reason as `partnerInvites`: while it is `false` no
+    /// runtime path reaches the teaser, and turning it on means a new binary.
+    ///
+    /// The view stays compiled, and `FocusMode.pregnancy` stays in the model, because the field is
+    /// shared with Android through `profiles.focus_mode` — deleting the case here would make a row
+    /// written on her other phone unreadable on this one.
+    static let pregnancyMode = false
     static let pushNotifications = true
     /// Off: supplement reminders fire at the hour she set, with the plain body. On: the hour may
     /// shift by up to two hours toward when she actually logs, and a personalised sentence is

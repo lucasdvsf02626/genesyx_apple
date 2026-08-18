@@ -26,6 +26,23 @@ final class GenesyxUITests: XCTestCase {
         return app
     }
 
+    /// Tap through the Article 9 consent screen, which now stands between the intro and the first
+    /// question the app asks her about her body. Asserts the two things that make it consent rather
+    /// than a notice: the tick starts off, and Continue is unusable until she operates it.
+    @discardableResult
+    private func agreeToConsent(_ app: XCUIApplication) -> XCUIApplication {
+        let agree = app.buttons["consent.agree"]
+        XCTAssertTrue(agree.waitForExistence(timeout: 5),
+                      "the quiz must not be reachable without being asked for permission first")
+        let proceed = app.buttons["consent.continue"]
+        XCTAssertFalse(proceed.isEnabled,
+                       "consent cannot be pre-ticked — Continue waits until she agrees (Art 4(11))")
+        agree.tap()
+        XCTAssertTrue(proceed.isEnabled, "agreeing must unlock the way forward")
+        proceed.tap()
+        return app
+    }
+
     /// The quiz answers now go somewhere, which means the flow reaches out of itself for the first
     /// time: `OnboardingFlowView` takes a repository from the environment, and a missing
     /// `@EnvironmentObject` is a crash, not a warning. Nothing else in the suite launches
@@ -42,6 +59,7 @@ final class GenesyxUITests: XCTestCase {
         XCTAssertTrue(logo.exists, "the Genesyx lockup must be on the splash before the quiz starts")
         app.buttons["Start Your Personalised Quiz"].tap()
         app.buttons["Continue"].tap()               // intro
+        agreeToConsent(app)
 
         // Answer every question with whichever option is first — the copy is T7's to rewrite, so
         // the test holds on to the shape of the quiz rather than its wording.
@@ -73,6 +91,7 @@ final class GenesyxUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Start Your Personalised Quiz"].waitForExistence(timeout: 10))
         app.buttons["Start Your Personalised Quiz"].tap()
         app.buttons["Continue"].tap()               // intro
+        agreeToConsent(app)
 
         let skip = app.buttons["quiz.skip"]
         for question in 1...3 {
@@ -103,6 +122,7 @@ final class GenesyxUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Start Your Personalised Quiz"].waitForExistence(timeout: 10))
         app.buttons["Start Your Personalised Quiz"].tap()
         app.buttons["Continue"].tap()               // intro
+        agreeToConsent(app)
         for question in 1...5 {
             XCTAssertTrue(app.staticTexts["\(question)/5"].waitForExistence(timeout: 5))
             let option = app.buttons.matching(identifier: "quiz.option").firstMatch
@@ -1048,25 +1068,28 @@ final class GenesyxUITests: XCTestCase {
 
     // MARK: - Current focus
 
-    /// Pregnancy mode does not exist — the teaser says "Coming soon" and its button says "Keep
-    /// tracking". Tapping it nonetheless wrote `.pregnancy` to her profile and synced it, so the
-    /// segment read Pregnancy from then on, here and on Android, while every screen carried on
-    /// doing fertility prep.
-    func testProfilePregnancyTeaserDoesNotSwitchHerIntoAModeTheAppDoesNotHave() {
-        let app = launchSeeded(tab: 6)   // Profile
-        let prep = app.buttons["focus.prep"]
-        XCTAssertTrue(prep.waitForExistence(timeout: 15), "Profile should show the current-focus segments")
-        XCTAssertTrue(prep.isSelected, "Fertility prep is the only focus the app actually has, so it starts selected")
+    /// Pregnancy mode does not exist — the sheet behind that segment says "Coming soon" and its
+    /// button says "Keep tracking". A teaser is not a feature, and offering it beside a real one
+    /// invites her to switch into something there is nothing to switch into.
+    ///
+    /// So `FeatureFlags.pregnancyMode` is off and this asserts the absence: no segment on Profile,
+    /// no pathway link on Home, and therefore no route to the placeholder at all. If someone turns
+    /// the flag on without building the feature, this is what fails.
+    func testThePregnancyPlaceholderIsUnreachableInAShippingBuild() {
+        let profile = launchSeeded(tab: 6)   // Profile
+        XCTAssertTrue(profile.staticTexts["Personal Details"].waitForExistence(timeout: 15),
+                      "Profile should load")
+        XCTAssertFalse(profile.buttons["focus.pregnancy"].exists,
+                       "A mode the app does not have must not be offered as a choice")
+        XCTAssertFalse(profile.buttons["focus.prep"].exists,
+                       "With nothing to choose between, the focus control is decoration")
+        profile.terminate()
 
-        app.buttons["focus.pregnancy"].tap()
-        let keepTracking = app.buttons["Keep tracking"]
-        XCTAssertTrue(keepTracking.waitForExistence(timeout: 10), "Tapping Pregnancy should open the coming-soon sheet")
-        keepTracking.tap()
-
-        XCTAssertTrue(prep.waitForExistence(timeout: 10))
-        XCTAssertTrue(prep.isSelected, "The sheet promised she was still tracking, so the segment must still say so")
-        XCTAssertFalse(app.buttons["focus.pregnancy"].isSelected,
-                       "Nothing in the app behaves differently in pregnancy mode, so nothing may claim she is in it")
+        let home = launchSeeded(tab: 0)
+        XCTAssertTrue(home.buttons["Log today"].waitForExistence(timeout: 15), "Home should load")
+        for _ in 0..<6 where !home.staticTexts["Preview pregnancy pathway"].exists { home.swipeUp() }
+        XCTAssertFalse(home.staticTexts["Preview pregnancy pathway"].exists,
+                       "Home must not offer a pathway that ends at a coming-soon card")
     }
 
     // MARK: - The reminders master switch

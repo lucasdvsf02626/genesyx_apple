@@ -21,6 +21,11 @@ final class SessionRepository: ObservableObject {
     /// `RootRouting` reads this ahead of session state to keep her on the reset screen instead.
     @Published private(set) var passwordRecoveryActive = false
 
+    /// Whether deleting this account owes Apple a revoke. Asked of the backend, not of
+    /// `appleProviderKey` below: that flag records how *this* session was obtained, while a woman
+    /// who linked Apple on another device still has an Apple identity to revoke here.
+    var isAppleAccount: Bool { auth?.isAppleAccount ?? false }
+
     private let auth: AuthBackend?
     private let store: LocalStore
     private let emailKey = "session_email"
@@ -380,8 +385,8 @@ final class SessionRepository: ObservableObject {
     /// Permanently deletes the account via the backend, then clears local session state.
     /// With no backend (local-only), this just signs the user out. Throws if the remote
     /// deletion fails, so the UI can surface the error and leave the account intact.
-    func deleteAccount() async throws {
-        if let auth { try await auth.deleteAccount() }
+    func deleteAccount(appleAuthorizationCode: String? = nil) async throws {
+        if let auth { try await auth.deleteAccount(appleAuthorizationCode: appleAuthorizationCode) }
         email = nil
         displayName = nil
         setState(.signedOut)

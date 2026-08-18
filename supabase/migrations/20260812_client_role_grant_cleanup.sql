@@ -39,7 +39,9 @@
 --   RLS enabled on all seven.
 --
 -- Idempotent: REVOKE is declarative and safe to re-run.
--- Apply: supabase db query --linked -f supabase/migrations/20260812_client_role_grant_cleanup.sql
+-- Apply: paste this file into the Supabase Dashboard SQL Editor and run it. (This line used to name
+-- `supabase db query --linked -f`, a subcommand that no longer exists — checked against CLI 2.109.1
+-- on 2026-08-17.)
 -- Do NOT use `supabase db push` — this project has no supabase_migrations.schema_migrations table;
 -- every migration here has been applied by hand and push would replay all of them.
 

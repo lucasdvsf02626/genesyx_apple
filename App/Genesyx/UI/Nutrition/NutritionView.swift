@@ -54,6 +54,7 @@ struct NutritionView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     header
+                    ConsentWithdrawnBanner()
                     // Client parity: cycle-phase food recommendations lead; hydration and general
                     // articles drop below them.
                     if let phase {

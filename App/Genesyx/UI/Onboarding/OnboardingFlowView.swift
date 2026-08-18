@@ -12,7 +12,13 @@ struct OnboardingFlowView: View {
     /// so they are written on-device here and owed to her `profiles` row until sign-in provides a
     /// user id to write them under.
     @EnvironmentObject private var prefs: PreferencesRepository
-    private enum Step { case splash, intro, quiz, summary }
+    /// The consent screen writes here. Like the quiz answers, the grant is given before there is an
+    /// account, so it is recorded on-device and owed to `consent_events` until sign-in.
+    @EnvironmentObject private var consent: ConsentRepository
+    /// `.consent` sits immediately before `.quiz` because the quiz is the first thing that asks her
+    /// about her body — Article 9 permission has to exist before the first special-category answer
+    /// is written, not before the first one is synced.
+    private enum Step { case splash, intro, consent, consentDeclined, quiz, summary }
     @State private var step: Step = .splash
     @State private var showAuth = false
     @State private var showGuide = false
@@ -24,14 +30,29 @@ struct OnboardingFlowView: View {
             case .splash:
                 SplashView(onStart: { step = .intro }, onSignIn: { showAuth = true })
             case .intro:
-                OnboardingIntroView(onContinue: { step = .quiz }, onBack: { step = .splash })
+                OnboardingIntroView(onContinue: { step = .consent }, onBack: { step = .splash })
+            case .consent:
+                ConsentView(
+                    onAgree: { consent.grant(); step = .quiz },
+                    onDecline: { step = .consentDeclined },
+                    onBack: { step = .intro })
+            case .consentDeclined:
+                // Straight to the summary, skipping the quiz. Nothing is recorded on the way, which
+                // is the whole point — the summary is fixed guidance, not anything derived from her.
+                ConsentDeclinedView(
+                    onReconsider: { step = .consent },
+                    onContinue: { step = .summary })
             case .quiz:
                 QuizView(initialAnswers: prefs.quizAnswers, onComplete: { answers in
                     prefs.recordQuizAnswers(answers)
                     step = .summary
-                }, onBack: { step = .intro })
+                }, onBack: { step = .consent })
             case .summary:
-                ReadinessSummaryView(onOpenGuide: { showGuide = true }, onContinue: { showAuth = true }, onBack: { step = .quiz })
+                // Back lands where she actually came from. A woman who declined never saw the quiz,
+                // and sending her into it from here would ask her the health questions she had just
+                // refused to have recorded.
+                ReadinessSummaryView(onOpenGuide: { showGuide = true }, onContinue: { showAuth = true },
+                                     onBack: { step = consent.isActive ? .quiz : .consentDeclined })
             }
         }
         // The guide is bundled, so this opens with no account, no connection and no backend. It is

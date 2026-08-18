@@ -27,7 +27,18 @@ Deno.serve(async (req) => {
     const partnerId = me?.partner_id;
     if (!partnerId) return json({ ok: true });
 
-    const his = await db.from("profiles").update({ partner_id: null }).eq("id", partnerId);
+    // `.eq("partner_id", user.id)` is the whole point of this line, not a redundancy. Without it,
+    // this cleared whoever her row pointed at, whether or not he pointed back. Where the link is
+    // asymmetric — she points at him, he points at a third person — her unlink silently severed HIS
+    // link to someone who is not a party to this request, and that third person kept pointing at
+    // him, so under `profiles_select` they kept reading his row while he lost the link entirely.
+    //
+    // Matching zero rows is the correct outcome for that case, not a failure: nothing reciprocal
+    // exists to clear. Her own row is still cleared below, which is what removes the read SHE holds
+    // on him, and a one-directional pointer is exactly the residue accept_partner_invite repairs.
+    const his = await db
+      .from("profiles").update({ partner_id: null })
+      .eq("id", partnerId).eq("partner_id", user.id);
     if (his.error) {
       console.error("unlink_partner: clearing partner's row failed —", his.error.message);
       return json({ error: "Something went wrong" }, 500);

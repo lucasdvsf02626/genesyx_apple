@@ -43,6 +43,11 @@ final class PreferencesRepository: ObservableObject {
         didSet { store.save(quizAnswers, forKey: quizAnswersKey) }
     }
 
+    /// Guards `recordQuizAnswers` only. The rest of this repository is device preferences — theme,
+    /// push, reminder hour — which are not special-category data and are not what the Article 9
+    /// question was about. The quiz is: it asks her where she is in trying to conceive.
+    var isCollectionPermitted: HealthDataCollectionGate = { true }
+
     private let store: LocalStore
     private let backend: ProfileBackend?
     private let themeKey = "theme_mode"
@@ -121,6 +126,7 @@ final class PreferencesRepository: ObservableObject {
     /// and the owed push, which sign-in drains once a user id exists. Without this the answers only
     /// had to survive four screens of navigation to be lost.
     func recordQuizAnswers(_ answers: [String: String]) {
+        guard isCollectionPermitted() else { return }
         quizAnswers = answers
         pushPrefs()
     }

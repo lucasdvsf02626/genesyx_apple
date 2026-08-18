@@ -65,9 +65,9 @@ Deno.serve(async (req) => {
 
     return json({ ok: true });
   } catch (e) {
-    // `verify_jwt` is OFF here — probed 2026-08-12, against an earlier comment on this block that
-    // claimed the gateway rejects unauthenticated callers first. It does not; `requireUser` is the
-    // only guard, so its throw is a real 401.
+    // `verify_jwt` is ON here — verified live 2026-08-13, correcting the 2026-08-12 probe this
+    // comment used to report. The gateway does reject an absent or malformed token first, but a
+    // token for a deleted user still reaches `requireUser` and fails there. Real 401 either way.
     if (e instanceof NotAuthenticated) return json({ ok: false, reason: "not_authenticated" }, 401);
     console.error("revoke_partner_invite: unhandled —", e);
     return json({ ok: false, reason: "unhandled" }, 500);

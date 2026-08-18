@@ -60,7 +60,11 @@
 -- Applying this before step 2 breaks inviter-side revoke.
 --
 -- Idempotent: REVOKE is declarative and safe to re-run.
--- Apply: supabase db query --linked -f supabase/migrations/20260812_partner_invites_write_lockdown.sql
+--
+-- Apply: paste this file into the Supabase Dashboard SQL Editor and run it.
+-- This line used to read `supabase db query --linked -f <this file>`. That subcommand no longer
+-- exists — checked against CLI 2.109.1 on 2026-08-17 — so following it produces an unknown-command
+-- error, not an applied migration. The dashboard is the route.
 -- Do NOT use `supabase db push` — this project has no supabase_migrations.schema_migrations table;
 -- every migration here has been applied by hand and push would replay all of them.
 
@@ -118,18 +122,27 @@ commit;
 --          where n.nspname = 'public' and c.relname = 'partner_invites') s
 --  order by 1;
 --
--- V2. Nothing writable by authenticated at either level. Expect ZERO rows.
---     `information_schema.column_privileges` is used here deliberately, despite the warning at the
---     top of this file. That warning is about DIAGNOSIS — the view expands a table-level grant into
---     one row per column, so it makes a blanket grant look column-scoped. For VERIFICATION the same
---     property is exactly what is wanted: it reports a surviving table-level grant AND any
---     column-level residue, so zero rows here rules out both at once.
+-- V2. The authoritative check. Run this one first; it is the only query here that can answer for
+--     DELETE. Expect BOTH false:
+--
+-- select has_table_privilege('authenticated', 'public.partner_invites', 'UPDATE') as can_update,
+--        has_table_privilege('authenticated', 'public.partner_invites', 'DELETE') as can_delete;
+--
+-- V2b. Column-level UPDATE residue only. Expect ZERO rows.
+--     `information_schema.column_privileges` is sound for UPDATE: it expands a table-level grant into
+--     one row per column, so zero rows rules out both a surviving table grant and column residue.
+--
+--     It is NOT sound for DELETE, and an earlier version of this block got that wrong by filtering
+--     `privilege_type in ('UPDATE', 'DELETE')` and expecting zero rows to clear both. Only
+--     SELECT, INSERT, UPDATE and REFERENCES can be granted per column, so DELETE never appears in
+--     this view under any circumstances. Zero DELETE rows here is the view's shape, not evidence —
+--     it reads identical whether the privilege is present or absent. That is why V2 exists.
 --
 -- select privilege_type, column_name
 --   from information_schema.column_privileges
 --  where table_name = 'partner_invites' and grantee = 'authenticated'
---    and privilege_type in ('UPDATE', 'DELETE')
---  order by 1, 2;
+--    and privilege_type = 'UPDATE'
+--  order by 2;
 --
 -- V3. Policy untouched — still ALL, still qual = with_check.
 --

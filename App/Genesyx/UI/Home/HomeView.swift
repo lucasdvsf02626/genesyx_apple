@@ -35,6 +35,7 @@ struct HomeView: View {
             ScrollView {
                 VStack(spacing: 16) {
                     greetingHeader
+                    ConsentWithdrawnBanner()
                     // Only the phase and focus cards read the cycle. Everything below needs no phase,
                     // so skipping cycle setup must not take it away — Home is the third no-cycle
                     // surface after Track and Nutrition.
@@ -50,8 +51,7 @@ struct HomeView: View {
                     GxPrimaryButton(title: "Log today", leadingSystemImage: "square.and.pencil") { showLog = true }
                     HowThisWorksLink(slug: AppGuide.homeGuide,
                                      label: "New here? What your first week looks like")
-                    // v1: Pregnancy preview entry hidden (destination intact, unreachable). Restore by uncommenting.
-                    // pregnancyPathwayLink
+                    if FeatureFlags.pregnancyMode { pregnancyPathwayLink }
                 }
                 .padding(20)
             }

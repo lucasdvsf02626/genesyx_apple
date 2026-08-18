@@ -19,6 +19,9 @@ enum RootDestination: Equatable {
     case unavailable
     /// She arrived through a password-reset link. Outranks `mainTabs` — see `destination`.
     case passwordRecovery
+    /// Signed in, but there is no Article 9 consent on record for the wording currently in force.
+    /// Outranks `mainTabs` — see `destination`.
+    case consentRequired
 }
 
 enum RootRouting {
@@ -34,11 +37,22 @@ enum RootRouting {
     /// one. The link would be a way past the gate rather than a way to fix a lockout. It is
     /// deliberately NOT defaulted at the call site in `RootView`; it is defaulted here only so the
     /// existing routing tests, which are about a different question, keep compiling unchanged.
+    /// `consentRequired` outranks `mainTabs` and is ranked BELOW `passwordRecovery`, which is the
+    /// only ordering that works. A woman locked out of her account cannot meaningfully answer a
+    /// consent question, and choosing a new password processes no health data — so the reset has to
+    /// come first. Everything the tabs contain is special-category data, so consent comes before
+    /// them. It is checked only for `signedIn` because the trail is hers: there is nobody to ask
+    /// while the session is unresolved, and onboarding asks on its own screen before the quiz.
+    ///
+    /// Defaulted to `false` for the same reason `passwordRecovery` is — so the existing routing
+    /// tests, which are about a different question, keep compiling — and it is deliberately NOT
+    /// defaulted at the call site in `RootView`.
     static func destination(
         session: SessionAuthState,
         onboardingComplete: Bool,
         serviceAvailable: Bool,
-        passwordRecovery: Bool = false
+        passwordRecovery: Bool = false,
+        consentRequired: Bool = false
     ) -> RootDestination {
         guard serviceAvailable else { return .unavailable }
         if passwordRecovery { return .passwordRecovery }
@@ -46,7 +60,7 @@ enum RootRouting {
         case .resolving:
             return .resolving
         case .signedIn:
-            return .mainTabs
+            return consentRequired ? .consentRequired : .mainTabs
         case .signedOut:
             return onboardingComplete ? .mandatoryAuth : .onboarding
         }

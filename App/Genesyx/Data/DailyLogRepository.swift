@@ -42,6 +42,8 @@ final class DailyLogRepository: ObservableObject {
 
     @Published private(set) var logByDate: [CalendarDate: DailyLog] = [:]
 
+    var isCollectionPermitted: HealthDataCollectionGate = { true }
+
     private let store: LocalStore
     private let backend: DailyLogBackend?
     private let key = "daily_logs"
@@ -80,7 +82,10 @@ final class DailyLogRepository: ObservableObject {
         return pendingDates.contains(date) ? .pendingSync : .synced
     }
 
+    /// Every mutator on this repository — water, sleep, food groups, the log sheet — routes through
+    /// here, so this one guard is the whole surface. See `HealthDataCollectionGate`.
     func upsert(_ log: DailyLog, on date: CalendarDate) {
+        guard isCollectionPermitted() else { return }
         logByDate[date] = log
         // Owed before saved, deliberately: these are two separate writes to disk, and a kill
         // between them must leave a day queued that the server already has (harmless re-push)

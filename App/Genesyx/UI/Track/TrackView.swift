@@ -38,6 +38,7 @@ struct TrackView: View {
             ScrollView {
                 VStack(spacing: 12) {
                     header
+                    ConsentWithdrawnBanner()
                     calendarCard
                     currentPhaseCard
                     GxPrimaryButton(title: "Add to today's log", leadingSystemImage: "plus") {

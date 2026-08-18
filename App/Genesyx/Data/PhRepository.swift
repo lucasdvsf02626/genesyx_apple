@@ -28,6 +28,11 @@ final class PhRepository: ObservableObject {
         PhSync.visible(records).filter { $0.measurementType != .urine }
     }
 
+    /// Guards new readings only. `delete` is deliberately outside it: erasing what she already
+    /// recorded is Article 17 and must stay available after a withdrawal, not least because the
+    /// withdrawal screen tells her she can still do it.
+    var isCollectionPermitted: HealthDataCollectionGate = { true }
+
     private let store: LocalStore
     private let backend: PhBackend?
     private let key = "ph_readings"
@@ -44,11 +49,13 @@ final class PhRepository: ObservableObject {
     private func round1(_ value: Double) -> Double { (value * 10).rounded() / 10 }
 
     func create(_ reading: PhReading) {
+        guard isCollectionPermitted() else { return }
         let normalized = PhReading(id: reading.id, phValue: round1(reading.phValue), recordedAt: reading.recordedAt, notes: reading.notes, measurementType: reading.measurementType)
         save(PhRecord(reading: normalized, updatedAt: Date(), pendingSync: true))
     }
 
     func update(_ reading: PhReading) {
+        guard isCollectionPermitted() else { return }
         let normalized = PhReading(id: reading.id, phValue: round1(reading.phValue), recordedAt: reading.recordedAt, notes: reading.notes, measurementType: reading.measurementType)
         save(PhRecord(reading: normalized, updatedAt: Date(), pendingSync: true))
     }

@@ -376,6 +376,10 @@ final class NotificationTests: XCTestCase {
     private func containerWithAWeekOfLogging() -> AppContainer {
         let store = LocalStore(defaults: UserDefaults(suiteName: "test.\(UUID().uuidString)")!)
         let container = AppContainer(store: store, backend: nil, monitorNetwork: false)
+        // She is a woman who has been using the app for a week, so she has agreed to it being
+        // recorded. Without this the Article 9 gate refuses every seeded write and the week of
+        // logging this helper is named for does not exist.
+        container.consent.grant()
         let today = CalendarDate.today()
         for i in 0..<7 {
             container.dailyLog.upsert(DailyLog(mood: .good, foodGroups: ["vegetables"]),
@@ -412,6 +416,78 @@ final class NotificationTests: XCTestCase {
         XCTAssertFalse(service.isActive, "nothing can be scheduled")
         XCTAssertNotNil(service.celebration,
                         "and that must not cost her the in-app moment")
+    }
+
+    // MARK: - She said yes and iOS said no
+
+    /// The path with the most ways to lie to her, and until now the one with no coverage: she asked
+    /// for reminders and the system refused. Three separate claims have to stay false — the toggle
+    /// reading on, the schedule believing it is live, and anything being sent — and one has to be
+    /// true, which is the app admitting the refusal so Profile can offer the way into Settings.
+    @MainActor
+    func testASystemDenialIsNotAllowedToLookLikeReminders() async {
+        let container = containerWithAWeekOfLogging()
+        container.session.signIn(email: "maya@example.com", name: "Maya")
+        container.prefs.pushEnabled = true
+        let service = service(for: container)
+        service.readAuthorizationStatus = { .denied }
+
+        await service.reconcile()
+
+        XCTAssertFalse(service.isOn, "the switch must not read on for reminders iOS will not deliver")
+        XCTAssertFalse(service.isActive, "and nothing may be scheduled against a refused permission")
+        XCTAssertTrue(service.isSystemDenied, "but the refusal has to be visible, or Profile cannot offer Settings")
+    }
+
+    /// Denial is a system answer, not a change of mind, so the switch she set stays set. Without
+    /// this the app would quietly rewrite her preference on her behalf, and a woman who later
+    /// allowed notifications in Settings would find reminders still off with nothing saying why.
+    @MainActor
+    func testADenialDoesNotRewriteWhatSheAskedFor() async {
+        let container = containerWithAWeekOfLogging()
+        container.prefs.pushEnabled = true
+        let service = service(for: container)
+        service.readAuthorizationStatus = { .denied }
+
+        service.setEnabled(true)
+        await service.reconcile()
+
+        XCTAssertTrue(container.prefs.pushEnabled, "her request survives the system's refusal")
+        XCTAssertFalse(service.isOn, "it just cannot be honoured yet")
+    }
+
+    /// Granting it in Settings later has to be enough — no reinstall, no toggling it off and on.
+    /// `reconcile` runs on foreground, which is exactly the moment she comes back from Settings.
+    @MainActor
+    func testAllowingItInSettingsLaterTurnsRemindersOnWithoutHerAskingTwice() async {
+        let container = containerWithAWeekOfLogging()
+        container.session.signIn(email: "maya@example.com", name: "Maya")
+        container.prefs.pushEnabled = true
+        let service = service(for: container)
+        service.readAuthorizationStatus = { .denied }
+        await service.reconcile()
+        XCTAssertFalse(service.isOn)
+
+        service.readAuthorizationStatus = { .authorized }
+        await service.reconcile()
+
+        XCTAssertTrue(service.isOn, "coming back from Settings must be all it takes")
+        XCTAssertFalse(service.isSystemDenied)
+    }
+
+    /// The celebration is in-app, so it belongs to her data and not to Apple's permission. A denial
+    /// silences the banner; it must not silence the week she actually logged.
+    @MainActor
+    func testADenialStillLeavesHerTheInAppMilestone() async {
+        let container = containerWithAWeekOfLogging()
+        container.prefs.pushEnabled = true
+        let service = service(for: container)
+        service.readAuthorizationStatus = { .denied }
+
+        await service.reconcile()
+
+        XCTAssertNotNil(service.celebration,
+                        "a refused permission must not cost her the moment she earned")
     }
 
     /// A signed-out session cannot keep a schedule, even if she left the toggle on.

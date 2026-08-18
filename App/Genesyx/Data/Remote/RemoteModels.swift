@@ -266,6 +266,47 @@ struct QuizAnswersRow: Codable {
     }
 }
 
+/// A row of `consent_events` — one Article 9 consent grant or withdrawal.
+///
+/// The only DTO here with no update path, because the table has no UPDATE policy. `occurred_at` is
+/// sent by the client rather than defaulted server-side: consent is captured during onboarding,
+/// which runs before sign-up, so the row is inserted minutes to hours after the moment it records
+/// and `now()` would time-stamp the sync instead of the consent. The whole point of the trail is
+/// when she was asked.
+///
+/// An unrecognised `action` decodes to `.withdrawn`. That is deliberate rather than lenient: this
+/// column is CHECK-constrained to two values, so anything else is corruption, and the safe reading
+/// of corrupt consent state is the one that stops processing.
+struct ConsentEventRow: Codable {
+    var id: String
+    var userId: String
+    var version: String
+    var action: String
+    var occurredAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case userId = "user_id"
+        case version
+        case action
+        case occurredAt = "occurred_at"
+    }
+
+    var domain: ConsentEvent {
+        ConsentEvent(id: id, version: version,
+                     action: ConsentAction(rawValue: action) ?? .withdrawn,
+                     occurredAt: parseISO(occurredAt))
+    }
+
+    init(userId: String, event: ConsentEvent) {
+        self.id = event.id
+        self.userId = userId
+        self.version = event.version
+        self.action = event.action.rawValue
+        self.occurredAt = isoFormatter.string(from: event.occurredAt)
+    }
+}
+
 /// A row of `user_supplements` — the table Android has been reading and writing since 13 Aug 2026,
 /// which is why the column names below are a contract rather than a choice.
 ///

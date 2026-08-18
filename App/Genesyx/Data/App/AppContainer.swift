@@ -20,6 +20,7 @@ final class AppContainer: ObservableObject {
     let prefs: PreferencesRepository
     let session: SessionRepository
     let partner: PartnerRepository
+    let consent: ConsentRepository
     let learn: LearnProgress
     let reachability: Reachability
 
@@ -37,7 +38,20 @@ final class AppContainer: ObservableObject {
         self.prefs = PreferencesRepository(store: store, backend: backend?.profile)
         self.session = SessionRepository(store: store, auth: backend?.auth)
         self.partner = PartnerRepository(backend: backend?.partner)
+        self.consent = ConsentRepository(store: store, backend: backend?.consent)
         self.learn = LearnProgress()
+
+        // The one place the Article 9 gate is wired to the real answer. Every repository that
+        // stores special-category data asks this immediately before it writes, so a withdrawal
+        // stops collection everywhere at once rather than screen by screen. Reading `consent`
+        // rather than capturing `isActive` is what makes it live: the answer has to be the one
+        // that is true at the moment of the write, not at launch.
+        let permitted: HealthDataCollectionGate = { [consent] in consent.isActive }
+        cycle.isCollectionPermitted = permitted
+        dailyLog.isCollectionPermitted = permitted
+        ph.isCollectionPermitted = permitted
+        supplements.isCollectionPermitted = permitted
+        prefs.isCollectionPermitted = permitted
 
         // Auth-transition wiring: wipe on-device health data on sign-out / account deletion, and
         // rehydrate from the backend on sign-in. Weak self avoids a retain cycle (container owns session).
@@ -80,6 +94,10 @@ final class AppContainer: ObservableObject {
         // name she registered under reaches her row at all — and, on a new phone, the moment it
         // comes back.
         await session.refreshDisplayName()
+        // Before the health tables, not after. This is the call that reconciles the consent she gave
+        // on this device with the trail on the server, and everything below it is special-category
+        // data whose lawful basis is what this answers.
+        await consent.refresh()
         await prefs.refresh()
         await cycle.refresh()
         await dailyLog.refresh()
@@ -95,6 +113,7 @@ final class AppContainer: ObservableObject {
     /// — the moment the network is most likely back.
     func drainPending() async {
         await session.drainPendingName()
+        await consent.drainPending()
         await prefs.drainPending()
         await cycle.drainPending()
         await dailyLog.drainPending()
@@ -129,6 +148,9 @@ final class AppContainer: ObservableObject {
         // The light-mode migration corrects a per-account server value but latched per-device, so
         // only the first account ever signed in on a phone could receive it.
         prefs.clearThemeMigrationFlag()
+        // Whether permission was given, and to which wording, is hers. Left behind, the next user on
+        // this phone would be treated as having already consented.
+        consent.clearLocalState()
         learn.clear()
         // Nor may the next account inherit her partner link or her pending invites.
         partner.clearLocalState()
@@ -164,6 +186,11 @@ final class AppContainer: ObservableObject {
             UserDefaults.standard.removePersistentDomain(forName: bundleID)
         }
         let container = AppContainer(store: LocalStore(), backend: nil)
+        // Before any seeding, because the seed *is* health data and the gate refuses it otherwise —
+        // a container without this seeds an empty app and every test fails on a missing row rather
+        // than on the thing it was written to check. It also keeps the tabs reachable: a signed-in
+        // user with no consent on record is routed to the consent screen, not to Home.
+        container.consent.grant()
         // `-uiTestNoCycle YES` is the user who skipped cycle setup: everything else seeded, no
         // period date. The calendar has to work for her too, and used not to exist at all.
         if !UserDefaults.standard.bool(forKey: "uiTestNoCycle") {

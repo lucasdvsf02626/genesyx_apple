@@ -17,15 +17,18 @@ struct PhTabView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                PhTrackerSection(
-                    onOpenSupplements: { router.selection = 3 },
-                    onOpenLearn: {
-                        router.pendingLearnSlug = PhTabView.learnArticleSlug
-                        router.selection = 5
-                    })
-                    .padding(.horizontal, 20)
-                    .padding(.top, 8)
-                    .padding(.bottom, 24)
+                VStack(spacing: 12) {
+                    ConsentWithdrawnBanner()
+                    PhTrackerSection(
+                        onOpenSupplements: { router.selection = 3 },
+                        onOpenLearn: {
+                            router.pendingLearnSlug = PhTabView.learnArticleSlug
+                            router.selection = 5
+                        })
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 8)
+                .padding(.bottom, 24)
             }
             .frame(maxWidth: .infinity)
             .gxPageBackground()

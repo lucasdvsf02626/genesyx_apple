@@ -19,11 +19,45 @@ final class LifecycleE2ETests: XCTestCase {
     /// test log, and its backdrop swallows every touch — which surfaces as the app's own controls
     /// going unhittable rather than as an interruption. Declining it also keeps the simulator
     /// keychain empty, so a later run is not offered an AutoFill toolbar instead.
-    private func dismissSystemSavePasswordSheet(_ app: XCUIApplication) {
+    ///
+    /// Reports whether the sheet is in the way, dismissing it when it is far enough along to accept
+    /// a touch. Presence is judged by existence alone, deliberately: while the sheet animates in,
+    /// "Not Now" is not yet hittable but its backdrop already swallows touches, so treating
+    /// not-yet-hittable as "nothing there" is exactly how a tap gets lost.
+    private func savePasswordSheetIsInTheWay(_ app: XCUIApplication) -> Bool {
         for root in [app, XCUIApplication(bundleIdentifier: "com.apple.springboard")] {
             let notNow = root.buttons["Not Now"]
-            if notNow.waitForExistence(timeout: 3) { notNow.tap(); return }
+            if notNow.exists {
+                if notNow.isHittable { notNow.tap() }
+                return true
+            }
         }
+        return false
+    }
+
+    /// Taps `element` from a state that is not about to eat the touch.
+    ///
+    /// The flake this replaces was a single `isHittable` check before a tap, which fails two ways:
+    /// the sheet is posted by another process on its own schedule, so it can arrive in the gap
+    /// between the check and the tap; and while it animates in, the element underneath still answers
+    /// `isHittable == true`, so the tap lands on the backdrop and is swallowed with no error at all
+    /// — the test then fails several assertions later, somewhere that reads like a product defect.
+    ///
+    /// So the wait is on the sheet being gone and *staying* gone for a beat, and nothing here waits
+    /// on `isHittable`. That distinction matters: `tap()` scrolls an off-screen element into view by
+    /// itself, and gating on hittability would forbid every target below the fold.
+    private func tapWhenSettled(_ element: XCUIElement, in app: XCUIApplication,
+                                timeout: TimeInterval = 20,
+                                file: StaticString = #filePath, line: UInt = #line) {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if savePasswordSheetIsInTheWay(app) { Thread.sleep(forTimeInterval: 0.3); continue }
+            Thread.sleep(forTimeInterval: 0.4)
+            if savePasswordSheetIsInTheWay(app) { continue }
+            if element.exists { element.tap(); return }
+            Thread.sleep(forTimeInterval: 0.3)
+        }
+        XCTFail("\(element) never became tappable within \(timeout)s", file: file, line: line)
     }
 
     /// Background → foreground keeps the citation screen intact.
@@ -87,19 +121,23 @@ final class LifecycleE2ETests: XCTestCase {
         password.typeText("password1")
         app.buttons["Sign in"].tap()
 
+        // Signing out wipes the local consent trail, and this DEBUG local-only build has no server
+        // to restore it from — so she is asked again. Asking twice is the safe direction to fail in
+        // (the alternative is writing to her body data on a permission the app cannot evidence),
+        // so the test agrees again rather than treating the second ask as a defect.
+        let agree = app.buttons["consent.agree"]
+        XCTAssertTrue(agree.waitForExistence(timeout: 10),
+                      "with no local trail left, permission must be asked for again — not assumed")
+        tapWhenSettled(agree, in: app)
+        tapWhenSettled(app.buttons["consent.continue"], in: app)
+
         let profile = app.buttons["Profile"]
         XCTAssertTrue(profile.waitForExistence(timeout: 10),
                       "re-authentication must restore the tabs")
-        if !profile.isHittable { dismissSystemSavePasswordSheet(app) }
-        profile.tap()
+        tapWhenSettled(profile, in: app)
         let rowAgain = app.buttons["Medical Sources & Disclaimer"]
         XCTAssertTrue(rowAgain.waitForExistence(timeout: 10))
-        // iOS posts the save-password sheet, not the app, and its timing is not deterministic — it
-        // can arrive *after* the check above and settle on top of this row. Dismissing it here
-        // weakens nothing: both assertions around it are unchanged, and the sheet is a system window
-        // that is not part of the behaviour under test.
-        if !rowAgain.isHittable { dismissSystemSavePasswordSheet(app) }
-        rowAgain.tap()
+        tapWhenSettled(rowAgain, in: app)
         XCTAssertTrue(app.buttons["medSource.nhs-water"].waitForExistence(timeout: 10),
                       "sources must still render after the sign-out wipe and a new sign-in")
     }

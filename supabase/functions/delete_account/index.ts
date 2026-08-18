@@ -18,7 +18,14 @@
 // still holds if that last step fails. `partner_invites.invitee_email` is the opposite case — free
 // text with no foreign key, because an invite can be addressed to someone who has no account yet —
 // and it is handled separately below.
+//
+// SIGN IN WITH APPLE. Apple requires that deleting an account also revokes the tokens it issued, so
+// that step runs FIRST — before anything is destroyed. Same reasoning as the ordering above: if the
+// revoke fails there is nothing to clean up, she stays deletable, and the retry is the same call.
+// Doing it after the auth user is gone would repeat the exact trap this file exists to avoid — the
+// grant would survive with nobody left who could ask for its removal.
 import { serviceClient, requireUser, json, NotAuthenticated } from "../_shared/client.ts";
+import { hasAppleIdentity, revokeAppleTokens } from "../_shared/apple.ts";
 
 Deno.serve(async (req) => {
   try {
@@ -30,6 +37,42 @@ Deno.serve(async (req) => {
       console.error(`delete_account: ${what} failed —`, message);
       return json({ error: "Something went wrong" }, 500);
     };
+
+    // Revoke Apple's grant before touching any data. The code is optional in the body because this
+    // function has to keep working for clients that do not send one — see the enforcement note below.
+    if (hasAppleIdentity(user)) {
+      // The body is optional and has never been read by this function before, so an absent or
+      // malformed one is not an error; it just means no code was supplied.
+      const body = await req.json().catch(() => ({})) as Record<string, unknown>;
+      const code = typeof body.appleAuthorizationCode === "string"
+        ? body.appleAuthorizationCode.trim()
+        : "";
+
+      // ENFORCEMENT IS A DEPLOY-TIME FLAG, AND IT DEFAULTS TO OFF FOR ONE REASON.
+      // Builds already in the App Store send no authorization code, because the app does not collect
+      // one yet. If a missing code were fatal on day one, deploying this would break account deletion
+      // for every existing Apple user — trading a Sign in with Apple violation for a 5.1.1(v) one,
+      // which is strictly worse: 5.1.1(v) is the requirement this whole function exists to satisfy.
+      // So the sequence is deploy (inert) -> ship the client that sends the code -> set
+      // APPLE_REVOKE_REQUIRED=true. Until that flag is on, a missing or failed revoke is loud in the
+      // logs and nothing more, and Apple's requirement is NOT yet met.
+      const required = (Deno.env.get("APPLE_REVOKE_REQUIRED") ?? "").trim().toLowerCase() === "true";
+
+      if (code) {
+        try {
+          await revokeAppleTokens(code);
+          console.log("delete_account: apple grant revoked");
+        } catch (e) {
+          const detail = e instanceof Error ? e.message : String(e);
+          if (required) return failed("apple revoke", detail);
+          console.error("delete_account: apple revoke failed (not enforced) —", detail);
+        }
+      } else {
+        const detail = "apple identity with no authorizationCode in body";
+        if (required) return failed("apple revoke", detail);
+        console.error("delete_account: apple revoke skipped (not enforced) —", detail);
+      }
+    }
 
     // Unlink any partner first. Not just tidiness: `profiles.partner_id` points at a profile row,
     // so deleting hers while he still points at it is the one ordering that can fail outright. It

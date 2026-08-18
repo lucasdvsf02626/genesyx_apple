@@ -12,6 +12,7 @@ struct RootView: View {
     @EnvironmentObject private var container: AppContainer
     @EnvironmentObject private var prefs: PreferencesRepository
     @EnvironmentObject private var session: SessionRepository
+    @EnvironmentObject private var consent: ConsentRepository
     @EnvironmentObject private var notifications: NotificationService
     @AppStorage("genesyx.onboardingComplete") private var onboardingComplete = false
 
@@ -35,6 +36,16 @@ struct RootView: View {
                 OnboardingFlowView(onFinished: { onboardingComplete = true })
             case .mandatoryAuth:
                 AuthView(allowsDismissal: false)
+            case .consentRequired:
+                // Declining here records the refusal rather than merely dismissing the screen. It
+                // has to leave a trace: an unanswered question comes back next launch, and a woman
+                // re-asked on every launch has not been given a free choice. `withdraw()` is the
+                // accurate word for it — as of this moment Genesyx has no permission, and that is
+                // what the trail should say.
+                ConsentView(
+                    onAgree: { consent.grant() },
+                    onDecline: { consent.withdraw() },
+                    onBack: { consent.withdraw() })
             case .mainTabs:
                 MainTabView()
             case .passwordRecovery:
@@ -92,7 +103,8 @@ struct RootView: View {
             session: session.state,
             onboardingComplete: onboardingComplete,
             serviceAvailable: container.isServiceAvailable,
-            passwordRecovery: session.passwordRecoveryActive || recoveryLinkError != nil
+            passwordRecovery: session.passwordRecoveryActive || recoveryLinkError != nil,
+            consentRequired: ConsentLogic.needsAsking(consent.events)
         )
     }
 

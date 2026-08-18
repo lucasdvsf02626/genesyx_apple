@@ -12,6 +12,10 @@ final class CycleRepository: ObservableObject {
 
     @Published private(set) var settings: CycleSettings?
 
+    /// Her period dates are health data like any other, so setting them up or correcting them is
+    /// collection and stops with the rest of it.
+    var isCollectionPermitted: HealthDataCollectionGate = { true }
+
     private let store: LocalStore
     private let backend: CycleBackend?
     private let key = "cycle_settings"
@@ -32,6 +36,7 @@ final class CycleRepository: ObservableObject {
     }
 
     func upsert(_ settings: CycleSettings) {
+        guard isCollectionPermitted() else { return }
         self.settings = settings
         store.save(settings, forKey: key)
         pendingPush = true

@@ -88,9 +88,9 @@ Deno.serve(async (req) => {
 
     return json({ ok: true, sent: true });
   } catch (e) {
-    // `verify_jwt` is OFF on this function — probed 2026-08-12, against an earlier comment here
-    // that asserted the opposite and mapped the auth throw to 500 on that basis. There is no
-    // gateway in front of this, so `requireUser` failing is the genuine article and has to say so.
+    // `verify_jwt` is ON for this function — verified live 2026-08-13, correcting the 2026-08-12
+    // probe this comment used to report. There IS a gateway in front of it now, but a token for a
+    // deleted user clears the gateway and fails `requireUser`, so this stays a genuine 401.
     if (e instanceof NotAuthenticated) {
       return json({ ok: false, sent: false, reason: "not_authenticated" }, 401);
     }

@@ -14,6 +14,7 @@ struct ProfileView: View {
     @EnvironmentObject private var notifications: NotificationService
     @EnvironmentObject private var cycle: CycleRepository
     @EnvironmentObject private var router: TabRouter
+    @EnvironmentObject private var consent: ConsentRepository
 
     @State private var personalOpen = false
     @State private var healthOpen = false
@@ -26,6 +27,8 @@ struct ProfileView: View {
     @State private var showAuth = false
     @State private var showPregnancy = false
     @State private var showReminderPrompt = false
+    @State private var withdrawOpen = false
+    @State private var consentSheetOpen = false
 
     /// Hydration display unit (local, display-only — stored water values are always ml).
     @AppStorage(HydrationPrefs.unitKey) private var hydrationUnitRaw = HydrationUnit.glasses.rawValue
@@ -52,7 +55,9 @@ struct ProfileView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     userCard
-                    focusSection
+                    // With pregnancy gated off there is exactly one focus she can be in, so this
+                    // control has nothing to choose between. See `FeatureFlags.pregnancyMode`.
+                    if FeatureFlags.pregnancyMode { focusSection }
                     // Partner linking is intentionally excluded from the 1.2.0 public release.
                     // This is the app's only entry point to it, so with the flag off there is no
                     // way to create, accept, revoke or view an invite. See `FeatureFlags`.
@@ -60,6 +65,7 @@ struct ProfileView: View {
                         PartnerSectionView(showAuth: $showAuth)
                     }
                     accountGroup
+                    consentSection
                     trackingGroup
                     remindersSection
                     hydrationSection
@@ -93,13 +99,24 @@ struct ProfileView: View {
         } message: {
             Text(detail.flatMap { Self.detailCopy[$0] } ?? "This section is ready for your saved app settings.")
         }
+        .sheet(isPresented: $consentSheetOpen) {
+            ConsentView(
+                onAgree: { consent.grant(); consentSheetOpen = false },
+                onDecline: { consentSheetOpen = false },
+                onBack: { consentSheetOpen = false })
+        }
+        // Confirmed rather than immediate, and the confirmation says what withdrawal does and does
+        // not do. Withdrawal stops collection; it is not erasure, and a woman who taps it expecting
+        // her logs to disappear has to be told they have not, and where the control that does that
+        // lives. Article 17 is the Delete account button further down this screen.
+        .alert(ConsentPolicy.withdrawTitle, isPresented: $withdrawOpen) {
+            Button(ConsentPolicy.withdrawConfirm, role: .destructive) { consent.withdraw() }
+            Button(ConsentPolicy.withdrawCancel, role: .cancel) {}
+        } message: {
+            Text(ConsentPolicy.withdrawBody)
+        }
         .alert("Delete your account?", isPresented: $deleteOpen) {
-            Button("Delete", role: .destructive) {
-                Task {
-                    do { try await session.deleteAccount() }
-                    catch { deleteError = "We couldn't delete your account. Please try again." }
-                }
-            }
+            Button("Delete", role: .destructive) { performDelete() }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("This will permanently delete your account and all your data. This cannot be undone.")
@@ -199,6 +216,78 @@ struct ProfileView: View {
                     }
                 }
             }
+        }
+    }
+
+    /// Article 7(3): withdrawing has to be as easy as agreeing was. It is one tap from a screen she
+    /// already visits, in its own section rather than buried in About, and it is the same distance
+    /// from her thumb as the tick that granted it.
+    ///
+    /// Turning it back on re-presents `ConsentView` rather than calling `grant()` from the row.
+    /// Consent has to be informed every time it is given, and a bare "Turn it back on" button
+    /// records a grant against wording she may never have read.
+    private var consentSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            groupLabel("Health data permission")
+            cardGroup {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(consent.isActive ? "Collection is on" : "Collection is off")
+                            .font(.system(size: 14.5)).foregroundStyle(GenesyxColor.foreground)
+                        // What she agreed to and when. Article 7(1) puts the burden of proving
+                        // consent on us, and she is entitled to see the same record.
+                        if let current = consent.current {
+                            Text(consentDetail(current))
+                                .font(.system(size: 12.5)).foregroundStyle(GenesyxColor.mutedForeground)
+                        }
+                    }
+                    Spacer()
+                }
+                .padding(.horizontal, 16).frame(minHeight: 52)
+                .accessibilityIdentifier("consent.state")
+                divider
+                if consent.isActive {
+                    Button { withdrawOpen = true } label: {
+                        HStack {
+                            Text(ConsentPolicy.withdrawTitle)
+                                .font(.system(size: 14.5)).foregroundStyle(GenesyxColor.destructive)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 16).frame(minHeight: 52)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("consent.withdraw")
+                } else {
+                    rowItem("Turn collection back on") { consentSheetOpen = true }
+                        .accessibilityIdentifier("consent.restore")
+                }
+            }
+        }
+    }
+
+    private func consentDetail(_ event: ConsentEvent) -> String {
+        let when = event.occurredAt.formatted(date: .abbreviated, time: .omitted)
+        return event.action == .granted ? "You agreed on \(when)" : "You withdrew on \(when)"
+    }
+
+    /// Deleting an Apple account owes Apple a revoke, and the code that buys it lives about five
+    /// minutes — so it is fetched here, at the confirmation, and handed to the edge function.
+    ///
+    /// The two failure paths are deliberately different. Dismissing Apple's sheet is an answer, so
+    /// the deletion stops and says nothing: she went back. Any other reauthorisation failure lets
+    /// the deletion continue with no code, because the server is the one that decides whether a
+    /// missing revoke is fatal (`APPLE_REVOKE_REQUIRED`) — refusing here would strand her with an
+    /// account she cannot delete every time Apple's sheet misbehaves.
+    private func performDelete() {
+        Task {
+            var code: String?
+            if session.isAppleAccount {
+                do { code = try await AppleReauthorization().authorizationCode() }
+                catch AppleReauthorization.Failure.cancelled { return }
+                catch { code = nil }
+            }
+            do { try await session.deleteAccount(appleAuthorizationCode: code) }
+            catch { deleteError = "We couldn't delete your account. Please try again." }
         }
     }
 

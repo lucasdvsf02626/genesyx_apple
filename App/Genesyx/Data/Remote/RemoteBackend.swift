@@ -85,7 +85,16 @@ protocol AuthBackend {
     func signIn(email: String, password: String) async throws
     func signOut() async throws
     /// Permanently deletes the caller's account + all their data (App Store 5.1.1(v)).
-    func deleteAccount() async throws
+    ///
+    /// `appleAuthorizationCode` is a fresh code from `ASAuthorizationController`, collected during
+    /// the delete confirmation and spent by the edge function against Apple's `/auth/revoke`. It is
+    /// optional because only Apple accounts have one, and nil for everyone else.
+    func deleteAccount(appleAuthorizationCode: String?) async throws
+
+    /// Whether this account can sign in with Apple, and therefore whether a revoke is owed on
+    /// deletion. Read from the session rather than remembered from the sign-in that created it: she
+    /// may have signed in with Apple on a different device, or linked it later.
+    var isAppleAccount: Bool { get }
     /// Exchanges a provider ID token (Google/Apple) for a Supabase session.
     func signInWithIdToken(provider: SocialProvider, idToken: String, accessToken: String?, nonce: String?) async throws
     /// Emails a password-reset link to `email`, pointed back at `DeepLink.passwordRecoveryURL`.
@@ -107,7 +116,10 @@ protocol AuthBackend {
 extension AuthBackend {
     // Default no-ops so local/mock backends need not implement these; the real Supabase
     // backend overrides them.
-    func deleteAccount() async throws {}
+    func deleteAccount(appleAuthorizationCode: String?) async throws {}
+    /// False for every backend that is not Supabase, so nothing local ever asks her to re-authorise
+    /// with Apple for a deletion Apple never issued a token for.
+    var isAppleAccount: Bool { false }
     func signInWithIdToken(provider: SocialProvider, idToken: String, accessToken: String?, nonce: String?) async throws {}
     func resetPassword(email: String) async throws {}
     func resendConfirmation(email: String) async throws {}
@@ -177,6 +189,14 @@ struct ProfilePrefs: Equatable {
     var quizAnswers: [String: String] = [:]
 }
 
+/// Her Article 9 consent trail, in `consent_events` (`20260818_consent_events.sql`). Append-only by
+/// design, so unlike every other backend here there is no `upsert` and no tombstone — the server
+/// grants SELECT and INSERT and nothing else. A withdrawal is a new row.
+protocol ConsentBackend {
+    func list() async throws -> [ConsentEvent]
+    func append(_ event: ConsentEvent) async throws
+}
+
 protocol PartnerBackend {
     func listInvites() async throws -> [PartnerInvite]
     func fetchPartner() async throws -> Partner?
@@ -214,6 +234,7 @@ protocol GenesyxBackend {
     var dailyLog: DailyLogBackend { get }
     var profile: ProfileBackend { get }
     var partner: PartnerBackend { get }
+    var consent: ConsentBackend { get }
     /// Adds an email to the pre-account waiting list. Called from onboarding *before* sign-in, so it
     /// runs under the anon key and must not require a session. Throws on failure so the UI only
     /// confirms once the address is actually stored.

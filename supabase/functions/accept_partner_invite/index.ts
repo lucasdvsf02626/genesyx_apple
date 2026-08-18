@@ -35,7 +35,13 @@ Deno.serve(async (req) => {
     if (!invite) return json({ error: "Invite not found" }, 404);
     if (invite.status !== "pending") return json({ error: "Invite is not pending" }, 409);
     if (invite.inviter_id === user.id) return json({ error: "Cannot accept your own invite" }, 400);
-    if (invite.invitee_email?.toLowerCase() !== user.email?.toLowerCase()) {
+    // Both sides must be PRESENT and equal. Optional chaining alone was not enough: an account with
+    // no email (phone or anonymous auth) made this `undefined !== undefined`, which is false, so the
+    // one check standing between a stranger and a partner link did not run at all. A missing email is
+    // not a match — it is a reason to refuse.
+    const inviteeEmail = invite.invitee_email?.trim().toLowerCase();
+    const callerEmail = user.email?.trim().toLowerCase();
+    if (!inviteeEmail || !callerEmail || inviteeEmail !== callerEmail) {
       return json({ error: "This invite was sent to a different email" }, 403);
     }
     if (invite.expires_at && new Date(invite.expires_at).getTime() < Date.now()) {

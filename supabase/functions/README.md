@@ -73,4 +73,43 @@ detail logged rather than returned. **Mirror this in any new function.** It is c
 `verify_jwt` is set, which is the whole point — the setting is not visible from the code, so the
 code must not depend on knowing it.
 
+## Sign in with Apple revocation (`delete_account`)
+
+Apple requires that deleting an account also revokes the grant it issued. `delete_account` does this
+first, before anything is destroyed, so a failed revoke leaves the account intact and retryable.
+
+**It needs an authorization code from the client, and the shipping build does not send one.**
+`AuthView.handleApple` reads `cred.identityToken` and calls `signInWithIdToken`, so there is no
+code exchange anywhere in the flow: Apple never issues a refresh token, Supabase never stores one,
+and `auth.identities.identity_data` holds only decoded claims. Nothing server-side can be looked up
+and revoked. The app must read `cred.authorizationCode` at the delete confirmation and POST it as
+`{"appleAuthorizationCode": "..."}`. Until it does, **Apple's requirement is not met**.
+
+Set these four secrets, none of which have defaults:
+
+```bash
+supabase secrets set APPLE_TEAM_ID=XXXXXXXXXX          # Apple Developer team id
+supabase secrets set APPLE_CLIENT_ID=com.genesyx.app   # the BUNDLE id for a native app, not a Services ID
+supabase secrets set APPLE_KEY_ID=XXXXXXXXXX           # key id of the Sign in with Apple .p8
+supabase secrets set APPLE_PRIVATE_KEY="$(cat AuthKey_XXXXXXXXXX.p8)"
+```
+
+The `.p8` goes into Supabase secrets and nowhere else — never a commit, never a chat. Literal `\n`
+in `APPLE_PRIVATE_KEY` is handled, so a pasted single-line key works.
+
+`APPLE_REVOKE_REQUIRED` is the enforcement switch and **defaults to off**. Off, a missing or failed
+revoke is logged and deletion proceeds; on, it returns 500 and deletes nothing. It defaults off
+because turning it on before the client sends a code would break deletion for every existing Apple
+user — trading a Sign in with Apple violation for a 5.1.1(v) one, which is the requirement this
+function exists to satisfy. Order of operations:
+
+1. Deploy with the four secrets set. Inert for accounts that send no code.
+2. Ship the client that sends `appleAuthorizationCode`.
+3. `supabase secrets set APPLE_REVOKE_REQUIRED=true`.
+
+Step 3 is what actually closes the Apple requirement. Steps 1 and 2 alone do not.
+
+Non-Apple accounts skip all of this — `hasAppleIdentity` checks both `identities` and
+`app_metadata`, and email/Google deletions behave exactly as before.
+
 Mirrors the Android `docs/ARCHITECTURE.md` Open Decisions (privileged ops via Edge Functions).

@@ -20,6 +20,9 @@ final class SupplementsRepository: ObservableObject {
     /// What the UI sees: tombstones hidden, in the order she added them.
     @Published private(set) var supplements: [CustomSupplement] = []
 
+    /// Guards `add` only. `delete` stays available after a withdrawal, as it does for pH readings.
+    var isCollectionPermitted: HealthDataCollectionGate = { true }
+
     private var records: [SupplementRecord] = [] {
         didSet { supplements = SupplementSync.visible(records) }
     }
@@ -73,7 +76,7 @@ final class SupplementsRepository: ObservableObject {
     /// the queue retrying a write that can never succeed.
     @discardableResult
     func add(_ supplement: CustomSupplement) -> Bool {
-        guard supplement.isValid else { return false }
+        guard isCollectionPermitted(), supplement.isValid else { return false }
         save(SupplementRecord(supplement: supplement, updatedAt: Date(), pendingSync: true))
         return true
     }

@@ -475,6 +475,111 @@ final class RepositoryTests: XCTestCase {
         XCTAssertEqual(PreferencesRepository(store: store).mutedNotifications, [.ph, .milestones])
     }
 
+    // MARK: - Article 9: the write gate
+
+    /// The claim the whole consent mechanism rests on. Not "the button is hidden" and not "the
+    /// screen refuses to open" — the write itself does not happen, on every repository at once,
+    /// through the real `AppContainer` wiring rather than a hand-set gate.
+    func testWithdrawingConsentStopsEveryHealthWrite() {
+        let c = AppContainer(store: makeStore(), backend: nil)
+        c.consent.grant()
+        c.cycle.upsert(CycleSettings(lastPeriodDate: .today(), cycleLength: 28, periodLength: 5))
+        c.dailyLog.setWater(500)
+        c.ph.create(PhReading(phValue: 6.5, recordedAt: Date()))
+        c.supplements.add(CustomSupplement(name: "Magnesium", dose: "200 mg"))
+        c.prefs.recordQuizAnswers(["stage": "trying"])
+
+        c.consent.withdraw()
+
+        c.cycle.upsert(CycleSettings(lastPeriodDate: CalendarDate(2020, 1, 1), cycleLength: 40, periodLength: 9))
+        c.dailyLog.setWater(9_000)
+        c.ph.create(PhReading(phValue: 4.0, recordedAt: Date()))
+        c.supplements.add(CustomSupplement(name: "Iron", dose: "14 mg"))
+        c.prefs.recordQuizAnswers(["stage": "pregnant"])
+
+        XCTAssertEqual(c.cycle.settings?.cycleLength, 28, "her cycle must not be re-written after a withdrawal")
+        XCTAssertEqual(c.dailyLog.waterMl(on: .today()), 500, "no new hydration may be recorded")
+        XCTAssertEqual(c.ph.readings.count, 1, "no new pH reading may be recorded")
+        XCTAssertEqual(c.supplements.supplements.count, 1, "no new supplement may be recorded")
+        XCTAssertEqual(c.prefs.quizAnswers, ["stage": "trying"], "no new quiz answer may be recorded")
+    }
+
+    /// Withdrawal is Article 7(3) and erasure is Article 17. Conflating them would destroy her
+    /// history on a tap that only asked us to stop collecting — and the withdrawal copy promises
+    /// the opposite in as many words.
+    func testWithdrawingKeepsWhatSheAlreadyRecorded() {
+        let c = AppContainer(store: makeStore(), backend: nil)
+        c.consent.grant()
+        c.ph.create(PhReading(phValue: 6.5, recordedAt: Date()))
+        c.dailyLog.setWater(500)
+
+        c.consent.withdraw()
+
+        XCTAssertEqual(c.ph.readings.count, 1, "stopping collection is not erasure")
+        XCTAssertEqual(c.dailyLog.waterMl(on: .today()), 500)
+    }
+
+    /// And erasing it stays available afterwards, which is the other half of the same promise: the
+    /// withdrawal screen tells her she can still delete, so the delete paths sit outside the gate.
+    func testSheCanStillDeleteAfterWithdrawing() {
+        let c = AppContainer(store: makeStore(), backend: nil)
+        c.consent.grant()
+        let reading = PhReading(phValue: 6.5, recordedAt: Date())
+        c.ph.create(reading)
+        c.supplements.add(CustomSupplement(name: "Magnesium", dose: "200 mg"))
+        let supplementID = c.supplements.supplements[0].id
+
+        c.consent.withdraw()
+        c.ph.delete(id: reading.id)
+        c.supplements.delete(id: supplementID)
+
+        XCTAssertTrue(c.ph.readings.isEmpty, "Article 17 must survive a withdrawal")
+        XCTAssertTrue(c.supplements.supplements.isEmpty)
+    }
+
+    /// Changing her mind back has to work, or withdrawal is a one-way door and nobody dares use it.
+    func testGrantingAgainResumesCollection() {
+        let c = AppContainer(store: makeStore(), backend: nil)
+        c.consent.grant()
+        c.consent.withdraw()
+        c.dailyLog.setWater(500)
+        XCTAssertEqual(c.dailyLog.waterMl(on: .today()), 0)
+
+        c.consent.grant()
+        c.dailyLog.setWater(500)
+
+        XCTAssertEqual(c.dailyLog.waterMl(on: .today()), 500)
+    }
+
+    /// The upgrade case, and the one that would be easiest to get wrong: a device with a full
+    /// history and no consent event on it has never been asked, and an empty trail is not consent.
+    /// `RootRouting` is what puts the question in front of her; this is what happens until she
+    /// answers it.
+    func testADeviceThatWasNeverAskedCollectsNothing() {
+        let c = AppContainer(store: makeStore(), backend: nil)
+        c.dailyLog.setWater(500)
+        c.ph.create(PhReading(phValue: 6.5, recordedAt: Date()))
+
+        XCTAssertEqual(c.dailyLog.waterMl(on: .today()), 0)
+        XCTAssertTrue(c.ph.readings.isEmpty)
+    }
+
+    /// The trail survives a relaunch, or every launch would re-pose a question she has answered.
+    func testTheConsentTrailIsPersisted() {
+        let store = makeStore()
+        let first = AppContainer(store: store, backend: nil)
+        first.consent.grant()
+
+        let second = AppContainer(store: store, backend: nil)
+
+        XCTAssertTrue(second.consent.isActive, "her answer must survive a relaunch")
+        XCTAssertFalse(ConsentLogic.needsAsking(second.consent.events),
+                       "and she must not be asked again")
+        second.dailyLog.setWater(500)
+        XCTAssertEqual(second.dailyLog.waterMl(on: .today()), 500,
+                       "a rehydrated container must still be permitted to write")
+    }
+
     // MARK: - Local health-data wipe on auth transitions
 
     /// Seeds cycle/pH/daily-log data into a container, then asserts sign-out clears both the
@@ -482,6 +587,7 @@ final class RepositoryTests: XCTestCase {
     func testSignOutClearsLocalHealthData() {
         let store = makeStore()
         let c = AppContainer(store: store, backend: nil)
+        c.consent.grant()
         c.cycle.upsert(CycleSettings(lastPeriodDate: .today(), cycleLength: 28, periodLength: 5))
         c.ph.create(PhReading(phValue: 6.5, recordedAt: Date()))
         c.dailyLog.setWater(500)
@@ -818,6 +924,7 @@ final class RepositoryTests: XCTestCase {
     /// session has no previous owner, so there is nothing to protect anyone from by wiping it.
     func testHerFirstEverSignInKeepsWhatSheEnteredDuringOnboarding() async throws {
         let container = AppContainer(store: makeStore(), backend: nil)
+        container.consent.grant()
         container.prefs.recordQuizAnswers(["stage": "trying"])
         container.cycle.upsert(CycleSettings(lastPeriodDate: CalendarDate(2026, 6, 1), cycleLength: 28, periodLength: 5))
 
@@ -1426,6 +1533,7 @@ final class RepositoryTests: XCTestCase {
 
         let store = makeStore()
         let container = AppContainer(store: store, backend: nil)
+        container.consent.grant()
         container.supplements.add(CustomSupplement(name: "Magnesium", dose: "200 mg", timeOfDay: .evening))
         UserDefaults.standard.set(CustomSupplement.encodeList([
             CustomSupplement(name: "Iron", dose: "14 mg")
