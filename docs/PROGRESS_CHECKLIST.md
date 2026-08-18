@@ -1,5 +1,13 @@
 # Genesyx iOS — Progress Checklist
 
+> ⚠️ **RE-VERIFIED AGAIN 18 Aug 2026 against `main` @ `7a533b4` (= the build-20 source tree).
+> The current item-by-item verdicts live in
+> [`CHANGE_LIST_VERIFICATION_2026-08-18.md`](CHANGE_LIST_VERIFICATION_2026-08-18.md):
+> 23 Done · 10 Partial · 2 Missing · 0 P0 bugs.** R1 and R2 are confirmed landed, so the rows they
+> downgraded are Done in fact rather than on paper. The two Missing rows are both in 1A and both
+> wait on the same two website pages, which were re-fetched live on 18 Aug and are still marketing
+> copy and a "Coming soon" placeholder respectively.
+
 > ⚠️ **RE-AUDITED 17 Aug 2026 against `main` @ `3a9e934`. Read
 > [`CHANGE_LIST_AUDIT_2026-08-17.md`](CHANGE_LIST_AUDIT_2026-08-17.md) before trusting the
 > tick-marks below.** Five independent read-only audits covering all 45 rows of sections 1A–3B
