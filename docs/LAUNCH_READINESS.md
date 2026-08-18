@@ -125,7 +125,7 @@ The live policy claims **"Article 9(2)(a) explicit consent"**, and as of build 2
 **2. ~~Sign in with Apple `/auth/revoke`.~~ CLOSED, 18 Aug 2026 — code, secrets and deploy all done.**
 The edge function revokes before it destroys anything, and the iOS client now collects a fresh Apple authorization code at the delete confirmation and sends it. **Done, 18 August 2026:** all five secrets (`APPLE_TEAM_ID`, `APPLE_CLIENT_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY`, `APPLE_REVOKE_REQUIRED=true`) are set with real values and confirmed present via `supabase secrets list`, and `delete_account` is deployed. The `.p8` was handled through Supabase secrets only — it is not in this repo, this doc, or any transcript.
 
-`APPLE_REVOKE_REQUIRED=true` is on ahead of the step order in §9.2, and that is **deliberate, not an oversight**. The order exists to protect users on builds that send no authorization code, and there are none: **nothing has ever shipped, so there is no older client in the field to fail.** The only pre-21 installs are our own TestFlight accounts. Even for those the check runs before any data is touched, so the outcome is a refused deletion rather than an account half-deleted with Apple's grant still live — and it self-closes the moment build 21 is the client in the field, instead of leaving a flag someone has to remember to flip. Full reasoning in §9.2.
+`APPLE_REVOKE_REQUIRED=true` is on ahead of the step order in §9.2. Turning it on early was deliberate, but **the fact it rested on has been falsified** — see the correction at the head of §9.2. Genesyx **1.1.0 is live on the App Store** and has been since July, so there is a public population on a pre-21 client, and an Apple-signed user among them who asks to delete their account is refused today. The check still runs before anything is touched, so the failure mode is a refusal rather than a half-deleted account, and it still self-closes once build 21 is the client in the field. Whether that trade is acceptable **for real users rather than our own test accounts** is a live decision again, not a settled one.
 
 **3. ~~Deploy `delete_account`.~~ DONE, 17 Aug 2026.**
 Live at **v10 ACTIVE**, bundle byte-identical to the repo, verified by `supabase functions download` and diff. Evidence in §6.1; committed as `b78eee6`. This entry is kept struck through rather than deleted because two other documents still reference it as outstanding.
@@ -156,7 +156,9 @@ The server half was settled on 17 August (`84c8411`): `genesyx://reset-password`
 
 **The binary maps to a known commit, which is the whole point of the tag.** The archive was cut from the tree at `93f5a13`, tagged **`v1.2.0-b21`**. One commit sits on top of the tag, `9440534`, and it touches this document only — no `App/`, `Sources/` or `Tests/` file has changed since the archive, so it does not need recutting. Confirmed today by diffing the working tree against the tag: the only non-doc difference is one staged asset file (see the tree note below).
 
-**What is still not established from here:** whether build 21 has been uploaded to TestFlight or App Store Connect. Nothing has been exported locally — there is no `~/Desktop/Genesyx-b21-export` directory — so any upload would have gone through Organizer. **Check App Store Connect for an existing build 21 before uploading:** `ExportOptions.plist` sets `manageAppVersionAndBuildNumber = false`, so a duplicate is rejected outright and recovering costs a bump to 22, an `xcodegen generate` and a fresh archive, voiding the current one.
+**Settled, 18 August 2026, by reading App Store Connect directly — build 21 has never been uploaded, and the number is free.** TestFlight → iOS builds lists **1.1.1 (16), 24 July 2026** as the highest upload ever made; builds 17 through 21 do not appear. Nothing collides, so `manageAppVersionAndBuildNumber = false` costs nothing here and no bump to 22 is needed. Build 16 is the only one in Testing (65 days left, 9 invites, 3 installs, 26 sessions). This replaces the open question that stood in this entry, which had been inferred from the absence of a local export directory rather than checked.
+
+**Do not upload the build-20 archive by mistake.** `build/Archives/Genesyx.xcarchive` and `build/Export/Genesyx.ipa` are both **1.2.0 (20)** from 17 Aug 23:18, i.e. before the consent and Apple-revocation work. The build-21 archive is the one on the **Desktop**, `~/Desktop/Genesyx-b21.xcarchive`, 18 Aug 12:04:34.
 
 **A trap in the export path, recorded because it nearly cost a build.** `ExportOptions.plist` has **no `destination` key**, and `xcodebuild -exportArchive` defaults to `destination=export`. `method: app-store` governs how the `.ipa` is signed and packaged, *not* where it goes. Running an export against this plist therefore writes a signed `.ipa` to disk, uploads nothing, and exits 0 — indistinguishable from a successful submission unless you check App Store Connect. Uploading needs either `destination: upload` added to a separate plist, or the Organizer route.
 
@@ -195,14 +197,21 @@ Two things joined this item on 18 August:
 **7. App Store Connect data entry.** *Yours, all off-code.*
 Privacy labels · age rating questionnaire · regulated-medical-device declaration · DSA trader status · Privacy Policy URL · content rights & encryption · **a demo account in the Review Notes** (the app is behind an auth gate — without one, review will be rejected on Guideline 2.1 without ever seeing the app).
 
-**8. ~~Fresh screenshots from the release candidate.~~ DONE, 18 August 2026 — seven captures replace the six.**
-`docs/appstore_screenshots/` now holds **1-Home, 2-Track, 3-pH, 4-Nutrition, 5-Insights, 6-Learn, 7-Profile**, all 1320 × 2868, all alpha-flattened by `scripts/prepare_store_screenshots.sh`. The July set is deleted, and the numbering has shifted because pH is now third — anything referring to "screenshot 3" from the old set means Nutrition, not pH.
+**8. ~~Fresh screenshots from the release candidate.~~ CAPTURED, 18 August 2026 — six frames replace the July six. Upload still owed.**
+`docs/appstore_screenshots/` holds **1-Home, 2-Track, 3-pH, 4-Nutrition, 5-Insights, 6-Learn**, all 1320 × 2868 with no alpha channel, flattened by `scripts/prepare_store_screenshots.sh`. 1320 × 2868 is the **iPhone 6.9"** slot; the live listing currently has only the 6.5" slot filled, from July. The July set is deleted, and the numbering has shifted because pH is now third — anything referring to "screenshot 3" from the old set means Nutrition, not pH.
+
+**A seventh frame was captured and then dropped, deliberately.** `7-Profile.png` showed the build 21 consent block — *"Collection is on · You agreed on 18 Aug 2026 · Withdraw consent"*. It is the most compliance-legible frame of the set and the temptation was to keep it for exactly that reason. It is out on two grounds: the brief was six marketing frames with no consent screen, and Profile is a settings list, which is the weakest thing to hand a browsing customer out of seven candidates. The privacy control is evidence for App Review, not a sales frame; it belongs in the review notes, not the carousel. Recoverable from git if that judgement is reversed.
 
 Captured from a Debug simulator build of the build 21 tree on iPhone 17 Pro Max, launched per tab with `-uiTestSeed YES -uiTestTab N`. That path is the one `AppContainer.uiTestSeeded()` was written for: it wipes defaults, grants consent, signs in as the fictional **Maya / maya@example.com**, and seeds a cycle, two daily logs and three pH readings. No real account appears in any frame. The status bar is overridden to 9:41, full bars, charged.
 
 **These are a Debug build, not the signed archive** — the pixels are identical because no `#if DEBUG` branch changes layout, but the distinction is the same one that hid the broken Release build on 13 August, so it is worth stating rather than glossing.
 
-Each of the seven was opened and looked at, not merely size-checked. They show the seven-tab bar, the light default, the new egg artwork, and on Profile the build 21 consent block reading *"Collection is on · You agreed on 18 Aug 2026 · Withdraw consent"* — which is a useful frame to have in the listing, since it shows the privacy control rather than describing it.
+Each frame was opened and looked at, not merely size-checked. No placeholder or lorem content appears in any of them, and no real account does either — every name, email and reading on screen is seeded fiction. They show the seven-tab bar, the light default and the new egg artwork.
+
+**Two things visible in these frames are worth a decision before upload, neither of them a defect in the capture.**
+
+- **`5-Insights.png` carries "empowered decisions"** (`InsightsView.swift:193`). House style bans "empower"; the banned-phrase test does **not** cover it, so it shipped. It is in-app copy, so fixing it means a new build, and the tree must keep matching the `v1.2.0-b21` archive. Either accept it for this release and fix in 22, or recut. Not fixed here.
+- **`4-Nutrition.png` shows the supplement plan** — Folate, Omega-3, Vitamin D, Zinc. This app has already been rejected once under **Guideline 1.4.1** (health/medical information), so a nutrient-naming frame is on the exact axis App Review is demonstrably sensitive to for Genesyx. It is a screenshot of shipped, clinician-pending copy rather than a new claim, but it is the frame most likely to draw a second look.
 
 *Two docs disagreed about whether this was ever done: `APP_STORE_SUBMISSION.md` ticked it, `FINAL_APP_STORE_RELEASE_CHECKLIST.md` said take new ones. The checklist was right, and the point is now moot.*
 
@@ -938,10 +947,24 @@ user deleting from an older build gets a refused deletion** (`index.ts` returns 
 revoke", "apple identity with no authorizationCode in body")`).
 
 **Decision, 18 August 2026: the flag stays true.** The reasoning, recorded so it is not re-litigated
-or mistaken for an oversight:
+or mistaken for an oversight. **The first bullet is wrong — read the correction below it before
+relying on any of this.**
 
-* **There is no public user to harm.** Nothing has ever shipped to the App Store. The only accounts
+* ❌ **There is no public user to harm.** Nothing has ever shipped to the App Store. The only accounts
   that could be holding a pre-21 build are the client's own TestFlight installs.
+
+  > **FALSIFIED, 18 August 2026, by direct observation in App Store Connect.** Genesyx **1.1.0 is
+  > "Ready for Distribution"** and the public listing loads at
+  > `https://apps.apple.com/gb/app/genesyx/id6787682466`. It has been live since July. The sentence
+  > above was never checked against App Store Connect; it was inferred from the fact that build 21
+  > had not been uploaded, which is a different claim. **There is a public population on a pre-21
+  > client**, and an Apple-signed user among them who asks to delete their account is refused today.
+  > The remaining bullets still hold on their own terms — the failure mode is still a refusal, it
+  > still self-closes, it still only touches Apple-signed users — but the population it applies to
+  > is no longer "our own test accounts", so **the decision is reopened, not settled.** Whoever
+  > closes it should weigh a refused erasure request against a UK GDPR Article 17 obligation to a
+  > real data subject, which is a different question from the one answered above.
+
 * **The failure mode is a refusal, not damage.** The check runs before anything is touched, so a
   refused deletion leaves the account exactly as it was. The alternative ordering trades this for
   the opposite risk — data destroyed while Apple's grant survives, which is the 5.1.1(v) violation
@@ -954,7 +977,8 @@ or mistaken for an oversight:
 
 Reverting to false would remove the window, and was considered. It was rejected because the only
 population it protects is the client's own test accounts, and it reintroduces a manual step whose
-whole cost is that it can be forgotten.
+whole cost is that it can be forgotten. **That rejection no longer follows** — the population it
+protects is the live 1.1.0 user base, not test accounts. Re-decide it.
 
 **Not verifiable from here.** Sign in with Apple does not work on the Simulator, so the end-to-end
 path — sign in with Apple, delete, confirm the Apple ID no longer lists Genesyx — is a real-device
@@ -1086,7 +1110,19 @@ done, performed in the client's own terminal and dashboard rather than from this
 | Five Apple secrets set | ✅ Done | `supabase secrets list`; `.p8` never left the secret manager |
 | `delete_account` deployed | ✅ Done | Client-confirmed |
 | `APPLE_REVOKE_REQUIRED=true` | ✅ Done, kept on deliberately | Early by the documented order; reviewed and accepted — §9.2 |
-| `anon` grant on `consent_events` | 🟠 Migration written, **handed off 18 Aug, not yet confirmed applied** | `20260818b_consent_events_grant_cleanup.sql`; RLS covers it meanwhile. Apply and verify it in the Dashboard SQL Editor, never `db push`. It is applied only when V4 reads **401** where it read 200 |
+| `anon` grant on `consent_events` | ✅ **Applied and verified in-database, 18 Aug** — V4 (over the API) still open | `20260818b_consent_events_grant_cleanup.sql`, run in the Dashboard SQL Editor. V1 pass: no `anon` row in `relacl`, `authenticated` reads `arwdxtm` with TRUNCATE gone. V2 pass: zero column-level `anon` grants in `pg_attribute.attacl`. V3 pass: exactly the two `{authenticated}` policies. `NOTIFY pgrst, 'reload schema'` issued. **Do not re-apply.** |
+
+**V4 cannot prove what this table says it proves, and that is worth writing down rather than
+quietly dropping.** The migration header records the `consent_events` anon probe reading **HTTP 200**
+before the change, which is the observation the whole file was written to explain. When the same
+probe was run again immediately **before** applying the migration, it read **401 / `42501 permission
+denied`** — already matching `profiles` and `partner_invites`. So the post-apply 401 that V4 will
+read is the correct end state, but it is *not* evidence that this migration caused it. One of two
+things is true: the grant was revoked by something else between the audit and the apply, or the
+original 200 came from a different environment than the one the migration was applied to. Neither
+has been established. The catalog checks above are the real evidence here; V4 is a confirmation that
+the API agrees with the catalog, and nothing more. The header's 200/401 inference should be read
+with that in mind.
 
 Probe shape, so a future re-run matches: `GET {SUPABASE_URL}/rest/v1/{table}?select=id&limit=0` with
 `apikey` and `Authorization: Bearer` both set to the public publishable key, status code read and the

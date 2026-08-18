@@ -1,16 +1,36 @@
 # Today's action list — Lucas · 18 August 2026
 
+> ## ⛔ Read this before anything below it
+>
+> **Corrected 18 August 2026, after checking App Store Connect in the browser rather than reasoning
+> from the repo.** Two assumptions this list was built on were false, and one of them changes what
+> the job actually is.
+>
+> 1. **Genesyx is already live on the App Store.** Version **1.1.0** is "Ready for Distribution" and
+>    the public page loads at `apps.apple.com/gb/app/genesyx/id6787682466` — 13+, Health & Fitness,
+>    developer SF MEDIA & PR LTD. **This is not a first submission. It is an update to a shipped
+>    app.** Everything in §4 is a revision of a live record, not a blank form.
+> 2. **Because of (1), `APPLE_REVOKE_REQUIRED=true` is not the harmless early flip it was recorded
+>    as.** That decision rested on "nothing has ever shipped, so the only pre-21 installs are our own
+>    TestFlight accounts". There are real users on 1.1.0, and an Apple-signed one who asks to delete
+>    their account is refused **today**. See `LAUNCH_READINESS.md` §9.2 — the decision is reopened.
+>
+> What was confirmed *good*: **build 21 has never been uploaded**, the highest build ever sent to
+> App Store Connect is **1.1.1 (16)** on 24 July, so the number is free and there is no duplicate to
+> work around.
+
 > **Honest framing first.** You cannot *publish* today. Apple review alone is 24–48 h after you
 > submit, and two items on this list depend on other people replying. What you **can** finish today
-> is **every single thing that is waiting on you** — and get build 20 into TestFlight on a real
+> is **every single thing that is waiting on you** — and get build 21 into TestFlight on a real
 > phone. Do that and the release stops being blocked by you and starts being blocked only by a
 > clinician, a lawyer's sentence, and Apple's queue.
 >
 > **Total time: about 4–5 hours.** Do them in this order — each one unblocks the next.
 >
-> Status of the code, so you know what you are working against: **1.2.0 build 20 is built, signed and
-> exported** at `build/Export/Genesyx.ipa`. 431 tests pass, 0 fail, 0 skip. Nothing on this list is
-> Swift.
+> Status of the code, so you know what you are working against: **1.2.0 build 21 is archived and
+> signed** at `~/Desktop/Genesyx-b21.xcarchive`. The exported IPA under `build/Export/` is the older
+> **build 20** and must not be uploaded — see §3. 431 tests pass, 0 fail, 0 skip. Nothing on this
+> list is Swift.
 
 ---
 
@@ -20,8 +40,8 @@
 |---|---|---|---|
 | 1 | **Decide the Article 9 basis** | 15 min | Everything. Decides whether there is a build 21 at all |
 | 2 | **Generate the Apple `.p8` key → Supabase** | 20 min | The last piece of engineering Apple demands |
-| 3 | **Upload build 20 to TestFlight** | 30 min | Puts a real binary on a real phone; surfaces ASC problems early |
-| 4 | **Fill in the App Store Connect record** | 2 h | The single largest untouched block of work |
+| 3 | **Upload build 21 to TestFlight** | 30 min | Puts a real binary on a real phone; surfaces ASC problems early |
+| 4 | **Revise the App Store Connect record** | 1 h | Already populated for the live 1.1.0 — this is edits, not a blank form |
 | 5 | **Install on a real iPhone and run 7 checks** | 45 min | Closes 6 items nobody has ever tested |
 | 6 | **Email the clinician pack** | 10 min | Longest external lead time — send it early |
 | 7 | **Two website edits** | 20 min | Removes two small compliance gaps |
@@ -91,40 +111,73 @@ see the value.
 
 ---
 
-## 3 · Upload build 20 to TestFlight ⏱️ 30 min
+## 3 · Upload build 21 to TestFlight ⏱️ 30 min
 
 You can do this **today, with none of the above resolved.** TestFlight does not require the legal or
 content items — only public release does. Get the binary in hand.
 
-1. Open **Xcode → Window → Organizer → Archives**, select the 17 Aug build-20 archive.
-   (If it is missing, tell me and I will re-export from `build/Export/Genesyx.ipa`.)
+⛔ **Upload build 21, not build 20.** This section said build 20 until 18 August and that is now
+wrong. The build-20 archive (`build/Archives/Genesyx.xcarchive`, 17 Aug 23:18) and the only exported
+IPA (`build/Export/Genesyx.ipa`) both predate the 18 August work: **no Article 9 consent screen, and
+no Apple authorization code sent at deletion.** Shipping it against a backend running
+`APPLE_REVOKE_REQUIRED=true` would refuse every Apple-signed deletion. Ignore both.
+
+1. Open **Xcode → Window → Organizer → Archives** and select **`Genesyx-b21.xcarchive`**
+   — on the **Desktop**, not under `build/`. Verified 18 Aug: 1.2.0 **(21)**, created 12:04:34 GMT.
 2. **Distribute App → App Store Connect → Upload.**
-3. Confirm before pressing go: bundle `com.genesyx.app`, version **1.2.0**, build **20**, team
+3. Confirm before pressing go: bundle `com.genesyx.app`, version **1.2.0**, build **21**, team
    **SF MEDIA & PR LTD (M5L3MM75SG)**, profile **Genesyx App Store**.
 4. Wait for "Processing complete" in App Store Connect (usually 5–15 min).
 5. **Internal testers only** for now. Do not add an external group until task 8 is done — the
    built-in email sender will not survive it.
-6. Paste the "What to Test" notes from **`docs/TESTFLIGHT_B20.md`** into Build 20 → Test Details.
+6. Test Details notes: `docs/TESTFLIGHT_B20.md` is the newest set and is written for build 20, so it
+   does not mention the consent screen or Apple revocation. Read it before pasting.
 
-⚠️ **Check first whether build 19 or 20 was already uploaded.** If a build number is already used,
-App Store Connect rejects the second one carrying the same number, and I will need to cut build 21
-purely to renumber it. Look at **TestFlight → iOS builds** before you upload.
-
-**Send me:** the highest build number already showing in App Store Connect.
+✅ **Checked for you, 18 August 2026, in App Store Connect → TestFlight → iOS builds.** The highest
+build ever uploaded is **1.1.1 (16)**, on 24 July 2026. Builds 17 through 21 have never been
+uploaded. **Build 21 is free — there is no duplicate to collide with and no renumbering to do.**
+The only build currently in Testing is 16 (expires in 65 days; 9 invites, 3 installs, 26 sessions).
 
 ---
 
 ## 4 · App Store Connect record ⏱️ 2 hours — the big one
 
-**None of this has ever been filled in.** It is the largest remaining block of work and it is all
-yours. Copy for most fields is already drafted in **`docs/APP_STORE_LISTING.md`**.
+⛔ **"None of this has ever been filled in" was wrong.** Checked in App Store Connect on 18 August:
+**Genesyx 1.1.0 is live on the App Store** and every field below was filled in to get it there —
+listing, screenshots, App Privacy (published a month ago), age rating, review notes and demo
+credentials. This is **not** a blank record you are creating. It is a **shipped** record you are
+revising for 1.2.0, and revising it wrongly is worse than leaving a blank, because a live listing
+that no longer matches the binary is a 2.3.1 misrepresentation.
 
-### 4a · Listing
-- Name, subtitle, description, keywords, support URL, marketing URL — from `APP_STORE_LISTING.md`.
-- ⚠️ **Remove every partner-linking claim.** Partner is built but switched off for 1.2.0
-  (`FeatureFlags.partnerInvites = false`). Advertising a feature the binary does not expose is a
-  straight rejection.
-- Category: **Health & Fitness**.
+Read §4a–§4f as *edits against what is already there*, not as first drafts. What is actually in the
+record today, and what each item really needs, is set out under each heading. Drafted copy is in
+**`docs/APP_STORE_LISTING.md`**.
+
+⚠️ **There is no 1.2.0 version record yet.** The iOS versions in App Store Connect are 1.1.0 (Ready
+for Distribution) and **1.1.1 (Prepare for Submission, with build 16 already attached and never
+submitted)**. Before build 21 can be attached to anything you must either retarget 1.1.1 or add a
+new 1.2.0 version. Decide which — retargeting 1.1.1 silently discards the 1.1.1 metadata edits
+already made.
+
+### 4a · Listing — already written and live; these are edits, not first drafts
+All of it is populated. Category is already **Health & Fitness**, support and marketing URLs are both
+`https://genesyx.co.uk`, keywords are
+`cycle,period,fertility,ovulation,ph,urine,nutrition,supplements,hydration,women,health,tracker,ttc`,
+copyright is `© 2026 Genesyx. All rights reserved.` Three things are actually wrong:
+
+- 🔴 **The live description advertises partner linking.** It carries a `PARTNER LINKING` section
+  ("Invite a partner to link accounts…"), and build 21 ships `FeatureFlags.partnerInvites = false`.
+  The moment 1.2.0 replaces 1.1.0, that paragraph describes a feature the binary does not expose.
+  **Delete the whole section**, and check the screenshots too — the live Profile capture shows an
+  "Add your partner" control. This was already flagged here; it is now confirmed live, not
+  hypothetical.
+- 🟠 **The promotional text breaks house style twice** in one sentence: an em dash used as a
+  connector, and the phrase *"your fertility journey"*, which is on the banned list the tests
+  enforce for in-app copy. The App Store fields are not covered by those tests, which is precisely
+  why it slipped through. Rewrite it.
+- 🟠 **Copyright says "Genesyx"** while the store shows the developer as **SF MEDIA & PR LTD** and
+  the privacy policy names **Genesyx Ltd** as controller. Three names for one product. Worth
+  settling with whoever owns the entity question before 1.2.0.
 
 ### 4b · Screenshots — ✅ **DONE, this is off your list**
 `docs/appstore_screenshots/` now holds **seven** fresh captures from the build 21 tree, all
@@ -135,25 +188,55 @@ They show the app as it actually is now: seven tabs, light default, egg artwork,
 control on Profile. The account in them is the fictional Maya, so nothing real is exposed.
 Note the numbering shifted — pH is new at position 3, so old "screenshot 3" meant Nutrition.
 
-### 4c · App Privacy — answer from the real data flows, not marketing
-We collect, **linked to identity**: health & fitness data (cycle, symptoms, pH, intimacy), contact
-info (email), user content (notes), identifiers (user ID).
-We do **not** track across apps, and there is **no** third-party advertising.
-Sub-processors: **Supabase** (database + auth), **Apple** and **Google** (sign-in), **Resend**
-(transactional email — see task 7).
+**What is uploaded today, for contrast:** five screenshots, under **iPhone 6.5" Display only**, from
+the July build. They show the pre-consent Profile with "Add your partner", and no pH tab. Our seven
+are 1320 × 2868, which is the **6.9"** slot — the size Apple wants for new submissions. Delete the
+old five rather than mixing sizes.
 
-### 4d · Age rating
-Answer the fertility/health questions **honestly**. Expect **16+ or 18+**. Do not soften it to chase
-a lower rating.
+### 4c · App Privacy — ✅ already published, one omission to check
+Published a month ago. It declares **three** data types, all *Linked to the user's identity* and all
+*Used for App Functionality*: **Email Address**, **Health**, **User ID**. No tracking, no
+advertising — both correct. Privacy Policy URL is set to `https://genesyx.co.uk/policies/privacy-policy`.
 
-### 4e · Review notes — ⚠️ **the one that gets you rejected if you skip it**
-Every private tab is now behind a sign-in wall. **Without credentials a reviewer sees a login screen
-and rejects under Guideline 2.1.** You must provide:
+🟠 **What is missing against the real data flows:** free-text **notes** are collected and are
+"User Content" in Apple's taxonomy, which is not among the three declared. Confirm whether notes
+still persist to the backend in build 21; if they do, add User Content before submitting.
+Sub-processors for your own records: **Supabase** (database + auth), **Apple** and **Google**
+(sign-in), **Resend** (transactional email — see task 7).
 
-- **Demo account:** `demo@genesyx.co.uk` — password from your password manager. Put it in the App
-  Review field, **not in any file in this repo**.
-- **Verify the account still works before you submit.** Sign in with it yourself first.
-- Paste this into Review Notes:
+### 4d · Age rating — ✅ already answered; live at **13+**, not 16+/18+
+This section previously said "expect 16+ or 18+". The questionnaire has in fact been completed and
+the app is live at **13+** (172 countries; 12+ in Vietnam and Korea, A12 in Brazil). The two answers
+that produced it:
+
+- *Medical or Treatment Information* → **Infrequent**
+- *Health or Wellness Topics* ("content that provides self-care or lifestyle recommendations") → **No**
+- Everything under Sexuality or Nudity → **None**
+
+🟠 **That second answer looks wrong.** The app gives hydration targets, phase-aware focus foods and a
+supplement plan; that is self-care and lifestyle recommendation by Apple's own definition. Changing
+it to Yes may raise the rating, which is the honest outcome and the one this list asked for. Note
+the app has already been rejected once under **Guideline 1.4.1** (see 4e), so understating health
+content is the exact axis review is sensitive to here.
+
+### 4e · Review notes — ✅ already filled in on 1.1.1; verify, do not rewrite
+Every private tab is behind a sign-in wall, and **without credentials a reviewer sees a login screen
+and rejects under Guideline 2.1.** The 1.1.1 record already carries a full set: sign-in required is
+ticked, the account is **`demo@genesyx.co.uk`** with a password, contact details are Lucas Dvalenca
+with phone and email, notes are written, and a screenshot attachment is present.
+
+🔴 **The live 1.1.0 record is a different story.** Its reviewer sign-in is
+**`lucas@mysupplementfactory.com`** — your own personal account — with a weak password stored in
+plain text in App Store Connect. Change it to the demo account and rotate that password wherever
+else it is used. It is not something to leave sitting in a submission record.
+
+🟠 **The existing notes are stale.** They open by answering **Guideline 1.4.1** for **build 13** —
+so the app has been rejected before, on health-information grounds, and these notes are the reply.
+They say nothing about the Article 9 consent screen or Apple token revocation, both new in build 21.
+Rewrite for 1.2.0 rather than resubmitting July's defence.
+
+- **Verify the demo account still works before you submit.** Sign in with it yourself first.
+- Replace the notes with this:
 
   > Educational fertility and wellness app. Sign-in is required for all health features; demo
   > credentials are provided above. All health statements carry inline citations (NHS / EFSA /
@@ -161,13 +244,24 @@ and rejects under Guideline 2.1.** You must provide:
   > Sources & Disclaimer. The pH tracker records vaginal pH for personal wellness tracking only; it
   > is not a medical device and not for contraception. Partner-linking code exists in the binary but
   > is unreachable behind a compile-time flag, because the same backend serves our Android app.
+  > New in this version: an explicit opt-in screen is shown before any health question is asked, and
+  > it can be withdrawn at any time from Profile; and deleting an account signed in with Apple
+  > revokes the Apple token before any data is erased.
 
 ### 4f · Declarations
-Content rights · Export compliance (**`ITSAppUsesNonExemptEncryption` is already false in the
-binary**) · DSA trader status.
+Content rights (**already answered Yes**) · Export compliance
+(**`ITSAppUsesNonExemptEncryption` is already false in the binary**) · DSA trader status
+(**already declared: "this developer has identified itself as a trader for this app"**).
 
 ### 4g · Release setting
-Choose **Manual release**, so nothing goes public without you pressing the button.
+Choose **Manual release**, so nothing goes public without you pressing the button. Already set that
+way on both existing version records, so this is a check rather than a change.
+
+### 4h · 🟠 Stray macOS platform record
+A **macOS App 1.0, Prepare for Submission** record exists alongside the iOS one, holding a single
+placeholder screenshot of the app icon on a gradient and nothing else. Nobody has explained it. It
+does not block the iOS submission, but it is a half-built product page attached to a live app, and
+the public listing already reads "Not verified for macOS". Delete it unless someone intended it.
 
 ---
 
@@ -270,9 +364,11 @@ Quick answers; each one changes what build 21 contains.
 | ~~"Regenerate screenshots"~~ | ✅ Done 18 Aug — seven captures, see 4b |
 | Device pass results | Write them up as evidence, or fix what failed |
 
-⚠️ **Until you answer, I will not touch `App/` or `Sources/`.** The source tree is byte-identical to
-the signed build-20 IPA. The moment I edit one Swift file that IPA is dead and we re-archive. So I
-would rather collect every change and cut **one** build 21 than burn four archives.
+⚠️ **Until you answer, I will not touch `App/` or `Sources/`.** *Written against build 20; the same
+rule now applies to build 21.* The source tree is byte-identical to the signed **build-21** archive
+on the Desktop — `git diff v1.2.0-b21 -- App/ Sources/ Tests/` is empty. The moment one Swift file
+changes, that archive is dead and we re-archive as build 22. So I would rather collect every change
+and cut one build than burn four archives.
 
 ---
 
