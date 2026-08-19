@@ -77,6 +77,6 @@ Supabase; data is wiped locally on sign-out.
 
 ## Notes
 - Fertility/wellness guidance is educational only — not medical advice, and not for contraception.
-- The pH tracker is fully **vaginal pH** (completed in build 15): scale **3.5–7.0**, two-band
+- The pH tracker is fully **vaginal pH** (completed in build 15): scale **3.8–7.0**, two-band
   **Healthy / Elevated** model, vaginal-only insights, and legacy urine readings preserved and
   marked `urine (legacy)`. See the CHANGELOG "build 15" entry.
