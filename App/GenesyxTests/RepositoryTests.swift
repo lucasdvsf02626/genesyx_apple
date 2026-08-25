@@ -1122,9 +1122,21 @@ final class RepositoryTests: XCTestCase {
         XCTAssertEqual(profile.displayName, "Ada")
     }
 
+    /// The greeting is the first thing on the Home screen, so a raw localpart there does not read
+    /// as a placeholder — it reads as her name spelled wrong. Accents have to survive it, which is
+    /// why the transform touches the first character of each word and nothing else.
+    func testTheAddressFallbackReadsAsAName() {
+        XCTAssertEqual(SessionRepository.nameFromAddress("ada@x.com"), "Ada")
+        XCTAssertEqual(SessionRepository.nameFromAddress("lucas.valença@x.com"), "Lucas Valença")
+        XCTAssertEqual(SessionRepository.nameFromAddress("ada_lovelace@x.com"), "Ada Lovelace")
+        XCTAssertEqual(SessionRepository.nameFromAddress("ada-b+tag@x.com"), "Ada B Tag")
+        XCTAssertEqual(SessionRepository.nameFromAddress("Ada@x.com"), "Ada",
+                       "an already-capitalised localpart is left exactly as it is")
+    }
+
     /// The destructive case. Sign-in asks for no name, so `displayName` falls back to the part of
     /// the address before the @. Pushing that would rewrite the real name already on her row — on
-    /// a reinstall, "Ada" would become "ada". Only a name she actually typed is ever owed.
+    /// a reinstall, "Ada Lovelace" would become "Ada". Only a name she actually typed is ever owed.
     func testTheEmailPrefixFallbackIsNeverPushed() async throws {
         let profile = FakeProfileBackend()
         profile.displayName = "Ada"                       // her real name, already on the server
@@ -1134,7 +1146,7 @@ final class RepositoryTests: XCTestCase {
         try await session.authenticate(email: "ada@x.com", password: "password123", name: nil, signUp: false)
         await session.drainPendingName()
 
-        XCTAssertEqual(session.displayName, "ada", "the address is all the device has to show")
+        XCTAssertEqual(session.displayName, "Ada", "the address is all the device has to show")
         XCTAssertEqual(profile.displayName, "Ada", "but it must never overwrite the name on her row")
     }
 
@@ -1163,7 +1175,7 @@ final class RepositoryTests: XCTestCase {
         try await again.authenticate(email: "ada@x.com", password: "password123", name: nil, signUp: false)
         await again.drainPendingName()
 
-        XCTAssertEqual(again.displayName, "ada", "sign-out forgot the name, so the address is all that is left")
+        XCTAssertEqual(again.displayName, "Ada", "sign-out forgot the name, so the address is all that is left")
         XCTAssertEqual(profile.displayName, "Ada Lovelace", "which must not be pushed over her real name")
     }
 
@@ -1203,7 +1215,7 @@ final class RepositoryTests: XCTestCase {
         let session = SessionRepository(store: store, auth: auth)
         wirePush(session, to: profile)
         try await session.authenticate(email: "ada@x.com", password: "password123", name: nil, signUp: false)
-        XCTAssertEqual(session.displayName, "ada", "before the pull the address is all this device has")
+        XCTAssertEqual(session.displayName, "Ada", "before the pull the address is all this device has")
 
         await session.refreshDisplayName()
 

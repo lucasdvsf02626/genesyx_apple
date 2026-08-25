@@ -249,7 +249,7 @@ final class SessionRepository: ObservableObject {
         let remembered = sameUser ? store.string(forKey: nameKey) : nil
         let resolved = (typed?.isEmpty == false ? typed! : nil)
             ?? remembered
-            ?? String(email.prefix(while: { $0 != "@" }))
+            ?? SessionRepository.nameFromAddress(email)
         self.displayName = resolved
         store.setString(resolved, forKey: nameKey)
         // Only a name she actually typed is owed to the server, and sign-up is the one path that
@@ -266,6 +266,23 @@ final class SessionRepository: ObservableObject {
         setState(.signedIn)
         // Any sign-in path: pull the signing-in user's data from the backend (no-op when local-only).
         if let onHydrate { Task { await onHydrate() } }
+    }
+
+    /// The part of an address before the @, made presentable. A raw localpart on the Home greeting
+    /// reads as her name spelled wrong — "lucas.valenca" where she expects "Lucas Valença" — and
+    /// that is what she sees whenever the provider withheld a name (Apple returns `fullName` only
+    /// on the very first authorisation, never on a reinstall) until her profile row is pulled.
+    ///
+    /// Display only. `pendingNamePush` still gates the push, so a fallback that now *looks* like a
+    /// real name still cannot reach her row and overwrite the name already on it.
+    static func nameFromAddress(_ email: String) -> String {
+        let localpart = String(email.prefix(while: { $0 != "@" }))
+        let words = localpart.split(whereSeparator: { ".-_+".contains($0) }).map { word in
+            // First character only. The rest is left exactly as it was, so accented and
+            // non-Latin spellings survive a round trip through here unchanged.
+            String(word.prefix(1)).uppercased() + word.dropFirst()
+        }
+        return words.isEmpty ? localpart : words.joined(separator: " ")
     }
 
     func updateDisplayName(_ name: String) {

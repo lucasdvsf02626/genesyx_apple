@@ -242,7 +242,7 @@ struct AuthView: View {
 
                 Spacer().frame(height: 28)
                 if signupMode {
-                    field("Name", text: $name, placeholder: "Your name")
+                    field("Name", text: $name, placeholder: "Your name", capitalization: .words)
                     Spacer().frame(height: 16)
                 }
                 field("Email", text: $email, placeholder: "you@example.com", keyboard: .emailAddress)
@@ -333,12 +333,16 @@ struct AuthView: View {
 
     private var divider: some View { Rectangle().fill(GenesyxColor.border).frame(height: 1) }
 
-    private func field(_ label: String, text: Binding<String>, placeholder: String = "", secure: Bool = false, keyboard: UIKeyboardType = .default) -> some View {
+    /// `capitalization` defaults to `.never` because two of the three fields are an address and a
+    /// password. Her name is the exception: sign-up is the only screen that asks for it, and a
+    /// keyboard that refuses to capitalise filed her as "lucianne" — which is then what Home
+    /// greets her by, and what her partner sees.
+    private func field(_ label: String, text: Binding<String>, placeholder: String = "", secure: Bool = false, keyboard: UIKeyboardType = .default, capitalization: TextInputAutocapitalization = .never) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(label).font(.gxBodySmall).foregroundStyle(GenesyxColor.foreground)
             Group {
                 if secure { SecureField(placeholder, text: text) }
-                else { TextField(placeholder, text: text).keyboardType(keyboard).textInputAutocapitalization(.never).autocorrectionDisabled() }
+                else { TextField(placeholder, text: text).keyboardType(keyboard).textInputAutocapitalization(capitalization).autocorrectionDisabled() }
             }
             .padding(.horizontal, 14).frame(height: 52)
             .background(GenesyxColor.card).clipShape(RoundedRectangle(cornerRadius: 12))
