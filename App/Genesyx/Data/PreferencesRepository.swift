@@ -125,10 +125,16 @@ final class PreferencesRepository: ObservableObject {
     /// answers there is no session to write under and no row to write to — hence the local write
     /// and the owed push, which sign-in drains once a user id exists. Without this the answers only
     /// had to survive four screens of navigation to be lost.
-    func recordQuizAnswers(_ answers: [String: String]) {
-        guard isCollectionPermitted() else { return }
+    ///
+    /// **Returns false when the gate refused the write** — same contract as `CycleRepository.upsert`,
+    /// and for the same reason: the refusal was invisible from the Profile editor, which closed on
+    /// Save whether or not the answers landed.
+    @discardableResult
+    func recordQuizAnswers(_ answers: [String: String]) -> Bool {
+        guard isCollectionPermitted() else { return false }
         quizAnswers = answers
         pushPrefs()
+        return true
     }
 
     /// An intake questionnaire is as personal as a log, so it leaves with her. Deliberately does

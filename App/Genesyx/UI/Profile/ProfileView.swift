@@ -924,11 +924,16 @@ private struct ChangePasswordSheet: View {
 /// way to say she is trying now, and kept being guided as if she weren't.
 private struct TrackingPreferencesSheet: View {
     let current: [String: String]
-    let onSave: ([String: String]) -> Void
+    /// Returns false when the write was refused — see `PreferencesRepository.recordQuizAnswers`.
+    /// The sheet stays open on a false rather than dismissing over a save that never happened.
+    let onSave: ([String: String]) -> Bool
     @Environment(\.dismiss) private var dismiss
+    /// An intake questionnaire about her body is special-category data, so the Article 9 gate
+    /// covers it exactly as it covers her cycle dates.
+    @EnvironmentObject private var consent: ConsentRepository
     @State private var answers: [String: String]
 
-    init(current: [String: String], onSave: @escaping ([String: String]) -> Void) {
+    init(current: [String: String], onSave: @escaping ([String: String]) -> Bool) {
         self.current = current
         self.onSave = onSave
         _answers = State(initialValue: current)
@@ -938,6 +943,9 @@ private struct TrackingPreferencesSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
+                    // Disable-first, as on `CycleSettingsSheet`: only renders once she has
+                    // withdrawn, and above the questions so she reads why before answering them.
+                    ConsentWithdrawnBanner()
                     Text("These are the answers you gave when you joined. They shape your plan and the guidance you see — change them whenever things change.")
                         .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
 
@@ -964,7 +972,13 @@ private struct TrackingPreferencesSheet: View {
             .navigationTitle("Tracking preferences").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { onSave(answers); dismiss() }.fontWeight(.semibold)
+                    // Defence in depth behind the disabled button: `dismiss()` used to run whether
+                    // or not the write landed, so a refused save closed the sheet exactly as a
+                    // successful one did and her answers were lost in silence.
+                    Button("Save") { if onSave(answers) { dismiss() } }
+                        .fontWeight(.semibold)
+                        .disabled(!consent.isActive)
+                        .accessibilityIdentifier("trackingPreferences.save")
                 }
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
             }

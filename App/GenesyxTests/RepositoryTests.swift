@@ -504,6 +504,26 @@ final class RepositoryTests: XCTestCase {
         XCTAssertEqual(c.prefs.quizAnswers, ["stage": "trying"], "no new quiz answer may be recorded")
     }
 
+    /// Refusing is only half of it: the refusal has to be *reportable*, or the screen above cannot
+    /// tell a save that happened from one that did not.
+    ///
+    /// That was the whole of the "Tracking Preferences can't be amended" report. The sheet was
+    /// never read-only — every option was tappable and Save was live — but `recordQuizAnswers`
+    /// returned `Void`, so Save dismissed on a refused write exactly as it did on a successful one.
+    /// She changed her answers, the sheet closed as if it had worked, and re-opening it showed the
+    /// old ones back.
+    func testARefusedQuizWriteSaysSoRatherThanFailingQuietly() {
+        let c = AppContainer(store: makeStore(), backend: nil)
+        c.consent.grant()
+        XCTAssertTrue(c.prefs.recordQuizAnswers(["stage": "trying"]),
+                      "a permitted write reports success")
+
+        c.consent.withdraw()
+
+        XCTAssertFalse(c.prefs.recordQuizAnswers(["stage": "pregnant"]),
+                       "a refused write must report the refusal — the sheet dismisses on a true")
+    }
+
     /// Withdrawal is Article 7(3) and erasure is Article 17. Conflating them would destroy her
     /// history on a tap that only asked us to stop collecting — and the withdrawal copy promises
     /// the opposite in as many words.
