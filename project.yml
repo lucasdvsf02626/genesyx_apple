@@ -105,7 +105,12 @@ targets:
         # name in lower case or as an address localpart; the "How to use Genesyx" tile uses the
         # gradient treatment instead of reading as a failed image; and a refused Tracking Preferences
         # save no longer dismisses as though it worked.
-        CURRENT_PROJECT_VERSION: "23"
+        # 24 = 23's contents plus the Tracking Preferences *clear*. Emptying every answer pushed
+        # nothing — `QuizAnswersRow.init?` declines an empty set — so the drain reported success
+        # having written nothing and the next pull put the answers back. Now carried as an explicit
+        # delete. Build 23 was archived but never uploaded; nothing but this machine ever saw it, so
+        # 24 is what testers receive after 22 and its notes should read against 22, not 23.
+        CURRENT_PROJECT_VERSION: "24"
         SWIFT_VERSION: "5.9"
         TARGETED_DEVICE_FAMILY: "1" # iPhone
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
