@@ -1541,6 +1541,63 @@ final class RepositoryTests: XCTestCase {
                      "nor come back on the next launch")
     }
 
+    /// The last-answer case of the test above, which is where it stopped working. Clearing *every*
+    /// answer leaves an empty set, `QuizAnswersRow.init?` declines to write one, and `upsert`
+    /// returned without throwing — so the push reported success having written nothing, the pending
+    /// flag cleared, and the next pull put the answers she had just deleted back on screen.
+    func testClearingEveryAnswerReachesTheServerAndStaysCleared() async {
+        let backend = FakeProfileBackend()
+        let store = makeStore()
+        let repo = PreferencesRepository(store: store, backend: backend)
+
+        repo.recordQuizAnswers(["stage": "trying", "gender": "girl"])
+        await repo.refresh()
+        XCTAssertEqual(backend.remote?.quizAnswers.count, 2, "precondition: the server has them")
+
+        repo.recordQuizAnswers([:])                       // she clears the lot in Profile
+        await repo.refresh()
+
+        XCTAssertEqual(backend.quizDeletes, 1, "an emptied set must be sent as a delete, not skipped")
+        XCTAssertEqual(backend.remote?.quizAnswers, [:], "the server must not still hold them")
+        XCTAssertTrue(repo.quizAnswers.isEmpty, "and the pull must not reinstate them")
+        XCTAssertTrue(PreferencesRepository(store: store).quizAnswers.isEmpty,
+                      "nor may they come back on the next launch")
+    }
+
+    /// The reason `upsert` declines an empty set in the first place, which the fix must not undo.
+    /// A reinstalled phone holds no answers until its first pull; a theme toggle in that window is
+    /// an empty push that means "I have nothing to say", not "delete what she answered".
+    func testATailoredPushFromAPhoneThatNeverLoadedHerAnswersLeavesThemAlone() async {
+        let backend = FakeProfileBackend()
+        backend.remote = ProfilePrefs(focusMode: .prep, themeMode: .light, pushEnabled: false,
+                                      quizAnswers: ["stage": "trying"])
+        // A fresh store is exactly a reinstall: no quiz answers, nothing owed.
+        let repo = PreferencesRepository(store: makeStore(), backend: backend)
+
+        repo.themeMode = .dark                            // one unrelated preference, pushed
+        await repo.refresh()
+
+        XCTAssertEqual(backend.quizDeletes, 0, "nothing here was a clear she performed")
+        XCTAssertEqual(backend.remote?.quizAnswers, ["stage": "trying"],
+                       "her answers must survive a device that had not pulled them yet")
+    }
+
+    /// Sign-out empties the set too, and must not leave a delete owed — the retry would outlive her
+    /// session and land on whoever signs in next, wiping *their* answers.
+    func testSignOutDoesNotLeaveADeleteOwedForTheNextUser() async {
+        let backend = FakeProfileBackend()
+        backend.remote = ProfilePrefs(focusMode: .prep, themeMode: .light, pushEnabled: false,
+                                      quizAnswers: ["stage": "trying"])
+        let store = makeStore()
+        let repo = PreferencesRepository(store: store, backend: backend)
+
+        repo.clearQuizAnswers()                           // sign-out
+        await PreferencesRepository(store: store, backend: backend).refresh()
+
+        XCTAssertEqual(backend.quizDeletes, 0, "a sign-out wipe is not hers to push")
+        XCTAssertEqual(backend.remote?.quizAnswers, ["stage": "trying"])
+    }
+
     func testQuizAnswersSurviveARelaunchBeforeSheEverSignsIn() {
         let store = makeStore()
         PreferencesRepository(store: store).recordQuizAnswers(["stage": "preparing"])
@@ -2204,6 +2261,11 @@ private final class MidFetchProfileBackend: ProfileBackend {
         guard online else { throw RemoteError.notConfigured }
         self.displayName = displayName
     }
+
+    func deleteQuizAnswers() async throws {
+        guard online else { throw RemoteError.notConfigured }
+        remote?.quizAnswers = [:]
+    }
 }
 
 @MainActor
@@ -2232,6 +2294,9 @@ private final class FakeProfileBackend: ProfileBackend {
     var remote: ProfilePrefs?
     var displayName: String?
     var online = true
+    /// Set by `deleteQuizAnswers`, so a test can tell "the row was emptied" from "the row was never
+    /// written", which is exactly the distinction the bug turned on.
+    private(set) var quizDeletes = 0
 
     func fetch() async throws -> ProfilePrefs? {
         guard online else { throw RemoteError.notConfigured }
@@ -2240,7 +2305,13 @@ private final class FakeProfileBackend: ProfileBackend {
 
     func upsert(_ prefs: ProfilePrefs) async throws {
         guard online else { throw RemoteError.notConfigured }
-        remote = prefs
+        // Models `SupabaseProfile.upsert` rather than simplifying it: `quiz_answers` is a second
+        // table, and `QuizAnswersRow.init?` declines to write an empty set, so an empty push leaves
+        // whatever the server already had. Storing `prefs` wholesale here made the fake more
+        // forgiving than production and is why a clear that never reached the server looked green.
+        var stored = prefs
+        if prefs.quizAnswers.isEmpty { stored.quizAnswers = remote?.quizAnswers ?? [:] }
+        remote = stored
     }
 
     func fetchDisplayName() async throws -> String? {
@@ -2251,5 +2322,11 @@ private final class FakeProfileBackend: ProfileBackend {
     func upsert(displayName: String) async throws {
         guard online else { throw RemoteError.notConfigured }
         self.displayName = displayName
+    }
+
+    func deleteQuizAnswers() async throws {
+        guard online else { throw RemoteError.notConfigured }
+        quizDeletes += 1
+        remote?.quizAnswers = [:]
     }
 }

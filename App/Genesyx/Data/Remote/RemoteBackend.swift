@@ -173,6 +173,10 @@ protocol ProfileBackend {
     func fetchDisplayName() async throws -> String?
     func upsert(_ prefs: ProfilePrefs) async throws
     func upsert(displayName: String) async throws
+    /// Drop her `quiz_answers` row outright. Separate from `upsert` because an empty answer set is
+    /// ambiguous there — see `QuizAnswersRow.init?` — and only the repository knows whether the
+    /// emptiness is a clear she performed or a phone that never loaded them.
+    func deleteQuizAnswers() async throws
 }
 
 /// The part of her `profiles` row this device owns and syncs. Wider than its name: the onboarding

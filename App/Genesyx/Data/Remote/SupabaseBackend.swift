@@ -257,6 +257,11 @@ private struct SupabaseProfile: ProfileBackend {
         try await client.from("profiles")
             .upsert(["id": uid, "display_name": displayName]).execute()
     }
+
+    func deleteQuizAnswers() async throws {
+        let uid = try requireUID(auth)
+        try await client.from("quiz_answers").delete().eq("user_id", value: uid).execute()
+    }
 }
 
 private struct SupabaseConsent: ConsentBackend {

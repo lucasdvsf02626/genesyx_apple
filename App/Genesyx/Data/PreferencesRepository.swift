@@ -59,6 +59,7 @@ final class PreferencesRepository: ObservableObject {
     private let quizAnswersKey = "quiz_answers"
     private let pendingKey = "profile_pending"
     private let themeMigratedKey = "theme_default_migrated"
+    private let quizClearedKey = "quiz_answers_cleared"
 
     /// Set while applying a pulled profile, so writing those values doesn't bounce them straight
     /// back up as a fresh push.
@@ -66,6 +67,18 @@ final class PreferencesRepository: ObservableObject {
 
     private var pendingPush: Bool {
         didSet { store.setBool(pendingPush, forKey: pendingKey) }
+    }
+
+    /// She emptied the answer set from Profile, and the server has not been told yet.
+    ///
+    /// `upsert` cannot carry this. An empty `quizAnswers` reaches it from two directions that want
+    /// opposite handling — a reinstalled phone that has not pulled her answers yet (leave the row
+    /// alone) and a clear she just performed (delete the row) — and `QuizAnswersRow.init?` resolves
+    /// that ambiguity in favour of the first, which is right for the case it was written for and
+    /// silently discards the second. Persisted, because a clear made offline must still be owed
+    /// after a relaunch.
+    private var quizAnswersCleared: Bool {
+        didSet { store.setBool(quizAnswersCleared, forKey: quizClearedKey) }
     }
 
     /// Streak milestones already celebrated, by `Milestone.flagKey`. Device-local: a celebration is
@@ -118,6 +131,7 @@ final class PreferencesRepository: ObservableObject {
         self.supplementReminders = store.load([String: Int].self, forKey: supplementRemindersKey) ?? [:]
         self.quizAnswers = store.load([String: String].self, forKey: quizAnswersKey) ?? [:]
         self.pendingPush = store.bool(forKey: pendingKey, default: false)
+        self.quizAnswersCleared = store.bool(forKey: quizClearedKey, default: false)
         self.celebratedMilestones = Set(store.load([String].self, forKey: celebratedKey) ?? [])
     }
 
@@ -132,6 +146,10 @@ final class PreferencesRepository: ObservableObject {
     @discardableResult
     func recordQuizAnswers(_ answers: [String: String]) -> Bool {
         guard isCollectionPermitted() else { return false }
+        // The one deliberate way to empty the set, so it is the one place that can say the emptiness
+        // is meant. Without this, clearing every answer pushed nothing, cleared the pending flag as
+        // though it had, and the next pull put the old answers back.
+        quizAnswersCleared = answers.isEmpty
         quizAnswers = answers
         pushPrefs()
         return true
@@ -144,6 +162,11 @@ final class PreferencesRepository: ObservableObject {
     func clearQuizAnswers() {
         quizAnswers = [:]
         store.remove(forKey: quizAnswersKey)
+        // Emphatically not a clear she performed. Left set, the owed delete would outlive her
+        // session and land on whoever signs in next — the same trap `clearOwedProfileWrite` exists
+        // to close, and the reason this method already refuses to push the wipe.
+        quizAnswersCleared = false
+        store.remove(forKey: quizClearedKey)
     }
 
     /// Fertility Prep vs Pregnancy is a health answer about her body, not a preference about this
@@ -233,8 +256,19 @@ final class PreferencesRepository: ObservableObject {
     func drainPending() async {
         guard let backend, pendingPush else { return }
         let snapshot = prefs
-        guard (try? await backend.upsert(snapshot)) != nil else { return }
+        let clearing = quizAnswersCleared
+        do {
+            try await backend.upsert(snapshot)
+            // `upsert` skips the quiz table when the set is empty, so on its own it would report
+            // success having written nothing and let the next pull reinstate what she cleared.
+            if clearing { try await backend.deleteQuizAnswers() }
+        } catch {
+            return
+        }
         if prefs == snapshot { pendingPush = false }   // unless she changed one meanwhile
+        // Same re-read: an answer given while the delete was in flight is newer than the clear, and
+        // still owes its own push.
+        if clearing && quizAnswers.isEmpty { quizAnswersCleared = false }
     }
 
     /// Note the split. Theme and push are settings about this phone and are applied unconditionally.
