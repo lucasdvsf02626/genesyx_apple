@@ -68,7 +68,11 @@ struct TrackView: View {
         .sheet(isPresented: $showHydration) { HydrationDetailSheet() }
         .sheet(isPresented: $showPhDetail) {
             PhDetailView(
-                onOpenSupplements: { showPhDetail = false; router.selection = 3 },
+                onOpenSupplements: {
+                    showPhDetail = false
+                    router.pendingSupplementPlan = true
+                    router.selection = 3
+                },
                 onOpenLearn: {
                     showPhDetail = false
                     router.pendingLearnSlug = PhTabView.learnArticleSlug

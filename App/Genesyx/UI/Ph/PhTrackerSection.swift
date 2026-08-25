@@ -20,7 +20,10 @@ struct PhTabView: View {
                 VStack(spacing: 12) {
                     ConsentWithdrawnBanner()
                     PhTrackerSection(
-                        onOpenSupplements: { router.selection = 3 },
+                        onOpenSupplements: {
+                            router.pendingSupplementPlan = true
+                            router.selection = 3
+                        },
                         onOpenLearn: {
                             router.pendingLearnSlug = PhTabView.learnArticleSlug
                             router.selection = 5
