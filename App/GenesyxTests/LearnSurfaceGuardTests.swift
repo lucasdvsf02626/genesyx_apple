@@ -58,6 +58,35 @@ final class LearnSurfaceGuardTests: XCTestCase {
             """)
     }
 
+    /// Every hero the content names must exist in the catalogue, with a file actually inside it.
+    ///
+    /// `LearnHero` draws a category gradient when the asset is missing. That is a graceful failure
+    /// and therefore a silent one: the row still draws at full size, so a mistyped name — or an
+    /// imageset added empty, waiting on a photograph that never arrived — ships looking like a
+    /// deliberate design choice. Checked against the catalogue on disk rather than through
+    /// `UIImage(named:)` because this bundle has no test host, so the app's compiled asset
+    /// catalogue is not loadable from in here.
+    func testEveryHeroImageHasAPopulatedImageset() {
+        let catalogue = Self.repoRoot.appendingPathComponent("App/Genesyx/Resources/Assets.xcassets")
+        var checked = 0
+        for article in LearnLibrary.allArticles {
+            guard let name = article.heroImage else { continue }
+            checked += 1
+            let imageset = catalogue.appendingPathComponent("\(name).imageset")
+            var isDirectory: ObjCBool = false
+            let exists = FileManager.default.fileExists(atPath: imageset.path, isDirectory: &isDirectory)
+            guard exists, isDirectory.boolValue else {
+                XCTFail("\"\(article.slug)\" names hero image \"\(name)\", which has no imageset")
+                continue
+            }
+            let contents = (try? FileManager.default.contentsOfDirectory(atPath: imageset.path)) ?? []
+            XCTAssertFalse(contents.filter { $0 != "Contents.json" }.isEmpty,
+                           "\"\(name).imageset\" exists but holds no image — LearnHero would quietly "
+                           + "draw the gradient in its place")
+        }
+        XCTAssertGreaterThan(checked, 20, "Almost no heroes were checked — the content did not load")
+    }
+
     // MARK: - Helpers
 
     /// `#filePath` is this file's location at compile time — App/GenesyxTests/…​ — so three

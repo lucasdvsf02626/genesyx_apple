@@ -427,11 +427,20 @@ struct HowToUseCard: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 14) {
-                Image(systemName: "questionmark.circle.fill")
-                    .font(.system(size: 24)).foregroundStyle(GenesyxColor.primary)
-                    .frame(width: 96, height: 72)
-                    .background(GenesyxColor.primary.tintOnWhite(0.10))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                // The same gradient treatment `LearnHero` gives an article with no photograph.
+                // This card sits in a list of 96x72 photo thumbnails, and a near-white tile with a
+                // thin glyph in it did not read as "this one has no picture" — it read as a
+                // picture that had failed to load.
+                LinearGradient(
+                    colors: [GenesyxColor.primary.opacity(0.55), GenesyxColor.primary.opacity(0.18)],
+                    startPoint: .topLeading, endPoint: .bottomTrailing
+                )
+                .overlay(
+                    Image(systemName: "questionmark.circle.fill")
+                        .font(.system(size: 26)).foregroundStyle(.white.opacity(0.9))
+                )
+                .frame(width: 96, height: 72)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
                 VStack(alignment: .leading, spacing: 3) {
                     Text("How to use Genesyx").font(.gxLabel).foregroundStyle(GenesyxColor.foreground)
                         .multilineTextAlignment(.leading)
