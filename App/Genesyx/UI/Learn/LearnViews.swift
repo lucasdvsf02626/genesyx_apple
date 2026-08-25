@@ -672,10 +672,10 @@ struct ArticleDetailView: View {
         return GxPrimaryButton(title: cta.label) {
             switch cta.type {
             case .openLog: showLog = true
-            case .openTrack: tabs.selection = 1
-            case .openPh: tabs.selection = 2
-            case .openNutrition: tabs.selection = 3
-            case .openInsights: tabs.selection = 4
+            case .openTrack: go(toTab: 1)
+            case .openPh: go(toTab: 2)
+            case .openNutrition: go(toTab: 3)
+            case .openInsights: go(toTab: 4)
             case .openArticle:
                 if let target = cta.targetSlug, !path.isEmpty { path[path.count - 1] = target }
             }
@@ -683,6 +683,13 @@ struct ArticleDetailView: View {
         .disabled(blocked)
         .opacity(blocked ? 0.5 : 1)
         .padding(.top, 4)
+    }
+
+    /// Articles are pushed inside whichever tab opened them, and Nutrition renders its own article
+    /// list — so a CTA pointing at the tab she is already on set `selection` to its current value
+    /// and appeared dead. Popping the stack is what "take me there" means from inside that tab.
+    private func go(toTab tab: Int) {
+        if tabs.selection == tab { path.removeAll() } else { tabs.selection = tab }
     }
 
     @ViewBuilder
