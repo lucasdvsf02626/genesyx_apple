@@ -20,10 +20,7 @@ struct PhTabView: View {
                 VStack(spacing: 12) {
                     ConsentWithdrawnBanner()
                     PhTrackerSection(
-                        onOpenSupplements: {
-                            router.pendingSupplementPlan = true
-                            router.selection = 3
-                        },
+                        showsSupplementPlan: true,
                         onOpenLearn: {
                             router.pendingLearnSlug = PhTabView.learnArticleSlug
                             router.selection = 5
@@ -45,14 +42,20 @@ struct PhTabView: View {
 /// (the four educational sections). The pH tab's body, and the detail views pushed from Track and
 /// Insights. Ported from the Android `PhTrackerSection` / `PhTrackerCard` / `PhLogDialog`.
 struct PhTrackerSection: View {
-    /// Optional navigation into the supplements area (only wired where a router is available).
-    var onOpenSupplements: (() -> Void)? = nil
-    /// Optional navigation into the pH explainer in Learn. Same contract as above: nil where no
-    /// router exists, so previews and embedded uses simply do not show the link.
+    /// Whether the spine offers the supplement-plan CTA. A flag rather than a callback because the
+    /// section presents the plan *itself*: the CTA used to hand back a closure that selected the
+    /// Nutrition tab and let Nutrition raise the sheet, and since every tab is alive in
+    /// `MainTabView`'s ZStack the swap was instant while the sheet still had to animate up — so
+    /// Nutrition flashed into view in between, and dismissing left her a tab from where she started.
+    /// The plan is an overlay on the task she is already doing, not a different section of the app.
+    var showsSupplementPlan: Bool = false
+    /// Optional navigation into the pH explainer in Learn — a genuine move to another section, so
+    /// this one stays a callback, and stays nil where no router exists.
     var onOpenLearn: (() -> Void)? = nil
 
     @EnvironmentObject private var ph: PhRepository
     @EnvironmentObject private var consent: ConsentRepository
+    @State private var isShowingSupplementPlan = false
     /// One piece of state, presented with `.sheet(item:)`. The pair it replaced — a `showSheet`
     /// flag plus a separate `editing` reading — raced: SwiftUI evaluated the sheet body before the
     /// sibling update landed, so `existing` was still nil and every edit opened as a blank new
@@ -62,7 +65,7 @@ struct PhTrackerSection: View {
     var body: some View {
         PhTrackerCard(
             readings: ph.readings,
-            onOpenSupplements: onOpenSupplements,
+            onOpenSupplements: showsSupplementPlan ? { isShowingSupplementPlan = true } : nil,
             onOpenLearn: onOpenLearn,
             // Disable-first. With consent withdrawn the repository refuses the write anyway, so
             // offering "Log pH" only invites her to fill in a reading that cannot be kept.
@@ -88,6 +91,7 @@ struct PhTrackerSection: View {
                     onDelete: { id in ph.delete(id: id); sheet = nil }
                 )
             }
+            .sheet(isPresented: $isShowingSupplementPlan) { SupplementPlanSheet() }
     }
 }
 

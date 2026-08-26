@@ -1197,6 +1197,99 @@ final class GenesyxUITests: XCTestCase {
         assertDoneDismissesKeyboard(app, field: notes)
     }
 
+    /// The CTA used to select the Nutrition tab and leave that tab to raise the plan. Tabs are
+    /// swapped instantly in `MainTabView`'s ZStack while the sheet takes a third of a second to
+    /// arrive, so Nutrition flashed into view first — and dismissing the plan left her a tab away
+    /// from the reading she tapped it from.
+    func testPhSupplementPlanOpensWithoutSwitchingToNutrition() {
+        let app = launchSeeded(tab: 2)
+        XCTAssertTrue(app.staticTexts["Vaginal pH Tracker"].waitForExistence(timeout: 15))
+
+        // By label, not by the `phSpine.supplements` identifier: that identifier is not in the tree
+        // for these plain-styled buttons. Hittability is also what separates this tab's copy of the
+        // link from the Nutrition tab's, stacked behind it at opacity 0.
+        let candidates = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] %@", "See your supplement plan"))
+        func reachableLink() -> XCUIElement? {
+            (0..<candidates.count).lazy
+                .map { candidates.element(boundBy: $0) }
+                .first { $0.isHittable }
+        }
+
+        var swipes = 0
+        while reachableLink() == nil && swipes < 12 { app.swipeUp(); swipes += 1 }
+        guard let link = reachableLink() else {
+            return XCTFail("the pH spine must offer a way into the supplement plan")
+        }
+        link.tap()
+
+        XCTAssertTrue(app.navigationBars["Your supplement plan"].waitForExistence(timeout: 10),
+                      "the CTA should open the supplement plan")
+        app.buttons["Got it"].tap()
+
+        // Hittable, not merely present: every tab stays in the tree at opacity 0, so presence would
+        // pass whichever tab she was actually left on. Scrolling back to the top first — the swipes
+        // above put the heading out of view, and that is not what this is measuring. Landed on
+        // Nutrition, no amount of swiping here makes the pH heading reachable.
+        let phHeading = app.staticTexts["Vaginal pH Tracker"]
+        XCTAssertTrue(phHeading.waitForExistence(timeout: 10))
+        var swipesBack = 0
+        while !phHeading.isHittable && swipesBack < 12 { app.swipeDown(); swipesBack += 1 }
+        XCTAssertTrue(phHeading.isHittable,
+                      "dismissing the plan should leave her on the pH tab, not on Nutrition")
+    }
+
+    /// The other way into the same CTA: from Track the pH tracker is itself a sheet, so the plan is a
+    /// second sheet raised from inside the first. That used to be avoided with the same tab hop, which
+    /// flashed Nutrition on the way through and then stranded her two moves from the reading she had
+    /// opened. `PhTrackerSection` now presents the plan wherever it is embedded, so Track relays
+    /// nothing and "Got it" returns her to the pH detail.
+    func testTheTrackPhSheetOpensTheSupplementPlanAndReturnsToTheReading() {
+        let app = launchSeeded(tab: 1)   // Track
+
+        // The trackers list sits under the calendar, so it takes a scroll to reach.
+        let phRow = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Vaginal pH, ")).firstMatch
+        XCTAssertTrue(phRow.waitForExistence(timeout: 15), "Track should list the pH tracker")
+        var swipes = 0
+        while !phRow.isHittable && swipes < 12 { app.swipeUp(); swipes += 1 }
+        phRow.tap()
+
+        XCTAssertTrue(app.navigationBars["Vaginal pH"].waitForExistence(timeout: 10),
+                      "the pH tracker should open as a sheet over Track")
+
+        // By label, not by the `phSpine.supplements` identifier: that identifier is not in the tree
+        // for these plain-styled buttons. Hittable, because the pH tab holds a second copy of the
+        // same link behind this sheet.
+        let candidates = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] %@", "See your supplement plan"))
+        func reachableLink() -> XCUIElement? {
+            (0..<candidates.count).lazy
+                .map { candidates.element(boundBy: $0) }
+                .first { $0.isHittable }
+        }
+
+        var sheetSwipes = 0
+        while reachableLink() == nil && sheetSwipes < 12 { app.swipeUp(); sheetSwipes += 1 }
+        guard let link = reachableLink() else {
+            return XCTFail("the pH spine must offer a way into the supplement plan from Track too")
+        }
+        link.tap()
+
+        XCTAssertTrue(app.navigationBars["Your supplement plan"].waitForExistence(timeout: 10),
+                      "the CTA should open the supplement plan even though it was tapped inside a sheet")
+        app.buttons["Got it"].tap()
+
+        // The plan stacks over the pH sheet rather than replacing it, so dismissing it hands her back
+        // the reading she opened. Waiting for the plan to leave first, then checking the pH sheet's
+        // own Done is *hittable*: that sheet stays in the tree underneath while the plan is up, so
+        // existence alone would pass even on the old tab-hopping route.
+        let plan = app.navigationBars["Your supplement plan"]
+        wait(for: [expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: plan)],
+             timeout: 10)
+        XCTAssertTrue(app.buttons["Done"].isHittable,
+                      "dismissing the plan should leave her back on the pH detail, not on another tab")
+    }
+
     /// Requirement 1B.9. Only `readings.last` was ever editable, so a value she mistyped weeks ago
     /// could not be corrected or removed — the log sheet handled any reading, nothing just handed it
     /// one. The list is deliberately unfiltered by the chart's range control, so this passes on the

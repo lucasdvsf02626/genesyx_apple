@@ -12,10 +12,6 @@ final class TabRouter: ObservableObject {
     @Published var pendingLearnSlug: String?
     /// Set by the Home hydration card tap; consumed by `TrackView`, which opens the hydration detail.
     @Published var pendingHydration = false
-    /// Set by the pH spine's supplements CTA; consumed by `NutritionView`, which opens the plan
-    /// sheet. Selecting the Nutrition tab alone drops her at the top of a long scroll, several
-    /// cards above the "Review Plan" button the CTA promises.
-    @Published var pendingSupplementPlan = false
     init(selection: Int = 0) { self.selection = selection }
 }
 

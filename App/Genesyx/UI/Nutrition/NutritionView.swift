@@ -88,15 +88,6 @@ struct NutritionView: View {
             // to react to the phase appearing, not just to the screen appearing.
             .onAppear { recordFirstPhase() }
             .onChange(of: phase) { _ in recordFirstPhase() }
-            // Deep link from the pH spine's supplements CTA. `onChange` rather than `onAppear`:
-            // every tab is kept alive in `MainTabView`'s ZStack, so this view does not re-appear
-            // when the router switches to it.
-            .onChange(of: router.pendingSupplementPlan) { pending in
-                guard pending else { return }
-                articlePath.removeAll()
-                planOpen = true
-                router.pendingSupplementPlan = false
-            }
         }
         .sheet(isPresented: $planOpen) { SupplementPlanSheet() }
         .sheet(item: $openRecipe) { recipe in
@@ -746,7 +737,7 @@ private struct RecipeSheet: View {
     }
 }
 
-private struct SupplementPlanSheet: View {
+struct SupplementPlanSheet: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var prefs: PreferencesRepository
 

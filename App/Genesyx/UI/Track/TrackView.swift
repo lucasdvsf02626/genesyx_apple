@@ -66,13 +66,11 @@ struct TrackView: View {
         }
         .sheet(item: $logTarget) { LogView(date: $0.date) }
         .sheet(isPresented: $showHydration) { HydrationDetailSheet() }
+        // The supplement plan is not relayed through here: `PhTrackerSection` presents it itself, so
+        // it stacks over this sheet and "Got it" hands her back the reading she asked about. Learn
+        // still comes back out through the router, because that one really is a move to another tab.
         .sheet(isPresented: $showPhDetail) {
             PhDetailView(
-                onOpenSupplements: {
-                    showPhDetail = false
-                    router.pendingSupplementPlan = true
-                    router.selection = 3
-                },
                 onOpenLearn: {
                     showPhDetail = false
                     router.pendingLearnSlug = PhTabView.learnArticleSlug
@@ -896,13 +894,12 @@ private struct CycleDetailView: View {
 
 private struct PhDetailView: View {
     @Environment(\.dismiss) private var dismiss
-    var onOpenSupplements: (() -> Void)? = nil
     var onOpenLearn: (() -> Void)? = nil
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                PhTrackerSection(onOpenSupplements: onOpenSupplements, onOpenLearn: onOpenLearn)
+                PhTrackerSection(showsSupplementPlan: true, onOpenLearn: onOpenLearn)
                     .padding(.horizontal, 20)
                     .padding(.top, 8)
                     .padding(.bottom, 24)
