@@ -458,7 +458,9 @@ private struct WaterSheet: View {
     }
 }
 
-private struct SupplementsSheet: View {
+/// Not `private`: the Track Nutrition detail sheet presents this same picker, so the "today's
+/// supplements" card there can be corrected where it is read rather than only from the log sheet.
+struct SupplementsSheet: View {
     @Binding var selected: Set<String>
     @EnvironmentObject private var supplements: SupplementsRepository
     @Environment(\.dismiss) private var dismiss

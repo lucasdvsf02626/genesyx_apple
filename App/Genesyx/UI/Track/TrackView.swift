@@ -1425,12 +1425,23 @@ private struct NutritionDetailView: View {
     @Environment(\.dismiss) private var dismiss
 
     private let today = CalendarDate.today()
+    @State private var supplementsOpen = false
+    @State private var foodGroupsOpen = false
+
+    /// Reads and writes the stored day rather than a local copy, so the card behind the picker
+    /// updates as she ticks, and a write the consent gate refuses shows up as the tick reverting
+    /// instead of as a change that looks saved and is not.
+    private var todaySupplements: Binding<Set<String>> {
+        Binding(
+            get: { dailyLog.log(on: today).supplements },
+            set: { dailyLog.setSupplements($0, on: today) })
+    }
 
     var body: some View {
         let dates = TrackSignalSummary.currentWeekDates(today: today)
         let week = dates.map { dailyLog.log(on: $0).supplements.count }
         let foodWeek = dates.map { NutritionDaySignal.knownFoodGroups(dailyLog.log(on: $0).foodGroups) }
-        let todaySupplements = dailyLog.log(on: today).supplements.sorted()
+        let todaySupplementNames = dailyLog.log(on: today).supplements.sorted()
         let todayFoodGroups = FoodGroup.allCases
             .filter { dailyLog.log(on: today).foodGroups.contains($0.rawValue) }
             .map(\.label)
@@ -1438,18 +1449,26 @@ private struct NutritionDetailView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
+                    // Both Today cards edit what they show. The sheet reported the day and offered
+                    // no way to correct it, so noticing a supplement missing here meant leaving for
+                    // the log sheet and finding the way back. Same decision as the Sleep sheet,
+                    // which has carried its editor since it was built.
                     todayCard(
                         eyebrow: "Today",
-                        title: todaySupplements.isEmpty ? TrackSignalSummary.emptyValue : todaySupplements.joined(separator: ", "),
+                        title: todaySupplementNames.isEmpty ? TrackSignalSummary.emptyValue : todaySupplementNames.joined(separator: ", "),
                         subtitle: "Supplements from today's log",
-                        tint: GenesyxColor.primary)
+                        tint: GenesyxColor.primary,
+                        action: { supplementsOpen = true })
+                        .accessibilityIdentifier("nutritionDetail.supplementsCard")
                     // Food groups are half of what the Daily Log records under nutrition, and this
                     // sheet used to show none of it.
                     todayCard(
                         eyebrow: "Today",
                         title: todayFoodGroups.isEmpty ? TrackSignalSummary.emptyValue : todayFoodGroups.joined(separator: ", "),
                         subtitle: "Food groups from today's log",
-                        tint: GenesyxColor.primary)
+                        tint: GenesyxColor.primary,
+                        action: { foodGroupsOpen = true })
+                        .accessibilityIdentifier("nutritionDetail.foodGroupsCard")
                     detailHistoryCard(
                         title: "Supplements this week",
                         values: week,
@@ -1471,12 +1490,84 @@ private struct NutritionDetailView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
+        // Presented from this sheet rather than by switching to the Nutrition tab: the correction
+        // belongs to the reading she is looking at, and a tab hop would leave her a tab away from
+        // it. Same rule the pH supplement-plan flash was fixed under.
+        .sheet(isPresented: $supplementsOpen) {
+            SupplementsSheet(selected: todaySupplements).presentationDetents([.medium])
+        }
+        .sheet(isPresented: $foodGroupsOpen) {
+            FoodGroupsSheet(date: today).presentationDetents([.height(320)])
+        }
     }
 }
 
-private func todayCard(eyebrow: String, title: String, subtitle: String, tint: Color) -> some View {
-    VStack(alignment: .leading, spacing: 8) {
-        Eyebrow(eyebrow, color: tint)
+/// The food-group half of the same correction. The chips are Nutrition's, but its versions are
+/// methods on that screen's view rather than something presentable, and both write through
+/// `toggleFoodGroup` — so the day is the shared state, not the copy.
+private struct FoodGroupsSheet: View {
+    let date: CalendarDate
+    @EnvironmentObject private var dailyLog: DailyLogRepository
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        let selected = dailyLog.log(on: date).foodGroups
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    FlowLayout(spacing: 8) {
+                        ForEach(FoodGroup.allCases) { group in
+                            chip(group.rawValue, label: group.label, hint: group.examples, isOn: selected.contains(group.rawValue))
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .padding(20)
+            }
+            .background(GenesyxColor.background)
+            .navigationTitle("Food groups")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+        }
+    }
+
+    private func chip(_ id: String, label: String, hint: String?, isOn: Bool) -> some View {
+        Button {
+            dailyLog.toggleFoodGroup(id, on: date)
+        } label: {
+            HStack(spacing: 4) {
+                if isOn { Image(systemName: "checkmark").font(.system(size: 12, weight: .bold)) }
+                Text(label).font(.system(size: 13, weight: .medium))
+            }
+            .foregroundStyle(isOn ? .white : GenesyxColor.foreground.opacity(0.8))
+            .padding(.horizontal, 14).frame(height: 36)
+            .background(isOn ? GenesyxColor.primary : GenesyxColor.card)
+            .clipShape(Capsule())
+            .overlay(Capsule().strokeBorder(isOn ? .clear : GenesyxColor.border, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("nutritionDetail.foodGroup.\(id)")
+        .accessibilityLabel("\(label), \(isOn ? "logged" : "not logged")")
+        .accessibilityHint(hint ?? "")
+    }
+}
+
+/// `action` is what makes the card an editor. It carries a chevron when it has one, because a card
+/// that opens something and a card that only reports are otherwise identical, and she should not
+/// have to tap each one to find out which is which.
+@ViewBuilder
+private func todayCard(eyebrow: String, title: String, subtitle: String, tint: Color,
+                       action: (() -> Void)? = nil) -> some View {
+    let card = VStack(alignment: .leading, spacing: 8) {
+        HStack(alignment: .firstTextBaseline) {
+            Eyebrow(eyebrow, color: tint)
+            if action != nil {
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(GenesyxColor.mutedForeground)
+            }
+        }
         Text(title)
             .font(.gxCardHeading)
             .foregroundStyle(title == TrackSignalSummary.emptyValue ? GenesyxColor.mutedForeground : GenesyxColor.foreground)
@@ -1489,6 +1580,14 @@ private func todayCard(eyebrow: String, title: String, subtitle: String, tint: C
     .padding(20)
     .background(GenesyxColor.card)
     .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+
+    if let action {
+        Button(action: action) { card }
+            .buttonStyle(.plain)
+            .accessibilityHint("Opens the editor")
+    } else {
+        card
+    }
 }
 
 private func detailHistoryCard(

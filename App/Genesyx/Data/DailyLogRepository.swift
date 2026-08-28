@@ -140,6 +140,15 @@ final class DailyLogRepository: ObservableObject {
         upsert(entry, on: date)
     }
 
+    /// Replace a day's supplements. A whole-set write rather than a toggle, because the picker that
+    /// calls it edits the set and has to be able to un-tick.
+    func setSupplements(_ names: Set<String>, on date: CalendarDate = .today()) {
+        var entry = log(on: date)
+        guard entry.supplements != names else { return }
+        entry.supplements = names
+        upsert(entry, on: date)
+    }
+
     /// Set a day's sleep duration. `nil` or a non-positive value clears the value; otherwise clamp to 12h.
     func setSleep(_ minutes: Int?, on date: CalendarDate = .today()) {
         var entry = log(on: date)

@@ -1168,6 +1168,45 @@ final class GenesyxUITests: XCTestCase {
         XCTAssertTrue(waterCard.waitForExistence(timeout: 10), "Done should close the water sheet")
     }
 
+    /// The Track → Nutrition sheet reported the day and gave no way to correct it: spotting a
+    /// missing supplement there meant leaving for the log sheet and finding the way back.
+    func testNutritionDetailTodayCardsEditWhatTheyShow() {
+        let app = launchSeeded(tab: 1)   // Track
+
+        // "Nutrition," with the comma: the row's label is "title, value", so this cannot collide
+        // with the tab-bar button, whose label is the bare word.
+        let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Nutrition,")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 15), "Track should show a Nutrition tracker row")
+        row.tap()
+        XCTAssertTrue(app.navigationBars["Nutrition"].waitForExistence(timeout: 10), "the detail sheet should open")
+
+        let supplementsCard = app.buttons["nutritionDetail.supplementsCard"]
+        XCTAssertTrue(supplementsCard.waitForExistence(timeout: 10), "the supplements card should be a control, not a label")
+        XCTAssertFalse(supplementsCard.label.contains("Zinc"), "the day under test starts without Zinc")
+        supplementsCard.tap()
+        XCTAssertTrue(app.navigationBars["Supplements"].waitForExistence(timeout: 10),
+                      "tapping it should open the picker")
+        app.staticTexts["Zinc"].tap()
+        app.navigationBars["Supplements"].buttons["Done"].tap()
+        // The card is the falsifiable part: it re-reads the stored day, so it can only say Zinc if
+        // the tick was written rather than held in the picker's own copy.
+        XCTAssertTrue(supplementsCard.waitForExistence(timeout: 10))
+        XCTAssertTrue(supplementsCard.label.contains("Zinc"),
+                      "the card should show what she just ticked: \(supplementsCard.label)")
+
+        let foodCard = app.buttons["nutritionDetail.foodGroupsCard"]
+        XCTAssertTrue(foodCard.waitForExistence(timeout: 10), "the food groups card should be a control too")
+        XCTAssertFalse(foodCard.label.contains("Fruit"), "the day under test starts without fruit")
+        foodCard.tap()
+        XCTAssertTrue(app.navigationBars["Food groups"].waitForExistence(timeout: 10),
+                      "tapping it should open the chips")
+        app.buttons["nutritionDetail.foodGroup.fruit"].tap()
+        app.navigationBars["Food groups"].buttons["Done"].tap()
+        XCTAssertTrue(foodCard.waitForExistence(timeout: 10))
+        XCTAssertTrue(foodCard.label.contains("Fruit"),
+                      "the card should show the group she just ticked: \(foodCard.label)")
+    }
+
     /// The supplements sheet used to offer only the plan's four plus whatever had been added on
     /// Nutrition, so anything else she takes could not be logged from the log at all.
     func testLogSupplementsSheetLogsAndKeepsOneSheAddsHerself() {
