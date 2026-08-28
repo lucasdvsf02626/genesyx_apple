@@ -342,6 +342,7 @@ struct LogView: View {
                 // A plain count, not "n of 4": the sheet also offers the supplements she added
                 // herself, and those are hers rather than part of the four-item plan.
                 miniCard("pills.fill", "Supplements", "\(selectedSupplements.count) logged", GenesyxColor.primary) { suppOpen = true }
+                    .accessibilityIdentifier("log.supplementsCard")
             }
         }
         .padding(.top, 16)
@@ -461,6 +462,7 @@ private struct SupplementsSheet: View {
     @Binding var selected: Set<String>
     @EnvironmentObject private var supplements: SupplementsRepository
     @Environment(\.dismiss) private var dismiss
+    @State private var newSupplement = ""
 
     /// The plan's four, then the ones she added herself, then anything already recorded for this
     /// day that is neither.
@@ -494,6 +496,7 @@ private struct SupplementsSheet: View {
                             .strokeBorder(checked ? GenesyxColor.primary : GenesyxColor.border, lineWidth: 1))
                         .onTapGesture { if checked { selected.remove(s) } else { selected.insert(s) } }
                     }
+                    addOwn
                 }
                 .padding(20)
             }
@@ -501,5 +504,71 @@ private struct SupplementsSheet: View {
             .navigationTitle("Supplements").navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
+    }
+
+    /// The list only ever offered the plan's four plus whatever "Review Plan" had been used to add,
+    /// so anything else she takes could not be recorded at all without leaving the log, adding it on
+    /// Nutrition and coming back. No keyboard Done toolbar: a single-line field has a return key,
+    /// and Return adds — see `WaterSheet` for what a redundant one looks like.
+    private var addOwn: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Eyebrow("Add your own", color: GenesyxColor.mutedForeground)
+            HStack(spacing: 10) {
+                TextField("Supplement name", text: $newSupplement)
+                    .font(.gxBody)
+                    .submitLabel(.done)
+                    .onSubmit(addOwnSupplement)
+                    .onChange(of: newSupplement) {
+                        if $0.count > CustomSupplement.nameMaxLength {
+                            newSupplement = String($0.prefix(CustomSupplement.nameMaxLength))
+                        }
+                    }
+                    .accessibilityIdentifier("log.addSupplementField")
+                    .padding(.horizontal, 14).frame(height: 48)
+                    .background(GenesyxColor.card)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(GenesyxColor.border, lineWidth: 1))
+                // Size and fill on the label, not on the Button — outside they draw a capsule that is
+                // not part of the tap target. Same lesson as the hydration Save button.
+                Button(action: addOwnSupplement) {
+                    Text("Add")
+                        .font(.gxLabel)
+                        .foregroundStyle(.white)
+                        .frame(width: 72, height: 48)
+                        .background(trimmedNew.isEmpty ? GenesyxColor.mutedForeground.opacity(0.45) : GenesyxColor.primary)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .disabled(trimmedNew.isEmpty)
+                .accessibilityIdentifier("log.addSupplementButton")
+            }
+        }
+        .padding(.top, 12)
+    }
+
+    private var trimmedNew: String {
+        newSupplement.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Ticks it for today *and* keeps it, so tomorrow's log offers it without being asked twice.
+    ///
+    /// A name that already exists ticks the existing entry rather than adding a second one: the day
+    /// stores supplements by name, so "magnesium" beside "Magnesium" would be two rows in her list
+    /// and one indistinguishable pair in every day she logs after it.
+    ///
+    /// The tick does not depend on the keep succeeding. `add` refuses while consent is withdrawn,
+    /// and in that state the log's own Save is already disabled and bannered — but if it ever
+    /// refuses for another reason, the day still holds what she typed, because `options` lists
+    /// anything selected that the known lists do not carry.
+    private func addOwnSupplement() {
+        let name = trimmedNew
+        guard !name.isEmpty else { return }
+        if let existing = options.first(where: { $0.caseInsensitiveCompare(name) == .orderedSame }) {
+            selected.insert(existing)
+        } else {
+            supplements.add(CustomSupplement(name: name, dose: ""))
+            selected.insert(name)
+        }
+        newSupplement = ""
     }
 }

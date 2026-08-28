@@ -1168,6 +1168,60 @@ final class GenesyxUITests: XCTestCase {
         XCTAssertTrue(waterCard.waitForExistence(timeout: 10), "Done should close the water sheet")
     }
 
+    /// The supplements sheet used to offer only the plan's four plus whatever had been added on
+    /// Nutrition, so anything else she takes could not be logged from the log at all.
+    func testLogSupplementsSheetLogsAndKeepsOneSheAddsHerself() {
+        let app = launchSeeded(tab: 0)   // Home
+        XCTAssertTrue(app.buttons["Log today"].waitForExistence(timeout: 15), "Home should show the Log today button")
+        app.buttons["Log today"].tap()
+
+        let card = app.buttons["log.supplementsCard"]
+        XCTAssertTrue(card.waitForExistence(timeout: 10), "The log sheet should offer a Supplements card")
+        // The card counts what is ticked, so it is the falsifiable proof the add reached the day:
+        // the row appearing in the list only proves it was written somewhere.
+        let before = loggedCount(card)
+        card.tap()
+
+        let field = app.textFields["log.addSupplementField"]
+        XCTAssertTrue(field.waitForExistence(timeout: 10), "The supplements sheet should offer a free-text field")
+        field.tap()
+        field.typeText("Magnesium")
+        app.buttons["log.addSupplementButton"].tap()
+
+        XCTAssertTrue(app.staticTexts["Magnesium"].waitForExistence(timeout: 10),
+                      "the supplement she typed should join the list")
+        app.navigationBars["Supplements"].buttons["Done"].tap()
+        XCTAssertEqual(loggedCount(card), before + 1, "adding her own should tick it for today")
+
+        // Kept, not just ticked. Checked on *another* day's log rather than on a restart of this
+        // one: today's entry carries the name in its own selection, so today would go on offering it
+        // even if the keep had never happened, and the assertion could not fail.
+        app.buttons["log.save"].tap()
+
+        // firstMatch, because Home's hydration card carries a label-only "Track" affordance too.
+        app.buttons.matching(identifier: "Track").firstMatch.tap()
+        XCTAssertTrue(app.buttons["Previous month"].waitForExistence(timeout: 10), "Track should show the calendar")
+        app.buttons["Previous month"].tap()
+        let cells = app.buttons.matching(NSPredicate(format: "label MATCHES %@", "^[0-9]+, .*"))
+        XCTAssertTrue(cells.firstMatch.waitForExistence(timeout: 10), "the month grid should render")
+        guard let pastDay = cells.allElementsBoundByIndex.first(where: { !$0.label.contains("logged") }) else {
+            return XCTFail("needed one unlogged day in the previous month")
+        }
+        pastDay.tap()
+        let addLog = app.buttons["Add a log"]
+        XCTAssertTrue(addLog.waitForExistence(timeout: 10), "an empty past day should offer to take a log")
+        addLog.tap()
+
+        app.buttons["log.supplementsCard"].tap()
+        XCTAssertTrue(app.staticTexts["Magnesium"].waitForExistence(timeout: 10),
+                      "a supplement she added once should be on offer on every other day too")
+    }
+
+    /// Reads the "n logged" the Supplements mini-card shows.
+    private func loggedCount(_ card: XCUIElement) -> Int {
+        Int(card.label.split(separator: " ").compactMap { Int($0) }.last ?? -1)
+    }
+
     /// A wrapping note field: it has a return key, but Return types a newline, so there is still no
     /// way out. Shares its toolbar with the "Add symptom" field further up the same ScrollView.
     func testLogNotesFieldOffersAKeyboardDismiss() {
