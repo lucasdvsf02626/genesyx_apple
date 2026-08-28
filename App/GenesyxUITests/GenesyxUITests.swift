@@ -1139,8 +1139,9 @@ final class GenesyxUITests: XCTestCase {
         assertDoneDismissesKeyboard(app, field: manualMl)
     }
 
-    /// A plain VStack in a short sheet — no ScrollView to dismiss the keyboard into.
-    func testLogWaterFieldOffersAKeyboardDismiss() {
+    /// The water sheet is the one place where a keyboard Done was redundant: its toolbar Done both
+    /// commits and dismisses, so the keyboard one only stacked a second Done under it.
+    func testLogWaterFieldShowsOnlyTheToolbarDone() {
         let app = launchSeeded(tab: 0)   // Home
         XCTAssertTrue(app.buttons["Log today"].waitForExistence(timeout: 15), "Home should show the Log today button")
         app.buttons["Log today"].tap()
@@ -1153,7 +1154,18 @@ final class GenesyxUITests: XCTestCase {
 
         let waterMl = app.textFields["log.waterMlField"]
         XCTAssertTrue(waterMl.waitForExistence(timeout: 10), "The water sheet should offer a millilitre field")
-        assertDoneDismissesKeyboard(app, field: waterMl)
+        waterMl.tap()
+        XCTAssertTrue(app.keyboards.element.waitForExistence(timeout: 10),
+                      "tapping the field should raise the keyboard")
+
+        XCTAssertFalse(app.buttons["keyboardDone"].exists,
+                       "the water sheet must not stack a keyboard Done under the toolbar one")
+
+        // The remaining Done is reachable over the keyboard and still files the reading.
+        let done = app.navigationBars["Water"].buttons["Done"]
+        XCTAssertTrue(done.waitForExistence(timeout: 10), "the toolbar Done should be the only Done")
+        done.tap()
+        XCTAssertTrue(waterCard.waitForExistence(timeout: 10), "Done should close the water sheet")
     }
 
     /// A wrapping note field: it has a return key, but Return types a newline, so there is still no

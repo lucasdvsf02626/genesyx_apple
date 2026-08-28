@@ -421,6 +421,8 @@ private struct SleepSheet: View {
     }
 }
 
+/// No `gxKeyboardDoneToolbar` on the field: the toolbar Done both commits and dismisses, so a
+/// keyboard Done only stacked a second one under it.
 private struct WaterSheet: View {
     let initialMl: Int
     let onDone: (Int) -> Void
@@ -438,7 +440,6 @@ private struct WaterSheet: View {
             VStack(spacing: 16) {
                 TextField("0", text: $input)
                     .keyboardType(.numberPad).multilineTextAlignment(.center)
-                    .gxKeyboardDoneToolbar()
                     .accessibilityIdentifier("log.waterMlField")
                     .font(.gxPhValue)
                     .onChange(of: input) { input = String($0.filter(\.isNumber).prefix(5)) }
