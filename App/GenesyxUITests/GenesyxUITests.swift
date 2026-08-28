@@ -1168,6 +1168,61 @@ final class GenesyxUITests: XCTestCase {
         XCTAssertTrue(waterCard.waitForExistence(timeout: 10), "Done should close the water sheet")
     }
 
+    /// The six chips are the NHS groups; nothing in them covers a plate they were not written
+    /// around, so food that fits none of them could not be logged at all.
+    func testFoodGroupsSheetLogsAndKeepsOneSheNamesHerself() {
+        let app = launchSeeded(tab: 1)   // Track
+
+        let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Nutrition,")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 15), "Track should show a Nutrition tracker row")
+        row.tap()
+        let foodCard = app.buttons["nutritionDetail.foodGroupsCard"]
+        XCTAssertTrue(foodCard.waitForExistence(timeout: 10), "the food groups card should be there")
+        foodCard.tap()
+
+        let field = app.textFields["nutritionDetail.addFoodGroupField"]
+        XCTAssertTrue(field.waitForExistence(timeout: 10), "the sheet should offer a free-text field")
+        field.tap()
+        field.typeText("Fermented foods")
+        app.buttons["nutritionDetail.addFoodGroupButton"].tap()
+
+        // Ticked, not merely listed: the chip's own label carries "logged", so a build that added
+        // the chip without writing the day fails here.
+        let chip = app.buttons["nutritionDetail.foodGroup.Fermented foods"]
+        XCTAssertTrue(chip.waitForExistence(timeout: 10), "the group she named should become a chip")
+        XCTAssertTrue(chip.label.contains("logged"), "adding it should tick it for today: \(chip.label)")
+
+        app.navigationBars["Food groups"].buttons["Done"].tap()
+        // The card is the falsifiable part: it filtered `FoodGroup.allCases`, so before the fix a
+        // custom group vanished the instant the sheet closed.
+        XCTAssertTrue(foodCard.waitForExistence(timeout: 10))
+        XCTAssertTrue(foodCard.label.contains("Fermented foods"),
+                      "the card should show the group she named: \(foodCard.label)")
+
+        // Kept and shared: the Nutrition tab reads the same day, and offered only the fixed six.
+        app.navigationBars["Nutrition"].buttons["Done"].tap()
+        app.buttons.matching(identifier: "Nutrition").firstMatch.tap()
+        let tabChip = app.buttons["nutrition.foodGroup.Fermented foods"]
+        XCTAssertTrue(tabChip.waitForExistence(timeout: 15),
+                      "a group she named once should be offered on the Nutrition tab too")
+        XCTAssertTrue(tabChip.label.contains("logged"), "and should read as logged there: \(tabChip.label)")
+
+        // And in her history. The Insights day card listed known cases only, so her own group was
+        // dropped from the one screen whose whole job is to give her back what she recorded.
+        app.buttons.matching(identifier: "Insights").firstMatch.tap()
+        let logsCard = app.staticTexts["My logs"]
+        XCTAssertTrue(logsCard.waitForExistence(timeout: 15), "Insights should show the 'My logs' card")
+        logsCard.tap()
+        XCTAssertTrue(app.navigationBars["Your logs"].waitForExistence(timeout: 10), "log history should open")
+        // By identifier on the row itself, not by searching the app for the words. A loose search
+        // passed with the fix reverted: the Nutrition tab stays alive behind the pushed screen, so
+        // its own chip matched and the assertion could never fail.
+        let historyRow = app.descendants(matching: .any).matching(identifier: "logHistory.foodGroups").firstMatch
+        XCTAssertTrue(historyRow.waitForExistence(timeout: 10), "the day should list its food groups")
+        XCTAssertTrue(historyRow.label.contains("Fermented foods"),
+                      "her own group should be in the day's food groups in history: \(historyRow.label)")
+    }
+
     /// The Track → Nutrition sheet reported the day and gave no way to correct it: spotting a
     /// missing supplement there meant leaving for the log sheet and finding the way back.
     func testNutritionDetailTodayCardsEditWhatTheyShow() {

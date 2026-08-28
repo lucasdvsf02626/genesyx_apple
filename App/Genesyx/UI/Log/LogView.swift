@@ -309,26 +309,37 @@ struct LogView: View {
             sectionLabel("Food groups")
             FlowLayout(spacing: 8) {
                 ForEach(FoodGroup.allCases) { group in
-                    let sel = foodGroups.contains(group.rawValue)
-                    Button {
-                        if sel { foodGroups.remove(group.rawValue) } else { foodGroups.insert(group.rawValue) }
-                    } label: {
-                        HStack(spacing: 4) {
-                            if sel { Image(systemName: "checkmark").font(.system(size: 12, weight: .bold)) }
-                            Text(group.label).font(.system(size: 13, weight: .medium))
-                        }
-                        .foregroundStyle(sel ? .white : GenesyxColor.foreground.opacity(0.8))
-                        .padding(.horizontal, 14).frame(height: 36)
-                        .background(sel ? GenesyxColor.primary : GenesyxColor.card)
-                        .clipShape(Capsule())
-                        .overlay(Capsule().strokeBorder(sel ? .clear : GenesyxColor.border, lineWidth: 1))
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("log.foodGroup.\(group.rawValue)")
-                    .accessibilityLabel("\(group.label), \(sel ? "logged" : "not logged")")
+                    foodGroupChip(group.rawValue, label: group.label)
+                }
+                // Hers, from her own history — plus anything already on this day, so a group added
+                // on the Nutrition sheet is still tickable here the moment she opens the log.
+                ForEach(Array(Set(dailyLog.customFoodGroups).union(foodGroups.subtracting(FoodGroup.allCases.map(\.rawValue)))).sorted(), id: \.self) { name in
+                    foodGroupChip(name, label: name)
                 }
             }
         }
+    }
+
+    /// Writes to the sheet's own `foodGroups`, not through the repository: this screen commits on
+    /// Save, and a chip that wrote straight through would survive a Cancel.
+    private func foodGroupChip(_ id: String, label: String) -> some View {
+        let sel = foodGroups.contains(id)
+        return Button {
+            if sel { foodGroups.remove(id) } else { foodGroups.insert(id) }
+        } label: {
+            HStack(spacing: 4) {
+                if sel { Image(systemName: "checkmark").font(.system(size: 12, weight: .bold)) }
+                Text(label).font(.system(size: 13, weight: .medium))
+            }
+            .foregroundStyle(sel ? .white : GenesyxColor.foreground.opacity(0.8))
+            .padding(.horizontal, 14).frame(height: 36)
+            .background(sel ? GenesyxColor.primary : GenesyxColor.card)
+            .clipShape(Capsule())
+            .overlay(Capsule().strokeBorder(sel ? .clear : GenesyxColor.border, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("log.foodGroup.\(id)")
+        .accessibilityLabel("\(label), \(sel ? "logged" : "not logged")")
     }
 
     private var miniCards: some View {

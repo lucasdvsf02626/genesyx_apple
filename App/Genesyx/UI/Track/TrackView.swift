@@ -1442,9 +1442,12 @@ private struct NutritionDetailView: View {
         let week = dates.map { dailyLog.log(on: $0).supplements.count }
         let foodWeek = dates.map { NutritionDaySignal.knownFoodGroups(dailyLog.log(on: $0).foodGroups) }
         let todaySupplementNames = dailyLog.log(on: today).supplements.sorted()
-        let todayFoodGroups = FoodGroup.allCases
-            .filter { dailyLog.log(on: today).foodGroups.contains($0.rawValue) }
-            .map(\.label)
+        // The six by label, then whatever she named herself — reading the stored set for the
+        // second half rather than filtering the cases, which is what made a custom group invisible
+        // the moment the sheet closed.
+        let loggedToday = dailyLog.log(on: today).foodGroups
+        let todayFoodGroups = FoodGroup.allCases.filter { loggedToday.contains($0.rawValue) }.map(\.label)
+            + dailyLog.customFoodGroups.filter(loggedToday.contains)
         let insights = NutritionConsistencyLogic.compute(dailyCounts: week)
         NavigationStack {
             ScrollView {
@@ -1497,7 +1500,9 @@ private struct NutritionDetailView: View {
             SupplementsSheet(selected: todaySupplements).presentationDetents([.medium])
         }
         .sheet(isPresented: $foodGroupsOpen) {
-            FoodGroupsSheet(date: today).presentationDetents([.height(320)])
+            // .medium rather than a fixed height: the chip list gains a row every few groups she
+            // names, and a height picked around the original six would crop her own.
+            FoodGroupsSheet(date: today).presentationDetents([.medium, .large])
         }
     }
 }
@@ -1509,6 +1514,7 @@ private struct FoodGroupsSheet: View {
     let date: CalendarDate
     @EnvironmentObject private var dailyLog: DailyLogRepository
     @Environment(\.dismiss) private var dismiss
+    @State private var newGroup = ""
 
     var body: some View {
         let selected = dailyLog.log(on: date).foodGroups
@@ -1519,8 +1525,14 @@ private struct FoodGroupsSheet: View {
                         ForEach(FoodGroup.allCases) { group in
                             chip(group.rawValue, label: group.label, hint: group.examples, isOn: selected.contains(group.rawValue))
                         }
+                        // Hers come after the six, in the same row run rather than a section of
+                        // their own: they are food she ate, not a lesser kind of entry.
+                        ForEach(dailyLog.customFoodGroups, id: \.self) { name in
+                            chip(name, label: name, hint: nil, isOn: selected.contains(name))
+                        }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    addOwn
                 }
                 .padding(20)
             }
@@ -1549,6 +1561,64 @@ private struct FoodGroupsSheet: View {
         .accessibilityIdentifier("nutritionDetail.foodGroup.\(id)")
         .accessibilityLabel("\(label), \(isOn ? "logged" : "not logged")")
         .accessibilityHint(hint ?? "")
+    }
+
+    /// The six are the NHS groups and cover a British plate, not every plate — nothing in them says
+    /// where fermented food, or a cuisine the list was not written around, is supposed to go. The
+    /// sheet said "food groups" and offered no way to name one, so the honest answer was to leave
+    /// the meal unlogged.
+    private var addOwn: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Eyebrow(FoodLogCopy.customGroupPrompt, color: GenesyxColor.mutedForeground)
+            HStack(spacing: 10) {
+                TextField(FoodLogCopy.customGroupPlaceholder, text: $newGroup)
+                    .font(.gxBody)
+                    .submitLabel(.done)
+                    .onSubmit(addOwnGroup)
+                    .onChange(of: newGroup) { if $0.count > 40 { newGroup = String($0.prefix(40)) } }
+                    .accessibilityIdentifier("nutritionDetail.addFoodGroupField")
+                    .padding(.horizontal, 14).frame(height: 48)
+                    .background(GenesyxColor.card)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(GenesyxColor.border, lineWidth: 1))
+                Button(action: addOwnGroup) {
+                    Text("Add")
+                        .font(.gxLabel)
+                        .foregroundStyle(.white)
+                        .frame(width: 72, height: 48)
+                        .background(trimmedNew.isEmpty ? GenesyxColor.mutedForeground.opacity(0.45) : GenesyxColor.primary)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .disabled(trimmedNew.isEmpty)
+                .accessibilityIdentifier("nutritionDetail.addFoodGroupButton")
+            }
+            Text(FoodLogCopy.customGroupNote)
+                .font(.caption2).foregroundStyle(GenesyxColor.mutedForeground)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var trimmedNew: String { newGroup.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+    /// Ticks it for this day, which is also what keeps it: `customFoodGroups` reads her history, so
+    /// the day *is* the store and there is nothing else to write.
+    ///
+    /// A name that matches one of the six ticks that one instead, comparing against the label she
+    /// reads as well as the raw value she never sees — otherwise typing "Fruit" would sit a second,
+    /// permanent chip beside the real one, indistinguishable to her and separate in every count.
+    private func addOwnGroup() {
+        let name = trimmedNew
+        guard !name.isEmpty else { return }
+        let match = FoodGroup.allCases.first {
+            $0.label.caseInsensitiveCompare(name) == .orderedSame
+                || $0.rawValue.caseInsensitiveCompare(name) == .orderedSame
+        }
+        let id = match?.rawValue ?? dailyLog.customFoodGroups.first { $0.caseInsensitiveCompare(name) == .orderedSame } ?? name
+        if !dailyLog.log(on: date).foodGroups.contains(id) {
+            dailyLog.toggleFoodGroup(id, on: date)
+        }
+        newGroup = ""
     }
 }
 

@@ -76,6 +76,14 @@ public enum FoodLogCopy {
     /// to turn into a scoreboard, and a scoreboard is the thing she least needs from it.
     public static let footnote = "A record, not a target. Nothing here is scored, and a blank day costs you nothing."
 
+    /// Under the "add your own" field. The six are the NHS groups, so anything she names sits
+    /// outside the "n of 6" the card counts, and she would otherwise have to work out from a
+    /// number that did not move whether her own entry had counted for anything.
+    public static let customGroupNote =
+        "Kept for next time. It counts as a day you logged food, but is not scored against the six above."
+    public static let customGroupPrompt = "Add your own"
+    public static let customGroupPlaceholder = "Food group name"
+
     public static func summary(logged: Int, total: Int) -> String {
         logged == 0
             ? "Tap a group when you have eaten something from it."
@@ -97,7 +105,7 @@ public enum FoodLogCopy {
 
     /// Everything this card can render, for the banned-phrase guard.
     public static var allStrings: [String] {
-        var out = [title, footnote]
+        var out = [title, footnote, customGroupNote, customGroupPrompt, customGroupPlaceholder]
         out += FoodGroup.allCases.flatMap { [$0.label, $0.examples] }
         out += (0...FoodGroup.allCases.count).map { summary(logged: $0, total: FoodGroup.allCases.count) }
         out += Phase.allCases.compactMap { phaseLine(NutritionContent.phaseFoodGroups[$0] ?? []) }

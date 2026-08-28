@@ -140,6 +140,18 @@ final class DailyLogRepository: ObservableObject {
         upsert(entry, on: date)
     }
 
+    /// The food groups she has logged that this build has no `FoodGroup` case for — the ones she
+    /// named herself.
+    ///
+    /// Derived from her own history rather than kept in a second list, which is what supplements
+    /// needed. Days already sync, so a group added on the phone is offered on the iPad without a
+    /// separate store to keep in step, and one she un-ticks everywhere stops being offered instead
+    /// of lingering as an entry she has no way to delete.
+    var customFoodGroups: [String] {
+        let known = Set(FoodGroup.allCases.map(\.rawValue))
+        return Set(logByDate.values.flatMap(\.foodGroups)).subtracting(known).sorted()
+    }
+
     /// Replace a day's supplements. A whole-set write rather than a toggle, because the picker that
     /// calls it edits the set and has to be able to un-tick.
     func setSupplements(_ names: Set<String>, on date: CalendarDate = .today()) {

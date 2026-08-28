@@ -918,11 +918,18 @@ private struct LogHistoryCard: View {
             if !log.supplements.isEmpty {
                 metricRow("Supplements", log.supplements.sorted().joined(separator: ", "))
             }
-            // Listed by known case, not by stored token, so a group written by a newer build renders
-            // as nothing rather than as a raw identifier.
-            let groups = FoodGroup.allCases.filter { log.foodGroups.contains($0.rawValue) }
+            // The six by label, then anything she named herself, verbatim — the same way the
+            // supplements row above already renders her own entries. This filtered the known cases
+            // only, on the reasoning that an unrecognised token was a newer build's identifier and
+            // better hidden than shown raw. Custom groups made that reasoning cost more than it
+            // saved: hiding one loses her own words from her own history, and the tokens are now
+            // overwhelmingly names she typed rather than identifiers she never chose.
+            let groups = FoodGroup.allCases.filter { log.foodGroups.contains($0.rawValue) }.map(\.label)
+                + log.foodGroups.subtracting(FoodGroup.allCases.map(\.rawValue)).sorted()
             if !groups.isEmpty {
-                metricRow("Food groups", groups.map(\.label).joined(separator: ", "))
+                metricRow("Food groups", groups.joined(separator: ", "))
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("logHistory.foodGroups")
             }
             // Shown for the same reason the calendar draws its marker and the day sheet names it: a
             // day whose only entry was this one used to reach history as a bare date.

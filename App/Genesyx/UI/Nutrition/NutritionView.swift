@@ -573,7 +573,14 @@ private extension NutritionView {
                 .fixedSize(horizontal: false, vertical: true)
             FlowLayout(spacing: 8) {
                 ForEach(FoodGroup.allCases) { group in
-                    foodGroupChip(group, selected: logged.contains(group.rawValue))
+                    foodGroupChip(group.rawValue, label: group.label, hint: group.examples,
+                                  selected: logged.contains(group.rawValue))
+                }
+                // Added on the Track → Nutrition sheet, offered here too: the same day is on both
+                // screens, and a chip she can tick in one place and not the other is one record
+                // pretending to be two.
+                ForEach(dailyLog.customFoodGroups, id: \.self) { name in
+                    foodGroupChip(name, label: name, hint: nil, selected: logged.contains(name))
                 }
             }
             if let line = FoodLogCopy.phaseLine(emphasis) {
@@ -593,13 +600,13 @@ private extension NutritionView {
         .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
     }
 
-    func foodGroupChip(_ group: FoodGroup, selected: Bool) -> some View {
+    func foodGroupChip(_ id: String, label: String, hint: String?, selected: Bool) -> some View {
         Button {
-            dailyLog.toggleFoodGroup(group.rawValue, on: today)
+            dailyLog.toggleFoodGroup(id, on: today)
         } label: {
             HStack(spacing: 4) {
                 if selected { Image(systemName: "checkmark").font(.system(size: 12, weight: .bold)) }
-                Text(group.label).font(.system(size: 13, weight: .medium))
+                Text(label).font(.system(size: 13, weight: .medium))
             }
             .foregroundStyle(selected ? .white : GenesyxColor.foreground.opacity(0.8))
             .padding(.horizontal, 14).frame(height: 36)
@@ -608,9 +615,9 @@ private extension NutritionView {
             .overlay(Capsule().strokeBorder(selected ? .clear : GenesyxColor.border, lineWidth: 1))
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("nutrition.foodGroup.\(group.rawValue)")
-        .accessibilityLabel(selected ? "\(group.label), logged" : "\(group.label), not logged")
-        .accessibilityHint(group.examples)
+        .accessibilityIdentifier("nutrition.foodGroup.\(id)")
+        .accessibilityLabel(selected ? "\(label), logged" : "\(label), not logged")
+        .accessibilityHint(hint ?? "")
     }
 
     /// "Starchy carbs" is not self-explanatory, and a chip has no room to say what counts. Same
