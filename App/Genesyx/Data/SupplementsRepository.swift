@@ -31,6 +31,17 @@ final class SupplementsRepository: ObservableObject {
     private let backend: SupplementBackend?
 
     private let recordsKey = "custom_supplement_records"
+    private let cursorKey = "custom_supplement_cursor"
+    /// Overlap subtracted from the cursor on each pull, to absorb clock skew against the server.
+    private static let cursorOverlap: TimeInterval = 60
+
+    /// Start time of the last *successful* pull. Nil until the first successful sync — which is what
+    /// makes that first sync a full-list fetch, the migration path for installs before this cursor.
+    private var lastSyncedAt: Date? {
+        didSet {
+            if let date = lastSyncedAt { store.save(date, forKey: cursorKey) } else { store.remove(forKey: cursorKey) }
+        }
+    }
 
     /// Where the list lived before it had any sync bookkeeping: a bare JSON array written by
     /// `@AppStorage`, which is **unprefixed `UserDefaults.standard`** — not `LocalStore`, which
@@ -43,6 +54,7 @@ final class SupplementsRepository: ObservableObject {
         self.store = store
         self.backend = backend
         self.legacyDefaults = legacyDefaults
+        self.lastSyncedAt = store.load(Date.self, forKey: cursorKey)
         records = Self.loadRecords(store: store, recordsKey: recordsKey, legacyDefaults: legacyDefaults)
         supplements = SupplementSync.visible(records)
     }
@@ -97,9 +109,25 @@ final class SupplementsRepository: ObservableObject {
     /// already on the device stays. The drain runs either way — it carries her deletions.
     func refresh() async {
         guard let backend else { return }
-        if isCollectionPermitted(), let remote = try? await backend.list() {
-            records = SupplementSync.merge(local: records, remote: remote)
-            persist()
+        if isCollectionPermitted() {
+            let since = lastSyncedAt.map { $0.addingTimeInterval(-Self.cursorOverlap) }
+            if let page = try? await backend.list(updatedSince: since) {
+                // First (full) pull uses `merge` so a local-only list is carried up on first
+                // sign-in; an incremental pull returns only changed rows, so `mergeIncremental`
+                // upserts those and leaves the quiet ones untouched (see the note in `PhSync`).
+                let remote = page.payload
+                records = since == nil
+                    ? SupplementSync.merge(local: records, remote: remote)
+                    : SupplementSync.mergeIncremental(local: records, remote: remote)
+                persist()
+                // Only ever forward, and only onto ground the server named — see `PhRepository`.
+                if let cursor = page.latestUpdatedAt, cursor > (lastSyncedAt ?? .distantPast) {
+                    lastSyncedAt = cursor
+                }
+                #if DEBUG
+                print("[Sync] user_supplements: \(remote.count) rows (\(since == nil ? "full" : "incremental"))")
+                #endif
+            }
         }
         await drainPending()
     }
@@ -158,6 +186,7 @@ final class SupplementsRepository: ObservableObject {
     /// left behind by the previous account is exactly the kind of thing the next sign-in picks up.
     func clearLocalState() {
         records = []
+        lastSyncedAt = nil          // next account starts from a full list fetch, not this one's cursor
         store.remove(forKey: recordsKey)
         legacyDefaults.removeObject(forKey: CustomSupplement.storageKey)
     }

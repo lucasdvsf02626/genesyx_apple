@@ -962,7 +962,38 @@ no rows read:
 The earlier 404 was the schema cache, as suspected. The control row is the part that makes the 200
 mean something: 404 is still reachable, so a 200 is not a blanket response.
 
-**One discrepancy, not exploitable but worth closing.** `consent_events` answers 200 where the six
+**✅ CLOSED AND VERIFIED, 18 August 2026 — in the database and over the API.** The discrepancy
+described below was real; it is now fixed. The record of what it was is kept because the *reason* it
+existed will recur every time a table is added after a hardening pass.
+
+*Verified in the SQL Editor after applying the migration, all three catalog checks from §5 of the file:*
+
+| Check | Result |
+| --- | --- |
+| **V1** table ACL | PASS — the `anon` row is gone entirely; `authenticated` reads `arwdxtm`, having lost exactly `D` (TRUNCATE) and nothing else; `postgres` and `service_role` untouched at `arwdDxtm` |
+| **V2** column-level grants | PASS — zero column-level `anon` grants. A table REVOKE does not reach `pg_attribute.attacl`, so this needed asking separately |
+| **V3** policies | PASS — exactly two, `consent_events_owner_read` (SELECT) and `consent_events_owner_append` (INSERT), both `{authenticated}`. No ALL, UPDATE or DELETE policy appeared |
+| **V4** over the API | PASS — `consent_events` **401**, matching `profiles` **401** and `partner_invites` **401**, with a nonexistent-table control still returning **404** so the 401 means permission and not absence |
+
+**V4 needed `NOTIFY pgrst, 'reload schema'` before it flipped, and that is worth remembering.** The
+first post-migration probe still read 200 even though V1 already showed the `anon` grant gone — the
+catalog and the API disagreed for as long as PostgREST held its cached view. Had the probe been
+trusted over the catalog, the correct conclusion would have been that the migration failed, and the
+obvious next move would have been to write corrective SQL against a database that needed none.
+**The catalog is the source of truth; the API probe is what proves the catalog reaches clients.** Run
+both, in that order, and reload the schema cache between them.
+
+**V5 — the device consent round trip — is the one sub-item still open**, and it belongs to §6 rather
+than here: grant, withdraw, re-grant on a real account, expecting three append-only rows on version
+`2026-08-18.v2` in the sequence `granted, withdrawn, granted` with no earlier row overwritten. That
+proves the `authenticated` path still works after the revokes. Nothing above narrows `authenticated`'s
+INSERT or SELECT, so it is expected to pass; it has simply not been watched yet.
+
+---
+
+*The original finding, kept for the pattern it illustrates:*
+
+**One discrepancy, not exploitable but worth closing.** `consent_events` answered 200 where the six
 older tables answer 401. The reason is dates, not policy: `20260812_client_role_grant_cleanup.sql`
 revoked `anon`'s table grant on `cycle_settings`, `daily_logs`, `ph_readings`, `quiz_answers`,
 `partner_invites` and `profiles`. `consent_events` was created six days later and inherits Supabase's
@@ -975,11 +1006,19 @@ written to remove.
 **Closed as a migration file, not a one-off statement:**
 `supabase/migrations/20260818b_consent_events_grant_cleanup.sql` — the two revokes, in the same
 documented and idempotent form as the August 12 cleanup, with preconditions that refuse to run if a
-policy has started naming `anon` or if RLS has been disabled. **Not yet applied**; apply via the
-dashboard SQL Editor. Writing it as a file rather than pasting the SQL is the point: today's 404 was
-repo-and-production drift in the other direction, and a statement that only ever existed in a chat
-is the same drift waiting to happen again. V4 in that file re-runs the probe — `consent_events`
-should read 401 afterwards, matching `profiles`.
+policy has started naming `anon` or if RLS has been disabled. **Applied via the dashboard SQL Editor
+on 18 August 2026 and verified above.** Writing it as a file rather than pasting the SQL is the
+point: that morning's 404 was repo-and-production drift in the other direction, and a statement that
+only ever existed in a chat is the same drift waiting to happen again. The file now exists in both
+places, which is the state the whole exercise was for.
+
+**What the file deliberately did not do, and why that still stands.** `authenticated` keeps UPDATE
+and DELETE on this table. RLS refuses both on every row — there is no UPDATE or DELETE policy — so
+they are unreachable grants of the same kind the `anon` revoke removed, and on an audit trail they
+ought to go. They were held back because, unlike the two revokes that shipped, they cannot be shown
+to be inert from this repo alone: Android shares this database and is not here. §4A of the migration
+carries the one statement that closes it, grouped with the Android sweep that `20260812` §4B is
+already waiting on.
 
 Not a launch blocker and not needed before the build 21 upload.
 

@@ -36,10 +36,23 @@ final class PhRepository: ObservableObject {
     private let store: LocalStore
     private let backend: PhBackend?
     private let key = "ph_readings"
+    private let cursorKey = "ph_readings_cursor"
+    /// Overlap subtracted from the cursor on each pull, to absorb clock skew against the server that
+    /// stamps `updated_at`.
+    private static let cursorOverlap: TimeInterval = 60
+
+    /// Start time of the last *successful* pull. Nil until the first successful sync — which is what
+    /// makes that first sync a full-history fetch, the migration path for installs before this cursor.
+    private var lastSyncedAt: Date? {
+        didSet {
+            if let date = lastSyncedAt { store.save(date, forKey: cursorKey) } else { store.remove(forKey: cursorKey) }
+        }
+    }
 
     init(store: LocalStore, backend: PhBackend? = nil) {
         self.store = store
         self.backend = backend
+        self.lastSyncedAt = store.load(Date.self, forKey: cursorKey)
         if let stored = store.load([PhReadingDTO].self, forKey: key) {
             records = stored.map(\.record)
             readings = Self.displayReadings(records)
@@ -83,9 +96,28 @@ final class PhRepository: ObservableObject {
     /// `delete` sits outside the gate for exactly that reason.
     func refresh() async {
         guard let backend else { return }
-        if isCollectionPermitted(), let remote = try? await backend.list(sinceDays: nil) {
-            records = PhSync.merge(local: records, remote: remote)
-            persist()
+        if isCollectionPermitted() {
+            let since = lastSyncedAt.map { $0.addingTimeInterval(-Self.cursorOverlap) }
+            if let page = try? await backend.list(updatedSince: since) {
+                // The first (full) pull uses `merge`, whose "a row only the device has → owe it to
+                // the server" rule carries a local-only history up on first sign-in. An incremental
+                // pull returns only changed rows, so it must NOT treat the quiet ones as unknown —
+                // `mergeIncremental` upserts the changed rows and leaves the rest untouched.
+                let remote = page.payload
+                records = since == nil
+                    ? PhSync.merge(local: records, remote: remote)
+                    : PhSync.mergeIncremental(local: records, remote: remote)
+                persist()
+                // Only ever forward, and only onto ground the server named. A nil page cursor —
+                // nothing returned, or a stamp that would not parse — leaves the cursor where it
+                // was, so the next pull asks from the same point rather than stepping over a row.
+                if let cursor = page.latestUpdatedAt, cursor > (lastSyncedAt ?? .distantPast) {
+                    lastSyncedAt = cursor
+                }
+                #if DEBUG
+                print("[Sync] ph_readings: \(remote.count) rows (\(since == nil ? "full" : "incremental"))")
+                #endif
+            }
         }
         await drainPending()
     }
@@ -143,6 +175,7 @@ final class PhRepository: ObservableObject {
     /// Clear on-device state (memory + store). Invoked on sign-out / account deletion.
     func clearLocalState() {
         records = []
+        lastSyncedAt = nil          // next account starts from a full history fetch, not this one's cursor
         store.remove(forKey: key)
     }
 }

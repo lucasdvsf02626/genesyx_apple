@@ -69,6 +69,85 @@ final class AuthGateUITests: XCTestCase {
         assertNoPrivateTabs(app)
     }
 
+    /// The cooldown that protects the shared email allowance, asserted on the control itself.
+    ///
+    /// `-uiTestSeed` resolves a backend-less container, so this tap cannot reach Supabase and no
+    /// email can be sent: the send fails locally with `notConfigured`. That is exactly the case the
+    /// fix changed. The cooldown used to start only on a confirmed 429, so every other outcome —
+    /// including a successful send — left the button live, and a second tap could spend one of the
+    /// project's two hourly emails on a woman who had already been sent her link.
+    func testForgotPasswordDisablesItselfForOneMinuteAfterASingleTap() {
+        let app = launch(args: ["-uiTestSeed", "YES", "-uiTestSignedOut", "YES"])
+        XCTAssertTrue(authScreen.waitForExistence(timeout: 10))
+
+        let email = app.textFields["you@example.com"]
+        XCTAssertTrue(email.waitForExistence(timeout: 5))
+        email.tap()
+        // Trailing newline dismisses the keyboard, which otherwise covers the control under test.
+        email.typeText("locked-out@example.com\n")
+
+        let forgot = app.descendants(matching: .any).matching(identifier: "auth.forgotPassword").firstMatch
+        XCTAssertTrue(forgot.waitForExistence(timeout: 5))
+        XCTAssertEqual(forgot.label, "Forgot password?", "the control must start live")
+        forgot.tap()
+
+        // The countdown replaces the label, so the label IS the cooldown.
+        expectation(for: NSPredicate(format: "label BEGINSWITH 'Try again in'"), evaluatedWith: forgot)
+        waitForExpectations(timeout: 5)
+        XCTAssertFalse(forgot.isEnabled, "a second tap must be impossible while the countdown runs")
+
+        // 60s and not the 300s rate-limit duration: nothing here returned a 429.
+        let seconds = Int(forgot.label.filter(\.isNumber)) ?? -1
+        XCTAssertTrue((50...60).contains(seconds),
+                      "expected the 60s normal cooldown, got \(forgot.label)")
+
+        let notice = app.descendants(matching: .any).matching(identifier: "auth.resetNotice").firstMatch
+        XCTAssertTrue(notice.waitForExistence(timeout: 5))
+        XCTAssertEqual(notice.label, "We couldn't send the reset email. Please try again.",
+                       "a failed send must not show the sent-link copy")
+    }
+
+    /// A synthetic, unredeemable recovery link. No real token is ever used here.
+    ///
+    /// The error state is the security assertion: a link that produced no session must not put a
+    /// password field on screen, or the reset screen would be reachable by anyone who can craft the
+    /// URL scheme.
+    func testSyntheticRecoveryLinkShowsTheErrorStateAndOffersNoPasswordUpdate() {
+        let app = launch(args: ["-uiTestSeed", "YES", "-uiTestSignedOut", "YES"])
+        XCTAssertTrue(authScreen.waitForExistence(timeout: 10))
+        if #available(iOS 16.4, *) {
+            app.open(URL(string: "genesyx://reset-password?code=invalid-synthetic")!)
+        }
+
+        let linkError = app.descendants(matching: .any).matching(identifier: "resetPassword.linkError").firstMatch
+        XCTAssertTrue(linkError.waitForExistence(timeout: 10),
+                      "an unredeemable link must reach the error state, not the tabs")
+        XCTAssertTrue(app.staticTexts["That link didn't work"].exists)
+        XCTAssertFalse(app.descendants(matching: .any).matching(identifier: "resetPassword.save").firstMatch.exists,
+                       "a link that never produced a session must not offer a password update")
+        assertNoPrivateTabs(app)
+
+        app.descendants(matching: .any).matching(identifier: "resetPassword.backFromError").firstMatch.tap()
+        XCTAssertTrue(authScreen.waitForExistence(timeout: 10), "leaving recovery returns her to sign in")
+    }
+
+    /// Neither a wrong host on our own scheme nor a look-alike https URL may be taken for a
+    /// recovery link. The https case leaves the app entirely (universal links are not live), so the
+    /// app is reactivated before asserting what it did *not* do.
+    func testNonRecoveryURLsNeverEnterPasswordRecovery() {
+        let app = launch(args: ["-uiTestSeed", "YES", "-uiTestSignedOut", "YES"])
+        XCTAssertTrue(authScreen.waitForExistence(timeout: 10))
+
+        for url in ["genesyx://not-password-reset", "https://genesyx.co.uk/reset-password"] {
+            if #available(iOS 16.4, *) { app.open(URL(string: url)!) }
+            app.activate()
+            XCTAssertTrue(authScreen.waitForExistence(timeout: 10), "\(url) must leave her on sign in")
+            XCTAssertFalse(app.staticTexts["That link didn't work"].exists,
+                           "\(url) must not be routed into password recovery")
+            assertNoPrivateTabs(app)
+        }
+    }
+
     /// Back from the onboarding auth cover must not expose the tabs.
     func testCancellingOnboardingAuthNeverExposesTheTabs() {
         let app = launch(args: ["-uiTestSeed", "YES", "-uiTestOnboarding", "YES"])

@@ -144,4 +144,48 @@ final class RootRoutingTests: XCTestCase {
                                     serviceAvailable: true, consentRequired: false),
             .mainTabs)
     }
+
+    // MARK: - Task 3: minimum-version gate
+
+    func testABuildBelowTheMinimumIsAskedToUpdate() {
+        XCTAssertTrue(VersionGate.requiresUpdate(currentBuild: 24, minimumSupportedBuild: 25))
+    }
+
+    func testABuildAtOrAboveTheMinimumProceeds() {
+        XCTAssertFalse(VersionGate.requiresUpdate(currentBuild: 25, minimumSupportedBuild: 25),
+                       "equal must proceed — the minimum is inclusive")
+        XCTAssertFalse(VersionGate.requiresUpdate(currentBuild: 26, minimumSupportedBuild: 25))
+    }
+
+    /// Everything the gate cannot make sense of is fail-open, so a bad config value can never lock
+    /// users out of a working app.
+    func testAMissingOrMalformedMinimumFailsOpen() {
+        XCTAssertFalse(VersionGate.requiresUpdate(currentBuild: 24, minimumSupportedBuild: nil))
+        XCTAssertNil(VersionGate.parseBuild(nil))
+        XCTAssertNil(VersionGate.parseBuild("not-a-number"))
+        XCTAssertNil(VersionGate.parseBuild(""))
+        XCTAssertEqual(VersionGate.parseBuild(" 25 "), 25, "a padded numeric string still parses")
+    }
+
+    /// The gate outranks every other destination, including `unavailable`.
+    func testUpdateRequiredOutranksEveryOtherDestination() {
+        for session: SessionAuthState in [.resolving, .signedOut, .signedIn] {
+            XCTAssertEqual(
+                RootRouting.destination(session: session, onboardingComplete: true,
+                                        serviceAvailable: true, updateRequired: true),
+                .updateRequired)
+        }
+        XCTAssertEqual(
+            RootRouting.destination(session: .signedIn, onboardingComplete: true,
+                                    serviceAvailable: false, updateRequired: true),
+            .updateRequired, "an out-of-date client is told to update even if the service is down")
+    }
+
+    /// Defaulted false, so today's reality — no `app_config` table — leaves every route unchanged.
+    func testWithoutTheUpdateFlagNothingMoves() {
+        XCTAssertEqual(
+            RootRouting.destination(session: .signedIn, onboardingComplete: true,
+                                    serviceAvailable: true, updateRequired: false),
+            .mainTabs)
+    }
 }

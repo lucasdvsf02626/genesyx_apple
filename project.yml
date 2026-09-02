@@ -54,6 +54,7 @@ targets:
         # undoing the shipped build number.
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        APPSTORE_URL: $(APPSTORE_URL)
         UILaunchScreen: {}
         # Supabase credentials (empty for local-only v1). Provide via Secrets.xcconfig or build
         # settings to activate the remote layer — see docs/SUPABASE.md.
@@ -110,7 +111,7 @@ targets:
         # having written nothing and the next pull put the answers back. Now carried as an explicit
         # delete. Build 23 was archived but never uploaded; nothing but this machine ever saw it, so
         # 24 is what testers receive after 22 and its notes should read against 22, not 23.
-        CURRENT_PROJECT_VERSION: "24"
+        CURRENT_PROJECT_VERSION: "25"
         SWIFT_VERSION: "5.9"
         TARGETED_DEVICE_FAMILY: "1" # iPhone
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
@@ -119,6 +120,7 @@ targets:
         # Supabase (publishable/anon key is public — safe to ship). project epltxklawpcxxbaleswg.
         SUPABASE_URL: "https://epltxklawpcxxbaleswg.supabase.co"
         SUPABASE_ANON_KEY: "sb_publishable_eR7nEFBHD_4ATbjEeRbicA_Z3Qj_Elb"
+        APPSTORE_URL: "https://apps.apple.com/gb/app/genesyx/id6787682466"
         # SF MEDIA & PR LTD.
         DEVELOPMENT_TEAM: M5L3MM75SG
         CODE_SIGN_STYLE: Automatic

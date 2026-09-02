@@ -4,6 +4,8 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>APPSTORE_URL</key>
+	<string>https://apps.apple.com/gb/app/genesyx/id6787682466</string>
 	<key>CFBundleDisplayName</key>
 	<string>Genesyx</string>
 	<key>CFBundleExecutable</key>

@@ -15,6 +15,7 @@ struct ProfileView: View {
     @EnvironmentObject private var cycle: CycleRepository
     @EnvironmentObject private var router: TabRouter
     @EnvironmentObject private var consent: ConsentRepository
+    @EnvironmentObject private var reachability: Reachability
 
     @State private var personalOpen = false
     @State private var healthOpen = false
@@ -54,6 +55,7 @@ struct ProfileView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     userCard
+                    if prefs.hasPendingSync { preferencesPendingSyncRow }
                     // With pregnancy gated off there is exactly one focus she can be in, so this
                     // control has nothing to choose between. See `FeatureFlags.pregnancyMode`.
                     if FeatureFlags.pregnancyMode { focusSection }
@@ -151,6 +153,20 @@ struct ProfileView: View {
             Spacer()
         }
         .padding(20).background(GenesyxColor.card).clipShape(RoundedRectangle(cornerRadius: 24))
+    }
+
+    private var preferencesPendingSyncRow: some View {
+        HStack(spacing: 6) {
+            Image(systemName: reachability.isOnline ? "icloud.and.arrow.up" : "icloud.slash")
+            Text(DailyLogSyncState.pendingSync.label(online: reachability.isOnline))
+        }
+        .font(.gxBodySmall.weight(.medium))
+        .foregroundStyle(GenesyxColor.mutedForeground)
+        .padding(.horizontal, 16)
+        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+        .background(GenesyxColor.card)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .accessibilityIdentifier("profile.preferencesPendingSync")
     }
 
     // MARK: Focus

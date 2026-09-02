@@ -60,6 +60,32 @@ public enum PhSync {
         return sorted(Array(byId.values))
     }
 
+    /// Folds a *partial* remote snapshot into the local set — the rows an incremental sync
+    /// returned because they changed since the last cursor, rather than the whole table.
+    ///
+    /// The per-record resolution is identical to `merge`, but the "a record only the device has is
+    /// marked pending" clause is dropped on purpose: with an incremental pull, a local record that
+    /// is absent from `remote` means "unchanged since the cursor", not "never pushed" — so it is
+    /// left exactly as it is. Feeding a subset to `merge` would instead re-flag every quiet record
+    /// as owed and re-push the entire history on every launch, which is the opposite of the point.
+    public static func mergeIncremental(local: [PhRecord], remote: [PhRecord]) -> [PhRecord] {
+        var byId = Dictionary(local.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        for theirs in remote {
+            guard let mine = byId[theirs.id] else {
+                byId[theirs.id] = theirs                             // new or changed on the server
+                continue
+            }
+            if mine.pendingSync {
+                continue                                             // unpushed local edit: local wins
+            } else if mine.updatedAt > theirs.updatedAt {
+                byId[theirs.id] = mine.marking(pendingSync: true)    // server copy is stale — re-push
+            } else {
+                byId[theirs.id] = theirs
+            }
+        }
+        return sorted(Array(byId.values))
+    }
+
     /// Records the server is still owed, oldest edit first.
     public static func pending(_ records: [PhRecord]) -> [PhRecord] {
         records.filter(\.pendingSync).sorted { ($0.updatedAt, $0.id) < ($1.updatedAt, $1.id) }

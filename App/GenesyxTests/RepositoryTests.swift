@@ -1201,10 +1201,16 @@ final class RepositoryTests: XCTestCase {
 
     /// The same contamination without a sign-out: she hands the phone over and he signs straight in.
     /// The identity changed, so whatever the last owner still owed the server is not his to push.
+    ///
+    /// The server is reachable throughout, as it is on a real handover. That is only readable now
+    /// the backend keeps a row per account: while Ada is still signed in, her owed rename reaching
+    /// *her own* row is correct, and against a single shared slot it was indistinguishable from the
+    /// leak this test is looking for.
     func testADifferentAccountSigningInDropsTheOwedRename() async throws {
         let store = makeStore()
         let auth = FakeAuthBackend()
         let profile = FakeProfileBackend()
+        profile.authenticatedUserId = "user-1"
 
         let session = SessionRepository(store: store, auth: auth)
         wirePush(session, to: profile)
@@ -1218,9 +1224,63 @@ final class RepositoryTests: XCTestCase {
         let next = SessionRepository(store: store, auth: auth)
         wirePush(next, to: profile)
         try await next.authenticate(email: "bea@x.com", password: "password123", name: nil, signUp: false)
+        profile.authenticatedUserId = "user-2"
         await next.drainPendingName()
 
-        XCTAssertNil(profile.displayName, "an owed rename belongs to the account that made it")
+        XCTAssertNil(profile.displayName(of: "user-2"),
+                     "an owed rename belongs to the account that made it")
+    }
+
+    /// The half of that guarantee the test above can only reach by luck. It relies on a drain the
+    /// rename spawned in the background firing after the switch; whether it does is a matter of task
+    /// scheduling, so the leak was real but only sometimes observed — it surfaced when a change to a
+    /// test double's actor isolation altered when `signIn` suspends.
+    ///
+    /// Here the stale repository is drained explicitly, so the ordering is not left to chance: the
+    /// account that owed the rename is gone, and its drain must stand down rather than write her
+    /// name onto the row of whoever signed in after her. Bea arrives with a real name already on her
+    /// row, so the test can tell "Ada's name landed on Bea" from "Bea's name was wiped".
+    func testADrainHeldByTheReplacedAccountCannotPushOntoTheNewOne() async throws {
+        let store = makeStore()
+        let auth = FakeAuthBackend()
+        let profile = FakeProfileBackend()
+        profile.authenticatedUserId = "user-1"
+
+        let session = SessionRepository(store: store, auth: auth)
+        wirePush(session, to: profile)
+        try await session.authenticate(email: "ada@x.com", password: "password123", name: "Ada", signUp: true)
+
+        // A rename Ada makes while she is the signed-in account is hers to push, and it must reach
+        // her row and no other. This is the legitimate case the guard must not break.
+        session.updateDisplayName("Ada Lovelace")
+        await session.drainPendingName()
+        XCTAssertEqual(profile.displayName(of: "user-1"), "Ada Lovelace",
+                       "a rename by the signed-in account belongs on her row")
+        XCTAssertNil(profile.displayName(of: "user-2"),
+                     "and on no other account's row")
+
+        // A second rename, this time with nothing to push it through, so it is still owed when the
+        // phone changes hands.
+        profile.online = false
+        session.updateDisplayName("Ada Byron")
+        await session.drainPendingName()
+
+        auth.signInUserId = "user-2"
+        let next = SessionRepository(store: store, auth: auth)
+        wirePush(next, to: profile)
+        try await next.authenticate(email: "bea@x.com", password: "password123", name: nil, signUp: false)
+        profile.authenticatedUserId = "user-2"
+        profile.online = true
+        profile.displayName = "Bea Nightingale"          // her real name, already on her row
+
+        // Ada's repository comes back to life with the server reachable again. It still believes a
+        // rename is owed, because the switch cleared a flag it holds in memory.
+        await session.drainPendingName()
+
+        XCTAssertEqual(profile.displayName(of: "user-2"), "Bea Nightingale",
+                       "a replaced account's drain must not reach the new account's row")
+        XCTAssertEqual(profile.displayName(of: "user-1"), "Ada Lovelace",
+                       "and Ada's row keeps the last name she actually pushed")
     }
 
     /// The other half of the same defect: the name was write-only. Sign-in asks for no name, so a
@@ -1385,6 +1445,24 @@ final class RepositoryTests: XCTestCase {
         await repo.refresh()
 
         XCTAssertEqual(backend.remote?.focusMode, .pregnancy)
+    }
+
+    func testProfilePendingSyncStateIsVisibleUntilTheOwedWriteDrains() async {
+        let backend = FakeProfileBackend()
+        backend.online = false
+        let store = makeStore()
+        let repo = PreferencesRepository(store: store, backend: backend)
+
+        repo.focusMode = .pregnancy
+
+        XCTAssertTrue(repo.hasPendingSync)
+        XCTAssertTrue(PreferencesRepository(store: store).hasPendingSync,
+                      "the Profile badge must survive a relaunch while the write is owed")
+
+        backend.online = true
+        await repo.refresh()
+
+        XCTAssertFalse(repo.hasPendingSync)
     }
 
     func testProfilePullAppliesRemotePrefs() async {
@@ -2058,6 +2136,301 @@ final class RepositoryTests: XCTestCase {
         XCTAssertEqual(PreferencesRepository(store: store).focusMode, .prep,
                        "and it must not come back from the store on next launch")
     }
+
+    // MARK: - Task 1: incremental sync cursors
+
+    /// The first pull after install fetches full history (`updatedSince == nil`); once it succeeds,
+    /// the next pull is incremental (`updatedSince != nil`). This is the egress fix.
+    ///
+    /// The pull has to return a row. The cursor is now the newest `updated_at` the *server* named,
+    /// so a pull that returns nothing names no ground to move onto and deliberately leaves the
+    /// cursor where it was — see `testPhEmptyPullHoldsCursor`.
+    func testPhSyncIsFullThenIncremental() async {
+        let spy = CursorSpyPhBackend()
+        spy.remote = [serverRecord(id: "a", updatedAt: 1_000)]
+        let repo = PhRepository(store: makeStore(), backend: spy)
+        await repo.refresh()
+        await repo.refresh()
+        XCTAssertEqual(spy.sinceArgs.count, 2)
+        XCTAssertNil(spy.sinceArgs[0], "first sync must fetch full history")
+        XCTAssertNotNil(spy.sinceArgs[1], "second sync must be incremental")
+    }
+
+    /// A failed (offline) pull must not advance the cursor, or rows that changed while offline would
+    /// be skipped forever. Both pulls here go out full because the first never succeeded.
+    func testPhFailedPullLeavesCursorUnset() async {
+        let spy = CursorSpyPhBackend()
+        spy.online = false
+        let repo = PhRepository(store: makeStore(), backend: spy)
+        await repo.refresh()
+        await repo.refresh()
+        XCTAssertEqual(spy.sinceArgs, [nil, nil], "an offline pull must not advance the cursor")
+    }
+
+    /// The cursor survives a relaunch (it is persisted), and a local wipe resets it so the next
+    /// account starts from a full fetch rather than inheriting this one's cursor.
+    func testPhCursorPersistsAndClearsOnWipe() async {
+        let store = makeStore()
+        let seeded = CursorSpyPhBackend()
+        seeded.remote = [serverRecord(id: "a", updatedAt: 1_000)]
+        let repo = PhRepository(store: store, backend: seeded)
+        await repo.refresh()                       // full, cursor persisted
+
+        let spy2 = CursorSpyPhBackend()
+        spy2.remote = seeded.remote
+        let relaunched = PhRepository(store: store, backend: spy2)
+        await relaunched.refresh()                 // reads persisted cursor -> incremental
+        XCTAssertNotNil(spy2.sinceArgs[0], "the cursor must survive a relaunch")
+
+        relaunched.clearLocalState()
+        await relaunched.refresh()                 // cursor wiped -> full again
+        XCTAssertNil(spy2.sinceArgs[1], "a local wipe must reset the cursor to a full fetch")
+    }
+
+    // MARK: - The cursor may only be set from server time
+
+    private static let phCursorKey = "ph_readings_cursor"
+    private static let dailyLogCursorKey = "daily_logs_cursor"
+
+    private func serverRecord(id: String, updatedAt: TimeInterval) -> PhRecord {
+        PhRecord(reading: PhReading(id: id, phValue: 6.5,
+                                    recordedAt: Date(timeIntervalSince1970: updatedAt)),
+                 updatedAt: Date(timeIntervalSince1970: updatedAt), pendingSync: false)
+    }
+
+    /// The defect this replaced: the cursor was the device's own `Date()` at the moment the pull
+    /// started, so a phone whose clock ran fast stored a cursor in the server's future and every row
+    /// written in that gap was filtered out of the next pull and never asked for again.
+    ///
+    /// The server timestamps here are decades behind the device clock. A cursor anywhere near
+    /// "now" is the old bug; the only acceptable answer is the stamp the server named.
+    func testPhCursorIsServerTimeNotDeviceClock() async {
+        let store = makeStore()
+        let spy = CursorSpyPhBackend()
+        spy.remote = [serverRecord(id: "a", updatedAt: 1_000)]
+        let repo = PhRepository(store: store, backend: spy)
+        await repo.refresh()
+
+        let cursor = store.load(Date.self, forKey: Self.phCursorKey)
+        XCTAssertEqual(cursor?.timeIntervalSince1970 ?? -1, 1_000, accuracy: 0.001,
+                       "the cursor must be the server's updated_at, never the device clock")
+    }
+
+    /// Of the rows this pull returned, the cursor is the newest — not the first, not the last in
+    /// insertion order, and not the order the query asked for (`recorded_at`, which need not agree
+    /// with `updated_at`: an old day edited today is newest by `updated_at` and oldest by
+    /// `recorded_at`).
+    func testPhCursorIsMaxReturnedServerTimestamp() async {
+        let store = makeStore()
+        let spy = CursorSpyPhBackend()
+        spy.remote = [serverRecord(id: "a", updatedAt: 1_000),
+                      serverRecord(id: "c", updatedAt: 3_000),
+                      serverRecord(id: "b", updatedAt: 2_000)]
+        let repo = PhRepository(store: store, backend: spy)
+        await repo.refresh()
+
+        let cursor = store.load(Date.self, forKey: Self.phCursorKey)
+        XCTAssertEqual(cursor?.timeIntervalSince1970 ?? -1, 3_000, accuracy: 0.001)
+    }
+
+    /// A pull that returns nothing names no ground to move onto, so the cursor holds. Re-asking
+    /// from the same point costs one merge that resolves to the same answer; stepping past it on a
+    /// guess loses whatever was written in between.
+    func testPhEmptyPullHoldsCursor() async {
+        let store = makeStore()
+        let spy = CursorSpyPhBackend()
+        spy.remote = [serverRecord(id: "a", updatedAt: 1_000)]
+        let repo = PhRepository(store: store, backend: spy)
+        await repo.refresh()
+
+        spy.remote = []
+        await repo.refresh()
+
+        let cursor = store.load(Date.self, forKey: Self.phCursorKey)
+        XCTAssertEqual(cursor?.timeIntervalSince1970 ?? -1, 1_000, accuracy: 0.001,
+                       "an empty pull must leave the cursor where it was")
+    }
+
+    /// A pull that threw tells us nothing about the server's clock, so an established cursor stays
+    /// exactly where it was. (`testPhFailedPullLeavesCursorUnset` covers the same rule from the
+    /// other end: a device that has never synced successfully.)
+    func testPhFailedPullHoldsAnEstablishedCursor() async {
+        let store = makeStore()
+        let spy = CursorSpyPhBackend()
+        spy.remote = [serverRecord(id: "a", updatedAt: 1_000)]
+        let repo = PhRepository(store: store, backend: spy)
+        await repo.refresh()
+
+        spy.online = false
+        spy.remote = [serverRecord(id: "b", updatedAt: 9_000)]
+        await repo.refresh()
+
+        let cursor = store.load(Date.self, forKey: Self.phCursorKey)
+        XCTAssertEqual(cursor?.timeIntervalSince1970 ?? -1, 1_000, accuracy: 0.001,
+                       "a failed pull must not advance the cursor")
+    }
+
+    /// A row whose `updated_at` could not be read exactly is a row the cursor may not step over,
+    /// even though newer rows came back in the same page. The backend answers nil for the whole
+    /// page in that case (`syncCursor`), and nil holds.
+    func testPhUnreadableServerStampHoldsCursor() async {
+        let store = makeStore()
+        let spy = CursorSpyPhBackend()
+        spy.remote = [serverRecord(id: "a", updatedAt: 1_000)]
+        let repo = PhRepository(store: store, backend: spy)
+        await repo.refresh()
+
+        spy.remote = [serverRecord(id: "b", updatedAt: 9_000)]
+        spy.cursorOverride = .some(nil)             // the page carried a stamp that would not parse
+        await repo.refresh()
+
+        let cursor = store.load(Date.self, forKey: Self.phCursorKey)
+        XCTAssertEqual(cursor?.timeIntervalSince1970 ?? -1, 1_000, accuracy: 0.001,
+                       "an unreadable server stamp must not advance the cursor")
+        XCTAssertTrue(repo.readings.contains { $0.id == "b" },
+                      "holding the cursor must not cost us the rows the pull did return")
+    }
+
+    /// The cursor only ever moves forward. A server that answers an older page — a replica lagging
+    /// behind the one the last pull hit — must not drag the cursor back over ground already covered.
+    func testPhCursorNeverMovesBackwards() async {
+        let store = makeStore()
+        let spy = CursorSpyPhBackend()
+        spy.remote = [serverRecord(id: "a", updatedAt: 5_000)]
+        let repo = PhRepository(store: store, backend: spy)
+        await repo.refresh()
+
+        spy.remote = [serverRecord(id: "b", updatedAt: 2_000)]
+        await repo.refresh()
+
+        let cursor = store.load(Date.self, forKey: Self.phCursorKey)
+        XCTAssertEqual(cursor?.timeIntervalSince1970 ?? -1, 5_000, accuracy: 0.001)
+    }
+
+    /// `syncCursor` is the whole rule in one function, so it is worth pinning directly: the newest
+    /// stamp when every row could be read, and nil the moment one could not. Nil is what holds the
+    /// cursor, so "one bad row poisons the page" is deliberate — the alternative is stepping over
+    /// the row we failed to read.
+    func testSyncCursorRefusesAnyUnreadableStamp() {
+        XCTAssertEqual(syncCursor(from: ["2026-08-20T10:00:00Z", "2026-08-21T10:00:00Z"]),
+                       serverTimestamp("2026-08-21T10:00:00Z"))
+        XCTAssertNil(syncCursor(from: []), "no rows names no ground")
+        XCTAssertNil(syncCursor(from: ["2026-08-21T10:00:00Z", nil]), "a null updated_at poisons the page")
+        XCTAssertNil(syncCursor(from: ["2026-08-21T10:00:00Z", "not a timestamp"]))
+        XCTAssertNil(serverTimestamp(nil))
+        XCTAssertNil(serverTimestamp("not a timestamp"),
+                     "the cursor parse must have no Date() fallback, unlike parseISO")
+    }
+
+    /// The daily-log cursor is read off the rows in `SupabaseDailyLog.list`, because `DailyLog`
+    /// itself carries no timestamp — the column is gone by the time it is a domain value. Same
+    /// rule, exercised through the same door the app uses: a server stamp decades behind the device
+    /// clock, and the cursor must be that stamp.
+    func testDailyLogCursorIsServerTimeNotDeviceClock() async {
+        let store = makeStore()
+        let backend = FakeDailyLogBackend()
+        backend.remote = [CalendarDate(2026, 8, 20): DailyLog(waterMl: 500)]
+        backend.remoteStamps = ["2020-01-01T00:00:00Z"]
+        let repo = DailyLogRepository(store: store, backend: backend)
+        await repo.refresh()
+
+        XCTAssertEqual(store.load(Date.self, forKey: Self.dailyLogCursorKey),
+                       serverTimestamp("2020-01-01T00:00:00Z"))
+    }
+
+    /// The three ways a daily-log pull can decline to name a cursor — no rows, an unreadable stamp,
+    /// and a thrown fetch — all leave an established cursor untouched.
+    func testDailyLogCursorHoldsOnEmptyUnreadableAndFailedPulls() async {
+        let store = makeStore()
+        let backend = FakeDailyLogBackend()
+        backend.remote = [CalendarDate(2026, 8, 20): DailyLog(waterMl: 500)]
+        backend.remoteStamps = ["2020-01-01T00:00:00Z"]
+        let repo = DailyLogRepository(store: store, backend: backend)
+        await repo.refresh()
+        let established = serverTimestamp("2020-01-01T00:00:00Z")
+
+        backend.remoteStamps = []
+        await repo.refresh()
+        XCTAssertEqual(store.load(Date.self, forKey: Self.dailyLogCursorKey), established,
+                       "an empty pull must hold the cursor")
+
+        backend.remoteStamps = ["not a timestamp"]
+        await repo.refresh()
+        XCTAssertEqual(store.load(Date.self, forKey: Self.dailyLogCursorKey), established,
+                       "an unreadable stamp must hold the cursor")
+
+        backend.online = false
+        backend.remoteStamps = ["2026-01-01T00:00:00Z"]
+        await repo.refresh()
+        XCTAssertEqual(store.load(Date.self, forKey: Self.dailyLogCursorKey), established,
+                       "a failed pull must hold the cursor")
+    }
+
+    /// The overlap that the cursor is rewound by re-fetches rows the device already has, so the
+    /// merge has to be idempotent *and* has to lose to a day that is still owed. Here the push
+    /// fails, the pull returns the server's older copy of that same day, and the local edit must
+    /// survive it — then reach the server once the transport recovers.
+    func testDailyLogOverlapPullDoesNotClobberAPendingEdit() async {
+        let day = CalendarDate(2026, 8, 20)
+        let backend = DrainProbeDailyLogBackend()
+        backend.remote = [day: DailyLog(waterMl: 250)]
+        backend.transportFail = true
+        let repo = DailyLogRepository(store: makeStore(), backend: backend)
+
+        repo.setWater(1_000, on: day)               // push fails, the day is owed
+        await repo.refresh()                        // drain fails, then the pull returns the old copy
+        XCTAssertEqual(repo.waterMl(on: day), 1_000, "a pending day must win against the pull")
+        XCTAssertEqual(repo.syncState(on: day), .pendingSync)
+
+        backend.transportFail = false
+        await repo.refresh()
+        XCTAssertEqual(backend.remote[day]?.waterMl, 1_000, "the edit must reach the server on retry")
+        XCTAssertEqual(repo.syncState(on: day), .synced)
+        XCTAssertEqual(repo.waterMl(on: day), 1_000)
+    }
+
+    /// The heart of subset-safe incremental merge: a local record the incremental pull did not
+    /// mention (because it was unchanged) must be left exactly as it is — never re-flagged pending
+    /// and re-pushed. A mentioned, newer server row wins.
+    func testPhMergeIncrementalKeepsQuietRecordsAndTakesChangedOnes() {
+        let quiet = PhRecord(reading: PhReading(id: "a", phValue: 6.5, recordedAt: Date(timeIntervalSince1970: 100)),
+                             updatedAt: Date(timeIntervalSince1970: 100), pendingSync: false)
+        let stale = PhRecord(reading: PhReading(id: "b", phValue: 6.7, recordedAt: Date(timeIntervalSince1970: 200)),
+                             updatedAt: Date(timeIntervalSince1970: 200), pendingSync: false)
+        let changed = PhRecord(reading: PhReading(id: "b", phValue: 7.0, recordedAt: Date(timeIntervalSince1970: 200)),
+                               updatedAt: Date(timeIntervalSince1970: 300), pendingSync: false)
+
+        let merged = PhSync.mergeIncremental(local: [quiet, stale], remote: [changed])
+        let byId = Dictionary(uniqueKeysWithValues: merged.map { ($0.id, $0) })
+        XCTAssertEqual(merged.count, 2)
+        XCTAssertEqual(byId["a"]?.pendingSync, false, "an unchanged local record must not be re-flagged pending")
+        XCTAssertEqual(byId["b"]?.reading.phValue, 7.0, "the changed server row must win")
+    }
+
+    /// An unpushed local edit still wins over an incremental server row, exactly as in full `merge`.
+    func testPhMergeIncrementalKeepsUnpushedLocalEdit() {
+        let localEdit = PhRecord(reading: PhReading(id: "a", phValue: 6.9, recordedAt: Date(timeIntervalSince1970: 100)),
+                                 updatedAt: Date(timeIntervalSince1970: 500), pendingSync: true)
+        let serverRow = PhRecord(reading: PhReading(id: "a", phValue: 6.5, recordedAt: Date(timeIntervalSince1970: 100)),
+                                 updatedAt: Date(timeIntervalSince1970: 400), pendingSync: false)
+        let merged = PhSync.mergeIncremental(local: [localEdit], remote: [serverRow])
+        XCTAssertEqual(merged.first?.reading.phValue, 6.9, "an unpushed local edit must survive an incremental pull")
+        XCTAssertEqual(merged.first?.pendingSync, true)
+    }
+
+    /// Supplements share the mechanism: an unmentioned local record stays untouched under an
+    /// incremental pull, and a changed server row is adopted.
+    func testSupplementMergeIncrementalLeavesQuietRecordsUntouched() {
+        let quiet = SupplementRecord(supplement: CustomSupplement(id: "a", name: "Folate", dose: "400mcg"),
+                                     updatedAt: Date(timeIntervalSince1970: 100), pendingSync: false)
+        let changed = SupplementRecord(supplement: CustomSupplement(id: "b", name: "Vitamin D", dose: "20mcg"),
+                                       updatedAt: Date(timeIntervalSince1970: 300), pendingSync: false)
+        let merged = SupplementSync.mergeIncremental(local: [quiet], remote: [changed])
+        let byId = Dictionary(uniqueKeysWithValues: merged.map { ($0.id, $0) })
+        XCTAssertEqual(merged.count, 2)
+        XCTAssertEqual(byId["a"]?.pendingSync, false, "an unchanged local supplement must not be re-flagged pending")
+        XCTAssertNotNil(byId["b"], "the changed server supplement is adopted")
+    }
 }
 
 // In-memory stand-ins for the four synced tables. `online = false` makes every call fail the way
@@ -2068,13 +2441,36 @@ private final class FakePhBackend: PhBackend {
     var remote: [PhRecord] = []
     var online = true
 
-    func list(sinceDays: Int?) async throws -> [PhRecord] {
+    func list(updatedSince: Date?) async throws -> SyncPage<[PhRecord]> {
         guard online else { throw RemoteError.notConfigured }
-        return remote
+        return SyncPage(payload: remote, latestUpdatedAt: remote.map(\.updatedAt).max())
     }
 
     func upsert(_ record: PhRecord) async throws {
         guard online else { throw RemoteError.notConfigured }
+        remote = remote.filter { $0.id != record.id } + [record.marking(pendingSync: false)]
+    }
+}
+
+/// Records the `updatedSince` argument of every pull so a test can assert the cursor: `nil` on the
+/// first (full) sync, non-nil (incremental) after a successful one. `online = false` fails the pull
+/// the way an offline device does, without advancing the cursor.
+@MainActor
+private final class CursorSpyPhBackend: PhBackend {
+    var remote: [PhRecord] = []
+    var online = true
+    private(set) var sinceArgs: [Date?] = []
+    /// Overrides the cursor this fake hands back, for the tests that need a server stamp which is
+    /// deliberately not derivable from `remote` — an empty page, or an unreadable timestamp.
+    var cursorOverride: Date??
+
+    func list(updatedSince: Date?) async throws -> SyncPage<[PhRecord]> {
+        sinceArgs.append(updatedSince)
+        guard online else { throw RemoteError.notConfigured }
+        return SyncPage(payload: remote, latestUpdatedAt: cursorOverride ?? remote.map(\.updatedAt).max())
+    }
+
+    func upsert(_ record: PhRecord) async throws {
         remote = remote.filter { $0.id != record.id } + [record.marking(pendingSync: false)]
     }
 }
@@ -2087,9 +2483,9 @@ private final class FakeSupplementBackend: SupplementBackend {
     var online = true
     var reject: String?
 
-    func list() async throws -> [SupplementRecord] {
+    func list(updatedSince: Date?) async throws -> SyncPage<[SupplementRecord]> {
         guard online else { throw RemoteError.notConfigured }
-        return remote
+        return SyncPage(payload: remote, latestUpdatedAt: remote.map(\.updatedAt).max())
     }
 
     func upsert(_ record: SupplementRecord) async throws {
@@ -2114,7 +2510,11 @@ private final class DrainProbeDailyLogBackend: DailyLogBackend {
     private(set) var attempts = 0
 
     func fetch(date: CalendarDate) async throws -> DailyLog? { remote[date] }
-    func list() async throws -> [CalendarDate: DailyLog] { remote }
+    /// `DailyLog` carries no timestamp, so there is nothing to derive a cursor from here. Nil is
+    /// the honest answer and holds the cursor — these tests are about the drain, not the cursor.
+    func list(updatedSince: Date?) async throws -> SyncPage<[CalendarDate: DailyLog]> {
+        SyncPage(payload: remote, latestUpdatedAt: nil)
+    }
 
     func upsert(_ log: DailyLog, on date: CalendarDate) async throws {
         attempts += 1
@@ -2133,7 +2533,9 @@ private final class ProbePhBackend: PhBackend {
 
     init(reject: String? = nil) { self.reject = reject }
 
-    func list(sinceDays: Int?) async throws -> [PhRecord] { remote }
+    func list(updatedSince: Date?) async throws -> SyncPage<[PhRecord]> {
+        SyncPage(payload: remote, latestUpdatedAt: remote.map(\.updatedAt).max())
+    }
 
     func upsert(_ record: PhRecord) async throws {
         if record.id == reject { throw DrainProbeError.serverRejected }
@@ -2143,7 +2545,6 @@ private final class ProbePhBackend: PhBackend {
 
 /// `grantsSessionOnSignUp = false` reproduces a project with "Confirm email" turned on: sign-up
 /// succeeds, but no session exists until she clicks the link.
-@MainActor
 private final class FakeAuthBackend: AuthBackend {
     var currentUserId: String?
     var grantsSessionOnSignUp = true
@@ -2170,6 +2571,7 @@ private final class FakeAuthBackend: AuthBackend {
         lastLifecycleHandler = handler
     }
 
+    @MainActor
     func emit(_ event: AuthLifecycleEvent) {
         lastLifecycleHandler?(event)
     }
@@ -2273,14 +2675,23 @@ private final class FakeDailyLogBackend: DailyLogBackend {
     var remote: [CalendarDate: DailyLog] = [:]
     var online = true
 
+    /// The raw `updated_at` strings the rows of the next `list` would carry. `DailyLog` holds no
+    /// timestamp of its own — the column is dropped by the time it becomes a domain value — so the
+    /// cursor a pull licenses can only be set here, exactly as `SupabaseDailyLog.list` reads it off
+    /// the rows before mapping. Empty means a pull that names no ground: the cursor holds.
+    var remoteStamps: [String?] = []
+    /// Every `list` call's `updatedSince`, in order — nil is a full pull, non-nil an incremental one.
+    private(set) var listedSince: [Date?] = []
+
     func fetch(date: CalendarDate) async throws -> DailyLog? {
         guard online else { throw RemoteError.notConfigured }
         return remote[date]
     }
 
-    func list() async throws -> [CalendarDate: DailyLog] {
+    func list(updatedSince: Date?) async throws -> SyncPage<[CalendarDate: DailyLog]> {
         guard online else { throw RemoteError.notConfigured }
-        return remote
+        listedSince.append(updatedSince)
+        return SyncPage(payload: remote, latestUpdatedAt: syncCursor(from: remoteStamps))
     }
 
     func upsert(_ log: DailyLog, on date: CalendarDate) async throws {
@@ -2289,14 +2700,39 @@ private final class FakeDailyLogBackend: DailyLogBackend {
     }
 }
 
+/// `display_name` lives on a per-account row, and modelling it as one global slot made an account
+/// switch unreadable: a write the signed-in account was perfectly entitled to make could be read
+/// back after a switch as if it had landed on the account that replaced her. A test could then only
+/// tell contamination from legitimate traffic by controlling when the server was reachable, which
+/// left it at the mercy of task scheduling.
+///
+/// `authenticatedUserId` stands in for `auth.uid()`, which is what the real backend resolves the row
+/// from — neither `fetchDisplayName` nor `upsert(displayName:)` takes an account, exactly as in
+/// production. Tests holding a single account never touch it; a test exercising a second account
+/// moves it at the point the switch happens, and can then read either woman's row on its own.
 @MainActor
 private final class FakeProfileBackend: ProfileBackend {
+    /// The row every single-account test reads and writes, so none of them need to know about this.
+    static let soleAccount = "sole-account"
+
     var remote: ProfilePrefs?
-    var displayName: String?
     var online = true
+    var authenticatedUserId = FakeProfileBackend.soleAccount
     /// Set by `deleteQuizAnswers`, so a test can tell "the row was emptied" from "the row was never
     /// written", which is exactly the distinction the bug turned on.
     private(set) var quizDeletes = 0
+
+    private var namesByUserId: [String: String] = [:]
+
+    /// The name on the row of whoever is authenticated right now.
+    var displayName: String? {
+        get { namesByUserId[authenticatedUserId] }
+        set { namesByUserId[authenticatedUserId] = newValue }
+    }
+
+    /// A named account's row whoever is authenticated, so an account-switch test can assert against
+    /// both women's rows independently rather than inferring a leak from a single shared slot.
+    func displayName(of userId: String) -> String? { namesByUserId[userId] }
 
     func fetch() async throws -> ProfilePrefs? {
         guard online else { throw RemoteError.notConfigured }
@@ -2316,12 +2752,12 @@ private final class FakeProfileBackend: ProfileBackend {
 
     func fetchDisplayName() async throws -> String? {
         guard online else { throw RemoteError.notConfigured }
-        return displayName
+        return namesByUserId[authenticatedUserId]
     }
 
     func upsert(displayName: String) async throws {
         guard online else { throw RemoteError.notConfigured }
-        self.displayName = displayName
+        namesByUserId[authenticatedUserId] = displayName
     }
 
     func deleteQuizAnswers() async throws {

@@ -15,6 +15,34 @@ private func parseISO(_ s: String) -> Date {
     isoFormatter.date(from: s) ?? ISO8601DateFormatter().date(from: s) ?? Date()
 }
 
+/// The same parse without `parseISO`'s `Date()` fallback, for the one caller that must not have it.
+///
+/// Falling back to the device clock is a reasonable last resort for a field that is about to be
+/// displayed, and a silent corruption for a sync cursor: the whole point of taking the cursor from
+/// the server's `updated_at` is that no device clock reaches it, and a single unreadable timestamp
+/// would put one straight back. Unreadable returns nil, and nil holds the cursor still.
+func serverTimestamp(_ s: String?) -> Date? {
+    guard let s else { return nil }
+    return isoFormatter.date(from: s) ?? ISO8601DateFormatter().date(from: s)
+}
+
+/// The greatest server timestamp across a fetch's rows, or nil if *any* row's stamp was missing or
+/// unreadable — a cursor may only step over rows whose server time was read exactly.
+func syncCursor(from stamps: [String?]) -> Date? {
+    var newest: Date?
+    for stamp in stamps {
+        guard let parsed = serverTimestamp(stamp) else { return nil }
+        if parsed > (newest ?? .distantPast) { newest = parsed }
+    }
+    return newest
+}
+
+/// One row of `public.app_config(key text primary key, value text)`, read anonymously at launch for
+/// the minimum-supported-build gate.
+struct AppConfigRow: Codable {
+    var value: String
+}
+
 struct CycleSettingsRow: Codable {
     var userId: String
     var lastPeriodDate: String   // yyyy-MM-dd
@@ -120,6 +148,10 @@ struct DailyLogRow: Codable {
     /// this now tolerates old *rows*, not an absent column. Keep it optional anyway: these meals
     /// count toward the streak on both clients, and a decode failure here would zero it.
     var foodGroups: [String]?
+    /// Server-maintained by the `daily_logs_bump_updated_at` trigger. Decode-only: it rides along so
+    /// the row matches the column the incremental cursor filters on, and is left nil on write so the
+    /// trigger stamps it rather than this device overriding it.
+    var updatedAt: String?
 
     enum CodingKeys: String, CodingKey {
         case userId = "user_id"
@@ -129,6 +161,7 @@ struct DailyLogRow: Codable {
         case waterMl = "water_ml"
         case sexualActivity = "sexual_activity"
         case foodGroups = "food_groups"
+        case updatedAt = "updated_at"
     }
 
     var domain: DailyLog {
@@ -157,6 +190,7 @@ struct DailyLogRow: Codable {
         self.notes = log.notes
         self.sexualActivity = log.sexualActivity
         self.foodGroups = Array(log.foodGroups)
+        self.updatedAt = nil          // server trigger stamps it; never overwritten from the client
     }
 }
 

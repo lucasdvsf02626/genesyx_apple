@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 import AuthenticationServices
 import CryptoKit
 import Security
@@ -8,6 +9,29 @@ import UIKit
 #if canImport(GoogleSignIn)
 import GoogleSignIn
 #endif
+
+/// Maps an auth email-send failure to the copy shown and the cooldown to apply. Kept out of the
+/// view so the rate-limit branch is unit-testable without a UI. `RemoteError.rateLimited` is what
+/// the Supabase layer raises on an HTTP 429 / GoTrue `over_*_rate_limit` (see `mapRateLimit`).
+enum AuthEmailFailure {
+    /// British English, matching the tone of the existing auth copy.
+    static let rateLimited = "Too many attempts right now. Please wait a few minutes and try again."
+    static let resendGeneric = "Couldn't resend just now. Please try again in a moment."
+    static let resetGeneric = "We couldn't send the reset email. Please try again."
+
+    /// 60s after any resend tap; five minutes once the server has actually rate-limited us.
+    static let normalCooldown = 60
+    static let rateLimitedCooldown = 300
+
+    static func isRateLimited(_ error: Error) -> Bool {
+        if case RemoteError.rateLimited = error { return true }
+        return false
+    }
+
+    static func cooldownSeconds(for error: Error) -> Int {
+        isRateLimited(error) ? rateLimitedCooldown : normalCooldown
+    }
+}
 
 /// Email + password sign in / sign up, plus Sign in with Apple and Continue with Google.
 /// Ported from the Android `AuthScreen`. In mandatory mode it is root content — no back
@@ -38,6 +62,32 @@ struct AuthView: View {
 
     @State private var resetNotice: String?
 
+    /// Cooldown end-times for the two email-send actions. `@State`, so they survive a re-render but
+    /// not an app restart (as the brief allows). `clock` is ticked once a second while a cooldown is
+    /// live so the countdown label updates; the screen is idle the rest of the time.
+    @State private var resendCooldownUntil: Date?
+    @State private var resetCooldownUntil: Date?
+    @State private var clock = Date()
+    private let cooldownTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+
+    private var resendRemaining: Int { Self.remaining(resendCooldownUntil, now: clock) }
+    private var resetRemaining: Int { Self.remaining(resetCooldownUntil, now: clock) }
+
+    private static func remaining(_ until: Date?, now: Date) -> Int {
+        guard let until else { return 0 }
+        return max(0, Int(until.timeIntervalSince(now).rounded(.up)))
+    }
+
+    private func startResendCooldown(seconds: Int) {
+        let now = Date(); clock = now
+        resendCooldownUntil = now.addingTimeInterval(TimeInterval(seconds))
+    }
+
+    private func startResetCooldown(seconds: Int) {
+        let now = Date(); clock = now
+        resetCooldownUntil = now.addingTimeInterval(TimeInterval(seconds))
+    }
+
     private func submit() {
         if !EmailValidator.isValid(email) { error = "Enter a valid email"; return }
         if password.count < 8 { error = "Password must be at least 8 characters"; return }
@@ -55,6 +105,10 @@ struct AuthView: View {
             } catch RemoteError.emailConfirmationRequired {
                 self.error = "Almost there — check your inbox and confirm your email, then sign in."
                 self.confirmPending = true
+            } catch RemoteError.rateLimited {
+                // Sign-up's own confirmation send was throttled — tell her to wait, not to "check
+                // her details", which would send her chasing a problem that isn't hers.
+                self.error = AuthEmailFailure.rateLimited
             } catch {
                 self.error = "Could not sign in. Please check your details and try again."
             }
@@ -83,24 +137,40 @@ struct AuthView: View {
         let address = email.trimmingCharacters(in: .whitespaces)
         guard EmailValidator.isValid(address) else { error = "Enter your email first, then tap Forgot password"; return }
         error = nil
+        // The same 60s floor the resend button applies on any tap, and for the same reason: the
+        // project's email allowance is shared across every user and every kind of auth mail, so a
+        // second tap here must not spend someone else's sign-up confirmation. Before the send
+        // rather than after it, because the cost is incurred by asking, not by the answer — and a
+        // successful send is precisely the case that used to leave the button live.
+        startResetCooldown(seconds: AuthEmailFailure.normalCooldown)
         Task {
             do {
                 try await session.sendPasswordReset(email: address)
                 resetNotice = Self.resetSent
             } catch {
-                resetNotice = "We couldn't send the reset email. Please try again."
+                resetNotice = AuthEmailFailure.isRateLimited(error)
+                    ? AuthEmailFailure.rateLimited : AuthEmailFailure.resetGeneric
+                startResetCooldown(seconds: AuthEmailFailure.cooldownSeconds(for: error))
             }
         }
     }
 
     private func resendConfirmation() {
         resendNotice = nil
+        // 60s cooldown on any tap — the email quota is shared, so one person hammering resend must
+        // not burn it for everyone. A confirmed rate-limit extends this to five minutes below.
+        startResendCooldown(seconds: AuthEmailFailure.normalCooldown)
         Task {
             do {
                 try await session.resendConfirmation(email: email.trimmingCharacters(in: .whitespaces))
                 resendNotice = "Sent — check your inbox for the confirmation link."
             } catch {
-                resendNotice = "Couldn't resend just now. Please try again in a moment."
+                if AuthEmailFailure.isRateLimited(error) {
+                    resendNotice = AuthEmailFailure.rateLimited
+                    startResendCooldown(seconds: AuthEmailFailure.rateLimitedCooldown)
+                } else {
+                    resendNotice = AuthEmailFailure.resendGeneric
+                }
             }
         }
     }
@@ -166,7 +236,7 @@ struct AuthView: View {
         Task {
             do {
                 let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: root)
-                print("[GoogleSignIn] SDK sign-in OK. email=\(result.user.profile?.email ?? "nil") hasIDToken=\(result.user.idToken != nil)")
+                print("[GoogleSignIn] SDK sign-in OK. hasIDToken=\(result.user.idToken != nil)")
                 guard let idToken = result.user.idToken?.tokenString else {
                     error = googleFailure("Google returned no ID token", nil); return
                 }
@@ -258,9 +328,11 @@ struct AuthView: View {
                 // gate makes this her single route back in — Profile's "Change password" sits
                 // behind the very session she cannot obtain.
                 if !signupMode {
-                    Button("Forgot password?", action: sendReset)
+                    Button(resetRemaining > 0 ? "Try again in \(resetRemaining)s" : "Forgot password?",
+                           action: sendReset)
                         .font(.gxBodySmall.weight(.semibold)).foregroundStyle(GenesyxColor.primary)
                         .frame(maxWidth: .infinity, alignment: .trailing).padding(.top, 8)
+                        .disabled(resetRemaining > 0)
                         .accessibilityIdentifier("auth.forgotPassword")
                     if let resetNotice {
                         Text(resetNotice).font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
@@ -270,9 +342,12 @@ struct AuthView: View {
                 }
 
                 if confirmPending {
-                    Button("Resend confirmation email", action: resendConfirmation)
+                    Button(resendRemaining > 0 ? "Resend available in \(resendRemaining)s" : "Resend confirmation email",
+                           action: resendConfirmation)
                         .font(.gxBodySmall.weight(.semibold)).foregroundStyle(GenesyxColor.primary)
                         .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 8)
+                        .disabled(resendRemaining > 0)
+                        .accessibilityIdentifier("auth.resend")
                     if let resendNotice {
                         Text(resendNotice).font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
                             .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 4)
@@ -329,6 +404,14 @@ struct AuthView: View {
         .background(GenesyxColor.background)
         .accessibilityIdentifier("auth.screen")
         .interactiveDismissDisabled(!allowsDismissal)
+        .onReceive(cooldownTimer) { now in
+            // Only tick while a cooldown is live, and drop each end-time once it passes, so the
+            // countdown stops updating the moment both buttons are available again.
+            guard resendCooldownUntil != nil || resetCooldownUntil != nil else { return }
+            clock = now
+            if let until = resendCooldownUntil, until <= now { resendCooldownUntil = nil }
+            if let until = resetCooldownUntil, until <= now { resetCooldownUntil = nil }
+        }
     }
 
     private var divider: some View { Rectangle().fill(GenesyxColor.border).frame(height: 1) }

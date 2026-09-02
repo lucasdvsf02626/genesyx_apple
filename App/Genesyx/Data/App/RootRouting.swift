@@ -22,6 +22,9 @@ enum RootDestination: Equatable {
     /// Signed in, but there is no Article 9 consent on record for the wording currently in force.
     /// Outranks `mainTabs` — see `destination`.
     case consentRequired
+    /// This build is below the server's minimum supported build. Outranks everything — see
+    /// `destination` — because an out-of-date client cannot be trusted to talk to the backend.
+    case updateRequired
 }
 
 enum RootRouting {
@@ -47,13 +50,20 @@ enum RootRouting {
     /// Defaulted to `false` for the same reason `passwordRecovery` is — so the existing routing
     /// tests, which are about a different question, keep compiling — and it is deliberately NOT
     /// defaulted at the call site in `RootView`.
+    /// `updateRequired` is checked FIRST and outranks everything, including `unavailable`: a client
+    /// the server has stopped supporting must be sent to update before it tries anything else. It is
+    /// defaulted to `false` — like `passwordRecovery` / `consentRequired` — so the existing routing
+    /// tests keep compiling, and is set for real only after a successful `app_config` read
+    /// (fail-open: any missing config, malformed value, or network error leaves it false).
     static func destination(
         session: SessionAuthState,
         onboardingComplete: Bool,
         serviceAvailable: Bool,
         passwordRecovery: Bool = false,
-        consentRequired: Bool = false
+        consentRequired: Bool = false,
+        updateRequired: Bool = false
     ) -> RootDestination {
+        if updateRequired { return .updateRequired }
         guard serviceAvailable else { return .unavailable }
         if passwordRecovery { return .passwordRecovery }
         switch session {
@@ -64,5 +74,41 @@ enum RootRouting {
         case .signedOut:
             return onboardingComplete ? .mandatoryAuth : .onboarding
         }
+    }
+}
+
+/// The minimum-supported-build gate, kept pure so the comparison is unit-testable without a network
+/// or SwiftUI. Everything here is fail-open: any input it cannot make sense of means "no opinion",
+/// and the app proceeds. The only outcome that blocks launch is a build strictly below a numeric
+/// minimum the server actually supplied.
+enum VersionGate {
+    /// This build (`CFBundleVersion`), the value compared against the server's minimum. `0` if the
+    /// key is somehow absent or non-numeric — which, being below any real minimum, fails open by
+    /// never exceeding a minimum that was set, and only gates if a minimum above 0 is configured.
+    static func currentBuild() -> Int {
+        Int(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "") ?? 0
+    }
+
+    /// Parses the server's stored value. `nil` (absent / non-numeric / empty) means "no opinion".
+    static func parseBuild(_ value: String?) -> Int? {
+        guard let trimmed = value?.trimmingCharacters(in: .whitespaces), let build = Int(trimmed) else { return nil }
+        return build
+    }
+
+    /// True only when there is a numeric minimum AND this build is strictly below it.
+    static func requiresUpdate(currentBuild: Int, minimumSupportedBuild: Int?) -> Bool {
+        guard let minimum = minimumSupportedBuild else { return false }
+        return currentBuild < minimum
+    }
+
+    /// Where the Update button sends her. Prefers an `APPSTORE_URL` from Info.plist (set it to the
+    /// numeric listing — `https://apps.apple.com/app/idXXXXXXXX` — once the app has one); otherwise
+    /// falls back to opening the App Store app so she can search for the update.
+    static var appStoreURL: URL {
+        if let configured = Bundle.main.object(forInfoDictionaryKey: "APPSTORE_URL") as? String,
+           !configured.isEmpty, let url = URL(string: configured) {
+            return url
+        }
+        return URL(string: "itms-apps://apps.apple.com/")!
     }
 }

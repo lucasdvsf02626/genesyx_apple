@@ -48,6 +48,8 @@ final class PreferencesRepository: ObservableObject {
     /// question was about. The quiz is: it asks her where she is in trying to conceive.
     var isCollectionPermitted: HealthDataCollectionGate = { true }
 
+    var hasPendingSync: Bool { pendingPush }
+
     private let store: LocalStore
     private let backend: ProfileBackend?
     private let themeKey = "theme_mode"

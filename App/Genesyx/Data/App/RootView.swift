@@ -46,6 +46,8 @@ struct RootView: View {
                     onAgree: { consent.grant() },
                     onDecline: { consent.withdraw() },
                     onBack: { consent.withdraw() })
+            case .updateRequired:
+                UpdateRequiredView()
             case .mainTabs:
                 MainTabView()
             case .passwordRecovery:
@@ -104,7 +106,8 @@ struct RootView: View {
             onboardingComplete: onboardingComplete,
             serviceAvailable: container.isServiceAvailable,
             passwordRecovery: session.passwordRecoveryActive || recoveryLinkError != nil,
-            consentRequired: ConsentLogic.needsAsking(consent.events)
+            consentRequired: ConsentLogic.needsAsking(consent.events),
+            updateRequired: container.updateRequired
         )
     }
 
@@ -189,6 +192,44 @@ private struct ServiceUnavailableView: View {
             }
             .padding(24)
             .accessibilityIdentifier("root.unavailable")
+        }
+    }
+}
+
+/// Shown when this build is below the server's minimum supported build. A hard stop with no
+/// dismissal — it is a root destination, so `RootView` simply never mounts anything else while it
+/// is current. Modelled on `ServiceUnavailableView`.
+private struct UpdateRequiredView: View {
+    @Environment(\.openURL) private var openURL
+    var body: some View {
+        ZStack {
+            GenesyxColor.background.ignoresSafeArea()
+            VStack(spacing: 16) {
+                Text("GENESYX")
+                    .font(.gxCardHeading)
+                    .tracking(2)
+                    .foregroundStyle(GenesyxColor.foreground)
+                Text("This version of Genesyx is no longer supported.")
+                    .font(.gxTitle)
+                    .foregroundStyle(GenesyxColor.foreground)
+                    .multilineTextAlignment(.center)
+                Text("Please update to continue.")
+                    .font(.gxBody)
+                    .foregroundStyle(GenesyxColor.mutedForeground)
+                    .multilineTextAlignment(.center)
+                Button(action: { openURL(VersionGate.appStoreURL) }) {
+                    Text("Update")
+                        .font(.gxLabel).frame(maxWidth: .infinity).frame(height: 48)
+                        .background(GenesyxColor.primary).foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 8)
+                .accessibilityIdentifier("root.updateRequired.update")
+            }
+            .frame(maxWidth: 360)
+            .padding(24)
+            .accessibilityIdentifier("root.updateRequired")
         }
     }
 }

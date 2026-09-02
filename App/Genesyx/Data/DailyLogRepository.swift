@@ -48,6 +48,10 @@ final class DailyLogRepository: ObservableObject {
     private let backend: DailyLogBackend?
     private let key = "daily_logs"
     private let pendingKey = "daily_logs_pending"
+    private let cursorKey = "daily_logs_cursor"
+    /// Overlap subtracted from the cursor on each pull, to absorb clock skew between this device and
+    /// the server that stamps `updated_at`.
+    private static let cursorOverlap: TimeInterval = 60
 
     /// The days the server hasn't got yet. A v1.0 install has logs but no record of any push, so
     /// every logged day counts as owed.
@@ -57,6 +61,15 @@ final class DailyLogRepository: ObservableObject {
     /// already had, until some unrelated edit redrew it.
     @Published private var pendingDates: Set<CalendarDate> {
         didSet { store.save(Array(pendingDates), forKey: pendingKey) }
+    }
+
+    /// Start time of the last *successful* pull. The next pull asks only for days changed since it
+    /// (minus `cursorOverlap`). Nil until the first successful sync — which is what makes that first
+    /// sync a full-history fetch, the migration path for installs that predate this cursor.
+    private var lastSyncedAt: Date? {
+        didSet {
+            if let date = lastSyncedAt { store.save(date, forKey: cursorKey) } else { store.remove(forKey: cursorKey) }
+        }
     }
 
     init(store: LocalStore, backend: DailyLogBackend? = nil) {
@@ -71,6 +84,7 @@ final class DailyLogRepository: ObservableObject {
         }
         self.logByDate = map
         self.pendingDates = store.load([CalendarDate].self, forKey: pendingKey).map(Set.init) ?? Set(map.keys)
+        self.lastSyncedAt = store.load(Date.self, forKey: cursorKey)
     }
 
     func log(on date: CalendarDate) -> DailyLog { logByDate[date] ?? DailyLog() }
@@ -186,11 +200,24 @@ final class DailyLogRepository: ObservableObject {
         guard let backend else { return }
         await drainPending()
         guard isCollectionPermitted() else { return }
-        guard let remote = try? await backend.list() else { return }
+        let since = lastSyncedAt.map { $0.addingTimeInterval(-Self.cursorOverlap) }
+        guard let page = try? await backend.list(updatedSince: since) else { return }
+        // Upsert by date. On an incremental pull `remote` is only the changed days, so days it does
+        // not mention are left as they are — and a day still owed keeps the local (newer) copy.
+        let remote = page.payload
         for (date, log) in remote where !pendingDates.contains(date) {
             logByDate[date] = log
         }
         persist()
+        // Only ever forward, and only onto ground the server named. A nil page cursor — nothing
+        // returned, or a stamp that would not parse — leaves the cursor alone, so the next pull
+        // asks from the same point and re-merges rather than stepping over anything.
+        if let cursor = page.latestUpdatedAt, cursor > (lastSyncedAt ?? .distantPast) {
+            lastSyncedAt = cursor
+        }
+        #if DEBUG
+        print("[Sync] daily_logs: \(remote.count) rows (\(since == nil ? "full" : "incremental"))")
+        #endif
     }
 
     /// Retry the writes the server never received, oldest day first. A failure of the connection —
@@ -228,6 +255,7 @@ final class DailyLogRepository: ObservableObject {
     func clearLocalState() {
         logByDate = [:]
         pendingDates = []
+        lastSyncedAt = nil          // next account starts from a full history fetch, not this one's cursor
         store.remove(forKey: key)
         store.remove(forKey: pendingKey)
     }

@@ -30,12 +30,23 @@ final class SupabaseBackend: GenesyxBackend {
     func joinWaitlist(email: String) async throws {
         try await client.rpc("join_waitlist", params: ["p_email": email]).execute()
     }
+
+    /// Anonymous, pre-auth read of the minimum supported build. A missing table/row returns no rows
+    /// (→ nil, fail open); the `value` is parsed numerically by `VersionGate`.
+    func minimumSupportedBuild() async throws -> Int? {
+        let rows: [AppConfigRow] = try await client.from("app_config")
+            .select("value").eq("key", value: "min_supported_build").limit(1).execute().value
+        return VersionGate.parseBuild(rows.first?.value)
+    }
 }
 
 private struct SupabaseAuth: AuthBackend {
     let client: SupabaseClient
     var currentUserId: String? { client.auth.currentUser?.id.uuidString }
-    func signUp(email: String, password: String) async throws { _ = try await client.auth.signUp(email: email, password: password) }
+    func signUp(email: String, password: String) async throws {
+        do { _ = try await client.auth.signUp(email: email, password: password) }
+        catch { throw mapRateLimit(error) }   // a rate-limited confirmation send must read as such
+    }
     func signIn(email: String, password: String) async throws { _ = try await client.auth.signIn(email: email, password: password) }
     func signOut() async throws { try await client.auth.signOut() }
     /// The code is sent only when there is one, so the body stays exactly what it was for every
@@ -68,7 +79,8 @@ private struct SupabaseAuth: AuthBackend {
     /// back to the project's Site URL — a web page — so the link in her inbox opened Safari and the
     /// app never saw it. She was told "check your inbox" for a link that could not come home.
     func resetPassword(email: String) async throws {
-        try await client.auth.resetPasswordForEmail(email, redirectTo: DeepLink.passwordRecoveryURL)
+        do { try await client.auth.resetPasswordForEmail(email, redirectTo: DeepLink.passwordRecoveryURL) }
+        catch { throw mapRateLimit(error) }
     }
 
     /// The client runs the SDK's default PKCE flow, so `resetPasswordForEmail` stashed a code
@@ -83,7 +95,10 @@ private struct SupabaseAuth: AuthBackend {
         _ = try await client.auth.update(user: UserAttributes(password: newPassword))
     }
 
-    func resendConfirmation(email: String) async throws { try await client.auth.resend(email: email, type: .signup) }
+    func resendConfirmation(email: String) async throws {
+        do { try await client.auth.resend(email: email, type: .signup) }
+        catch { throw mapRateLimit(error) }
+    }
 
     /// `client.auth.session` refreshes when it can. If that throws (typically offline), a
     /// non-expired cached session is still a valid credential — the agreed local-first policy.
@@ -134,6 +149,21 @@ private func requireUID(_ auth: AuthBackend) throws -> String {
     return id
 }
 
+/// Maps a GoTrue rate-limit failure — HTTP 429, or an `over_*_rate_limit` error code — to
+/// `RemoteError.rateLimited`, so the auth UI can ask her to wait a few minutes rather than showing
+/// the generic "please try again" copy. Any other error passes through unchanged. The email quota is
+/// severely limited until custom SMTP is configured, so this is a path users will actually hit.
+private func mapRateLimit(_ error: Error) -> Error {
+    guard case let AuthError.api(_, code, _, response) = error else { return error }
+    if response.statusCode == 429
+        || code == .overEmailSendRateLimit
+        || code == .overRequestRateLimit
+        || code == .overSMSSendRateLimit {
+        return RemoteError.rateLimited
+    }
+    return error
+}
+
 private struct SupabaseCycle: CycleBackend {
     let client: SupabaseClient
     let auth: AuthBackend
@@ -157,15 +187,19 @@ private struct SupabasePh: PhBackend {
 
     /// Tombstones are included — a row deleted on another device has to arrive as a deletion, not
     /// as an absence (an absence is indistinguishable from "never pushed" and would resurrect it).
-    func list(sinceDays: Int?) async throws -> [PhRecord] {
+    /// `updatedSince` filters on the trigger-maintained `updated_at`, so a tombstone (which bumps
+    /// `updated_at`) still arrives on an incremental pull.
+    func list(updatedSince: Date?) async throws -> SyncPage<[PhRecord]> {
         let uid = try requireUID(auth)
         var query = client.from("ph_readings").select().eq("user_id", value: uid)
-        if let days = sinceDays {
-            let cutoff = ISO8601DateFormatter().string(from: Date().addingTimeInterval(-Double(days) * 86_400))
-            query = query.gte("recorded_at", value: cutoff)
+        if let since = updatedSince {
+            query = query.gte("updated_at", value: ISO8601DateFormatter().string(from: since))
         }
         let rows: [PhReadingRow] = try await query.order("recorded_at").execute().value
-        return rows.map(\.domain)
+        // Read off the raw column, not `PhRecord.updatedAt`: the domain value has already been
+        // through `parseISO`, which answers `Date()` for anything it cannot read, and a device
+        // clock is the one thing that must never reach the cursor.
+        return SyncPage(payload: rows.map(\.domain), latestUpdatedAt: syncCursor(from: rows.map(\.updatedAt)))
     }
 
     /// Creates, edits and deletes all land here — the row's `deleted` flag carries the tombstone.
@@ -182,11 +216,17 @@ private struct SupabaseUserSupplements: SupplementBackend {
     /// Tombstones included, for the same reason as pH: a row deleted on her Android phone has to
     /// arrive as a deletion, and an absence is indistinguishable from "this device never pushed it".
     /// Ordered by `created_at` so a first sign-in rebuilds her list in the order she added it.
-    func list() async throws -> [SupplementRecord] {
+    func list(updatedSince: Date?) async throws -> SyncPage<[SupplementRecord]> {
         let uid = try requireUID(auth)
-        let rows: [UserSupplementRow] = try await client.from("user_supplements")
-            .select().eq("user_id", value: uid).order("created_at").execute().value
-        return rows.map(\.domain)
+        var query = client.from("user_supplements").select().eq("user_id", value: uid)
+        if let since = updatedSince {
+            query = query.gte("updated_at", value: ISO8601DateFormatter().string(from: since))
+        }
+        let rows: [UserSupplementRow] = try await query.order("created_at").execute().value
+        // Raw column rather than the domain value, for the reason given in `SupabasePh.list`.
+        // `user_supplements.updated_at` is nullable, so a null row holds the cursor rather than
+        // being stepped over.
+        return SyncPage(payload: rows.map(\.domain), latestUpdatedAt: syncCursor(from: rows.map(\.updatedAt)))
     }
 
     /// Adds and deletes both land here — the row's `deleted_at` carries the tombstone.
@@ -207,13 +247,19 @@ private struct SupabaseDailyLog: DailyLogBackend {
         return rows.first?.domain
     }
 
-    func list() async throws -> [CalendarDate: DailyLog] {
+    func list(updatedSince: Date?) async throws -> SyncPage<[CalendarDate: DailyLog]> {
         let uid = try requireUID(auth)
-        let rows: [DailyLogRow] = try await client.from("daily_logs")
-            .select().eq("user_id", value: uid).execute().value
-        return rows.reduce(into: [:]) { map, row in
+        var query = client.from("daily_logs").select().eq("user_id", value: uid)
+        if let since = updatedSince {
+            query = query.gte("updated_at", value: ISO8601DateFormatter().string(from: since))
+        }
+        let rows: [DailyLogRow] = try await query.execute().value
+        let logs: [CalendarDate: DailyLog] = rows.reduce(into: [:]) { map, row in
             if let date = CalendarDate(iso: row.date) { map[date] = row.domain }
         }
+        // `DailyLog` carries no timestamp — it is the day's content, keyed by date — so the cursor
+        // has to be read off the rows here, before the mapping drops the column.
+        return SyncPage(payload: logs, latestUpdatedAt: syncCursor(from: rows.map(\.updatedAt)))
     }
 
     func upsert(_ log: DailyLog, on date: CalendarDate) async throws {

@@ -56,6 +56,7 @@ struct GenesyxApp: App {
                 .environmentObject(notifications)
                 .tint(GenesyxColor.primary)
                 .task { await notifications.reconcile() }
+                .task { await container.checkMinimumVersion() }
                 .onChange(of: scenePhase) { phase in
                     guard phase == .active else { return }
                     // Owed writes only move under a valid session. The notification schedule is

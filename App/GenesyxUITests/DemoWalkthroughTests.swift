@@ -83,7 +83,7 @@ final class DemoWalkthroughTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Vaginal pH Tracker"].waitForExistence(timeout: 20),
                       "b. the pH tab must open")
 
-        let cta = app.buttons["phSpine.supplements"]
+        let cta = app.buttons["See your supplement plan"]
         XCTAssertTrue(swipeUntilHittable(cta),
                       "b. the 'See your supplement plan' button must be reachable by scrolling the pH tab")
         XCTAssertTrue(app.staticTexts["Genesyx supplements"].exists,

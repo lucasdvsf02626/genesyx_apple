@@ -66,10 +66,16 @@ final class SessionRepository: ObservableObject {
         didSet { store.setBool(pendingNamePush, forKey: namePendingKey) }
     }
 
+    /// The account *this* repository signed in as. `identityKey` in the store is shared and moves
+    /// the moment a different account signs in; this does not, so the two parting company is
+    /// exactly the signal that a drain is holding a rename it no longer has any claim to push.
+    private var signedInIdentity: String?
+
     init(store: LocalStore, auth: AuthBackend? = nil) {
         self.store = store
         self.auth = auth
         self.pendingNamePush = store.bool(forKey: namePendingKey, default: false)
+        self.signedInIdentity = store.string(forKey: identityKey)
         if auth != nil {
             // Never mount private tabs off `currentUser` alone. A cached user can be expired
             // or revoked; the root stays on `.resolving` until `validatedSession` answers.
@@ -152,6 +158,7 @@ final class SessionRepository: ObservableObject {
             pendingNamePush = false
         }
         store.setString(userId, forKey: identityKey)
+        signedInIdentity = userId
         email = store.string(forKey: emailKey)
         displayName = store.string(forKey: nameKey)
         setState(.signedIn)
@@ -240,6 +247,7 @@ final class SessionRepository: ObservableObject {
         }
         let sameUser = previous == identity
         store.setString(identity, forKey: identityKey)
+        signedInIdentity = identity
 
         self.email = email
         store.setString(email, forKey: emailKey)
@@ -298,6 +306,15 @@ final class SessionRepository: ObservableObject {
     /// reconnect, alongside every other owed write.
     func drainPendingName() async {
         guard pendingNamePush, let onPushDisplayName, let name = displayName else { return }
+        // A drain scheduled before an account switch must not resume into the new account's row:
+        // the rename belongs to the woman who typed it, and her name landing on someone else's
+        // profile is the same class of leak `applySignIn` guards against. Checked here rather than
+        // only at sign-in because this repository holds its own `pendingNamePush` in memory, so a
+        // drain already in flight never sees the flag the switch cleared.
+        //
+        // Deliberately no write: clearing `pendingNamePush` here would persist through `didSet` and
+        // discard a rename the *incoming* account legitimately owes.
+        guard signedInIdentity == store.string(forKey: identityKey) else { return }
         guard await onPushDisplayName(name) else { return }
         // Unless she renamed herself again while that was in flight, in which case the newer name
         // is still owed and this drain has no claim to clear it.

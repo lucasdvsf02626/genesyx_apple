@@ -75,6 +75,28 @@ final class AppContainer: ObservableObject {
         }
     }
 
+    /// True only when the server reports a minimum supported build higher than this one. Read by
+    /// `RootView` to route to the update gate. Fail-open: stays false on any missing config,
+    /// malformed value, or network error, so this check can never block launch by failing.
+    @Published private(set) var updateRequired = false
+
+    /// Anonymous, pre-auth minimum-version check. Run once at launch from `GenesyxApp`.
+    func checkMinimumVersion() async {
+        guard let backend else { return }   // local/dev builds are never gated
+        do {
+            guard let minimum = try await backend.minimumSupportedBuild() else { return }   // no opinion
+            updateRequired = VersionGate.requiresUpdate(
+                currentBuild: VersionGate.currentBuild(), minimumSupportedBuild: minimum)
+            #if DEBUG
+            print("[VersionGate] current=\(VersionGate.currentBuild()) minimum=\(minimum) updateRequired=\(updateRequired)")
+            #endif
+        } catch {
+            #if DEBUG
+            print("[VersionGate] check failed, proceeding (fail-open): \(error)")
+            #endif
+        }
+    }
+
     /// Release without a configured backend must not fall through to mock auth or private tabs.
     var isServiceAvailable: Bool {
         #if DEBUG

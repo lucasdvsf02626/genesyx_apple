@@ -1,5 +1,11 @@
 # Genesyx iOS — Repository and App Inventory
 
+> **Superseded — do not brief from this file.** It describes build **18**; the source tree is at
+> build **22**. Use [`docs/inventory.md`](docs/inventory.md) instead. Verified drift: 30 Learn
+> articles (now 32), 17 medical sources (now 18), partner invites listed as implemented (the flag is
+> `false`), custom supplements listed as device-local (`user_supplements` syncs), and no mention of
+> the UK GDPR Article 9 consent system at all. Kept for history only.
+
 **Purpose:** the code-backed map of the current Genesyx iOS app: product surfaces, tracked data,
 derived logic, persistence and sync, notifications, backend boundaries, privacy and verification.
 

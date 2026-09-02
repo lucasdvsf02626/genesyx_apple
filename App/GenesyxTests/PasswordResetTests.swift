@@ -324,6 +324,39 @@ final class PasswordResetTests: XCTestCase {
         XCTAssertNil(NewPasswordRule.problem(password: "a-new-password", confirmation: "a-new-password"))
     }
 
+    // MARK: - Task 2: rate-limit-aware copy and cooldown
+
+    /// A 429 (surfaced as `RemoteError.rateLimited`) produces the honest wait copy and the longer,
+    /// five-minute cooldown rather than the generic retry message.
+    func testRateLimitMapsToWaitCopyAndFiveMinuteCooldown() {
+        XCTAssertTrue(AuthEmailFailure.isRateLimited(RemoteError.rateLimited))
+        XCTAssertEqual(AuthEmailFailure.cooldownSeconds(for: RemoteError.rateLimited), 300)
+        XCTAssertEqual(AuthEmailFailure.rateLimited,
+                       "Too many attempts right now. Please wait a few minutes and try again.")
+    }
+
+    /// Any non-429 failure keeps the existing generic copy and the ordinary 60-second cooldown.
+    func testNonRateLimitFailureKeepsGenericCopyAndShortCooldown() {
+        XCTAssertFalse(AuthEmailFailure.isRateLimited(RemoteError.notConfigured))
+        XCTAssertFalse(AuthEmailFailure.isRateLimited(URLError(.timedOut)))
+        XCTAssertEqual(AuthEmailFailure.cooldownSeconds(for: RemoteError.notConfigured), 60)
+    }
+
+    /// The rate-limit signal must travel from the backend through the session unchanged, so the auth
+    /// screen can tell a throttled send apart from an ordinary failure.
+    func testAResetPropagatesRateLimitFromBackend() async {
+        let (session, auth) = await signedOutRepository()
+        auth.resetError = RemoteError.rateLimited
+
+        do {
+            try await session.sendPasswordReset(email: "ada@example.com")
+            XCTFail("a rate-limited send must throw")
+        } catch {
+            XCTAssertTrue(AuthEmailFailure.isRateLimited(error),
+                          "the 429 must reach the UI as RemoteError.rateLimited")
+        }
+    }
+
     /// The rule must not drift from the sign-in screen's. If this screen accepted something
     /// `AuthView.submit` rejects, she would set a password she could not then sign in with.
     func testTheRuleMatchesTheSignInScreen() {

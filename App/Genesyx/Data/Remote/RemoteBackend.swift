@@ -22,6 +22,10 @@ enum RemoteError: Error {
     /// No remote backend is configured, so there is no list to join / nothing to store. Surfaced
     /// (never swallowed) so the UI cannot claim a write happened when it did not.
     case notAvailable
+    /// The server refused an email send because we hit its rate limit (HTTP 429, or a GoTrue
+    /// `over_*_rate_limit` code). Its own case so the auth UI can show an honest "wait a few
+    /// minutes" message and a longer cooldown instead of the generic "please try again" copy.
+    case rateLimited
 }
 
 /// Classifies a sync failure so the queue drains know whether to stop or step over one item.
@@ -140,10 +144,29 @@ protocol CycleBackend {
     func upsert(_ settings: CycleSettings) async throws
 }
 
+/// A pull, plus the only cursor that pull licenses.
+///
+/// The cursor has to come back from the fetch rather than be minted by the caller, because the
+/// value it is compared against on the next pull is a *server* `updated_at` and the caller only has
+/// a device clock. A phone whose clock runs fast would otherwise store a cursor in the server's
+/// future, and every row written in that gap would be filtered out of the next pull and never asked
+/// for again — silent, permanent loss of another device's readings.
+///
+/// `latestUpdatedAt` is the greatest `updated_at` among the rows this fetch actually returned, and
+/// is `nil` when there were no rows or when any one of them carried a timestamp that could not be
+/// read exactly. Nil means "hold the cursor where it is": re-fetching a row costs a merge that
+/// resolves to the same answer, whereas stepping over one loses it.
+struct SyncPage<Payload> {
+    var payload: Payload
+    var latestUpdatedAt: Date?
+}
+
 /// One write path: creates, edits and deletes are all an upsert of a `PhRecord` (a delete is a
 /// record with `deleted == true`). `list` returns tombstones too, so deletions propagate.
 protocol PhBackend {
-    func list(sinceDays: Int?) async throws -> [PhRecord]
+    /// `updatedSince` filters to rows changed at or after that instant (incremental sync). `nil`
+    /// returns the full history — the first sync after install / sign-out, before a cursor exists.
+    func list(updatedSince: Date?) async throws -> SyncPage<[PhRecord]>
     func upsert(_ record: PhRecord) async throws
 }
 
@@ -151,15 +174,18 @@ protocol PhBackend {
 /// path, as with pH: a delete is an upsert carrying a tombstone, and `list` returns tombstones so a
 /// deletion made on her other phone arrives as a deletion rather than as an absence.
 protocol SupplementBackend {
-    func list() async throws -> [SupplementRecord]
+    /// `updatedSince` filters to rows changed at or after that instant (incremental sync); `nil`
+    /// returns the full list (first sync after install / sign-out).
+    func list(updatedSince: Date?) async throws -> SyncPage<[SupplementRecord]>
     func upsert(_ record: SupplementRecord) async throws
 }
 
 protocol DailyLogBackend {
     func fetch(date: CalendarDate) async throws -> DailyLog?
-    /// Every logged day. Needed on sign-in: a device that only ever pulled "today" could never
-    /// rebuild a history after a reinstall.
-    func list() async throws -> [CalendarDate: DailyLog]
+    /// Logged days. Needed on sign-in: a device that only ever pulled "today" could never rebuild a
+    /// history after a reinstall. `updatedSince` filters to days changed at or after that instant
+    /// (incremental sync); `nil` returns the full history (first sync after install / sign-out).
+    func list(updatedSince: Date?) async throws -> SyncPage<[CalendarDate: DailyLog]>
     func upsert(_ log: DailyLog, on date: CalendarDate) async throws
 }
 
@@ -243,4 +269,15 @@ protocol GenesyxBackend {
     /// runs under the anon key and must not require a session. Throws on failure so the UI only
     /// confirms once the address is actually stored.
     func joinWaitlist(email: String) async throws
+
+    /// The minimum `CFBundleVersion` the server still supports, read anonymously at launch from
+    /// `app_config`. Returns `nil` when the key/row is absent or unparseable — "no opinion", and the
+    /// caller proceeds (fail open). Throws only on a transport error, which the caller also treats as
+    /// fail-open, so this check can never block launch by failing.
+    func minimumSupportedBuild() async throws -> Int?
+}
+
+extension GenesyxBackend {
+    /// Local/dev builds and any backend without an `app_config` table are never gated.
+    func minimumSupportedBuild() async throws -> Int? { nil }
 }
