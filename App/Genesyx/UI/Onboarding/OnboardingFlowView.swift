@@ -122,6 +122,7 @@ private struct SplashView: View {
                 Spacer()
                 GxPrimaryButton(title: "Start Your Personalised Quiz", trailingSystemImage: "arrow.right", action: onStart)
                 GxGhostButton(title: "Sign in", action: onSignIn)
+                    .accessibilityIdentifier("auth.splash.signIn")
                 HStack(spacing: 6) {
                     Image(systemName: "sparkles").font(.system(size: 14)).foregroundStyle(GenesyxColor.primary)
                     Text("Educational wellness support — not medical advice. Consult a healthcare professional for medical concerns.")

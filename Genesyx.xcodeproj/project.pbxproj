@@ -856,6 +856,7 @@
 		44FFB77D0D4154A15F04E444 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				APPSTORE_URL = "https://apps.apple.com/gb/app/genesyx/id6787682466";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = App/Genesyx/Genesyx.entitlements;
@@ -869,7 +870,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.2.0;
+				MARKETING_VERSION = 1.2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.genesyx.app;
 				SDKROOT = iphoneos;
 				SUPABASE_ANON_KEY = sb_publishable_eR7nEFBHD_4ATbjEeRbicA_Z3Qj_Elb;
@@ -882,6 +883,7 @@
 		739DC5C5DBEDB5EE3CE01B3C /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				APPSTORE_URL = "https://apps.apple.com/gb/app/genesyx/id6787682466";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = App/Genesyx/Genesyx.entitlements;
@@ -895,7 +897,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.2.0;
+				MARKETING_VERSION = 1.2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.genesyx.app;
 				PROVISIONING_PROFILE_SPECIFIER = "Genesyx App Store";
 				SDKROOT = iphoneos;

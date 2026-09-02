@@ -364,6 +364,7 @@ struct AuthView: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(submitting)
+                .accessibilityIdentifier("auth.submit")
 
                 HStack { divider; Text("  OR  ").font(.gxEyebrow).foregroundStyle(GenesyxColor.mutedForeground); divider }
                     .padding(.vertical, 24)

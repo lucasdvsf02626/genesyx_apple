@@ -270,7 +270,7 @@ final class DemoWalkthroughTests: XCTestCase {
         // the gate. If a session somehow already exists, the tabs are up and there is nothing to do.
         if app.buttons["Home"].waitForExistence(timeout: 5) { return }
 
-        let splashSignIn = app.buttons["Sign in"]
+        let splashSignIn = app.buttons["auth.splash.signIn"]
         let authScreen = app.descendants(matching: .any).matching(identifier: "auth.screen").firstMatch
         if splashSignIn.waitForExistence(timeout: 30), !authScreen.exists {
             tapWhenSettled(splashSignIn)
@@ -292,7 +292,7 @@ final class DemoWalkthroughTests: XCTestCase {
         password.tap()
         password.typeText(demoPassword)
 
-        tapWhenSettled(app.buttons["Sign in"])
+        tapWhenSettled(app.buttons["auth.submit"])
 
         // Real backend: the demo account carries server-side Article 9 consent, so we expect the
         // tabs. If a consent screen is shown instead (refreshed wording / no local trail), agree so
@@ -301,14 +301,19 @@ final class DemoWalkthroughTests: XCTestCase {
         let consent = app.buttons["consent.agree"]
         let deadline = Date().addingTimeInterval(60)
         while Date() < deadline {
+            // Dismiss the SpringBoard "Save Password?" prompt FIRST. Home exists *behind* the prompt,
+            // so checking `home.exists` before clearing the sheet breaks the loop with the prompt
+            // still up, and its backdrop then swallows step a/b's first tab tap.
+            savePasswordSheetIsInTheWay(app)
             if home.exists { break }
-            if savePasswordSheetIsInTheWay(app) { continue }
             if consent.exists {
                 tapWhenSettled(consent)
                 tapWhenSettled(app.buttons["consent.continue"])
             }
             Thread.sleep(forTimeInterval: 0.5)
         }
+        // The prompt can also pop the instant Home appears; clear it once more before returning.
+        savePasswordSheetIsInTheWay(app)
         XCTAssertTrue(home.waitForExistence(timeout: 10),
                       "a. signing in as the demo account must reach the private tabs")
     }
@@ -386,10 +391,11 @@ final class DemoWalkthroughTests: XCTestCase {
         return false
     }
 
-    /// Taps `element` from a state that is not about to eat the touch. The wait is on the sheet
-    /// being gone and staying gone for a beat; nothing here waits on `isHittable`, because `tap()`
-    /// scrolls an off-screen element into view by itself and gating on hittability would forbid
-    /// every target below the fold.
+    /// Taps `element` once it is genuinely pressable. We require `exists && isHittable` before
+    /// tapping — `tap()` does not reliably auto-scroll an off-screen control across sheets, so an
+    /// element below the fold is scrolled into view here (via `swipeUntilHittable`) rather than
+    /// assumed reachable. The Save Password sheet is cleared first each pass so its backdrop cannot
+    /// be what makes the target unhittable.
     private func tapWhenSettled(_ element: XCUIElement, timeout: TimeInterval = 20,
                                 file: StaticString = #filePath, line: UInt = #line) {
         let deadline = Date().addingTimeInterval(timeout)
@@ -397,20 +403,30 @@ final class DemoWalkthroughTests: XCTestCase {
             if savePasswordSheetIsInTheWay(app) { Thread.sleep(forTimeInterval: 0.3); continue }
             Thread.sleep(forTimeInterval: 0.4)
             if savePasswordSheetIsInTheWay(app) { continue }
-            if element.exists { element.tap(); return }
+            if element.exists && !element.isHittable { _ = swipeUntilHittable(element) }
+            if element.exists && element.isHittable { element.tap(); return }
             Thread.sleep(forTimeInterval: 0.3)
         }
-        XCTFail("\(element) never became tappable within \(timeout)s", file: file, line: line)
+        XCTFail("\(element) never became hittable within \(timeout)s", file: file, line: line)
     }
 
     /// Scrolls until `element` could actually be pressed. Hittability, not existence: the app keeps
     /// a lot of content in the hierarchy at once, so `exists` alone can be true from the wrong place.
+    /// Direction is chosen from the target's own frame so it works whether the control is above or
+    /// below the current viewport — a one-direction `swipeUp` can never reach a target that sits
+    /// above the fold (e.g. after a sheet reopens scrolled down).
     @discardableResult
     private func swipeUntilHittable(_ element: XCUIElement, maxSwipes: Int = 20) -> Bool {
         var swipes = 0
         while !element.isHittable && swipes < maxSwipes {
             if savePasswordSheetIsInTheWay(app) { continue }
-            app.swipeUp(velocity: .slow)
+            // Target above the viewport midline → scroll content down (swipeDown) to bring it in;
+            // at/below the midline, or not yet in the hierarchy (content lives further down) → swipeUp.
+            if element.exists && element.frame.minY < app.frame.midY {
+                app.swipeDown(velocity: .slow)
+            } else {
+                app.swipeUp(velocity: .slow)
+            }
             swipes += 1
         }
         return element.isHittable

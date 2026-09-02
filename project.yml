@@ -79,7 +79,9 @@ targets:
         # 1.2.0, not 1.1.2: the client change list is a feature batch, not a fix pass — a weekly
         # Learn series, intimacy logging, per-supplement reminder times, the fertile-window
         # notification.
-        MARKETING_VERSION: "1.2.0"
+        # Bumped to 1.2.1 (2 Sep 2026): App Store Connect closed the 1.2.0 pre-release train
+        # (errors 90062/90186), so a new marketing version is required. Build stays 25 (never uploaded).
+        MARKETING_VERSION: "1.2.1"
         # Build number MUST exceed the highest build already in App Store Connect / TestFlight.
         # 13 = 1.4.1 resubmission; 15 = full vaginal-pH migration (1.1.0). 16 = 1.1.1 for external
         # TestFlight. 17 = 1.1.1 with the Track/UX batch (reorder, pH spine, glasses hydration,
@@ -171,3 +173,9 @@ schemes:
         - GenesyxAppTests
         - GenesyxUITests
       gatherCoverageData: true
+      # Forwards the demo-account password to the UI-test runner (read via
+      # ProcessInfo in DemoWalkthroughTests). Only the reference lives here — the value
+      # is supplied at run time (`DEMO_PASSWORD=… xcodebuild test …` / a CI secret), never
+      # the password itself. Encoded in project.yml so XcodeGen regeneration preserves it.
+      environmentVariables:
+        DEMO_PASSWORD: "$(DEMO_PASSWORD)"
