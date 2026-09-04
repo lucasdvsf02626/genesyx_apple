@@ -80,7 +80,7 @@ targets:
         # Learn series, intimacy logging, per-supplement reminder times, the fertile-window
         # notification.
         # Bumped to 1.2.1 (2 Sep 2026): App Store Connect closed the 1.2.0 pre-release train
-        # (errors 90062/90186), so a new marketing version is required. Build stays 25 (never uploaded).
+        # (errors 90062/90186), so a new marketing version is required.
         MARKETING_VERSION: "1.2.1"
         # Build number MUST exceed the highest build already in App Store Connect / TestFlight.
         # 13 = 1.4.1 resubmission; 15 = full vaginal-pH migration (1.1.0). 16 = 1.1.1 for external
@@ -113,7 +113,15 @@ targets:
         # having written nothing and the next pull put the answers back. Now carried as an explicit
         # delete. Build 23 was archived but never uploaded; nothing but this machine ever saw it, so
         # 24 is what testers receive after 22 and its notes should read against 22, not 23.
-        CURRENT_PROJECT_VERSION: "25"
+        # 25 = the 1.2.1 release candidate (per-table incremental sync, rate-limit-aware auth email,
+        # fail-open minimum-version gate, the account-rename safety fix). Archived 28 Aug as 1.2.0
+        # and never uploaded — that archive is void, it predates both `a3ae1b1` and `e97e6b4`.
+        # 26 = 1.2.1, archived 3 Sep 16:50 to `build/` and uploaded to App Store Connect 4 Sep.
+        # It carries the OLD brand artwork: the new icon and lockups landed on disk 4 Sep, after
+        # the archive was cut. 26 is burned — App Store Connect rejects a duplicate build number.
+        # 27 = 1.2.1 with the new brand artwork (light + dark app icon, both lockups). This is the
+        # first build that actually ships the new logo.
+        CURRENT_PROJECT_VERSION: "27"
         SWIFT_VERSION: "5.9"
         TARGETED_DEVICE_FAMILY: "1" # iPhone
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
