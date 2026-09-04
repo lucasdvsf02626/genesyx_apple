@@ -21,6 +21,161 @@ Evidence:
 
 ## TOMORROW — do these in this order
 
+### 2026-09-04 evening — build 27 visual QA on the simulator: one shipping defect found and fixed, all fourteen screens rendered in both schemes
+
+First session in this repo where every tab was actually looked at rather than reasoned about.
+All evidence below is from a booted iPhone 17 (iOS 26.5, UDID `6EFF8D1E-…-1AE6EFF64575`), with
+screenshots kept in `/tmp/gxqa/`.
+
+**The defect: Sign in with Apple was invisible in dark mode.** The button was pinned
+`.signInWithAppleButtonStyle(.black)` while `GenesyxColor.background` resolves to `#000000` in
+dark. Black on black: the control had no edge at all, read as loose text, and only the Google
+button below it still looked tappable. This is the first screen a new user sees, and it shipped
+this way in every dark-mode build to date.
+
+**The fix is one line in `AuthView`,** which reads the scheme instead of pinning the style:
+`.signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)`. Commit `fa6b58c`.
+Before and after: `auth_dark.png` (no button edge at all) against `auth3_dark.png` (white button).
+
+**A wrong root cause was written up here first and then disproved. Read this before repeating it.**
+The original version of this entry claimed `preferredColorScheme` travels up to the window without
+rewriting the environment of the subtree that emits it, so `@Environment(\.colorScheme)` returned
+`.light` inside a dark app; on that theory `RootView` was given
+`.environment(\.colorScheme, colorScheme ?? deviceColorScheme)` to "fix the class of bug, not just
+this instance". The theory was reasoned, never measured. Two measurements killed it:
+
+- Rebuilt with that override commented out, launched dark: the Apple button still renders **white**
+  (`exp_nofix_dark.png`). Had `\.colorScheme` really read `.light` there, the new ternary would
+  have chosen `.black` and the button would have disappeared again.
+- The dark Home screen captured before the override (`dk_0.png`) and after it (`dk2_0.png`) is
+  **byte-identical below the status bar** — same SHA-256 once the clock is cropped away. The
+  override changed nothing on screen.
+
+So `\.colorScheme` was correct all along, and the two further "latent defects" claimed alongside it
+were never defects. `GenesyxControls.swift:54` gates `page_background` on `colorScheme == .light`
+and `GenesyxControls.swift:250` raises `GenesyxMark`'s opacity in dark; both branches were always
+evaluating correctly, which is precisely why Home is unchanged either way. The override is reverted
+in `45fa4e4`. **A mechanism that explains the symptom is not the same as the mechanism that causes
+it,** and the experiment that separates them — remove the suspected fix, see whether the bug
+returns — costs one build.
+
+**Why nobody caught it: dark mode was unreachable from any test.** `RootView` forces the scheme
+from `prefs.themeMode` rather than following the device, and the UI-test wipe resets that to its
+default — so no automated run could ever render a dark screen, and every dark colour in
+`GenesyxColor` had shipped unseen. Added `-uiTestTheme dark|light|system`, honoured in
+`AppContainer.uiTestSeeded()`. Commit `6a74f28`. Note the earlier attempts to force this through
+the defaults database all failed: direct plist writes into the simulator container are reverted by
+cfprefsd, and `simctl spawn defaults delete` clobbered the whole domain while the running app
+carried on showing seeded data. A DEBUG launch argument is the only reliable route.
+
+**Every tab rendered, light and dark, seven each.** Home, Track, pH, Nutrition, Insights, Learn,
+Profile, on real seeded data. No further contrast defects of the same class. Dark surfaces are
+`#1F1F1F` cards on `#000000`, brand purple `#9B7BD8` on the active tab.
+
+**Logs are clean.** 16.8 MB of `log stream` across the sweep, 17,639 lines originating from
+`com.genesyx`. Zero crashes, fatal errors, `SIGABRT`, precondition failures or force-unwrap nils.
+Zero persistence or data-loss signals (`failed to save/persist/write/encode/decode`, `corrupt`,
+`rollback`, `NSCocoaErrorDomain` — all zero). Six genuine error/fault lines in total, all Apple's:
+four `com.apple.app_launch_measurement`, two from the dyld cache. A naive `grep -i error` returns
+69 hits from the app, but every one is a *UserDefaults key name* — `METAL_ERROR_MODE`,
+`METAL_DEBUG_ERROR_MODE` — not an error. Filter on the log-level column, not on the word.
+
+**The app icon, and the one thing that cannot be proved here.** All three files in
+`AppIcon.appiconset` are tracked. Light is 1024×1024 with `hasAlpha: no` (App Store requirement);
+dark is 1024×1024 with alpha, and is the *inverse* artwork — the gradient G on transparency, so
+iOS draws it on the system dark plate. `Contents.json` declares
+`"appearance": "luminosity", "value": "dark"`, and `xcrun assetutil --info` on a freshly built
+`Assets.car` confirms the compiler honoured it: two `Icon Image` renditions, the second carrying
+`"Appearance": "UIAppearanceDark"` and `"Opaque": false`. `CFBundleIconName = AppIcon` is present,
+runtime is iOS 26.5.
+**But the simulator will not draw it.** With `simctl ui … appearance dark` the wallpaper switches
+and every app icon stays light — Apple's own Contacts, Files and Fitness included. Reinstalling
+the app while already in dark did not change it. So this is a SpringBoard limitation, evidenced by
+Apple's own apps behaving identically, and **not** a Genesyx defect. The dark icon is verified
+present and correctly flagged in the binary; seeing it rendered needs a real device or TestFlight.
+Do not report it as visually confirmed until then.
+
+**Watch out when checking an earlier `Assets.car`.** The first one inspected was
+`Release-iphonesimulator`, last built **17 Aug** — three weeks before the dark icon existed — and
+it showed only the light rendition. That is a stale artefact, not a missing asset. Always check
+the build date of a product before drawing a conclusion from it. Same failure mode as the archive
+path corrected below.
+
+**Version, verified from the binary rather than the config.** The built product's `Info.plist`
+reads `CFBundleShortVersionString 1.2.1` / `CFBundleVersion 27`, and `project.yml` and
+`project.pbxproj` agree. `MinimumOSVersion 16.0`, bundle id `com.genesyx.app`.
+
+**The app still never starts in dark, and this was proved on a dark phone rather than read off the
+code.** `PreferencesRepository.swift:123` defaults `themeMode` to `.light`, and
+`migrateLegacySystemTheme()` moves anyone left on `.system` to `.light` once. To confirm the
+behaviour rather than the intent: simulator set to `appearance dark`, app **uninstalled** to drop
+its container, reinstalled, launched with no arguments. It comes up light — white cards, the pale
+lilac `page_background` artwork, dark text (`freshinstall_darkphone.png`). Dark remains an explicit
+choice in Profile. That artwork appearing in light and absent from every dark capture is also
+independent confirmation that the `colorScheme == .light` gate was working correctly all along.
+
+**A theme set by one test leaks into the next, and it defeats `-uiTestSeed`.** `LocalStore` is
+`UserDefaults.standard` under a `genesyx.` prefix, and `uiTestSeeded()` clears it with
+`removePersistentDomain(forName:)` on the app's own bundle id — which does not reliably invalidate
+the running process's cache. So after any `-uiTestTheme dark` run, a later plain `-uiTestSeed YES`
+launch still came up dark, which reads exactly like "the app started in dark mode" and is not.
+The comment at `AppContainer.swift:225` claiming "the wipe above resets the theme to its default"
+is therefore optimistic. Only `simctl uninstall` gives a genuinely clean slate; use it before any
+first-run claim.
+
+**Count the UI tests a run actually executed.** The target holds **102** test functions across
+eight files: `GenesyxUITests` (61), `AuthGateUITests` (18), `CustomerWalkthroughUITests` (10),
+`CitationE2ETests` (7), `LifecycleE2ETests` (3), and one each in `SleepSmokeUITests`,
+`NotificationFlowUITests` and `DemoWalkthroughTests`. `-only-testing:GenesyxUITests` does run all
+eight — confirmed by the suite-start lines, not assumed. But a run reporting exactly **61** has
+executed only the `GenesyxUITests` class and silently skipped the auth gate, which is the part
+that covers the sign-in screen; check the suite list before trusting a green result. Two xcodebuild
+runs against the same DerivedData will also fail the second with
+`Busy ("Application failed preflight checks")` — pass `-derivedDataPath` to isolate them.
+
+**Final suite results for build 27.** `GenesyxCorePackageTests` **314/314** (`swift test`).
+`GenesyxAppTests` **393/393**. `GenesyxUITests` full target on iPhone 17 Pro Max: **102 executed,
+1 skipped, 2 failures**, both since resolved or accounted for below. Note the target name for the
+app suite is `GenesyxAppTests`; `-only-testing:GenesyxTests` is rejected as "not a member of the
+specified test plan or scheme" even though `App/GenesyxTests/` is the directory that holds it.
+
+**One expected failure, and it is not a code defect.** `DemoWalkthroughTests.testDemoWalkthrough`
+fails in 0.24s at `DemoWalkthroughTests.swift:49` with "DEMO_PASSWORD is not set in the runner
+environment". It needs a secret exported into the scheme and cannot sign in without one. This is
+the environment-dependent failure already on record — expect it on any workstation run, and do not
+count it against a release.
+
+**The second failure was real, device-specific, and is now fixed: `6ca47d0`.**
+`testTheOptionalAnswerCanBeWithdrawnInTrackingPreferences` failed on iPhone 17 Pro Max and passed
+on iPhone 17 from the identical commit, which is the signature of a layout-dependent test rather
+than a flake — it reproduced on demand on the Pro Max, twice. `stage` is the first question in the
+editor and `gender` the last, so reaching the gender options scrolls the stage row off the top; the
+required-answer assertion then tapped where XCTest still believed that row to be. The app was never
+at fault, and this is provable from `ProfileView.swift:1009` without running anything:
+`clears = selected && question.isOptional`, and `stage` is not optional, so a required answer
+cannot be cleared by any number of taps. Checking the required question first needs no scrolling
+and keeps both assertions unchanged. Verified passing on both devices afterwards.
+**Run the UI target on more than one screen size before calling it green** — a single-device run
+would have shipped this either way round.
+
+**Launch arguments need the `-key YES` form.** `AppContainer.uiTestSeeded()` reads them through
+`UserDefaults.standard.bool(forKey:)`, which only sees the NSUserDefaults argument domain. A bare
+`simctl launch … -uiTestSeed -uiTestSignedOut -uiTestTheme dark` is silently ignored: the app comes
+up in whatever state it was already in, which looks convincingly like a seeding bug. Pass
+`-uiTestSeed YES -uiTestSignedOut YES -uiTestTheme dark` instead.
+
+**The consent-grant hydrate item in `ios_launch_checklist.md` §7 is confirmed still open.**
+Re-checked in code today rather than taken on trust: `AppContainer.hydrate()` is wired only to
+`session.onHydrate` (`AppContainer.swift:59`), which fires on sign-in. `ConsentRepository.grant()`
+appends the event and drains the pending queue, but nothing triggers a pull — so after granting
+from Profile the health tables stay stale until the next launch. The fix really is as small as the
+checklist says, and `hydrate()` is safe to call again: it is idempotent, `consent.refresh()` runs
+inside it and is deliberately never gated, and each health repository gates its own pull. Left
+undone on purpose. The checklist frames it as an owner decision on release scope, the consequence
+is a stale view rather than data loss, and changing the sync path in the hour before an archive —
+with no way to exercise a live consent round-trip on the simulator — is the kind of unverifiable
+late edit this file exists to prevent. Decide it deliberately for 28, or accept and document.
+
 ### 2026-09-04 automated check — no new archive, no new commits, but the working tree has re-diverged from HEAD on five source-related paths
 
 > **CORRECTION, later on 2026-09-04.** The "no new archive" bullet below is **wrong**, and so is

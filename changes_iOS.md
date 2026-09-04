@@ -4,6 +4,14 @@ Date: 2026-09-01
 
 This document summarizes the iOS work completed for the Genesyx 1.2.0 build 25 release candidate. It is a companion summary to `CHANGES.md`, focused on what changed, how it behaves, and what still needs physical-device verification.
 
+> **Superseded on 2026-09-04.** The release configuration below described build 25 and is now
+> stale on both counts. Builds 25 and 26 have both been uploaded to App Store Connect, so
+> neither number is available. The tree is at **1.2.1 build 27**, verified from the built
+> product's own `Info.plist` (`CFBundleShortVersionString 1.2.1`, `CFBundleVersion 27`) rather
+> than from the config alone, with `project.yml` and `project.pbxproj` agreeing. Build 27 also
+> carries the new brand artwork and the dark-mode sign-in fix; see the 2026-09-04 evening entry
+> in `to do list.md` for the evidence.
+
 ## Release Configuration
 
 - Marketing version remains `1.2.0`.
