@@ -18,14 +18,19 @@ import GenesyxCore
 struct ConsentView: View {
     let onAgree: () -> Void
     let onDecline: () -> Void
-    let onBack: () -> Void
+    /// Nil when the screen is a root destination with nothing behind it. A back arrow there once
+    /// recorded a withdrawal — one reflexive tap on the upgrade path silently turned logging off
+    /// for good — so when there is nowhere to go back to, the arrow is not shown at all.
+    let onBack: (() -> Void)?
 
     @State private var agreed = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                HStack { GxBackButton(action: onBack); Spacer() }
+                if let onBack {
+                    HStack { GxBackButton(action: onBack); Spacer() }
+                }
                 Text(ConsentPolicy.title)
                     .font(.gxDisplayLarge)
                     .foregroundStyle(GenesyxColor.foreground)

@@ -42,10 +42,15 @@ struct RootView: View {
                 // re-asked on every launch has not been given a free choice. `withdraw()` is the
                 // accurate word for it — as of this moment Genesyx has no permission, and that is
                 // what the trail should say.
+                //
+                // No back arrow: this surface is a root destination with nothing behind it, and the
+                // arrow used to record the same withdrawal as "Not now" — an existing user upgrading
+                // into this new screen could refuse without ever reading the question, which then
+                // read as every logging control in the app being broken. Only an answer leaves.
                 ConsentView(
                     onAgree: { consent.grant() },
                     onDecline: { consent.withdraw() },
-                    onBack: { consent.withdraw() })
+                    onBack: nil)
             case .updateRequired:
                 UpdateRequiredView()
             case .mainTabs:
