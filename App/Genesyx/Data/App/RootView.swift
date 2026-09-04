@@ -15,7 +15,6 @@ struct RootView: View {
     @EnvironmentObject private var consent: ConsentRepository
     @EnvironmentObject private var notifications: NotificationService
     @AppStorage("genesyx.onboardingComplete") private var onboardingComplete = false
-    @Environment(\.colorScheme) private var deviceColorScheme
 
     @State private var invite: InvitePresentation?
     @State private var showAuthFromInvite = false
@@ -62,13 +61,6 @@ struct RootView: View {
             }
         }
         .preferredColorScheme(colorScheme)
-        // `preferredColorScheme` travels up to the window as a preference; it does not rewrite the
-        // environment of the subtree that emits it. So `GenesyxColor` adapted correctly — it reads
-        // the UIKit trait at draw time — while any view asking SwiftUI for `\.colorScheme` was told
-        // "light" in the middle of a dark app. That is how the Sign in with Apple button came to be
-        // pinned black against a black background. Publishing the resolved scheme keeps the two
-        // answers in agreement. Left untouched under `.system`, where the inherited value is right.
-        .environment(\.colorScheme, colorScheme ?? deviceColorScheme)
         .onOpenURL { url in
             #if canImport(GoogleSignIn)
             if GIDSignIn.sharedInstance.handle(url) { return }   // Google OAuth callback
