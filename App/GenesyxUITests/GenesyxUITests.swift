@@ -1732,18 +1732,22 @@ final class GenesyxUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Tracking Preferences"].waitForExistence(timeout: 10))
         app.staticTexts["Tracking Preferences"].tap()
 
+        // The required questions keep the old behaviour: a second tap is not an escape hatch.
+        // Checked before the optional one because "stage" is the first question and "gender" the
+        // last: reaching gender scrolls stage off the top, and on a tall screen the later tap then
+        // landed on whichever row had taken its place rather than on this one.
+        let trying = app.buttons["quizOption.stage.trying"]
+        XCTAssertTrue(trying.waitForExistence(timeout: 5), "the stage options should be offered")
+        trying.tap()
+        trying.tap()
+        XCTAssertTrue(trying.isSelected, "a required answer must not be clearable")
+
         let girl = app.buttons["quizOption.gender.girl"]
         XCTAssertTrue(girl.waitForExistence(timeout: 5), "the sex-preference options should be offered")
         girl.tap()
         XCTAssertTrue(girl.isSelected, "her choice should register")
         girl.tap()
         XCTAssertFalse(girl.isSelected, "tapping it again should leave the question unanswered")
-
-        // The required questions keep the old behaviour: a second tap is not an escape hatch.
-        let trying = app.buttons["quizOption.stage.trying"]
-        trying.tap()
-        trying.tap()
-        XCTAssertTrue(trying.isSelected, "a required answer must not be clearable")
     }
 
     /// Device-side data-isolation guard: seeded health data is wiped on sign-out, and the
