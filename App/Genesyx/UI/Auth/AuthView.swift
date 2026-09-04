@@ -202,12 +202,16 @@ struct AuthView: View {
                     )
                     finishSignedIn()
                 } catch {
+                    #if DEBUG
                     print("[AppleSignIn] Supabase exchange FAILED: \(error)")
+                    #endif
                     self.error = "Couldn't complete Apple sign-in. Please try again."
                 }
             }
         case .failure(let err):
+            #if DEBUG
             print("[AppleSignIn] SDK failed: \(err)")
+            #endif
             if (err as? ASAuthorizationError)?.code == .canceled { return }   // she backed out — not an error
             error = "Couldn't complete Apple sign-in. Please try again."
         }
@@ -236,7 +240,9 @@ struct AuthView: View {
         Task {
             do {
                 let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: root)
+                #if DEBUG
                 print("[GoogleSignIn] SDK sign-in OK. hasIDToken=\(result.user.idToken != nil)")
+                #endif
                 guard let idToken = result.user.idToken?.tokenString else {
                     error = googleFailure("Google returned no ID token", nil); return
                 }
@@ -247,13 +253,17 @@ struct AuthView: View {
                         email: result.user.profile?.email, name: result.user.profile?.name
                     )
                 } catch {
+                    #if DEBUG
                     print("[GoogleSignIn] Supabase exchange FAILED: \(error)")
+                    #endif
                     self.error = googleFailure("Supabase rejected Google's token", error)
                     return
                 }
                 finishSignedIn()
             } catch {
+                #if DEBUG
                 print("[GoogleSignIn] SDK sign-in FAILED: \(error)")
+                #endif
                 // Domain-checked, like the Apple path above. This was `(error as NSError).code == -5`,
                 // which matches -5 in ANY error domain — and -5 is a common value, so an unrelated
                 // failure was silently treated as "she backed out": no error shown, no state change,
