@@ -222,6 +222,14 @@ final class AppContainer: ObservableObject {
         // than on the thing it was written to check. It also keeps the tabs reachable: a signed-in
         // user with no consent on record is routed to the consent screen, not to Home.
         container.consent.grant()
+        // `-uiTestTheme dark` (or `light`/`system`). The wipe above resets the theme to its default,
+        // and `RootView` forces the scheme from `prefs.themeMode` rather than following the device —
+        // so before this existed there was no way to render the app in dark mode from a test at all,
+        // and every dark colour in `GenesyxColor` shipped unseen.
+        if let raw = UserDefaults.standard.string(forKey: "uiTestTheme"),
+           let mode = ThemeMode(rawValue: raw) {
+            container.prefs.themeMode = mode
+        }
         // `-uiTestNoCycle YES` is the user who skipped cycle setup: everything else seeded, no
         // period date. The calendar has to work for her too, and used not to exist at all.
         if !UserDefaults.standard.bool(forKey: "uiTestNoCycle") {
