@@ -41,6 +41,7 @@ struct AuthView: View {
 
     @EnvironmentObject private var session: SessionRepository
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     var onSignedIn: (() -> Void)? = nil
     /// When false this is the root gate: no "Back to app", and success does not dismiss
     /// because `RootView` will swap on session state.
@@ -380,7 +381,10 @@ struct AuthView: View {
                     .padding(.vertical, 24)
 
                 SignInWithAppleButton(.signIn, onRequest: configureAppleRequest, onCompletion: handleApple)
-                    .signInWithAppleButtonStyle(.black)
+                    // Follows the scheme rather than being pinned black: the dark background is
+                    // #000000, so a black button had no edge against it at all — the control read
+                    // as loose text and only the Google button below still looked tappable.
+                    .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
                     .frame(height: 48)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
 
