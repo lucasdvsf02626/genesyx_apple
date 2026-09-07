@@ -30,7 +30,6 @@ struct LogView: View {
     @State private var symptomOrder: [String] = []
     @State private var notes = ""
     @State private var sleepMinutes: Int?
-    @State private var waterMl = 0
     @State private var selectedSupplements: Set<String> = []
     @State private var sexualActivity = false
     @State private var foodGroups: Set<String> = []
@@ -40,6 +39,14 @@ struct LogView: View {
     @State private var sleepOpen = false
     @State private var waterOpen = false
     @State private var suppOpen = false
+
+    /// Water is shown in the unit she picked, the same one Track and Nutrition read. The card used
+    /// to hardcode litres while its editor asked for millilitres, so one number wore three units
+    /// across two screens and a glass logged in Track came back here as "0.3L".
+    @AppStorage(HydrationPrefs.unitKey) private var hydrationUnitRaw = HydrationUnit.glasses.rawValue
+    @AppStorage(HydrationPrefs.glassMlKey) private var hydrationGlassMlRaw = 0
+    private var hydrationUnit: HydrationUnit { HydrationUnit(rawValue: hydrationUnitRaw) ?? .glasses }
+    private var hydrationGlassMl: Int { HydrationPrefs.glassMl(from: hydrationGlassMlRaw) }
 
     private var allSymptoms: [String] {
         var seen = Set<String>()
@@ -92,7 +99,7 @@ struct LogView: View {
             SleepSheet(initialMinutes: sleepMinutes) { sleepMinutes = $0 }.presentationDetents([.height(260)])
         }
         .sheet(isPresented: $waterOpen) {
-            WaterSheet(initialMl: waterMl) { waterMl = $0 }.presentationDetents([.height(220)])
+            WaterSheet(date: date).presentationDetents([.height(360)])
         }
         .sheet(isPresented: $suppOpen) {
             SupplementsSheet(selected: $selectedSupplements).presentationDetents([.medium])
@@ -117,7 +124,6 @@ struct LogView: View {
         symptomOrder = Array(log.symptoms)
         notes = log.notes ?? ""
         sleepMinutes = log.sleepMinutes
-        waterMl = log.waterMl
         selectedSupplements = log.supplements
         sexualActivity = log.sexualActivity
         foodGroups = log.foodGroups
@@ -144,7 +150,9 @@ struct LogView: View {
         entry.sleepMinutes = sleepMinutes
         entry.supplements = selectedSupplements
         entry.notes = notes.isEmpty ? nil : notes
-        entry.waterMl = waterMl
+        // Water is deliberately absent: it is written through the moment she taps, the same as
+        // Track's hydration sheet, so the stored figure read above is already current. Assigning a
+        // snapshot here would undo anything added from Track while this sheet was open.
         entry.sexualActivity = sexualActivity
         entry.foodGroups = foodGroups
         // Defence in depth behind the disabled button. `dismiss()` used to run unconditionally, so a
@@ -346,8 +354,15 @@ struct LogView: View {
         VStack(spacing: 12) {
             HStack(spacing: 12) {
                 miniCard("bed.double.fill", "Sleep", sleepValue, GenesyxColor.primary) { sleepOpen = true }
-                miniCard("drop.fill", "Water", String(format: "%.1fL", Double(waterMl) / 1000), GenesyxColor.electricBlue) { waterOpen = true }
+                // Disabled while consent is withdrawn, unlike the staged fields beside it: the water
+                // editor writes straight to the repository, where the gate would refuse in silence.
+                miniCard("drop.fill", "Water",
+                         HydrationFormat.amount(ml: dailyLog.waterMl(on: date),
+                                                unit: hydrationUnit, glassMl: hydrationGlassMl),
+                         GenesyxColor.electricBlue) { waterOpen = true }
                     .accessibilityIdentifier("log.waterCard")
+                    .disabled(!consent.isActive)
+                    .opacity(consent.isActive ? 1 : 0.5)
             }
             HStack(spacing: 12) {
                 // A plain count, not "n of 4": the sheet also offers the supplements she added
@@ -433,39 +448,103 @@ private struct SleepSheet: View {
     }
 }
 
-/// No `gxKeyboardDoneToolbar` on the field: the toolbar Done both commits and dismisses, so a
-/// keyboard Done only stacked a second one under it.
+/// Water, as the counter it is everywhere else in the app.
+///
+/// It used to be a form field: a millilitre keypad whose value was staged in `LogView` and only
+/// reached disk if she went on to tap "Save log". Track's hydration sheet, meanwhile, wrote every
+/// tap through immediately. Same number, same store, two contradictory rules — so water entered
+/// here and dismissed with "Close" vanished, which read as the log's water being broken.
+///
+/// Now it is the same control as Track: unit-sized quick adds that persist on tap, an exact
+/// millilitre entry beside them, and a readout in the unit she chose. There is no Cancel, because
+/// after a quick add there is nothing left to cancel — Track has only Done for the same reason.
+///
+/// No `gxKeyboardDoneToolbar` on the field: the toolbar Done both commits the typed figure and
+/// dismisses, so a keyboard Done only stacked a second one under it.
 private struct WaterSheet: View {
-    let initialMl: Int
-    let onDone: (Int) -> Void
-    @Environment(\.dismiss) private var dismiss
-    @State private var input: String
+    let date: CalendarDate
 
-    init(initialMl: Int, onDone: @escaping (Int) -> Void) {
-        self.initialMl = initialMl
-        self.onDone = onDone
-        _input = State(initialValue: String(initialMl))
-    }
+    @EnvironmentObject private var dailyLog: DailyLogRepository
+    @Environment(\.dismiss) private var dismiss
+    @AppStorage(HydrationPrefs.unitKey) private var unitRaw = HydrationUnit.glasses.rawValue
+    @AppStorage(HydrationPrefs.glassMlKey) private var glassMlRaw = 0
+    @State private var input = ""
+
+    private var unit: HydrationUnit { HydrationUnit(rawValue: unitRaw) ?? .glasses }
+    private var glassMl: Int { HydrationPrefs.glassMl(from: glassMlRaw) }
 
     var body: some View {
+        let ml = dailyLog.waterMl(on: date)
         NavigationStack {
-            VStack(spacing: 16) {
-                TextField("0", text: $input)
-                    .keyboardType(.numberPad).multilineTextAlignment(.center)
-                    .accessibilityIdentifier("log.waterMlField")
+            VStack(spacing: 20) {
+                Text(HydrationFormat.amount(ml: ml, unit: unit, glassMl: glassMl))
                     .font(.gxPhValue)
-                    .onChange(of: input) { input = String($0.filter(\.isNumber).prefix(5)) }
-                Text("millilitres").font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+                    .foregroundStyle(GenesyxColor.foreground)
+                    .accessibilityIdentifier("log.waterAmount")
+
+                HStack(spacing: 8) {
+                    if let per = unit.mlPerUnit(glassMl: glassMl) {
+                        adjustButton("−1", delta: -per, secondary: true, disabled: ml <= 0)
+                        adjustButton("+1", delta: per, secondary: false)
+                        adjustButton("+2", delta: per * 2, secondary: false)
+                    } else {
+                        adjustButton("−250", delta: -250, secondary: true, disabled: ml <= 0)
+                        adjustButton("+250", delta: 250, secondary: false)
+                        adjustButton("+500", delta: 500, secondary: false)
+                    }
+                }
+
+                VStack(spacing: 6) {
+                    TextField("0", text: $input)
+                        .keyboardType(.numberPad).multilineTextAlignment(.center)
+                        .accessibilityIdentifier("log.waterMlField")
+                        .font(.gxBody)
+                        .padding(.horizontal, 14).frame(height: 48)
+                        .background(GenesyxColor.muted.opacity(0.45))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .onChange(of: input) { input = String($0.filter(\.isNumber).prefix(5)) }
+                    Text("Or set an exact total in millilitres")
+                        .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+                }
             }
-            .padding()
+            .padding(20)
+            .frame(maxHeight: .infinity, alignment: .top)
+            .background(GenesyxColor.background)
             .navigationTitle("Water").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { onDone(min(max(Int(input) ?? 0, 0), 10_000)); dismiss() }
+                    Button("Done") {
+                        if let typed = Int(input), typed != ml {
+                            dailyLog.setWater(min(max(typed, 0), 10_000), on: date)
+                        }
+                        dismiss()
+                    }
                 }
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
             }
         }
+        // Kept in step with the stored figure so a quick add cannot leave a stale number in the
+        // field for Done to write back, undoing the tap she just made.
+        .onAppear { input = String(ml) }
+        .onChange(of: ml) { input = String($0) }
+    }
+
+    private func adjustButton(_ title: String, delta: Int, secondary: Bool, disabled: Bool = false) -> some View {
+        Button { dailyLog.adjustWater(delta, on: date) } label: {
+            Text(title).font(.gxLabel)
+                .foregroundStyle(secondary ? GenesyxColor.foreground : .white)
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .background(disabled ? GenesyxColor.muted.opacity(0.5) : (secondary ? GenesyxColor.muted : GenesyxColor.primary))
+                .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .disabled(disabled)
+        .accessibilityLabel({
+            if let per = unit.mlPerUnit(glassMl: glassMl) {
+                let n = abs(delta) / per
+                return delta < 0 ? "Remove \(n) \(unit.noun.one)" : "Add \(n) \(unit.noun.one)"
+            }
+            return delta < 0 ? "Remove \(-delta) millilitres" : "Add \(delta) millilitres"
+        }())
     }
 }
 

@@ -1168,6 +1168,51 @@ final class GenesyxUITests: XCTestCase {
         XCTAssertTrue(waterCard.waitForExistence(timeout: 10), "Done should close the water sheet")
     }
 
+    /// Water logged in the day sheet has to survive "Close".
+    ///
+    /// Track's hydration control writes every tap straight to the repository; this one used to
+    /// stage the figure in the sheet's own state and only persist it if she went on to tap "Save
+    /// log". Same number, same store, two contradictory rules — so water entered here and dismissed
+    /// with "Close" disappeared in silence, which is what "the water in the log doesn't work" was.
+    ///
+    /// Closing rather than saving is the whole test: tapping "Save log" would have passed against
+    /// the staged version too, and proved nothing. The unit assertions are the second half of the
+    /// same fix — the card read a hardcoded "0.8L" while its editor asked for millilitres, so one
+    /// number wore three units across two screens. Seed logs 750 ml today = 3 glasses.
+    func testWaterLoggedInTheDaySheetSurvivesClosingWithoutSaving() {
+        let app = launchSeeded(tab: 0)
+        XCTAssertTrue(app.buttons["Log today"].waitForExistence(timeout: 15))
+        app.buttons["Log today"].tap()
+
+        let waterCard = app.buttons["log.waterCard"]
+        XCTAssertTrue(waterCard.waitForExistence(timeout: 10), "the log sheet should offer a Water card")
+        XCTAssertTrue(waterCard.label.contains("glasses"),
+                      "the card must speak her hydration unit, not a hardcoded litre figure — got \(waterCard.label)")
+        waterCard.tap()
+
+        let amount = app.staticTexts["log.waterAmount"]
+        XCTAssertTrue(amount.waitForExistence(timeout: 10), "the water editor should read back the stored total")
+        XCTAssertEqual(amount.label, "3 glasses", "seeded 750 ml is 3 glasses")
+
+        app.buttons["Add 1 glass"].tap()
+        XCTAssertTrue(app.staticTexts["4 glasses"].waitForExistence(timeout: 5),
+                      "one tap must add exactly one glass, and show it")
+        app.navigationBars["Water"].buttons["Done"].tap()
+
+        // Close, deliberately not "Save log".
+        let close = app.navigationBars["Log Today"].buttons["Close"]
+        XCTAssertTrue(close.waitForExistence(timeout: 10))
+        close.tap()
+
+        XCTAssertTrue(app.buttons["Log today"].waitForExistence(timeout: 10))
+        app.buttons["Log today"].tap()
+        XCTAssertTrue(waterCard.waitForExistence(timeout: 10))
+        waterCard.tap()
+        XCTAssertTrue(amount.waitForExistence(timeout: 10))
+        XCTAssertEqual(amount.label, "4 glasses",
+                       "the glass she added must still be there after closing without saving")
+    }
+
     /// The six chips are the NHS groups; nothing in them covers a plate they were not written
     /// around, so food that fits none of them could not be logged at all.
     func testFoodGroupsSheetLogsAndKeepsOneSheNamesHerself() {

@@ -121,7 +121,13 @@ targets:
         # the archive was cut. 26 is burned — App Store Connect rejects a duplicate build number.
         # 27 = 1.2.1 with the new brand artwork (light + dark app icon, both lockups). This is the
         # first build that actually ships the new logo.
-        CURRENT_PROJECT_VERSION: "28"
+        # 28 = 1.2.2, cut 7 Sep and burned without ever shipping: App Store Connect refused it at
+        # intake because a build 28 had already been uploaded by hand. That archive is void twice
+        # over — it was cut from a detached worktree, which re-resolved SwiftPM and floated eight
+        # packages (supabase-swift 2.50.0 → 2.55.1 among them) away from the tested graph.
+        # 29 = 1.2.2 with the water fix (a day's water no longer vanishes when the sheet is closed
+        # without saving) and the lockfile now tracked, so a fresh checkout builds the tested graph.
+        CURRENT_PROJECT_VERSION: "29"
         SWIFT_VERSION: "5.9"
         TARGETED_DEVICE_FAMILY: "1" # iPhone
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon

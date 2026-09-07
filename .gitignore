@@ -2,6 +2,11 @@
 .build/
 .swiftpm/
 Package.resolved
+# …except the app's, which is the release lockfile. `project.yml` declares its packages with
+# `from:`, so a checkout without this file resolves to whatever is newest — a fresh worktree cut for
+# build 28 silently took supabase-swift 2.50.0 → 2.55.1 and seven other upgrades, none of them
+# tested. `xcodegen generate` leaves this file alone, so tracking it is safe.
+!Genesyx.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
 
 # Xcode
 *.xcodeproj/xcuserdata/
