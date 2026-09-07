@@ -123,4 +123,32 @@ final class PersistenceTests: XCTestCase {
         store.remove(forKey: "s")
         XCTAssertNil(store.string(forKey: "s"))
     }
+
+    /// A seeded launch starts light, whatever theme the last one left behind.
+    ///
+    /// `uiTestSeeded()` opens by wiping the app's defaults, but `removePersistentDomain` does not
+    /// actually clear `theme_mode` — it stays readable, which is why `onboardingComplete` beside it
+    /// is set outright rather than trusted to the wipe. So a single `-uiTestTheme dark` run latched
+    /// dark mode on for every seeded launch after it on that simulator: the whole UI suite, the
+    /// demo walkthrough and the onboarding quiz all rendered dark on a light phone.
+    ///
+    /// The leaked value is planted in the registration domain because that is the only one a test
+    /// can write that behaves like the real thing: `removePersistentDomain` leaves it standing, so
+    /// `uiTestSeeded()` reads it exactly as it read the stale `dark` on the simulator. Planting it
+    /// with `set(_:forKey:)` instead proves nothing — the wipe clears that.
+    @MainActor
+    func testASeededLaunchStartsLightWhateverTheLastOneLeftBehind() {
+        UserDefaults.standard.register(defaults: ["genesyx.theme_mode": ThemeMode.dark.rawValue])
+        defer { UserDefaults.standard.register(defaults: ["genesyx.theme_mode": ThemeMode.light.rawValue]) }
+        XCTAssertEqual(AppContainer.uiTestSeeded().prefs.themeMode, .light)
+    }
+
+    /// The other half of the same guard: silencing the leak by ignoring `-uiTestTheme` would leave
+    /// every dark colour in `GenesyxColor` untestable again.
+    @MainActor
+    func testASeededLaunchStillHonoursAnExplicitDarkRequest() {
+        UserDefaults.standard.register(defaults: ["uiTestTheme": ThemeMode.dark.rawValue])
+        defer { UserDefaults.standard.register(defaults: ["uiTestTheme": ""]) }
+        XCTAssertEqual(AppContainer.uiTestSeeded().prefs.themeMode, .dark)
+    }
 }

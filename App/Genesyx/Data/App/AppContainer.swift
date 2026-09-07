@@ -222,14 +222,19 @@ final class AppContainer: ObservableObject {
         // than on the thing it was written to check. It also keeps the tabs reachable: a signed-in
         // user with no consent on record is routed to the consent screen, not to Home.
         container.consent.grant()
-        // `-uiTestTheme dark` (or `light`/`system`). The wipe above resets the theme to its default,
-        // and `RootView` forces the scheme from `prefs.themeMode` rather than following the device —
-        // so before this existed there was no way to render the app in dark mode from a test at all,
-        // and every dark colour in `GenesyxColor` shipped unseen.
-        if let raw = UserDefaults.standard.string(forKey: "uiTestTheme"),
-           let mode = ThemeMode(rawValue: raw) {
-            container.prefs.themeMode = mode
-        }
+        // `-uiTestTheme dark` (or `light`/`system`). `RootView` forces the scheme from
+        // `prefs.themeMode` rather than following the device, so without this there was no way to
+        // render the app in dark mode from a test at all and every dark colour in `GenesyxColor`
+        // shipped unseen.
+        //
+        // Set on every seeded launch rather than only when the argument is present, because the
+        // wipe above does not clear this key: `removePersistentDomain` leaves the app's own
+        // `theme_mode` still readable in-process, the same way `onboardingComplete` below survives
+        // it. So one `-uiTestTheme dark` run left dark mode latched on that simulator for good, and
+        // every seeded launch after it — the whole UI suite, the demo walkthrough, the onboarding
+        // quiz — rendered dark on a light phone.
+        container.prefs.themeMode = UserDefaults.standard.string(forKey: "uiTestTheme")
+            .flatMap(ThemeMode.init(rawValue:)) ?? .light
         // `-uiTestNoCycle YES` is the user who skipped cycle setup: everything else seeded, no
         // period date. The calendar has to work for her too, and used not to exist at all.
         if !UserDefaults.standard.bool(forKey: "uiTestNoCycle") {
