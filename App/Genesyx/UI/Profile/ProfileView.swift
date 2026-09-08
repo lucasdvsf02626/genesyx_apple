@@ -136,11 +136,12 @@ struct ProfileView: View {
 
     private var userCard: some View {
         HStack(spacing: 16) {
-            Text(name.first.map { String($0).uppercased() } ?? "G")
-                .font(.system(size: 18, weight: .semibold)).foregroundStyle(.white)
+            Image("logo_g")
+                .resizable()
+                .scaledToFit()
                 .frame(width: 56, height: 56)
-                .background(LinearGradient(colors: [GenesyxColor.babyLavender, GenesyxColor.electricPink], startPoint: .topLeading, endPoint: .bottomTrailing))
                 .clipShape(Circle())
+                .accessibilityLabel("Genesyx")
             VStack(alignment: .leading, spacing: 2) {
                 Text(name).font(.gxCardHeading).foregroundStyle(GenesyxColor.foreground)
                 // The email is deliberately not shown on this card — a user checks which account

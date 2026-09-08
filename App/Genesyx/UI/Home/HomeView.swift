@@ -86,11 +86,12 @@ struct HomeView: View {
                 Text(session.displayName ?? "there").font(.gxDisplayLarge).foregroundStyle(GenesyxColor.foreground)
             }
             Spacer()
-            Text((session.displayName?.first).map { String($0).uppercased() } ?? "G")
-                .font(.system(size: 16, weight: .semibold)).foregroundStyle(.white)
+            Image("logo_g")
+                .resizable()
+                .scaledToFit()
                 .frame(width: 44, height: 44)
-                .background(LinearGradient(colors: [GenesyxColor.babyLavender, GenesyxColor.electricPink], startPoint: .topLeading, endPoint: .bottomTrailing))
                 .clipShape(Circle())
+                .accessibilityLabel("Genesyx")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
