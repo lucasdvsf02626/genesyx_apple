@@ -579,6 +579,8 @@ struct ArticleDetailView: View {
     @EnvironmentObject private var tabs: TabRouter
     @EnvironmentObject private var learn: LearnProgress
     @EnvironmentObject private var consent: ConsentRepository
+    /// Held only to hand on to presented sheets — see `withAppEnvironment`.
+    @EnvironmentObject private var container: AppContainer
     @State private var showLog = false
 
     var body: some View {
@@ -634,7 +636,7 @@ struct ArticleDetailView: View {
                 .tint(GenesyxColor.foreground)
             }
         }
-        .sheet(isPresented: $showLog) { LogView() }
+        .sheet(isPresented: $showLog) { LogView().withAppEnvironment(container) }
     }
 
     @ViewBuilder

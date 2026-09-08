@@ -36,19 +36,8 @@ extension View {
     /// Injects a seeded container and all repositories into the environment for previews.
     @MainActor
     func withPreviewEnvironment() -> some View {
-        let container = AppContainer.previewSeeded()
-        return self
-            .environmentObject(container)
-            .environmentObject(container.cycle)
-            .environmentObject(container.dailyLog)
-            .environmentObject(container.ph)
-            .environmentObject(container.prefs)
-            .environmentObject(container.session)
-            .environmentObject(container.partner)
-            .environmentObject(container.consent)
-            .environmentObject(container.learn)
-            .environmentObject(container.reachability)
-            .environmentObject(container.supplements)
+        self
+            .withAppEnvironment(AppContainer.previewSeeded())
             .tint(GenesyxColor.primary)
     }
 }

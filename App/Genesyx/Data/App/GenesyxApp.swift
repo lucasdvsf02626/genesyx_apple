@@ -42,17 +42,7 @@ struct GenesyxApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
-                .environmentObject(container)
-                .environmentObject(container.cycle)
-                .environmentObject(container.dailyLog)
-                .environmentObject(container.ph)
-                .environmentObject(container.prefs)
-                .environmentObject(container.session)
-                .environmentObject(container.partner)
-                .environmentObject(container.consent)
-                .environmentObject(container.learn)
-                .environmentObject(container.reachability)
-                .environmentObject(container.supplements)
+                .withAppEnvironment(container)
                 .environmentObject(notifications)
                 .tint(GenesyxColor.primary)
                 .task { await notifications.reconcile() }
@@ -70,5 +60,34 @@ struct GenesyxApp: App {
                     }
                 }
         }
+    }
+}
+
+extension View {
+    /// Puts the container and every repository on it into the environment.
+    ///
+    /// Applied at the app root *and* at the root of each presented sheet. A sheet normally
+    /// inherits the presenter's environment, but the "Designed for iPad" Mac variant builds the
+    /// presented `PresentationHostingController` before that inheritance runs, so modal content
+    /// starts with an empty object container and the first `@EnvironmentObject` read traps. Build
+    /// 29 crashed exactly that way in `LogView.foodGroupsSection`, the first line of that view to
+    /// touch the environment. Re-injecting is a no-op wherever inheritance already works.
+    ///
+    /// Takes `AppContainer` rather than a bespoke holder so the list below cannot drift from the
+    /// repositories the container actually owns. `NotificationService` and `TabRouter` are not on
+    /// the container and are injected separately by whoever owns them.
+    func withAppEnvironment(_ container: AppContainer) -> some View {
+        self
+            .environmentObject(container)
+            .environmentObject(container.cycle)
+            .environmentObject(container.dailyLog)
+            .environmentObject(container.ph)
+            .environmentObject(container.prefs)
+            .environmentObject(container.session)
+            .environmentObject(container.partner)
+            .environmentObject(container.consent)
+            .environmentObject(container.learn)
+            .environmentObject(container.reachability)
+            .environmentObject(container.supplements)
     }
 }

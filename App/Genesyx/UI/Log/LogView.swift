@@ -7,6 +7,9 @@ struct LogView: View {
 
     @EnvironmentObject private var dailyLog: DailyLogRepository
     @EnvironmentObject private var consent: ConsentRepository
+    /// Held only to hand on to presented sheets — see `withAppEnvironment`. This view is itself
+    /// always a sheet, so the three it raises are sheets within a sheet.
+    @EnvironmentObject private var container: AppContainer
     @Environment(\.dismiss) private var dismiss
 
     /// The day being logged. Defaults to today, but the calendar passes a past date so a day she
@@ -96,13 +99,19 @@ struct LogView: View {
         }
         .onAppear(perform: populate)
         .sheet(isPresented: $sleepOpen) {
-            SleepSheet(initialMinutes: sleepMinutes) { sleepMinutes = $0 }.presentationDetents([.height(260)])
+            SleepSheet(initialMinutes: sleepMinutes) { sleepMinutes = $0 }
+                .withAppEnvironment(container)
+                .presentationDetents([.height(260)])
         }
         .sheet(isPresented: $waterOpen) {
-            WaterSheet(date: date).presentationDetents([.height(360)])
+            WaterSheet(date: date)
+                .withAppEnvironment(container)
+                .presentationDetents([.height(360)])
         }
         .sheet(isPresented: $suppOpen) {
-            SupplementsSheet(selected: $selectedSupplements).presentationDetents([.medium])
+            SupplementsSheet(selected: $selectedSupplements)
+                .withAppEnvironment(container)
+                .presentationDetents([.medium])
         }
     }
 

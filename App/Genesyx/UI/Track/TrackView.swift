@@ -10,6 +10,8 @@ struct TrackView: View {
     @EnvironmentObject private var ph: PhRepository
     @EnvironmentObject private var consent: ConsentRepository
     @EnvironmentObject private var router: TabRouter
+    /// Held only to hand on to presented sheets — see `withAppEnvironment`.
+    @EnvironmentObject private var container: AppContainer
 
     @State private var monthAnchor = YearMonth.current
     @State private var showCycleSheet = false
@@ -64,8 +66,8 @@ struct TrackView: View {
         .sheet(isPresented: $showCycleDetail) {
             CycleDetailView(settings: cycle.settings) { showCycleSheet = true }
         }
-        .sheet(item: $logTarget) { LogView(date: $0.date) }
-        .sheet(isPresented: $showHydration) { HydrationDetailSheet() }
+        .sheet(item: $logTarget) { LogView(date: $0.date).withAppEnvironment(container) }
+        .sheet(isPresented: $showHydration) { HydrationDetailSheet().withAppEnvironment(container) }
         // The supplement plan is not relayed through here: `PhTrackerSection` presents it itself, so
         // it stacks over this sheet and "Got it" hands her back the reading she asked about. Learn
         // still comes back out through the router, because that one really is a move to another tab.
@@ -917,6 +919,9 @@ private struct PhDetailView: View {
 private struct HydrationDetailSheet: View {
     @EnvironmentObject private var dailyLog: DailyLogRepository
     @EnvironmentObject private var reachability: Reachability
+    /// Held only to hand on to presented sheets — see `withAppEnvironment`. This one is itself a
+    /// sheet, so the log it raises below is a sheet within a sheet and cannot rely on inheritance.
+    @EnvironmentObject private var container: AppContainer
     @Environment(\.dismiss) private var dismiss
 
     private let today = CalendarDate.today()
@@ -982,7 +987,7 @@ private struct HydrationDetailSheet: View {
             }
         }
         .presentationDetents([.medium, .large])
-        .sheet(item: $editingDay) { LogView(date: $0.date) }
+        .sheet(item: $editingDay) { LogView(date: $0.date).withAppEnvironment(container) }
         .onAppear { manualMl = water == 0 ? "" : "\(water)" }
         .onChange(of: water) { newValue in
             guard manualMl.isEmpty || Int(manualMl) != newValue else { return }

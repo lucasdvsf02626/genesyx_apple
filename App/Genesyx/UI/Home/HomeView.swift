@@ -13,6 +13,8 @@ struct HomeView: View {
     @EnvironmentObject private var session: SessionRepository
     @EnvironmentObject private var learn: LearnProgress
     @EnvironmentObject private var consent: ConsentRepository
+    /// Held only to hand on to presented sheets — see `withAppEnvironment`.
+    @EnvironmentObject private var container: AppContainer
 
     @EnvironmentObject private var router: TabRouter
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -65,7 +67,7 @@ struct HomeView: View {
             .gxPageBackground()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .navigationBar)
-            .sheet(isPresented: $showLog) { LogView() }
+            .sheet(isPresented: $showLog) { LogView().withAppEnvironment(container) }
             .sheet(isPresented: $showPregnancy) { PregnancyView() }
             .sheet(isPresented: $showCycleSetup) {
                 // `cycle.settings` — nil for a new user, which is what keeps the sheet's empty state
