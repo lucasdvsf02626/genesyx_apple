@@ -389,4 +389,104 @@ final class LearnContentTests: XCTestCase {
     func testFeaturedIsFirstWeek() {
         XCTAssertEqual(LearnLibrary.featured?.slug, "getting-started-first-week")
     }
+
+    // MARK: - New pieces lead the Learn tab
+    //
+    // Client request, 20 Sep 2026: the weekly articles sat at the foot of the list with nothing to
+    // mark them as new. "Today" is passed in rather than read from the clock, so these keep testing
+    // the rule after the series has finished publishing.
+
+    /// Weeks 1–5 are out; 13 Sep and 20 Sep fall inside the fortnight, 6 Sep does not.
+    private let midSeries = CalendarDate(2026, 9, 24)
+
+    func testNewMeansTheLastFortnightNewestFirst() {
+        let slugs = LearnLibrary.unreadNew(read: [], asOf: midSeries).map(\.slug)
+        XCTAssertEqual(slugs, ["hydration-and-reproductive-health", "cervical-mucus"])
+    }
+
+    func testAPieceIsNewForFourteenDaysFromTheDayItLands() {
+        let landed = CalendarDate(2026, 8, 23)   // "fertile-window"
+        func isNew(on day: CalendarDate) -> Bool {
+            LearnLibrary.unreadNew(read: [], asOf: day).contains { $0.slug == "fertile-window" }
+        }
+        XCTAssertTrue(isNew(on: landed), "new on the day it lands")
+        XCTAssertTrue(isNew(on: landed.plusDays(13)), "still new on day 13")
+        XCTAssertFalse(isNew(on: landed.plusDays(14)), "settled into the list on day 14")
+    }
+
+    func testOpeningAPieceClearsItsNewMark() {
+        let slugs = LearnLibrary.unreadNew(read: ["hydration-and-reproductive-health"], asOf: midSeries).map(\.slug)
+        XCTAssertEqual(slugs, ["cervical-mucus"])
+    }
+
+    func testAPieceIsNotNewBeforeItIsPublished() {
+        let dayBefore = CalendarDate(2026, 9, 26)   // "timing-sex-when-ttc" lands 27 Sep
+        XCTAssertFalse(LearnLibrary.unreadNew(read: [], asOf: dayBefore).contains { $0.slug == "timing-sex-when-ttc" })
+    }
+
+    /// Swept across the whole run and past it: the undated library is never marked, and a fortnight
+    /// never holds more than two weekly drops, so the section cannot grow into a backlog.
+    func testOnlyDatedPiecesAreNewAndNeverMoreThanTwo() {
+        let undated = Set(LearnLibrary.allArticles.filter { $0.publishedAt == nil }.map(\.slug))
+        var day = CalendarDate(2026, 8, 1)
+        while day <= CalendarDate(2026, 12, 31) {
+            let new = LearnLibrary.unreadNew(read: [], asOf: day)
+            XCTAssertTrue(new.allSatisfy { !undated.contains($0.slug) }, "undated article marked new on \(day)")
+            XCTAssertLessThanOrEqual(new.count, 2, "more than two new pieces on \(day)")
+            day = day.plusDays(1)
+        }
+        XCTAssertTrue(LearnLibrary.unreadNew(read: [], asOf: CalendarDate(2026, 11, 22)).isEmpty,
+                      "nothing is new a fortnight after the last drop")
+    }
+
+    func testTheListLeadsWithTheWeeklySeriesNewestFirst() {
+        let visible = LearnLibrary.published(asOf: midSeries)
+        let ordered = LearnLibrary.newestFirst(visible).map(\.slug)
+        XCTAssertEqual(Array(ordered.prefix(5)), [
+            "hydration-and-reproductive-health", "cervical-mucus", "nutrition-before-conception",
+            "vaginal-ph-explained", "fertile-window",
+        ])
+        XCTAssertEqual(Array(ordered.dropFirst(5)), visible.filter { $0.publishedAt == nil }.map(\.slug),
+                       "the undated library keeps its authored order behind the series")
+    }
+
+    func testRowsUnderTheSectionLeadWithTheOlderWeeklyPieces() {
+        let rows = LearnLibrary.landingRows(category: nil, read: [], asOf: midSeries).map(\.slug)
+        XCTAssertEqual(Array(rows.prefix(3)), ["nutrition-before-conception", "vaginal-ph-explained", "fertile-window"],
+                       "the two new pieces are in the section above, so the rows start with week 3")
+        XCTAssertFalse(rows.contains("getting-started-first-week"), "the featured piece is the hero, not a row")
+    }
+
+    func testAPieceReturnsToTheRowsOnceRead() {
+        let read: Set<String> = ["hydration-and-reproductive-health", "cervical-mucus"]
+        let rows = LearnLibrary.landingRows(category: nil, read: read, asOf: midSeries).map(\.slug)
+        XCTAssertEqual(Array(rows.prefix(2)), ["hydration-and-reproductive-health", "cervical-mucus"])
+    }
+
+    /// A category list shows every piece in it, new ones included, since the section is hidden while
+    /// a chip is selected.
+    func testACategoryListKeepsItsNewPiecesAndPutsThemFirst() {
+        let rows = LearnLibrary.landingRows(category: .tracking, read: [], asOf: midSeries)
+        XCTAssertEqual(rows.first?.slug, "cervical-mucus")
+        XCTAssertTrue(rows.allSatisfy { $0.category == .tracking })
+    }
+
+    /// The invariant the exclusion exists for: unfiltered, every visible article appears exactly once,
+    /// as the hero, in the section or as a row. Swept across the run with nothing read and all read.
+    func testEveryVisiblePieceAppearsExactlyOnceOnTheLandingScreen() {
+        let everything = Set(LearnLibrary.allArticles.map(\.slug))
+        for read in [Set<String>(), everything] {
+            var day = CalendarDate(2026, 8, 1)
+            while day <= CalendarDate(2026, 12, 31) {
+                let hero = LearnLibrary.published(asOf: day).filter(\.featured).map(\.slug)
+                let shown = hero
+                    + LearnLibrary.unreadNew(read: read, asOf: day).map(\.slug)
+                    + LearnLibrary.landingRows(category: nil, read: read, asOf: day).map(\.slug)
+                XCTAssertEqual(shown.count, Set(shown).count, "an article is listed twice on \(day)")
+                XCTAssertEqual(Set(shown), Set(LearnLibrary.published(asOf: day).map(\.slug)),
+                               "an article is missing from the landing screen on \(day)")
+                day = day.plusDays(1)
+            }
+        }
+    }
 }

@@ -2290,6 +2290,54 @@ input the production code is supposed to derive, the suite proves the helper and
 simultaneously and produced **18 assertion failures across exactly the 4 new tests and nothing else**
 in the 272-test target — the precision is the evidence. Restored and re-run green: 267 / 272 / 66.
 
+## 4z. H23 — Learn: new articles listed first, and marked as new (2026-09-24)
+
+**The request.** The client (Lucian, 20 Sep 2026) wrote that the new articles in Learn "are placed on
+the bottom of the list and are a little more difficult to reach", and asked for them to be listed
+first and "bolded somehow, to know what is new". Confirmed on the simulator before any change: on
+24 Sep the newest weekly piece (20 Sep) was the last of 24 cards, five swipes down, below all ten
+how-to guides. The landing list had no sort; it followed declaration order in `LearnContent.swift`,
+where the weekly series sits last, oldest first. Nothing on a card said it was new.
+
+**What changed** (`LearnModels.swift`, `LearnViews.swift`; iOS only, Android untouched):
+
+- `LearnLibrary.unreadNew(read:asOf:)`: published in the last 14 days (`newWindowDays`) and not in
+  `LearnReadLog`, newest first. Undated articles are never new. The window counts from the publish
+  date rather than `LearnLibraryLog`'s arrived set, which is empty on a first install and would hide
+  the marker from exactly the people who just downloaded the app.
+- `LearnLibrary.newestFirst` and `landingRows(category:read:asOf:)`: the dated series first, newest
+  first, then the undated library in authored order. Unfiltered, the featured piece and the section's
+  pieces are left out so each visible article appears exactly once.
+- `LearnLandingView`: a "New to read" section directly under the heading (unfiltered only), rows
+  with a `NewPill` (pink, dark ink, 5.98:1) and a bold title. The date is read once per render.
+
+**How to check it by hand.** Any date from 23 Aug to 21 Nov 2026 has at least one new piece.
+
+1. Launch a Debug build with `-uiTestSeed YES -uiTestTab 5` (a seeded launch has read nothing).
+2. The first screen shows NEW TO READ with the latest one or two weekly pieces, newest first, each
+   with a NEW pill and a bold title.
+3. Open one and go back: it has left the section and appears further down as an ordinary card.
+4. Tap the Tracking chip: the section hides, and the Tracking list starts with its newest weekly
+   piece, still marked if unread.
+
+**Review and falsification.** A six-lens review with an adversarial verifier per finding produced
+14 findings; 5 survived and all 5 were fixed (single date read per render, pill contrast, row rule
+moved into the model for testing, UI test no longer skips when the section is missing, section pinned
+above the How to use card). Six deliberate breaks each failed exactly the expected tests: inclusive
+window, ignoring read state, reversed sort, dropped exclusion, section moved below the chips, section
+made unfindable. Suites on the final tree: app `GenesyxAppTests` 405/0; UI 104 executed, 100 passed, 1 expected skip (notification permission), 3 failures, all pre-existing: `testDemoWalkthrough` needs `DEMO_PASSWORD`, and the two Track manual-hydration tests fail identically on unchanged `main` 86260d3 on the iPhone 17e simulator (the ml field never gains keyboard focus).
+
+### Left open deliberately
+
+- **Two meanings of "new".** The Learn tab badge and the Home card still count "arrived since this
+  device last looked" (`LearnProgress.unreadNewCount`, `nextRead`). A fresh install therefore shows
+  NEW pills under a bare tab. Unifying them is badge work the owner kept out of this change.
+- **Invisible once read.** Someone who has already opened the latest two pieces (likely the client)
+  sees no section until the next drop on 27 Sep; they see only the reordered list.
+- **No dark-mode screenshot.** A seeded launch uses the app's own theme setting, not the simulator's.
+- **Deferred to a future plan:** read-to-unlock 12-week programme, weekly challenges, a More tab and
+  the 90-day routine.
+
 ## 5. Still gated on the client — nothing
 
 | Gate | Needs | Blocks |

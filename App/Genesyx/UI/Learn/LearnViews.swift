@@ -54,25 +54,27 @@ struct LearnHero: View {
 
 struct LearnLandingView: View {
     @EnvironmentObject private var router: TabRouter
+    @EnvironmentObject private var learn: LearnProgress
     @AppStorage("learn_intro_seen") private var introSeen = false
     @State private var path: [String] = []
     @State private var showSearch = false
     @State private var selectedCategory: LearnCategory?
     @State private var showGuide = false
 
-    private var rows: [LearnArticle] {
-        if let cat = selectedCategory {
-            return LearnLibrary.articles.filter { $0.category == cat }
-        }
-        // Unfiltered: featured is shown as the hero, the rest as rows.
-        return LearnLibrary.articles.filter { !$0.featured }
-    }
-
     var body: some View {
-        NavigationStack(path: $path) {
+        // The date is read once per render, so the section and the rows below it can never be built
+        // on different days. `learn.readSlugs` is published, so an article leaves the section the
+        // moment she opens it rather than on the next launch.
+        let today = CalendarDate.today()
+        let newArticles = LearnLibrary.unreadNew(read: learn.readSlugs, asOf: today)
+        let newSlugs = Set(newArticles.map(\.slug))
+        let rows = LearnLibrary.landingRows(category: selectedCategory, read: learn.readSlugs, asOf: today)
+
+        return NavigationStack(path: $path) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     header
+                    if selectedCategory == nil, !newArticles.isEmpty { newSection(newArticles) }
                     if !introSeen { introHint }
                     HowToUseCard { path.append(HowToUseView.route) }
                     TwelveWeekPlanCard { path.append(TwelveWeekPlan.route) }
@@ -84,7 +86,7 @@ struct LearnLandingView: View {
                         GuideBookRow { showGuide = true }
                     }
                     ForEach(rows) { a in
-                        ArticleRow(article: a) { path.append(a.slug) }
+                        ArticleRow(article: a, isNew: newSlugs.contains(a.slug)) { path.append(a.slug) }
                     }
                 }
                 .padding(.horizontal, 20).padding(.bottom, 24)
@@ -132,6 +134,19 @@ struct LearnLandingView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, 8)
+    }
+
+    /// Directly under the heading so new pieces are on the first screen. They used to sit below
+    /// the 12-week card, the chips, the featured card and every guide.
+    private func newSection(_ articles: [LearnArticle]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Eyebrow("New to read", color: GenesyxColor.primary)
+            ForEach(articles) { a in
+                ArticleRow(article: a, isNew: true) { path.append(a.slug) }
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("learn.newSection")
     }
 
     private var introHint: some View {
@@ -480,6 +495,8 @@ struct HowThisWorksLink: View {
 
 private struct ArticleRow: View {
     let article: LearnArticle
+    /// Published in the last fortnight and not yet opened; see `LearnLibrary.unreadNew`.
+    var isNew = false
     let action: () -> Void
     var body: some View {
         Button(action: action) {
@@ -488,7 +505,9 @@ private struct ArticleRow: View {
                     .frame(width: 96)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(article.title).font(.gxLabel).foregroundStyle(GenesyxColor.foreground)
+                    if isNew { NewPill() }
+                    Text(article.title).font(isNew ? .system(size: 15, weight: .bold) : .gxLabel)
+                        .foregroundStyle(GenesyxColor.foreground)
                         .multilineTextAlignment(.leading).lineLimit(2)
                     Text(article.readingTime).font(.system(size: 11.5)).foregroundStyle(GenesyxColor.mutedForeground)
                 }
@@ -500,6 +519,20 @@ private struct ArticleRow: View {
             .clipShape(RoundedRectangle(cornerRadius: 16))
         }
         .buttonStyle(.plain)
+    }
+}
+
+/// Same pink as the Learn tab badge, but with dark ink: white on this pink is 2.76:1, dark ink is
+/// 5.98:1. Neither colour adapts, so the ratio holds in dark mode too.
+private struct NewPill: View {
+    var body: some View {
+        Text("NEW")
+            .font(.system(size: 10, weight: .bold)).tracking(0.8)
+            .foregroundStyle(Color(hex: 0x1F1F1F))
+            .padding(.horizontal, 6).padding(.vertical, 2)
+            .background(GenesyxColor.electricPink, in: Capsule())
+            // Spoken as a word, not spelled out as an acronym.
+            .accessibilityLabel("New")
     }
 }
 

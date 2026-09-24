@@ -271,4 +271,45 @@ enum LearnLibrary {
     }
 
     static var featured: LearnArticle? { articles.first { $0.featured } }
+
+    /// How long a dated article counts as new: two weekly drops, so someone who opens the app once
+    /// a fortnight still finds both pieces marked before they settle into the list.
+    static let newWindowDays = 14
+
+    /// What the Learn tab marks NEW: published within the last `newWindowDays` and not yet opened,
+    /// newest first. Undated articles are never new; they have always been here.
+    ///
+    /// Measured from the publish date rather than from `LearnLibraryLog`'s "arrived since this device
+    /// last looked", which is empty on a first install. Someone who downloads the app the week a
+    /// piece lands should still see it flagged. (Client request, 20 Sep 2026: new articles sat at the
+    /// foot of the list with nothing to say they were new.)
+    static func unreadNew(read: Set<String>, asOf today: CalendarDate = .today()) -> [LearnArticle] {
+        published(asOf: today)
+            .filter { article in
+                guard let date = article.publishedAt, !read.contains(article.slug) else { return false }
+                return today.dayNumber - date.dayNumber < newWindowDays
+            }
+            .sorted { ($0.publishedAt ?? today) > ($1.publishedAt ?? today) }
+    }
+
+    /// List order for the Learn tab: dated pieces newest first, ahead of the undated library, which
+    /// keeps its authored order. Before this the weekly series sat last, oldest first, so each new
+    /// week landed below every guide.
+    static func newestFirst(_ list: [LearnArticle]) -> [LearnArticle] {
+        let dated = list.filter { $0.publishedAt != nil }
+            .sorted { ($0.publishedAt ?? CalendarDate(1970, 1, 1)) > ($1.publishedAt ?? CalendarDate(1970, 1, 1)) }
+        return dated + list.filter { $0.publishedAt == nil }
+    }
+
+    /// The rows under the Learn hero. Unfiltered, the featured piece and whatever `unreadNew` puts in
+    /// the section above are left out, so every visible article appears exactly once. Pass the same
+    /// `today` the section was built with, or the two can disagree across midnight.
+    static func landingRows(category: LearnCategory?, read: Set<String>, asOf today: CalendarDate) -> [LearnArticle] {
+        let visible = published(asOf: today)
+        if let category {
+            return newestFirst(visible.filter { $0.category == category })
+        }
+        let shownAbove = Set(unreadNew(read: read, asOf: today).map(\.slug))
+        return newestFirst(visible.filter { !$0.featured && !shownAbove.contains($0.slug) })
+    }
 }

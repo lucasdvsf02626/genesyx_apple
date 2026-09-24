@@ -544,6 +544,57 @@ final class GenesyxUITests: XCTestCase {
                       "Learn should show the featured article")
     }
 
+    /// Client request, 20 Sep 2026: new pieces were at the foot of the list. The newest must be
+    /// tappable on the first screen, above the other Learn cards, marked, and leave the section once
+    /// she has read it.
+    ///
+    /// Whether a section is due is worked out from the calendar, not from the screen: a test that
+    /// skipped whenever the section was missing would skip precisely when the feature broke. The
+    /// dates mirror `LearnContent.swift`, twelve Sundays from 23 Aug 2026, new for 14 days.
+    func testNewArticlesAreOnTheFirstScreenAndClearOnceRead() throws {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let firstDrop = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 8, day: 23)))
+        let expected = (0..<12).filter { week in
+            guard let drop = calendar.date(byAdding: .day, value: 7 * week, to: firstDrop),
+                  let age = calendar.dateComponents([.day], from: drop, to: today).day else { return false }
+            return (0..<14).contains(age)
+        }.count
+
+        let app = launchSeeded(tab: 5)   // Learn; a seeded launch has read nothing
+        XCTAssertTrue(app.buttons["learn.twelveWeekPlan"].waitForExistence(timeout: 10), "Learn should load")
+
+        let section = app.otherElements["learn.newSection"]
+        guard expected > 0 else {
+            XCTAssertFalse(section.exists, "nothing was published in the last 14 days, so there should be no section")
+            throw XCTSkip("Nothing is new on this date; only the absence of the section was checked")
+        }
+        XCTAssertTrue(section.exists, "\(expected) piece(s) published in the last 14 days, but no New section")
+        XCTAssertEqual(section.buttons.count, expected)
+
+        let newest = section.buttons.firstMatch
+        XCTAssertTrue(newest.isHittable, "the newest piece must be on the first screen, not somewhere below it")
+        XCTAssertLessThan(section.frame.maxY, app.buttons["learn.howToUse"].frame.minY,
+                          "the section sits under the heading, above the other Learn cards")
+        XCTAssertTrue(newest.label.hasPrefix("New"), "and marked as new, got '\(newest.label)'")
+
+        let label = newest.label
+        let countBefore = section.buttons.count
+        newest.tap()
+        XCTAssertTrue(app.staticTexts["Related"].waitForExistence(timeout: 10), "the row should open the article")
+        app.navigationBars.buttons.firstMatch.tap()
+
+        // Hittable, not merely present: the Learn root stays in the hierarchy under a pushed article,
+        // and checking the section from there would pass without ever coming back.
+        let plan = app.buttons["learn.twelveWeekPlan"]
+        let back = expectation(for: NSPredicate(format: "isHittable == true"), evaluatedWith: plan)
+        wait(for: [back], timeout: 10)
+
+        let countAfter = section.exists ? section.buttons.count : 0
+        XCTAssertEqual(countAfter, countBefore - 1, "a piece she has opened is no longer new")
+        XCTAssertFalse(section.buttons[label].exists, "and it is the one she opened that went")
+    }
+
     /// The Home card has to cross two boundaries the unit tests can't reach: it sets a slug on the
     /// shared router, switches tab, and relies on `LearnLandingView` — a view that is alive but
     /// hidden — to notice and push. A card that named an article but landed nowhere would still
