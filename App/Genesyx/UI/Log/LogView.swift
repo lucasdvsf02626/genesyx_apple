@@ -478,6 +478,7 @@ private struct WaterSheet: View {
     @AppStorage(HydrationPrefs.unitKey) private var unitRaw = HydrationUnit.glasses.rawValue
     @AppStorage(HydrationPrefs.glassMlKey) private var glassMlRaw = 0
     @State private var input = ""
+    @FocusState private var inputFocused: Bool
 
     private var unit: HydrationUnit { HydrationUnit(rawValue: unitRaw) ?? .glasses }
     private var glassMl: Int { HydrationPrefs.glassMl(from: glassMlRaw) }
@@ -506,11 +507,16 @@ private struct WaterSheet: View {
                 VStack(spacing: 6) {
                     TextField("0", text: $input)
                         .keyboardType(.numberPad).multilineTextAlignment(.center)
+                        .focused($inputFocused)
                         .accessibilityIdentifier("log.waterMlField")
                         .font(.gxBody)
                         .padding(.horizontal, 14).frame(height: 48)
                         .background(GenesyxColor.muted.opacity(0.45))
                         .clipShape(RoundedRectangle(cornerRadius: 12))
+                        // The TextField is only its line of text; without this the rest of the box
+                        // drawn around it ignores taps. Same fix as Track's hydration ml field.
+                        .contentShape(Rectangle())
+                        .onTapGesture { inputFocused = true }
                         .onChange(of: input) { input = String($0.filter(\.isNumber).prefix(5)) }
                     Text("Or set an exact total in millilitres")
                         .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)

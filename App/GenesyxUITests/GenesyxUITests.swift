@@ -1251,6 +1251,34 @@ final class GenesyxUITests: XCTestCase {
         XCTAssertTrue(waterCard.waitForExistence(timeout: 10), "Done should close the water sheet")
     }
 
+    /// The whole grey box on the water sheet focuses the ml field, not just its line of text. The
+    /// same trap as `testTrackManualHydrationFieldTakesTapsAcrossItsBox`: padding, height and fill
+    /// applied outside the `TextField` draw a 48pt box around a text line a third of that height.
+    func testLogWaterFieldTakesTapsAcrossItsBox() {
+        let app = launchSeeded(tab: 0)   // Home
+        XCTAssertTrue(app.buttons["Log today"].waitForExistence(timeout: 15), "Home should show the Log today button")
+        app.buttons["Log today"].tap()
+        let waterCard = app.buttons["log.waterCard"]
+        XCTAssertTrue(waterCard.waitForExistence(timeout: 10), "The log sheet should offer a Water card")
+        waterCard.tap()
+
+        let waterMl = app.textFields["log.waterMlField"]
+        XCTAssertTrue(waterMl.waitForExistence(timeout: 10), "The water sheet should offer a millilitre field")
+        XCTAssertTrue(waterMl.isHittable, "The ml field should be on screen")
+        XCTAssertEqual(waterMl.value as? String, "750", "Seeded 750 ml should be prefilled")
+
+        // Near the top edge, NOT the centre, which lands on the text line and passes against the
+        // bug. The box is 48pt tall and centred on the text line, so this is 4pt inside its top edge.
+        waterMl.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            .withOffset(CGVector(dx: 0, dy: -20))
+            .tap()
+        XCTAssertTrue(app.keyboards.element.waitForExistence(timeout: 5),
+                      "A tap near the top edge of the water ml box must focus the field and raise its keyboard")
+        // And it is this field that took focus: what she types lands in it.
+        waterMl.typeText("1")
+        XCTAssertNotEqual(waterMl.value as? String, "750", "Typing after the edge tap must reach the ml field")
+    }
+
     /// Water logged in the day sheet has to survive "Close".
     ///
     /// Track's hydration control writes every tap straight to the repository; this one used to

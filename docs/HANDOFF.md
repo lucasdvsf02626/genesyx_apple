@@ -2373,13 +2373,40 @@ Hydration card, and tap the grey strip visible at the foot of the sheet: the she
 field takes focus.
 
 **Left open for a decision.** The same outer-padding pattern is on other fields, none of them tested
-for it, and was deliberately not changed here: `LogView.swift:507` (Log water ml, the closest twin),
+for it, and was deliberately not changed here: ~~`LogView.swift:507` (Log water ml)~~ fixed in §4ab,
 `AuthView.swift:442-443` (sign-in and sign-up), `ResetPasswordView.swift:233`,
-`ProfileView.swift:783` (display name) and `:923` (change password), `TrackView.swift:1579` (custom
-food group), `LogView.swift:618` (custom supplement), `NutritionView.swift:886` (supplement name and
+`ProfileView.swift:783` (display name) and `:923` (change password), `TrackView.swift:1587` (custom
+food group), `LogView.swift:624` (custom supplement), `NutritionView.swift:886` (supplement name and
 dose), `LearnViews.swift:583` (search), `LogView.swift:410` and `PhTrackerSection.swift:547` (notes),
 `LogView.swift:263` (add-symptom chip), and `ProfileView.swift:682` (partner email, unreachable while
 `FeatureFlags.partnerInvites` is off).
+
+## 4ab. The Log water ml field had the same dead box (2026-09-24)
+
+**The defect.** `WaterSheet` in `LogView.swift` (Home, Log today, Water card) styled its ml field the
+same way: padding, 48pt height and fill outside the `TextField`, so only the text line took a tap.
+It came in on 7 Sep with `ae70372`, which replaced a plain large-number field (no box, so no dead
+area) with a copy of the hydration box. The sheet is a fixed `.height(360)`, so the whole box is
+always on screen; the dead area is the box's padding, not a sliver cut off by the sheet edge.
+
+**The fix** (iOS only, one file): the same as §4aa. `@FocusState` on the field, `.contentShape` and
+`.onTapGesture` on the box. `log.waterMlField` is unchanged, and the sheet still has no keyboard Done
+(its toolbar Done commits and dismisses).
+
+**The test.** `testLogWaterFieldTakesTapsAcrossItsBox` taps 4pt inside the top edge of the box,
+asserts the keyboard rises, then types a digit and asserts the field's value changed, so the focus
+is proven to be this field. On iPhone 17 it failed before the fix and passes after.
+
+**Suites on the final tree.** Core package `swift test` 314/0. App `GenesyxAppTests` on iPhone 17
+405/0. Full UI suite on iPhone 17: 106 executed, 104 passed, 1 expected skip (notification
+permission), 1 failure, `testDemoWalkthrough` (needs `DEMO_PASSWORD`). Full UI suite on iPhone 17e:
+the same, 106 executed, 104 passed, 1 skip, 1 failure (`testDemoWalkthrough`). The two Track
+hydration tests that used to fail on the 17e pass there, and so does the new water test.
+
+**Checked by hand on iPhone 17e.** Seeded launch, Log today, Water: a tap near the top-left of the
+box (away from the digits) focuses the field; typing a 0 after 750 and pressing Done saved 7500 ml
+and the card read 30 glasses. The hydration sheet was rechecked on the same build: a tap on the strip
+visible at `.medium` focuses the field, and the keyboard Done dismisses it.
 
 ## 5. Still gated on the client — nothing
 
