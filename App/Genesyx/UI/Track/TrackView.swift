@@ -929,6 +929,7 @@ private struct HydrationDetailSheet: View {
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 7)
 
     @State private var manualMl = ""
+    @FocusState private var manualMlFocused: Bool
     @State private var feedbackOverride: DailyLogSyncState?
     /// The day whose log is open from the history strip below.
     @State private var editingDay: LogTarget?
@@ -1002,6 +1003,7 @@ private struct HydrationDetailSheet: View {
             HStack(spacing: 10) {
                 TextField("ml", text: $manualMl)
                     .keyboardType(.numberPad)
+                    .focused($manualMlFocused)
                     .gxKeyboardDoneToolbar()
                     .accessibilityIdentifier("hydrationManualMlField")
                     .font(.gxBody)
@@ -1009,6 +1011,12 @@ private struct HydrationDetailSheet: View {
                     .frame(height: 48)
                     .background(GenesyxColor.muted.opacity(0.55))
                     .clipShape(RoundedRectangle(cornerRadius: 14))
+                    // The same trap as Save below, on the field: the TextField is only its line of text,
+                    // so the padding and fill around it draw a box that is not part of it. Without
+                    // this a tap on the rest of the box does nothing, and at the sheet's medium
+                    // detent the rest of the box is all of the field on screen.
+                    .contentShape(Rectangle())
+                    .onTapGesture { manualMlFocused = true }
                 // Size and fill belong to the label, not to the Button: applied outside, they draw a
                 // capsule that is not part of the tap target, and every tap that misses the four
                 // letters of "Save" is swallowed by the background.

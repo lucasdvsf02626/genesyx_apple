@@ -2338,6 +2338,49 @@ made unfindable. Suites on the final tree: app `GenesyxAppTests` 405/0; UI 104 e
 - **Deferred to a future plan:** read-to-unlock 12-week programme, weekly challenges, a More tab and
   the 90-day routine.
 
+## 4aa. The Track hydration ml field only took taps on its line of text (2026-09-24)
+
+**The defect.** In `HydrationDetailSheet.manualEntry` (`TrackView.swift`) the ml field's padding,
+48pt height and grey fill were applied outside the `TextField`. They drew a 48pt box, but only the
+text line inside it (XCUITest reports 18.9pt) was the field. A tap anywhere else in the box landed on
+the background and did nothing. At the sheet's default `.medium` detent the box is cut off by the
+sheet's bottom edge. On iPhone 17e (390x844) the visible part is only the dead top padding, so the
+field looked tappable and ignored her until she dragged the sheet up; on iPhone 17 (402x874) it is
+mostly padding, with the top few points of the text line.
+This is the same trap the Save button beside it was fixed for on 12 Aug.
+
+**The fix** (iOS only, one file): a `@FocusState` on the field, and `.contentShape(Rectangle())`
+plus `.onTapGesture` on the styled box to focus it. `hydrationManualMlField` and
+`.gxKeyboardDoneToolbar()` are unchanged.
+
+**The test.** `testTrackManualHydrationFieldTakesTapsAcrossItsBox` raises the sheet to `.large` and
+taps 4pt inside the top edge of the box, not its centre (a centre tap hits the text line, which was
+always live, so it passes against the bug). On iPhone 17 it failed before the fix and passes after.
+
+**This corrects §4z and the H23 rows.** The two Track manual-hydration UI tests recorded there as
+failing only on iPhone 17e (`testTrackHydrationManualEntrySavesAndTakesTapsAcrossTheCapsule`,
+`testTrackManualHydrationFieldOffersAKeyboardDismiss`) were not a benign quirk of the test. XCUITest
+saw only the visible sliver of the field and tapped it, which is exactly the dead padding. On the
+17e, against the unfixed view all three tests fail (the two older ones with their recorded messages);
+with the fix all three pass.
+
+**Suites on the final tree.** Full UI suite on iPhone 17: 105 executed, 103 passed, 1 expected skip
+(notification permission), 1 failure, `testDemoWalkthrough` (needs `DEMO_PASSWORD`). App suite not
+re-run; nothing it covers changed.
+
+**How to check it by hand.** Seeded launch (`-uiTestSeed YES -uiTestTab 0`) on iPhone 17e, tap the
+Hydration card, and tap the grey strip visible at the foot of the sheet: the sheet rises and the
+field takes focus.
+
+**Left open for a decision.** The same outer-padding pattern is on other fields, none of them tested
+for it, and was deliberately not changed here: `LogView.swift:507` (Log water ml, the closest twin),
+`AuthView.swift:442-443` (sign-in and sign-up), `ResetPasswordView.swift:233`,
+`ProfileView.swift:783` (display name) and `:923` (change password), `TrackView.swift:1579` (custom
+food group), `LogView.swift:618` (custom supplement), `NutritionView.swift:886` (supplement name and
+dose), `LearnViews.swift:583` (search), `LogView.swift:410` and `PhTrackerSection.swift:547` (notes),
+`LogView.swift:263` (add-symptom chip), and `ProfileView.swift:682` (partner email, unreachable while
+`FeatureFlags.partnerInvites` is off).
+
 ## 5. Still gated on the client — nothing
 
 | Gate | Needs | Blocks |

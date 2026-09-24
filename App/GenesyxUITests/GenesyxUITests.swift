@@ -1068,6 +1068,38 @@ final class GenesyxUITests: XCTestCase {
                       "A tap near the edge of the Save capsule must file the reading — 2000 / 250 = 8 glasses")
     }
 
+    /// The whole grey box beside Save focuses the ml field, not just its line of text.
+    ///
+    /// The same trap as the capsule above, on the field: padding, height and fill applied outside
+    /// the `TextField` draw a 48pt box around a text line a third of that height, and a tap on the
+    /// rest of the box lands on the background and does nothing. At the sheet's `.medium` detent on
+    /// a 390x844 phone that dead padding is all of the field she can see.
+    func testTrackManualHydrationFieldTakesTapsAcrossItsBox() {
+        let app = launchSeeded(tab: 0)
+        let summary = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Hydration,")).firstMatch
+        XCTAssertTrue(summary.waitForExistence(timeout: 15), "Home should show the hydration summary")
+        summary.tap()
+        let navBar = app.navigationBars["Hydration"]
+        XCTAssertTrue(navBar.waitForExistence(timeout: 10))
+
+        let field = app.textFields["hydrationManualMlField"]
+        XCTAssertTrue(field.waitForExistence(timeout: 10), "The hydration sheet should offer manual ml entry")
+        // A coordinate tap does not scroll, so raise the sheet to `.large` first to put the whole box
+        // on screen on any phone.
+        navBar.swipeUp()
+        XCTAssertTrue(field.isHittable, "The ml field should be on screen once the sheet is raised")
+
+        // Near the top edge, NOT the centre: a centre tap lands on the text line, which was always
+        // live, so it passes against the bug. The box is 48pt tall and centred on the text line, so
+        // its top edge is 24pt above the field's midpoint whichever frame XCUITest reports; this
+        // lands 4pt inside it.
+        field.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            .withOffset(CGVector(dx: 0, dy: -20))
+            .tap()
+        XCTAssertTrue(app.buttons["keyboardDone"].waitForExistence(timeout: 5),
+                      "A tap near the top edge of the ml box must focus the field and raise its keyboard")
+    }
+
     // MARK: - Custom glass size
 
     /// Types `size` into the glass-size field and leaves it, which is the whole gesture — what the
