@@ -81,7 +81,7 @@ targets:
         # notification.
         # Bumped to 1.2.1 (2 Sep 2026): App Store Connect closed the 1.2.0 pre-release train
         # (errors 90062/90186), so a new marketing version is required.
-        MARKETING_VERSION: "1.2.2"
+        MARKETING_VERSION: "1.2.3"
         # Build number MUST exceed the highest build already in App Store Connect / TestFlight.
         # 13 = 1.4.1 resubmission; 15 = full vaginal-pH migration (1.1.0). 16 = 1.1.1 for external
         # TestFlight. 17 = 1.1.1 with the Track/UX batch (reorder, pH spine, glasses hydration,
@@ -127,7 +127,7 @@ targets:
         # packages (supabase-swift 2.50.0 → 2.55.1 among them) away from the tested graph.
         # 29 = 1.2.2 with the water fix (a day's water no longer vanishes when the sheet is closed
         # without saving) and the lockfile now tracked, so a fresh checkout builds the tested graph.
-        CURRENT_PROJECT_VERSION: "29"
+        CURRENT_PROJECT_VERSION: "31"
         SWIFT_VERSION: "5.9"
         TARGETED_DEVICE_FAMILY: "1" # iPhone
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
