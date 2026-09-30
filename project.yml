@@ -193,3 +193,4 @@ schemes:
       # the password itself. Encoded in project.yml so XcodeGen regeneration preserves it.
       environmentVariables:
         DEMO_PASSWORD: "$(DEMO_PASSWORD)"
+        DEMO_EMAIL: "$(DEMO_EMAIL)"

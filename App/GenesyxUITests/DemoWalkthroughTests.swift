@@ -8,7 +8,9 @@ import XCTest
 /// `-uiTestSeed`, so the app talks to production Supabase instead of the local mock every other
 /// UI test uses. The password is never in code or in the launch arguments: it is read from the
 /// `DEMO_PASSWORD` environment variable, forwarded to the runner by the scheme's Test action
-/// (`DEMO_PASSWORD = $(DEMO_PASSWORD)`).
+/// (`DEMO_PASSWORD = $(DEMO_PASSWORD)`). `DEMO_EMAIL` optionally points it at a separate QA
+/// account (first name "Demo"), so the App Review login never has to change; unset, it is the
+/// demo account above.
 ///
 /// Because steps (e) and (f) mutate the client-facing account, every change is captured and
 /// restored INLINE within the same step. `continueAfterFailure = true`, so a failed assertion is
@@ -23,6 +25,12 @@ final class DemoWalkthroughTests: XCTestCase {
 
     private var demoPassword: String {
         ProcessInfo.processInfo.environment["DEMO_PASSWORD"] ?? ""
+    }
+
+    /// The scheme forwards `$(DEMO_EMAIL)`, which arrives as "" when unset, so empty means default.
+    private var demoEmail: String {
+        let email = ProcessInfo.processInfo.environment["DEMO_EMAIL"] ?? ""
+        return email.isEmpty ? "demo@genesyx.co.uk" : email
     }
 
     override func setUp() {
@@ -286,7 +294,7 @@ final class DemoWalkthroughTests: XCTestCase {
             return
         }
         email.tap()
-        email.typeText("demo@genesyx.co.uk")
+        email.typeText(demoEmail)
 
         let password = app.secureTextFields.firstMatch
         password.tap()

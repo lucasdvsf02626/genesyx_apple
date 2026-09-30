@@ -95,6 +95,11 @@
       </CommandLineArguments>
       <EnvironmentVariables>
          <EnvironmentVariable
+            key = "DEMO_EMAIL"
+            value = "$(DEMO_EMAIL)"
+            isEnabled = "YES">
+         </EnvironmentVariable>
+         <EnvironmentVariable
             key = "DEMO_PASSWORD"
             value = "$(DEMO_PASSWORD)"
             isEnabled = "YES">
