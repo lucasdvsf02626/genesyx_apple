@@ -98,12 +98,16 @@ Deno.serve(async (req) => {
     // auth delete already erased; without this line supplements would be the one table that does
     // not, and they would sit there until she retried. Android's RPC was given exactly this
     // backstop on 13 Aug (H1) and this path was not — that asymmetry is what this closes.
+    // `lh_results`: this function must NOT be deployed until `20261005_lh_results.sql` has been
+    // applied, because a missing table makes this loop return an error before the account is
+    // deleted.
     for (const [table, column] of [
       ["ph_readings", "user_id"],
       ["daily_logs", "user_id"],
       ["cycle_settings", "user_id"],
       ["quiz_answers", "user_id"],
       ["user_supplements", "user_id"],
+      ["lh_results", "user_id"],
       ["partner_invites", "inviter_id"],
     ] as const) {
       const { error } = await db.from(table).delete().eq(column, uid);
