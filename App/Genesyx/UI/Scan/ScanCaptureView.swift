@@ -170,6 +170,8 @@ struct ScanCaptureView: View {
     private func begin() {
         guard let source else { return }
         attempt += 1
+        // The last result's save state must not hide Cancel on the scan that follows it.
+        saveState = .unsaved
         session.handle(.begin(source.access))
     }
 

@@ -225,6 +225,29 @@ final class ScanFlowUITests: XCTestCase {
         XCTAssertFalse(element(app, "scan.result.saved").exists, "the new result starts unsaved")
     }
 
+    /// The Cancel button hides once a reading is saved, so it must come back with the next scan:
+    /// otherwise the camera, with no result to leave through, has no way out but manual entry.
+    func testScanAgainAfterSavingOffersCancelAndSavesOnlyTheFirstReading() {
+        let app = openScanHome("slowReading")
+        openCamera(app)
+        XCTAssertTrue(element(app, "scan.result.value").waitForExistence(timeout: 15))
+        element(app, "scan.result.save").tap()
+        XCTAssertTrue(element(app, "scan.result.saved").waitForExistence(timeout: 10))
+        XCTAssertFalse(element(app, "scan.capture.cancel").exists)
+
+        element(app, "scan.scanAgain").tap()
+        XCTAssertTrue(element(app, "scan.analysing").waitForExistence(timeout: 10))
+        XCTAssertTrue(element(app, "scan.capture.cancel").exists, "a new scan must be cancellable after a save")
+
+        element(app, "scan.capture.cancel").tap()
+        XCTAssertTrue(element(app, "scan.openCamera").waitForExistence(timeout: 10))
+        XCTAssertFalse(element(app, "scan.capture").exists, "the cover must be gone")
+
+        tabButton(app, "pH").tap()
+        let toggle = openPhHistory(app)
+        XCTAssertEqual(toggle.label, "Reading history (4)", "three seeded readings plus the one saved scan")
+    }
+
     // MARK: - Unreadable: never a number
 
     func testALowConfidenceScanIsUnreadableAndShowsNoNumber() {

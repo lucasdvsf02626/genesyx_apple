@@ -203,6 +203,26 @@ final class LhScanFlowUITests: XCTestCase {
         XCTAssertFalse(element(app, "lh.result.saved").exists, "the new result starts unsaved")
     }
 
+    /// The Cancel button hides once a result is saved, so it must come back with the next scan:
+    /// otherwise the camera, with no result to leave through, has no way out but manual entry.
+    func testScanAgainAfterSavingOffersCancelAndSavesOnlyTheFirstResult() {
+        let app = openLhHome("low", camera: "slowReading")
+        openCamera(app)
+        XCTAssertTrue(element(app, "lh.result.title").waitForExistence(timeout: 15))
+        element(app, "lh.result.save").tap()
+        XCTAssertTrue(element(app, "lh.result.saved").waitForExistence(timeout: 10))
+        XCTAssertFalse(element(app, "scan.capture.cancel").exists)
+
+        element(app, "lh.scanAgain").tap()
+        XCTAssertTrue(element(app, "scan.analysing").waitForExistence(timeout: 10))
+        XCTAssertTrue(element(app, "scan.capture.cancel").exists, "a new scan must be cancellable after a save")
+
+        element(app, "scan.capture.cancel").tap()
+        XCTAssertTrue(element(app, "lh.openCamera").waitForExistence(timeout: 10))
+        XCTAssertFalse(element(app, "lh.capture").exists, "the cover must be gone")
+        XCTAssertEqual(rowCount(app), 3, "two seeded results plus the one saved scan")
+    }
+
     // MARK: - Invalid: never a result, never saved
 
     private func assertInvalid(_ scenario: String, shot: String? = nil, file: StaticString = #filePath, line: UInt = #line) {
@@ -361,10 +381,14 @@ final class LhScanFlowUITests: XCTestCase {
             if offset == 0 { snap("lh-08b-manual-entry-chosen") }
             element(app, "lh.manual.save").tap()
 
-            XCTAssertTrue(row(app, 2 + offset).waitForExistence(timeout: 10), "\(choice.0) must be listed after Save")
+            // Read in place, not scrolled to: on the smaller phone the newest row is above the
+            // fold, and `row` only scrolls one way, so chasing it never succeeds. A label needs
+            // no hit point.
+            XCTAssertTrue(element(app, "lh.history.row.\(2 + offset)").waitForExistence(timeout: 10), "\(choice.0) must be listed after Save")
             XCTAssertFalse(app.navigationBars["Enter your result"].exists, "a saved entry closes the sheet")
-            XCTAssertTrue(row(app, 0).label.hasPrefix(choice.1 + ", "), row(app, 0).label)
-            XCTAssertTrue(row(app, 0).label.hasSuffix("Entered manually"), row(app, 0).label)
+            let newest = element(app, "lh.history.row.0").label
+            XCTAssertTrue(newest.hasPrefix(choice.1 + ", "), newest)
+            XCTAssertTrue(newest.hasSuffix("Entered manually"), newest)
         }
         XCTAssertEqual(rowCount(app), 5)
     }
