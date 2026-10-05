@@ -47,7 +47,7 @@ struct ScanResultView: View {
                         .background(color.opacity(0.18)).clipShape(Capsule())
                 }
                 .frame(maxWidth: .infinity).padding(.vertical, 16)
-                .background(color.opacity(0.10)).clipShape(RoundedRectangle(cornerRadius: 16))
+                .background(color.opacity(0.10)).background(GenesyxColor.card).clipShape(RoundedRectangle(cornerRadius: 16))
                 // One element for VoiceOver, read as "pH 4.4, Healthy".
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(String(format: "pH %.1f", value))
@@ -62,7 +62,7 @@ struct ScanResultView: View {
                         .accessibilityIdentifier("scan.result.elevatedNote")
                 }
                 Text(PhScanCopy.disclaimer)
-                    .font(.caption2).foregroundStyle(GenesyxColor.mutedForeground)
+                    .font(.gxEyebrow).foregroundStyle(GenesyxColor.mutedForeground)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("scan.result.disclaimer")

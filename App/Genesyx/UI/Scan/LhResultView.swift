@@ -71,7 +71,7 @@ struct LhResultView: View {
     @ViewBuilder private func reading(_ classification: LhClassification) -> some View {
         summary(classification, identifier: "lh.result.title")
             .frame(maxWidth: .infinity).padding(20)
-            .background(GenesyxColor.primary.opacity(0.10)).clipShape(RoundedRectangle(cornerRadius: 16))
+            .background(GenesyxColor.primary.opacity(0.10)).background(GenesyxColor.card).clipShape(RoundedRectangle(cornerRadius: 16))
 
         Text(LhScanCopy.resultNote)
             .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
@@ -79,7 +79,7 @@ struct LhResultView: View {
             .fixedSize(horizontal: false, vertical: true)
             .accessibilityIdentifier("lh.result.note")
         Text(LhScanCopy.disclaimer)
-            .font(.caption2).foregroundStyle(GenesyxColor.mutedForeground)
+            .font(.gxEyebrow).foregroundStyle(GenesyxColor.mutedForeground)
             .frame(maxWidth: .infinity, alignment: .leading)
             .fixedSize(horizontal: false, vertical: true)
             .accessibilityIdentifier("lh.result.disclaimer")
