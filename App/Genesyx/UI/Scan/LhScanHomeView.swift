@@ -161,8 +161,14 @@ struct LhScanHomeView: View {
                 .background(GenesyxColor.primary.opacity(0.12)).clipShape(RoundedRectangle(cornerRadius: 10))
             VStack(alignment: .leading, spacing: 2) {
                 Text(parts[0]).font(.system(size: 15, weight: .semibold)).foregroundStyle(GenesyxColor.foreground)
-                Text(parts.dropFirst().joined(separator: " · "))
-                    .font(.system(size: 11)).foregroundStyle(GenesyxColor.mutedForeground)
+                // One line when it fits, else one part per line: a separator never ends a line.
+                ViewThatFits(in: .horizontal) {
+                    Text(parts.dropFirst().joined(separator: " · ")).lineLimit(1).fixedSize(horizontal: true, vertical: false)
+                    VStack(alignment: .leading, spacing: 1) {
+                        ForEach(Array(parts.dropFirst().enumerated()), id: \.offset) { _, part in Text(part) }
+                    }
+                }
+                .font(.system(size: 11)).foregroundStyle(GenesyxColor.mutedForeground)
             }
             Spacer()
             Image(systemName: "trash").font(.system(size: 13, weight: .semibold))
