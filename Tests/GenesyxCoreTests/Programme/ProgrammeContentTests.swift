@@ -191,7 +191,7 @@ final class ProgrammeContentTests: XCTestCase {
                                        kindReadMinutes: draft.kindReadMinutes, testGuidanceWeeks: draft.testGuidanceWeeks,
                                        dayCopy: [1: written])
         XCTAssertEqual(revised.day(1)?.title, "Welcome")
-        XCTAssertEqual(revised.day(2)?.title, draft.day(2)?.title)
+        XCTAssertEqual(revised.day(2)?.title, "Start & Baseline: Action day")
         XCTAssertTrue(revised.allSurfaces.contains("Here is how it works."))
     }
 

@@ -6,7 +6,8 @@ import Foundation
 /// schedule of activities, and short neutral wording for each kind of day. Every item is marked
 /// `draft`. Nothing here states what a food, a habit or a test does for anyone; the strings name
 /// what a day is about and where to go. Lesson text is not in this file: each day carries a lesson
-/// reference that a later content phase fills.
+/// reference, and `draftLessons` supplies the text from `ProgrammeLessonsDraft`. The written
+/// title, focus and introduction of each day come from `ProgrammeDayCopyDraft`.
 ///
 /// Every string below reaches `ProgrammeContent.allSurfaces`, which the guard tests scan.
 extension ProgrammeContent {
@@ -62,8 +63,12 @@ extension ProgrammeContent {
             .shortLesson: 3, .actionDay: 2, .reflection: 2, .trackerFocus: 3,
             .testGuidance: 4, .weeklyReview: 3, .nutritionFocus: 3, .progressReview: 4,
         ],
-        testGuidanceWeeks: [6, 7]
+        testGuidanceWeeks: [6, 7],
+        dayCopy: ProgrammeDayCopyDraft.dayCopy
     )
+
+    /// The written lesson text for `draft`, by lesson id. Pass it to `presentation(ofDay:lessons:)`.
+    public static let draftLessons = ProgrammeDraftLessons()
 
     // MARK: - Schedule
 
