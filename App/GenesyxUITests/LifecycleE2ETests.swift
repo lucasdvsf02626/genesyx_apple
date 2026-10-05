@@ -110,6 +110,7 @@ final class LifecycleE2ETests: XCTestCase {
                       "signed-out users must not keep Profile")
         XCTAssertFalse(app.buttons["Medical Sources & Disclaimer"].exists)
         XCTAssertFalse(app.buttons["Profile"].exists)
+        XCTAssertFalse(app.buttons["More"].exists)
 
         // DEBUG local-only: mock auth accepts any 8+ character password.
         let email = app.textFields["you@example.com"]
@@ -131,10 +132,10 @@ final class LifecycleE2ETests: XCTestCase {
         tapWhenSettled(agree, in: app)
         tapWhenSettled(app.buttons["consent.continue"], in: app)
 
-        let profile = app.buttons["Profile"]
-        XCTAssertTrue(profile.waitForExistence(timeout: 10),
+        XCTAssertTrue(app.buttons.matching(identifier: "Home").firstMatch.waitForExistence(timeout: 10),
                       "re-authentication must restore the tabs")
-        tapWhenSettled(profile, in: app)
+        tapWhenSettled(app.buttons.matching(identifier: app.seventhTabTitle).firstMatch, in: app)
+        app.openProfile()
         let rowAgain = app.buttons["Medical Sources & Disclaimer"]
         XCTAssertTrue(rowAgain.waitForExistence(timeout: 10))
         tapWhenSettled(rowAgain, in: app)

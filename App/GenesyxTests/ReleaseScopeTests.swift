@@ -18,18 +18,23 @@ final class ReleaseScopeTests: XCTestCase {
 
     // MARK: - Barcode / photo meal logging
 
-    /// Barcode scanning and photo-based logging both require a capture path, and iOS terminates an
-    /// app the moment it touches the camera or photo library without the matching usage string.
-    /// Their absence therefore proves the capability is missing from the bundle rather than merely
-    /// switched off behind a flag — a distinction a string grep cannot make.
-    func testTheBuiltAppHasNoCameraOrPhotoLibraryCapability() {
-        for key in ["NSCameraUsageDescription",
-                    "NSPhotoLibraryUsageDescription",
+    /// Camera capture was introduced for the Scan Test feature on branch feature/scan-ph (October
+    /// 2026). It is gated by `FeatureFlags.scanTest` (DEBUG only), and regulatory sign-off for
+    /// reading a medical-device strip is PENDING: the flag must not be enabled for Release until
+    /// that sign-off is recorded. The camera key is therefore permitted, with its exact wording
+    /// pinned. The photo library stays forbidden, because a scan is never saved to or read from
+    /// Photos. Barcode and photo meal logging remain out of scope.
+    func testCameraUsageStringIsPinnedAndPhotoLibraryIsStillForbidden() {
+        XCTAssertEqual(info["NSCameraUsageDescription"] as? String,
+            "Genesyx uses your camera to scan supported test strips and read your result.",
+            "The camera usage string changed or is missing. It is reviewed wording for the Scan Test feature.")
+
+        for key in ["NSPhotoLibraryUsageDescription",
                     "NSPhotoLibraryAddUsageDescription"] {
             XCTAssertNil(info[key],
-                "\(key) is in the shipped Info.plist. Barcode and photo meal logging are out of "
-                + "1.2.0 scope, so nothing in this release should be able to open a capture UI. "
-                + "If a capture feature is landing, update docs/APP_STORE_SUBMISSION.md and this test together.")
+                "\(key) is in the shipped Info.plist. The scan feature must never need the photo "
+                + "library, and photo meal logging is out of 1.2.0 scope. If a capture feature is "
+                + "landing, update docs/APP_STORE_SUBMISSION.md and this test together.")
         }
     }
 

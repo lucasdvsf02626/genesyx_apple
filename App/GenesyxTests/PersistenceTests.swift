@@ -106,6 +106,83 @@ final class PersistenceTests: XCTestCase {
         XCTAssertEqual(decoded.domain.measurementType, .vaginal)
     }
 
+    // MARK: scan provenance (source + scan metadata)
+
+    private let scanMeta = PhScanMetadata(scannerVersion: "s1", configurationID: "cfg", configurationVersion: "2", confidence: 0.83)
+    private let t0 = Date(timeIntervalSince1970: 1_000_000)
+
+    private func scanned() -> PhReading {
+        PhReading(id: "s", phValue: 4.6, recordedAt: t0, measurementType: .vaginal, source: .cameraScan, scan: scanMeta)
+    }
+
+    private func keys(of row: PhReadingRow) throws -> Set<String> {
+        let object = try JSONSerialization.jsonObject(with: JSONEncoder().encode(row))
+        return Set(try XCTUnwrap(object as? [String: Any]).keys)
+    }
+
+    func testLegacyLocalJSONWithoutScanKeysDecodesAsManual() throws {
+        let json = #"{"id":"x","phValue":4.2,"recordedAt":0,"measurementType":"vaginal"}"#
+        let dto = try JSONDecoder().decode(PhReadingDTO.self, from: Data(json.utf8))
+        XCTAssertEqual(dto.domain.source, .manual)
+        XCTAssertNil(dto.domain.scan)
+    }
+
+    func testStoredScanMissingAMetadataFieldDecodesAsManualWithNoScan() {
+        var dto = PhRecord(reading: scanned(), updatedAt: t0, pendingSync: false).dto
+        dto.scanConfidence = nil
+        XCTAssertEqual(dto.domain.source, .manual)
+        XCTAssertNil(dto.domain.scan)
+    }
+
+    func testCameraScanSurvivesTheLocalDTORoundTrip() throws {
+        let record = PhRecord(reading: scanned(), updatedAt: t0, pendingSync: true)
+        let decoded = try JSONDecoder().decode(PhReadingDTO.self, from: JSONEncoder().encode(record.dto))
+        XCTAssertEqual(decoded.domain, scanned())
+    }
+
+    func testUnknownLocalSourceDecodesAsManualAndStaysVisible() throws {
+        var dto = PhRecord(reading: scanned(), updatedAt: t0, pendingSync: false).dto
+        dto.source = "hologram"
+        let store = makeStore()
+        store.save([dto], forKey: "ph_readings")
+        let readings = MainActor.assumeIsolated { PhRepository(store: store).readings }
+        XCTAssertEqual(readings.map(\.phValue), [4.6], "an unknown source must not hide the reading")
+        XCTAssertEqual(readings.first?.source, .manual)
+        XCTAssertNil(readings.first?.scan)
+    }
+
+    func testManualRemoteRowSendsNoScanKeys() throws {
+        let reading = PhReading(id: "x", phValue: 4.2, recordedAt: t0, measurementType: .vaginal)
+        let row = PhReadingRow(userId: "u", record: PhRecord(reading: reading, updatedAt: t0, pendingSync: false))
+        XCTAssertEqual(try keys(of: row), ["id", "user_id", "ph_value", "recorded_at", "updated_at", "measurement_type"])
+    }
+
+    func testScannedRemoteRowSendsTheFiveScanKeys() throws {
+        let row = PhReadingRow(userId: "u", record: PhRecord(reading: scanned(), updatedAt: t0, pendingSync: false))
+        let sent = try keys(of: row)
+        XCTAssertEqual(sent.subtracting(["id", "user_id", "ph_value", "recorded_at", "updated_at", "measurement_type"]),
+                       ["source", "scan_confidence", "scan_configuration_id", "scan_configuration_version", "scanner_version"])
+        let json = try XCTUnwrap(String(data: JSONEncoder().encode(row), encoding: .utf8))
+        XCTAssertTrue(json.contains("\"source\":\"camera_scan\""), json)
+    }
+
+    func testRemoteRowWithoutOrWithNullScanColumnsDecodesAsManual() throws {
+        let base = #""id":"x","user_id":"u","ph_value":4.2,"recorded_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z","measurement_type":"vaginal""#
+        let nulls = #","source":null,"scan_confidence":null,"scan_configuration_id":null,"scan_configuration_version":null,"scanner_version":null"#
+        for json in ["{\(base)}", "{\(base)\(nulls)}"] {
+            let reading = try JSONDecoder().decode(PhReadingRow.self, from: Data(json.utf8)).domain.reading
+            XCTAssertEqual(reading.source, .manual)
+            XCTAssertNil(reading.scan)
+        }
+    }
+
+    func testFullScannedRemoteRowRestoresTheMetadata() throws {
+        let row = PhReadingRow(userId: "u", record: PhRecord(reading: scanned(), updatedAt: t0, pendingSync: false))
+        let back = try JSONDecoder().decode(PhReadingRow.self, from: JSONEncoder().encode(row)).domain.reading
+        XCTAssertEqual(back.source, .cameraScan)
+        XCTAssertEqual(back.scan, scanMeta)
+    }
+
     func testLocalStoreSaveLoadCodable() {
         let store = makeStore()
         let settings = CycleSettings(lastPeriodDate: CalendarDate(2026, 6, 1), cycleLength: 30, periodLength: 4)

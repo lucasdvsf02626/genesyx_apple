@@ -42,6 +42,13 @@ struct ProfileView: View {
     /// Losing focus is when a half-typed size stops being half-typed and becomes her answer.
     @FocusState private var glassSizeFocused: Bool
 
+    /// True when pushed onto More's stack, which then supplies the `NavigationStack`.
+    private let embedded: Bool
+
+    init(embedded: Bool = false) {
+        self.embedded = embedded
+    }
+
     private var name: String { session.displayName ?? "Guest" }
 
     private static let detailCopy: [String: String] = [
@@ -51,7 +58,7 @@ struct ProfileView: View {
     ]
 
     var body: some View {
-        NavigationStack {
+        ProfileStack(embedded: embedded) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     userCard
@@ -602,6 +609,19 @@ struct ProfileView: View {
 
     private var divider: some View {
         Rectangle().fill(GenesyxColor.border.opacity(0.5)).frame(height: 1).padding(.horizontal, 16)
+    }
+}
+
+// MARK: - Stack
+
+/// Profile's own `NavigationStack` as a tab root; none when More has pushed it onto its stack,
+/// where a second one would nest.
+private struct ProfileStack<Content: View>: View {
+    let embedded: Bool
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        if embedded { content } else { NavigationStack { content } }
     }
 }
 

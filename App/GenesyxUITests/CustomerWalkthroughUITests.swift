@@ -19,16 +19,21 @@ final class CustomerWalkthroughUITests: XCTestCase {
         continueAfterFailure = false
     }
 
-    /// Index, tab-bar label, and a string that appears on that tab and on no other.
-    private static let tabs: [(index: Int, label: String, marker: String)] = [
+    /// Index, tab-bar label, and a string that appears on that tab and on no other. The seventh
+    /// is added by `tabs(of:)`: which one it is depends on the build.
+    private static let firstSix: [(index: Int, label: String, marker: String)] = [
         (0, "Home", "HYDRATION"),
         (1, "Track", "YOUR TRACKERS"),
         (2, "pH", "Vaginal pH Tracker"),
         (3, "Nutrition", "Your nutrition focus"),
         (4, "Insights", "Your Insights"),
         (5, "Learn", "Learn"),
-        (6, "Profile", "Profile"),
     ]
+
+    /// The six, then Profile or More: either one titles its own navigation bar with its name.
+    private func tabs(of app: XCUIApplication) -> [(index: Int, label: String, marker: String)] {
+        Self.firstSix + [(6, app.seventhTabTitle, app.seventhTabTitle)]
+    }
 
     private func launchSeeded(tab: Int = 0) -> XCUIApplication {
         let app = XCUIApplication()
@@ -56,7 +61,7 @@ final class CustomerWalkthroughUITests: XCTestCase {
         let app = launchSeeded(tab: 0)
         XCTAssertTrue(tabButton(app, "Home").waitForExistence(timeout: 15), "the tab bar must appear")
 
-        for tab in Self.tabs {
+        for tab in tabs(of: app) {
             tabButton(app, tab.label).tap()
 
             // Wait on the text form first; a tab whose marker is a navigation-bar title will fall
@@ -110,18 +115,20 @@ final class CustomerWalkthroughUITests: XCTestCase {
     // MARK: - The bar itself
 
     /// All seven stay on the bar. iOS collapses a native `TabView` past five into "More", which
-    /// would bury Learn and Profile — the custom bar exists specifically to prevent that, and this
-    /// is the assertion that would catch a silent regression to the native control.
+    /// would bury Learn — the custom bar exists specifically to prevent that, and this is the
+    /// assertion that would catch a silent regression to the native control. The app's own More
+    /// is a different thing: it is the seventh tab, in Profile's place, never an eighth item.
     func testAllSevenTabsStayOnTheBarWithNoMoreOverflow() {
         let app = launchSeeded()
         XCTAssertTrue(tabButton(app, "Home").waitForExistence(timeout: 15))
 
-        for tab in Self.tabs {
+        for tab in tabs(of: app) {
             XCTAssertTrue(tabButton(app, tab.label).exists, "\(tab.label) is missing from the bar")
             XCTAssertTrue(tabButton(app, tab.label).isHittable,
                           "\(tab.label) is on the bar but cannot be tapped")
         }
-        XCTAssertFalse(app.buttons["More"].exists, "no tab may be hidden behind a More overflow")
+        XCTAssertNotEqual(tabButton(app, "Profile").exists, tabButton(app, "More").exists,
+                          "the bar ends in Profile or in More, never both and never neither")
     }
 
     /// The bar has to survive going into a screen and coming back out, or she is stranded.

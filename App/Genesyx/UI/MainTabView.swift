@@ -1,20 +1,31 @@
+import GenesyxCore
 import SwiftUI
 
-/// The 7-tab main surface (Home, Track, pH, Nutrition, Insights, Learn, Profile).
+/// The 7-tab main surface (Home, Track, pH, Nutrition, Insights, Learn, then Profile or More).
 ///
 /// iOS's native `TabView` only shows five tabs before collapsing the rest into a "More" list,
 /// which would bury Learn and Profile. Android shows all of them, so we use a custom bottom bar to
 /// match: every tab stays visible, and each screen is kept alive (state preserved) via a ZStack.
 /// Seven fit because the narrowest device this app supports is 375pt wide (iOS 16 drops the 320pt
-/// SE 1), leaving ~53pt a tab against a ~48pt widest label.
+/// SE 1), leaving ~53pt a tab against a ~48pt widest label. An eighth does not fit, so anything
+/// further goes behind the seventh: it is Profile while Profile is all there is to show, and
+/// More (a list of Profile and the rest) once there is something else. Today that something is
+/// Scan Test, only while `FeatureFlags.scanTest` is on and `ScanServices.current` exists (DEBUG).
 struct MainTabView: View {
     @StateObject private var router = TabRouter(selection: MainTabView.initialSelection)
     @EnvironmentObject private var notifications: NotificationService
     @EnvironmentObject private var learn: LearnProgress
 
     private static let learnTab = 5
+    private static let profileTab = 6
 
-    private static let items: [(title: String, icon: String)] = [
+    /// The one place the Scan Test flag decides what is on screen. Nil, the seventh tab is Profile;
+    /// set, it is More, and the tab item and the tab content both hang off this optional.
+    private let scanServices: ScanServices? = FeatureFlags.scanTest ? ScanServices.current : nil
+    /// What More has pushed. Held here because index 6 still means Profile to whatever selects it.
+    @State private var morePath = MainTabView.initialMorePath
+
+    private static let baseItems: [(title: String, icon: String)] = [
         ("Home", "house"),
         ("Track", "calendar"),
         ("pH", "drop"),
@@ -23,6 +34,11 @@ struct MainTabView: View {
         ("Learn", "book"),
         ("Profile", "person"),
     ]
+
+    /// More takes Profile's place and nothing is appended, so no tab index moves.
+    static func items(moreEnabled: Bool) -> [(title: String, icon: String)] {
+        moreEnabled ? Array(baseItems.dropLast()) + [("More", "ellipsis.circle")] : baseItems
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -33,7 +49,11 @@ struct MainTabView: View {
                 tabContent(3, NutritionView())
                 tabContent(4, InsightsView())
                 tabContent(5, LearnLandingView())
-                tabContent(6, ProfileView())
+                if let scanServices {
+                    tabContent(Self.profileTab, MoreView(scanServices: scanServices, path: $morePath))
+                } else {
+                    tabContent(Self.profileTab, ProfileView())
+                }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             tabBar
@@ -61,6 +81,7 @@ struct MainTabView: View {
     private func applyPendingNotification() {
         guard let destination = notifications.pendingDestination else { return }
         router.selection = destination.tab.rawValue
+        if destination.tab == .profile { morePath = [.profile] }
         router.pendingLearnSlug = destination.learnSlug
         notifications.pendingDestination = nil
     }
@@ -77,7 +98,7 @@ struct MainTabView: View {
 
     private var tabBar: some View {
         HStack(spacing: 0) {
-            ForEach(Array(Self.items.enumerated()), id: \.offset) { index, item in
+            ForEach(Array(Self.items(moreEnabled: scanServices != nil).enumerated()), id: \.offset) { index, item in
                 tabButton(index, item)
             }
         }
@@ -133,6 +154,19 @@ struct MainTabView: View {
         return UserDefaults.standard.integer(forKey: "uiTestTab")
         #else
         return 0
+        #endif
+    }
+
+    /// `-uiTestTab 6` has always meant Profile, so under More it opens with Profile pushed.
+    /// `-uiTestMore scan` pushes Scan home instead, and `-uiTestMore list` leaves the list showing.
+    private static var initialMorePath: [MoreDestination] {
+        #if DEBUG
+        if let raw = UserDefaults.standard.string(forKey: "uiTestMore") {
+            return MoreDestination(rawValue: raw).map { [$0] } ?? []
+        }
+        return initialSelection == profileTab ? [.profile] : []
+        #else
+        return []
         #endif
     }
 }

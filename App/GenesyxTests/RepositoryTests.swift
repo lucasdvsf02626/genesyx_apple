@@ -434,6 +434,130 @@ final class RepositoryTests: XCTestCase {
         XCTAssertEqual(relaunched.readings.first?.measurementType, .vaginal)
     }
 
+    // MARK: scanned pH readings
+
+    private let scanMeta = PhScanMetadata(scannerVersion: "s1", configurationID: "cfg", configurationVersion: "2", confidence: 0.83)
+
+    private func scannedReading(notes: String? = nil, value: Double = 4.6) -> PhReading {
+        PhReading(id: "s", phValue: value, recordedAt: Date(timeIntervalSince1970: 1_000_000), notes: notes,
+                  measurementType: .vaginal, source: .cameraScan, scan: scanMeta)
+    }
+
+    func testScannedPhReadingSurvivesARelaunch() {
+        let store = makeStore()
+        PhRepository(store: store).create(scannedReading())
+
+        let reading = PhRepository(store: store).readings.first
+        XCTAssertEqual(reading?.source, .cameraScan)
+        XCTAssertEqual(reading?.scan, scanMeta)
+    }
+
+    func testAManualPhCreateDropsScanMetadataPassedWithIt() {
+        let repo = PhRepository(store: makeStore())
+        repo.create(PhReading(id: "m", phValue: 5.0, recordedAt: Date(), measurementType: .vaginal, source: .manual, scan: scanMeta))
+        XCTAssertEqual(repo.readings.first?.source, .manual)
+        XCTAssertNil(repo.readings.first?.scan)
+    }
+
+    /// An upsert only writes the columns it is sent, so demoting in place would leave `camera_scan`
+    /// on the server beside a typed value. The scan is tombstoned and a new manual reading takes over.
+    func testEditingTheValueOfAScannedReadingMakesItManual() async {
+        let backend = FakePhBackend()
+        let repo = PhRepository(store: makeStore(), backend: backend)
+        repo.create(scannedReading())
+        await repo.drainPending()
+        XCTAssertTrue(repo.update(scannedReading(value: 5.2)))
+
+        XCTAssertEqual(repo.readings.count, 1)
+        XCTAssertEqual(repo.readings.first?.phValue, 5.2)
+        XCTAssertEqual(repo.readings.first?.source, .manual)
+        XCTAssertNil(repo.readings.first?.scan)
+        XCTAssertNotEqual(repo.readings.first?.id, "s")
+
+        await repo.drainPending()
+        XCTAssertEqual(backend.remote.count, 2)
+        let old = backend.remote.first { $0.id == "s" }
+        XCTAssertEqual(old?.deleted, true)
+        XCTAssertEqual(old?.reading.source, .cameraScan)
+        let new = backend.remote.first { $0.id != "s" }
+        XCTAssertEqual(new?.deleted, false)
+        XCTAssertEqual(new?.reading.source, .manual)
+        XCTAssertNil(new?.reading.scan)
+    }
+
+    func testUpdatePassingAScanCannotTurnAManualReadingIntoOne() {
+        let repo = PhRepository(store: makeStore())
+        repo.create(PhReading(id: "s", phValue: 4.6, recordedAt: Date(timeIntervalSince1970: 1_000_000), measurementType: .vaginal))
+        repo.update(scannedReading(notes: "x"))
+        XCTAssertEqual(repo.readings.first?.source, .manual)
+        XCTAssertNil(repo.readings.first?.scan)
+    }
+
+    func testUpdateOfAnUnstoredIdPassedAsAScanIsSavedAsManual() {
+        let repo = PhRepository(store: makeStore())
+        XCTAssertTrue(repo.update(scannedReading()))
+        XCTAssertEqual(repo.readings.first?.source, .manual)
+        XCTAssertNil(repo.readings.first?.scan)
+    }
+
+    func testAScannedCreateOutsideTheLoggableRangeIsRefused() {
+        let repo = PhRepository(store: makeStore())
+        for value in [7.4, 3.6] {
+            XCTAssertFalse(repo.create(scannedReading(value: value)), "\(value)")
+        }
+        XCTAssertTrue(repo.readings.isEmpty)
+        XCTAssertTrue(repo.create(scannedReading(value: 3.8)))
+        XCTAssertTrue(repo.create(PhReading(id: "t", phValue: 7.0, recordedAt: Date(), measurementType: .vaginal, source: .cameraScan, scan: scanMeta)))
+        XCTAssertEqual(Set(repo.readings.map(\.phValue)), [3.8, 7.0])
+    }
+
+    func testAManualCreateAbovePhStatusMaxIsUnaffected() {
+        let repo = PhRepository(store: makeStore())
+        XCTAssertTrue(repo.create(PhReading(id: "m", phValue: 7.4, recordedAt: Date(), measurementType: .vaginal)))
+        XCTAssertEqual(repo.readings.map(\.phValue), [7.4])
+    }
+
+    func testAValueEditOfAScanWritesNothingWhenConsentIsOff() {
+        let repo = PhRepository(store: makeStore())
+        repo.create(scannedReading())
+        repo.isCollectionPermitted = { false }
+        XCTAssertFalse(repo.update(scannedReading(value: 5.2)))
+        XCTAssertEqual(repo.readings.map(\.id), ["s"])
+        XCTAssertEqual(repo.readings.first?.phValue, 4.6)
+        XCTAssertEqual(repo.readings.first?.source, .cameraScan)
+    }
+
+    func testEditingOnlyTheNotesOfAScannedReadingKeepsItsProvenance() {
+        let repo = PhRepository(store: makeStore())
+        repo.create(scannedReading())
+        repo.update(scannedReading(notes: "morning"))
+        XCTAssertEqual(repo.readings.first?.notes, "morning")
+        XCTAssertEqual(repo.readings.first?.source, .cameraScan)
+        XCTAssertEqual(repo.readings.first?.scan, scanMeta)
+    }
+
+    func testANotesEditRebuiltWithoutTheScanStillKeepsProvenance() {
+        let repo = PhRepository(store: makeStore())
+        repo.create(scannedReading())
+        repo.update(PhReading(id: "s", phValue: 4.6, recordedAt: Date(timeIntervalSince1970: 1_000_000), notes: "x", measurementType: .vaginal))
+        XCTAssertEqual(repo.readings.first?.scan, scanMeta)
+    }
+
+    func testAScannedPhCreateWritesNothingWhenConsentIsOff() {
+        let repo = PhRepository(store: makeStore())
+        repo.isCollectionPermitted = { false }
+        XCTAssertFalse(repo.create(scannedReading()))
+        XCTAssertTrue(repo.readings.isEmpty)
+    }
+
+    func testAScannedPhReadingReachesTheBackendWithItsMetadata() async {
+        let backend = FakePhBackend()
+        let repo = PhRepository(store: makeStore(), backend: backend)
+        repo.create(scannedReading())
+        await repo.drainPending()
+        XCTAssertEqual(backend.remote.first?.reading.scan, scanMeta)
+    }
+
     /// The other half of that invariant, so the fix can't be "treat an absent type as vaginal":
     /// builds 12–13 recorded real readings on the urine scale, and dragging those into the vaginal
     /// trend would corrupt her fertility reading and the shared backend Android also pulls from.

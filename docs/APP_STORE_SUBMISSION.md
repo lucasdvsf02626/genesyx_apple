@@ -193,6 +193,14 @@ release, and there is no screen, control, setting, gesture, or link in this buil
 > their absence would introduce two features into the review conversation that the metadata does not
 > mention and the binary does not contain. Checked 14 Aug 2026; leave this block as it stands.
 
+> **Update, 5 Oct 2026 (branch `feature/scan-ph`): a camera usage string now exists in the project.**
+> The Scan Test feature (reading a pH test strip by camera) is in development behind
+> `FeatureFlags.scanTest`, which is true in DEBUG only. It is not in any shipped build, and
+> regulatory sign-off for reading a medical-device strip is pending, so the flag must stay off for
+> Release until that is recorded. Do not mention scanning in any App Store field until then. The
+> photo library keys remain absent and `ReleaseScopeTests` still forbids them. Barcode and meal
+> photo logging are unchanged: not built.
+
 ---
 
 ## 6. Pre-submission checklist

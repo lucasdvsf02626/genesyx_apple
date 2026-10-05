@@ -62,6 +62,9 @@ targets:
         SUPABASE_ANON_KEY: $(SUPABASE_ANON_KEY)
         # No standard/exempt encryption beyond HTTPS → skips the export-compliance prompt each upload.
         ITSAppUsesNonExemptEncryption: false
+        # Camera is used only by the Scan Test feature (FeatureFlags.scanTest, DEBUG only). No photo library
+        # key may be added: scans are never saved or read from Photos.
+        NSCameraUsageDescription: Genesyx uses your camera to scan supported test strips and read your result.
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         # Deep link for partner invites (genesyx://invite/{code})

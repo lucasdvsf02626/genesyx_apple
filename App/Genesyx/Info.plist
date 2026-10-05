@@ -45,6 +45,8 @@
 	<string>413702980668-tfah1knspa8ip82p51c3i3veuh3ljul4.apps.googleusercontent.com</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSCameraUsageDescription</key>
+	<string>Genesyx uses your camera to scan supported test strips and read your result.</string>
 	<key>SUPABASE_ANON_KEY</key>
 	<string>$(SUPABASE_ANON_KEY)</string>
 	<key>SUPABASE_URL</key>

@@ -219,9 +219,9 @@ final class GenesyxUITests: XCTestCase {
 
     func testMainTabsPresent() {
         let app = launchSeeded()
-        // Custom seven-icon bottom bar (all tabs visible, no "More" overflow).
+        // Custom seven-icon bottom bar (all seven visible; the last is Profile, or More holding it).
         XCTAssertTrue(app.buttons["Home"].waitForExistence(timeout: 10), "Tab bar should appear on seeded launch")
-        for label in ["Home", "Track", "pH", "Nutrition", "Insights", "Learn", "Profile"] {
+        for label in ["Home", "Track", "pH", "Nutrition", "Insights", "Learn", app.seventhTabTitle] {
             XCTAssertTrue(app.buttons[label].exists, "Missing tab: \(label)")
         }
     }
@@ -1790,7 +1790,7 @@ final class GenesyxUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Home"].waitForExistence(timeout: 10))
         // The Home hydration card shows a label-only "Track" affordance, so match the tab-bar
         // buttons by their accessibility identifier to avoid a duplicate-"Track" collision.
-        for label in ["Track", "pH", "Nutrition", "Insights", "Learn", "Profile", "Home"] {
+        for label in ["Track", "pH", "Nutrition", "Insights", "Learn", app.seventhTabTitle, "Home"] {
             let tab = app.buttons.matching(identifier: label).firstMatch
             tab.tap()
             XCTAssertTrue(tab.exists, "Should switch to \(label)")
@@ -1913,7 +1913,7 @@ final class GenesyxUITests: XCTestCase {
         let app = launchSeeded(tab: 0)   // Home, with seeded cycle data
         XCTAssertTrue(app.buttons["Home"].waitForExistence(timeout: 10))
 
-        app.buttons["Profile"].tap()
+        app.openProfile()
         let logout = app.buttons["Log out"]
         XCTAssertTrue(logout.waitForExistence(timeout: 5), "Signed-in Profile should offer Log out")
         logout.tap()
@@ -1928,6 +1928,7 @@ final class GenesyxUITests: XCTestCase {
         XCTAssertFalse(app.buttons["Insights"].exists)
         XCTAssertFalse(app.buttons["Learn"].exists)
         XCTAssertFalse(app.buttons["Profile"].exists)
+        XCTAssertFalse(app.buttons["More"].exists)
         XCTAssertFalse(app.buttons["auth.back"].exists, "mandatory auth has no back-to-app")
     }
 }

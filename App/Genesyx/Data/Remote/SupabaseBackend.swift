@@ -14,6 +14,7 @@ final class SupabaseBackend: GenesyxBackend {
     lazy var auth: AuthBackend = SupabaseAuth(client: client)
     lazy var cycle: CycleBackend = SupabaseCycle(client: client, auth: auth)
     lazy var ph: PhBackend = SupabasePh(client: client, auth: auth)
+    lazy var lh: LhBackend = SupabaseLh(client: client, auth: auth)
     lazy var supplements: SupplementBackend = SupabaseUserSupplements(client: client, auth: auth)
     lazy var dailyLog: DailyLogBackend = SupabaseDailyLog(client: client, auth: auth)
     lazy var profile: ProfileBackend = SupabaseProfile(client: client, auth: auth)
@@ -206,6 +207,31 @@ private struct SupabasePh: PhBackend {
     func upsert(_ record: PhRecord) async throws {
         let uid = try requireUID(auth)
         try await client.from("ph_readings").upsert(PhReadingRow(userId: uid, record: record)).execute()
+    }
+}
+
+private struct SupabaseLh: LhBackend {
+    let client: SupabaseClient
+    let auth: AuthBackend
+
+    /// Tombstones are included, as for pH: a result deleted on another device has to arrive as a
+    /// deletion, not as an absence.
+    func list(updatedSince: Date?) async throws -> SyncPage<[LhRecord]> {
+        let uid = try requireUID(auth)
+        var query = client.from("lh_results").select().eq("user_id", value: uid)
+        if let since = updatedSince {
+            query = query.gte("updated_at", value: ISO8601DateFormatter().string(from: since))
+        }
+        let rows: [LhResultRow] = try await query.order("recorded_at").execute().value
+        // The cursor is read off the raw column of every row, including any dropped for an
+        // unknown classification, never the parsed domain date.
+        return SyncPage(payload: rows.compactMap(\.domain), latestUpdatedAt: syncCursor(from: rows.map(\.updatedAt)))
+    }
+
+    /// Creates and deletes both land here: the row's `deleted_at` carries the tombstone.
+    func upsert(_ record: LhRecord) async throws {
+        let uid = try requireUID(auth)
+        try await client.from("lh_results").upsert(LhResultRow(userId: uid, record: record)).execute()
     }
 }
 

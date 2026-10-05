@@ -476,7 +476,7 @@ private struct PhSpine: View {
 
 /// Log / edit a vaginal-pH reading: value tile coloured by status, slider 3.8–7.0 step 0.1 with
 /// ± buttons, when picker, notes, Save, Cancel (+ a confirmed Delete when editing).
-private struct PhLogSheet: View {
+struct PhLogSheet: View {
     let existing: PhReading?
     /// False once Article 9 consent is withdrawn. Save is disabled; Delete is not, because
     /// removing a reading she already recorded is Article 17 and stays available either way.

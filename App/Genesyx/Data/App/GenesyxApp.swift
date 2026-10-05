@@ -82,6 +82,7 @@ extension View {
             .environmentObject(container.cycle)
             .environmentObject(container.dailyLog)
             .environmentObject(container.ph)
+            .environmentObject(container.lh)
             .environmentObject(container.prefs)
             .environmentObject(container.session)
             .environmentObject(container.partner)

@@ -21,7 +21,7 @@ final class AuthGateUITests: XCTestCase {
     }
 
     private func assertNoPrivateTabs(_ app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
-        for title in ["Home", "Track", "pH", "Nutrition", "Insights", "Learn", "Profile"] {
+        for title in ["Home", "Track", "pH", "Nutrition", "Insights", "Learn", "Profile", "More"] {
             XCTAssertFalse(app.buttons[title].exists, "\(title) must not be reachable", file: file, line: line)
         }
     }

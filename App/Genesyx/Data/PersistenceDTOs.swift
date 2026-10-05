@@ -65,13 +65,30 @@ struct PhReadingDTO: Codable {
     var deleted: Bool? = nil
     /// Optional so rows persisted before the migration decode as legacy `urine` (see `domain`).
     var measurementType: String? = nil
+    /// Optional for the same reason: rows written before scanning existed carry none, and decode
+    /// as `.manual`. An unrecognised value also decodes as `.manual`, so a reading is never hidden
+    /// or lost over a source this build does not know.
+    var source: String? = nil
+    var scanScannerVersion: String? = nil
+    var scanConfigurationID: String? = nil
+    var scanConfigurationVersion: String? = nil
+    var scanConfidence: Double? = nil
 }
 
 extension PhReadingDTO {
     var domain: PhReading {
-        PhReading(id: id, phValue: phValue, recordedAt: recordedAt, notes: notes,
+        var scan: PhScanMetadata?
+        if source.flatMap(PhReadingSource.init(rawValue:)) == .cameraScan, let scannerVersion = scanScannerVersion,
+           let configurationID = scanConfigurationID, let configurationVersion = scanConfigurationVersion,
+           let confidence = scanConfidence {
+            scan = PhScanMetadata(scannerVersion: scannerVersion, configurationID: configurationID,
+                                  configurationVersion: configurationVersion, confidence: confidence)
+        }
+        // A camera scan only when all four metadata fields are present; otherwise manual.
+        return PhReading(id: id, phValue: phValue, recordedAt: recordedAt, notes: notes,
                   // Absent or unrecognised → legacy urine. NEVER default to vaginal.
-                  measurementType: measurementType.flatMap(PhMeasurementType.init(rawValue:)) ?? .urine)
+                  measurementType: measurementType.flatMap(PhMeasurementType.init(rawValue:)) ?? .urine,
+                  source: scan == nil ? .manual : .cameraScan, scan: scan)
     }
 
     var record: PhRecord {
@@ -96,7 +113,12 @@ extension PhRecord {
             updatedAt: updatedAt,
             pendingSync: pendingSync,
             deleted: deleted,
-            measurementType: reading.measurementType.rawValue
+            measurementType: reading.measurementType.rawValue,
+            source: reading.source.rawValue,
+            scanScannerVersion: reading.scan?.scannerVersion,
+            scanConfigurationID: reading.scan?.configurationID,
+            scanConfigurationVersion: reading.scan?.configurationVersion,
+            scanConfidence: reading.scan?.confidence
         )
     }
 }
@@ -137,6 +159,75 @@ extension SupplementRecordDTO {
             updatedAt: updatedAt ?? Date(timeIntervalSince1970: 0),
             pendingSync: pendingSync ?? true,
             deleted: deleted ?? false
+        )
+    }
+}
+
+/// The persisted form of an `LhRecord`. Everything but `id`, `recordedAt` and `classification` is
+/// optional with a defaulting read, so a list written by an earlier build still decodes. A record
+/// with no bookkeeping has never been pushed, so `pendingSync` defaults to true.
+struct LhResultDTO: Codable {
+    var id: String
+    var recordedAt: Date
+    var classification: String
+    var cycleDay: Int? = nil
+    /// "manual" or "cameraScan". Informational only: `scan` is rebuilt from the fields below.
+    var source: String? = nil
+    var testSignal: Double? = nil
+    var controlSignal: Double? = nil
+    var testControlRatio: Double? = nil
+    var scanConfidence: Double? = nil
+    var scannerVersion: String? = nil
+    var scanConfigurationID: String? = nil
+    var scanConfigurationVersion: String? = nil
+    var updatedAt: Date? = nil
+    var pendingSync: Bool? = nil
+    var deleted: Bool? = nil
+}
+
+extension LhResultDTO {
+    /// Nil when `classification` is not a value this build knows: a result is never guessed, so
+    /// the row is dropped on read.
+    var record: LhRecord? {
+        guard let classification = LhClassification(rawValue: classification) else { return nil }
+        // A scan only when all seven measurement fields are present; otherwise manual.
+        var scan: LhScanMeasurement?
+        if let testSignal, let controlSignal, let testControlRatio, let scanConfidence,
+           let scannerVersion, let scanConfigurationID, let scanConfigurationVersion {
+            scan = LhScanMeasurement(testSignal: testSignal, controlSignal: controlSignal,
+                                     testControlRatio: testControlRatio, confidence: scanConfidence,
+                                     scannerVersion: scannerVersion, configurationID: scanConfigurationID,
+                                     configurationVersion: scanConfigurationVersion)
+        }
+        return LhRecord(
+            result: LhResult(id: id, recordedAt: recordedAt, cycleDay: cycleDay,
+                             classification: classification, scan: scan),
+            updatedAt: updatedAt ?? recordedAt,
+            pendingSync: pendingSync ?? true,
+            deleted: deleted ?? false
+        )
+    }
+}
+
+/// The only DTO `LhRepository` persists through.
+extension LhRecord {
+    var dto: LhResultDTO {
+        LhResultDTO(
+            id: result.id,
+            recordedAt: result.recordedAt,
+            classification: result.classification.rawValue,
+            cycleDay: result.cycleDay,
+            source: result.source.rawValue,
+            testSignal: result.scan?.testSignal,
+            controlSignal: result.scan?.controlSignal,
+            testControlRatio: result.scan?.testControlRatio,
+            scanConfidence: result.scan?.confidence,
+            scannerVersion: result.scan?.scannerVersion,
+            scanConfigurationID: result.scan?.configurationID,
+            scanConfigurationVersion: result.scan?.configurationVersion,
+            updatedAt: updatedAt,
+            pendingSync: pendingSync,
+            deleted: deleted
         )
     }
 }

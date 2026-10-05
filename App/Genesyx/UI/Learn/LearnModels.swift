@@ -39,6 +39,14 @@ enum FeatureFlags {
     /// shift by up to two hours toward when she actually logs, and a personalised sentence is
     /// appended. Never changes WHICH supplements are reminded — see `SupplementPersonalisation`.
     static let personalisedSupplementTiming = false
+    /// **DEBUG only. Regulatory sign-off for reading a test strip is PENDING (owner).**
+    /// Gates the Scan Test tab (pH and ovulation test strips). Must not be true in Release until
+    /// that sign-off is recorded.
+    #if DEBUG
+    static let scanTest = true
+    #else
+    static let scanTest = false
+    #endif
 }
 
 // MARK: - Learn content model (parity with Android LearnContent.kt)

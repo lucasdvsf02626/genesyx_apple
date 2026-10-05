@@ -63,20 +63,44 @@ final class PhRepository: ObservableObject {
 
     /// **Returns false when the gate refused the write** — see the note on
     /// `DailyLogRepository.upsert`. The caller must not report success on a false.
+    /// A scan outside the loggable range is refused too: the analyser is meant to reject those
+    /// before they get here, and this is the one door a scan is saved through.
     @discardableResult
     func create(_ reading: PhReading) -> Bool {
         guard isCollectionPermitted() else { return false }
-        let normalized = PhReading(id: reading.id, phValue: round1(reading.phValue), recordedAt: reading.recordedAt, notes: reading.notes, measurementType: reading.measurementType)
-        save(PhRecord(reading: normalized, updatedAt: Date(), pendingSync: true))
+        if reading.source == .cameraScan, !(PhStatus.min...PhStatus.max).contains(round1(reading.phValue)) { return false }
+        save(PhRecord(reading: normalised(reading, source: reading.source, scan: reading.scan), updatedAt: Date(), pendingSync: true))
         return true
     }
 
+    /// Provenance is never taken from the argument: it comes from the stored record. An upsert only
+    /// writes the columns it is sent, and a manual reading is sent without the scan keys, so
+    /// demoting a scan in place would leave `camera_scan` and its confidence on the server next to
+    /// a typed value. A value edit of a scan therefore tombstones it and saves a new manual reading
+    /// under a new id; any other edit keeps the stored source and scan.
     @discardableResult
     func update(_ reading: PhReading) -> Bool {
         guard isCollectionPermitted() else { return false }
-        let normalized = PhReading(id: reading.id, phValue: round1(reading.phValue), recordedAt: reading.recordedAt, notes: reading.notes, measurementType: reading.measurementType)
-        save(PhRecord(reading: normalized, updatedAt: Date(), pendingSync: true))
+        let previous = records.first { $0.id == reading.id && !$0.deleted }?.reading
+        if let previous, previous.source == .cameraScan, previous.phValue != round1(reading.phValue) {
+            delete(id: previous.id)
+            let typed = PhReading(phValue: reading.phValue, recordedAt: reading.recordedAt, notes: reading.notes,
+                                  measurementType: reading.measurementType)
+            save(PhRecord(reading: normalised(typed, source: .manual, scan: nil), updatedAt: Date(), pendingSync: true))
+            return true
+        }
+        save(PhRecord(reading: normalised(reading, source: previous?.source ?? .manual, scan: previous?.scan),
+                      updatedAt: Date(), pendingSync: true))
         return true
+    }
+
+    /// Rounds the value and enforces the provenance invariant in one place: `scan` is kept only for
+    /// a camera scan, and a reading without scan metadata is manual.
+    private func normalised(_ reading: PhReading, source: PhReadingSource, scan: PhScanMetadata?) -> PhReading {
+        let kept = source == .cameraScan ? scan : nil
+        return PhReading(id: reading.id, phValue: round1(reading.phValue), recordedAt: reading.recordedAt, notes: reading.notes,
+                         measurementType: reading.measurementType,
+                         source: kept == nil ? .manual : .cameraScan, scan: kept)
     }
 
     /// Tombstone, not a removal — the deletion has to survive the next pull and reach her other

@@ -91,6 +91,15 @@ struct PhReadingRow: Codable {
     /// Optional on decode so a row missing the column tolerates as legacy `urine` (see `domain`).
     /// Always sent on insert/upsert as the reading's real type ('vaginal' for new readings).
     var measurementType: String?
+    /// Scan provenance. Nil on a manual reading, and Swift's synthesised `encode` then omits the
+    /// key entirely, so a manual upsert has exactly the JSON it had before these columns existed
+    /// and keeps working against a database that does not have them yet. Null or absent on decode
+    /// means manual.
+    var source: String?
+    var scanConfidence: Double?
+    var scanConfigurationID: String?
+    var scanConfigurationVersion: String?
+    var scannerVersion: String?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -101,14 +110,31 @@ struct PhReadingRow: Codable {
         case updatedAt = "updated_at"
         case deletedAt = "deleted_at"
         case measurementType = "measurement_type"
+        case source
+        case scanConfidence = "scan_confidence"
+        case scanConfigurationID = "scan_configuration_id"
+        case scanConfigurationVersion = "scan_configuration_version"
+        case scannerVersion = "scanner_version"
     }
 
+    /// The database value for a source; the Swift case stays `cameraScan`.
+    private static let cameraScanRaw = "camera_scan"
+
     var domain: PhRecord {
-        PhRecord(
+        var readingSource = PhReadingSource.manual
+        var scan: PhScanMetadata?
+        if source == Self.cameraScanRaw, let scannerVersion, let scanConfigurationID,
+           let scanConfigurationVersion, let scanConfidence {
+            readingSource = .cameraScan
+            scan = PhScanMetadata(scannerVersion: scannerVersion, configurationID: scanConfigurationID,
+                                  configurationVersion: scanConfigurationVersion, confidence: scanConfidence)
+        }
+        return PhRecord(
             reading: PhReading(
                 id: id, phValue: phValue, recordedAt: parseISO(recordedAt), notes: notes,
                 // Absent or unrecognised → legacy urine. NEVER default to vaginal.
-                measurementType: measurementType.flatMap(PhMeasurementType.init(rawValue:)) ?? .urine),
+                measurementType: measurementType.flatMap(PhMeasurementType.init(rawValue:)) ?? .urine,
+                source: readingSource, scan: scan),
             updatedAt: parseISO(updatedAt),
             pendingSync: false,
             deleted: deletedAt != nil
@@ -126,6 +152,104 @@ struct PhReadingRow: Codable {
         // still wins the merge.
         self.deletedAt = record.deleted ? isoFormatter.string(from: record.updatedAt) : nil
         self.measurementType = record.reading.measurementType.rawValue
+        if record.reading.source == .cameraScan, let scan = record.reading.scan {
+            self.source = Self.cameraScanRaw
+            self.scanConfidence = scan.confidence
+            self.scanConfigurationID = scan.configurationID
+            self.scanConfigurationVersion = scan.configurationVersion
+            self.scannerVersion = scan.scannerVersion
+        }
+    }
+}
+
+/// One row of `lh_results`. The column names and the `classification` and `source` values are a
+/// contract with the Android app from the moment it reads them. `updated_at` is sent, and a
+/// trigger overwrites it on insert and on update, so the server's clock decides it. The tombstone
+/// is `deleted_at`, mapped to `LhRecord.deleted` here as `PhReadingRow` does.
+struct LhResultRow: Codable {
+    var id: String
+    var userId: String
+    var recordedAt: String
+    var cycleDay: Int?
+    var classification: String
+    /// "manual" or "camera_scan". Always sent.
+    var source: String
+    /// Scan measurements. Nil on a manual result, and Swift's synthesised `encode` then omits the
+    /// keys entirely.
+    var testSignal: Double?
+    var controlSignal: Double?
+    var testControlRatio: Double?
+    var scanConfidence: Double?
+    var scanConfigurationID: String?
+    var scanConfigurationVersion: String?
+    var scannerVersion: String?
+    var updatedAt: String
+    var deletedAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case userId = "user_id"
+        case recordedAt = "recorded_at"
+        case cycleDay = "cycle_day"
+        case classification
+        case source
+        case testSignal = "test_signal"
+        case controlSignal = "control_signal"
+        case testControlRatio = "test_control_ratio"
+        case scanConfidence = "scan_confidence"
+        case scanConfigurationID = "scan_configuration_id"
+        case scanConfigurationVersion = "scan_configuration_version"
+        case scannerVersion = "scanner_version"
+        case updatedAt = "updated_at"
+        case deletedAt = "deleted_at"
+    }
+
+    /// The database values for a source; the Swift case stays `cameraScan`.
+    private static let manualRaw = "manual"
+    private static let cameraScanRaw = "camera_scan"
+
+    /// Nil when `classification` is not a value this build knows: a result is never guessed.
+    var domain: LhRecord? {
+        guard let classification = LhClassification(rawValue: classification) else { return nil }
+        // A scan only when the row says so and all seven measurement values are present.
+        var scan: LhScanMeasurement?
+        if source == Self.cameraScanRaw, let testSignal, let controlSignal, let testControlRatio,
+           let scanConfidence, let scannerVersion, let scanConfigurationID, let scanConfigurationVersion {
+            scan = LhScanMeasurement(testSignal: testSignal, controlSignal: controlSignal,
+                                     testControlRatio: testControlRatio, confidence: scanConfidence,
+                                     scannerVersion: scannerVersion, configurationID: scanConfigurationID,
+                                     configurationVersion: scanConfigurationVersion)
+        }
+        return LhRecord(
+            result: LhResult(id: id, recordedAt: parseISO(recordedAt), cycleDay: cycleDay,
+                             classification: classification, scan: scan),
+            updatedAt: parseISO(updatedAt),
+            pendingSync: false,
+            deleted: deletedAt != nil
+        )
+    }
+
+    init(userId: String, record: LhRecord) {
+        self.id = record.result.id
+        self.userId = userId
+        self.recordedAt = isoFormatter.string(from: record.result.recordedAt)
+        self.cycleDay = record.result.cycleDay
+        self.classification = record.result.classification.rawValue
+        self.updatedAt = isoFormatter.string(from: record.updatedAt)
+        // The deletion's timestamp is the edit that made it.
+        self.deletedAt = record.deleted ? isoFormatter.string(from: record.updatedAt) : nil
+        if let scan = record.result.scan {
+            self.source = Self.cameraScanRaw
+            self.testSignal = scan.testSignal
+            self.controlSignal = scan.controlSignal
+            self.testControlRatio = scan.testControlRatio
+            self.scanConfidence = scan.confidence
+            self.scanConfigurationID = scan.configurationID
+            self.scanConfigurationVersion = scan.configurationVersion
+            self.scannerVersion = scan.scannerVersion
+        } else {
+            self.source = Self.manualRaw
+        }
     }
 }
 

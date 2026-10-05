@@ -16,6 +16,7 @@ final class AppContainer: ObservableObject {
     let cycle: CycleRepository
     let dailyLog: DailyLogRepository
     let ph: PhRepository
+    let lh: LhRepository
     let supplements: SupplementsRepository
     let prefs: PreferencesRepository
     let session: SessionRepository
@@ -34,6 +35,7 @@ final class AppContainer: ObservableObject {
         self.cycle = CycleRepository(store: store, backend: backend?.cycle)
         self.dailyLog = DailyLogRepository(store: store, backend: backend?.dailyLog)
         self.ph = PhRepository(store: store, backend: backend?.ph)
+        self.lh = LhRepository(store: store, backend: backend?.lh)
         self.supplements = SupplementsRepository(store: store, backend: backend?.supplements)
         self.prefs = PreferencesRepository(store: store, backend: backend?.profile)
         self.session = SessionRepository(store: store, auth: backend?.auth)
@@ -50,6 +52,7 @@ final class AppContainer: ObservableObject {
         cycle.isCollectionPermitted = permitted
         dailyLog.isCollectionPermitted = permitted
         ph.isCollectionPermitted = permitted
+        lh.isCollectionPermitted = permitted
         supplements.isCollectionPermitted = permitted
         prefs.isCollectionPermitted = permitted
 
@@ -134,6 +137,9 @@ final class AppContainer: ObservableObject {
         await dailyLog.refresh()
         await ph.refresh()
         await supplements.refresh()
+        // Behind the Scan Test flag, like partner below: while it is off the app never reads
+        // `lh_results` at all, a table that may not exist yet.
+        if FeatureFlags.scanTest { await lh.refresh() }
         // Excluded from the 1.2.0 public release, so this is skipped rather than merely hidden:
         // with the flag off the app never reads `partner_invites` or a partner's profile row at
         // all. See `FeatureFlags.partnerInvites`.
@@ -150,6 +156,7 @@ final class AppContainer: ObservableObject {
         await dailyLog.drainPending()
         await ph.drainPending()
         await supplements.drainPending()
+        await lh.drainPending()
         // A partner accepting an invite is a change made on *another* device, so there is nothing
         // owed to push — only something to pull. Without this the inviter had to fully relaunch
         // the app before her partner ever showed up as linked.
@@ -163,6 +170,7 @@ final class AppContainer: ObservableObject {
     func clearLocalState() {
         cycle.clearLocalState()
         ph.clearLocalState()
+        lh.clearLocalState()
         dailyLog.clearLocalState()
         // Notification state is derived from her data, so it is her data: milestone flags and the
         // read-article list must not follow her out of the app.
@@ -254,6 +262,16 @@ final class AppContainer: ObservableObject {
         container.ph.create(PhReading(phValue: 6.3, recordedAt: Date().addingTimeInterval(-5 * 86_400)))
         container.ph.create(PhReading(phValue: 6.7, recordedAt: Date().addingTimeInterval(-2 * 86_400)))
         container.ph.create(PhReading(phValue: 6.9, recordedAt: Date()))
+        // `-uiTestNoLh YES` is the woman who has never logged an ovulation test: everything else
+        // seeded, no LH results, so the empty Recent results list can be reached.
+        if !UserDefaults.standard.bool(forKey: "uiTestNoLh") {
+            let lowAt = Date().addingTimeInterval(-2 * 86_400)
+            let positiveAt = Date().addingTimeInterval(-1 * 86_400)
+            container.lh.create(LhResult(recordedAt: lowAt, cycleDay: LhCycleDay.snapshot(settings: container.cycle.settings, at: lowAt),
+                                         classification: .low))
+            container.lh.create(LhResult(recordedAt: positiveAt, cycleDay: LhCycleDay.snapshot(settings: container.cycle.settings, at: positiveAt),
+                                         classification: .positive))
+        }
         // Public screenshots must never expose a real person's account details.
         // Onboarding and signed-out launches must not sign in: a signed-in session now opens
         // the tabs regardless of the onboarding flag.
@@ -261,6 +279,12 @@ final class AppContainer: ObservableObject {
         let wantsSignedOut = UserDefaults.standard.bool(forKey: "uiTestSignedOut")
         if !wantsOnboarding && !wantsSignedOut {
             container.session.signIn(email: "maya@example.com", name: "Maya")
+        }
+        // `-uiTestConsentWithdrawn YES` is the woman who has taken her permission back: still signed
+        // in and still on the tabs, with every recording control refused. After the seed, because
+        // the seed is health data and the gate would refuse it.
+        if UserDefaults.standard.bool(forKey: "uiTestConsentWithdrawn") {
+            container.consent.withdraw()
         }
         // Onboarding is skipped by default — every other test wants the tabs. `-uiTestOnboarding YES`
         // leaves it un-run so the quiz itself can be driven.

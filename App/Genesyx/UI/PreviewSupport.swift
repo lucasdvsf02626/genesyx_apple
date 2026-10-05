@@ -27,6 +27,12 @@ extension AppContainer {
         container.ph.create(PhReading(phValue: 6.3, recordedAt: Date().addingTimeInterval(-5 * 86_400)))
         container.ph.create(PhReading(phValue: 6.7, recordedAt: Date().addingTimeInterval(-2 * 86_400)))
         container.ph.create(PhReading(phValue: 6.9, recordedAt: Date()))
+        let lowAt = Date().addingTimeInterval(-2 * 86_400)
+        let positiveAt = Date().addingTimeInterval(-1 * 86_400)
+        container.lh.create(LhResult(recordedAt: lowAt, cycleDay: LhCycleDay.snapshot(settings: container.cycle.settings, at: lowAt),
+                                     classification: .low))
+        container.lh.create(LhResult(recordedAt: positiveAt, cycleDay: LhCycleDay.snapshot(settings: container.cycle.settings, at: positiveAt),
+                                     classification: .positive))
         if signedIn { container.session.signIn(email: "lucas@example.com", name: "Lucas") }
         return container
     }

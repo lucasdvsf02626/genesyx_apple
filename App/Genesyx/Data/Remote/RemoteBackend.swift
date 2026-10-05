@@ -170,6 +170,13 @@ protocol PhBackend {
     func upsert(_ record: PhRecord) async throws
 }
 
+/// Ovulation test results, in `lh_results`. One write path, as with pH: a delete is an upsert carrying a
+/// tombstone, and `list` returns tombstones so a deletion made on her other phone arrives as one.
+protocol LhBackend {
+    func list(updatedSince: Date?) async throws -> SyncPage<[LhRecord]>
+    func upsert(_ record: LhRecord) async throws
+}
+
 /// Her own supplements, in `user_supplements` — the same table Android reads and writes. One write
 /// path, as with pH: a delete is an upsert carrying a tombstone, and `list` returns tombstones so a
 /// deletion made on her other phone arrives as a deletion rather than as an absence.
@@ -260,6 +267,7 @@ protocol GenesyxBackend {
     var auth: AuthBackend { get }
     var cycle: CycleBackend { get }
     var ph: PhBackend { get }
+    var lh: LhBackend { get }
     var supplements: SupplementBackend { get }
     var dailyLog: DailyLogBackend { get }
     var profile: ProfileBackend { get }
