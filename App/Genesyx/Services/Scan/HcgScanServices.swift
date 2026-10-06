@@ -76,7 +76,8 @@ extension HcgScanServices {
                 #endif
             },
             makeAssessor: { MockScanFrameAssessor(scenario: frames) },
-            analyser: MockHcgTestAnalyzer(scenario: scenario, delay: delay ?? (frames == .slowReading ? 3 : 0.6))
+            analyser: MockHcgTestAnalyzer(scenario: scenario, delay: delay ?? (frames == .slowReading ? 3 : 0.6),
+                                          awayScript: frames == .awayReading)
         )
     }
 }

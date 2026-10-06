@@ -657,12 +657,11 @@ final class HcgScanFlowUITests: XCTestCase {
 
     // MARK: - Leaving the app
 
-    /// Backgrounded while analysing, for longer than the analysis takes. The scan must be dropped,
-    /// not finished behind her back, and must start again from the camera when she returns: four
-    /// seconds of a three-second analysis leave no result. This is also the proof that the scene
-    /// phase reaches a cover raised two pushes deep.
+    /// Backgrounded while analysing, on the script whose analysis is over the moment the app stops
+    /// being active: the hardest case, and no timer for the test to race. The scan must be dropped,
+    /// not finished behind her back, and must start again from the camera when she returns.
     func testBackgroundingDuringAScanDropsItAndReturningRestarts() {
-        let app = openHcgHome("detected", camera: "slowReading")
+        let app = openHcgHome("detected", camera: "awayReading")
         openCamera(app)
         XCTAssertTrue(element(app, "scan.analysing").waitForExistence(timeout: 10))
 

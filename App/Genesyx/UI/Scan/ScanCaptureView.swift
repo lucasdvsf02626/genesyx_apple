@@ -68,7 +68,15 @@ struct ScanCaptureView: View {
         // or the scan is suspended, and `perform` reports nothing once cancelled.
         .task(id: session.work) {
             guard let work = session.work, let source else { return }
-            await services.perform(work, source: source, testImage: takeTestImage()) { session.handle($0) }
+            await services.perform(work, source: source, testImage: takeTestImage()) { event in
+                // Asked of UIKit as the answer arrives, so it cannot come late: a scan that ends
+                // while she is not looking at the app is dropped, never shown.
+                if case .analysed = event, UIApplication.shared.applicationState != .active {
+                    session.handle(.suspended)
+                } else {
+                    session.handle(event)
+                }
+            }
         }
         .onChange(of: session.wantsCamera) { wanted in
             if !wanted { source?.stop() }
@@ -85,6 +93,17 @@ struct ScanCaptureView: View {
             default:
                 break
             }
+        }
+        // The scene phase reaches this cover a third of a second or more after the app has gone,
+        // and seconds after on a busy device. The scan is dropped on UIKit's own notice, posted
+        // the moment the app has gone, so the camera and the analysis stop then and not later.
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
+            session.handle(.suspended)
+        }
+        // And restarted on UIKit's notice: a scan dropped while the app was only inactive may
+        // never see the scene phase change here, and would stay paused.
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            session.handle(.resumed)
         }
         .onChange(of: session.state) { state in
             switch state {

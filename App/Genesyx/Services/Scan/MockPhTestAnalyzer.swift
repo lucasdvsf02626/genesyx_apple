@@ -3,11 +3,13 @@ import CoreGraphics
 import CoreVideo
 import Foundation
 import GenesyxCore
+import UIKit
 
 /// A scripted outcome for the simulated scan. Never looks at pixels.
 enum MockScanScenario: Hashable, Sendable {
     case reading(Double)                 // confident result at this value
     case slowReading                     // reading 4.4 after a 3 second analysis
+    case awayReading                     // reading 4.4 the moment the app stops being active; 3 seconds after that
     case lowConfidence                   // result 4.4 with confidence below the configuration minimum
     case outOfRange                      // confident result at 7.6
     case unreadable(ScanQualityIssue)    // analyser reports unreadable with this issue
@@ -18,6 +20,7 @@ enum MockScanScenario: Hashable, Sendable {
     init?(launchValue: String) {
         switch launchValue {
         case "slowReading": self = .slowReading
+        case "awayReading": self = .awayReading
         case "lowConfidence": self = .lowConfidence
         case "outOfRange": self = .outOfRange
         case "permissionDenied": self = .permissionDenied
@@ -39,6 +42,25 @@ enum MockScanScenario: Hashable, Sendable {
     static var fromLaunchArguments: MockScanScenario? {
         UserDefaults.standard.string(forKey: "uiTestScanScenario").flatMap(MockScanScenario.init(launchValue:))
     }
+
+    /// Whether the first `awayReading` analysis is over.
+    private static var firstAwayAnalysisOver = false
+
+    /// The `awayReading` analysis. The first is over the moment the app stops being active and
+    /// never sooner, so a test that leaves mid-analysis is not racing a timer. Any after it
+    /// takes the slow script's three seconds, so the scan that restarts on her return is not
+    /// over before the test has looked.
+    @MainActor
+    static func awayAnalysis() async {
+        guard !firstAwayAnalysisOver else {
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            return
+        }
+        firstAwayAnalysisOver = true
+        while UIApplication.shared.applicationState == .active, !Task.isCancelled {
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
+    }
 }
 
 private extension String {
@@ -51,7 +73,11 @@ struct MockPhTestAnalyzer: PhTestAnalyzing {
     let scenario: MockScanScenario
 
     func analyse(_ image: CGImage, configuration: PhStripConfiguration) async -> PhAnalysisOutcome {
-        try? await Task.sleep(nanoseconds: scenario == .slowReading ? 3_000_000_000 : 600_000_000)
+        if scenario == .awayReading {
+            await MockScanScenario.awayAnalysis()
+        } else {
+            try? await Task.sleep(nanoseconds: scenario == .slowReading ? 3_000_000_000 : 600_000_000)
+        }
         func result(_ ph: Double, _ confidence: Double) -> PhAnalysisOutcome {
             .result(PhAnalysisResult(
                 estimatedPH: ph,
@@ -62,7 +88,7 @@ struct MockPhTestAnalyzer: PhTestAnalyzing {
         }
         switch scenario {
         case .reading(let value): return result(value, 0.95)
-        case .slowReading: return result(4.4, 0.95)
+        case .slowReading, .awayReading: return result(4.4, 0.95)
         case .lowConfidence: return result(4.4, configuration.minimumConfidence - 0.1)
         case .outOfRange: return result(7.6, 0.95)
         case .unreadable(let issue): return .unreadable([issue])

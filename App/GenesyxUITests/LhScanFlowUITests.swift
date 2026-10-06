@@ -477,17 +477,20 @@ final class LhScanFlowUITests: XCTestCase {
 
     // MARK: - Leaving the app mid-scan
 
-    /// Backgrounded while analysing, for longer than the analysis takes. The scan must be dropped,
-    /// not finished behind her back, and must start again from the camera when she returns. This
-    /// is also the proof that the scene phase reaches a cover raised two pushes deep.
+    /// Backgrounded while analysing, on the script whose analysis is over the moment the app stops
+    /// being active: the hardest case, and no timer for the test to race. The scan must be dropped,
+    /// not finished behind her back, and must start again from the camera when she returns.
     func testBackgroundingDuringAScanPausesItAndReturningRestarts() {
-        let app = openLhHome("positive", camera: "slowReading")
+        let app = openLhHome("positive", camera: "awayReading")
         openCamera(app)
         XCTAssertTrue(element(app, "scan.analysing").waitForExistence(timeout: 10))
 
         XCUIDevice.shared.press(.home)
         _ = app.wait(for: .runningBackground, timeout: 10)
-        XCTAssertTrue(element(app, "scan.paused").waitForExistence(timeout: 5), "going to the background must pause the scan")
+        // Looked for inside the cover: searching the whole app for what is not drawn yet can hold
+        // the app's main thread for a second or more, and that is the thread that has to draw it.
+        let paused = element(app, "lh.capture").descendants(matching: .any).matching(identifier: "scan.paused").firstMatch
+        XCTAssertTrue(paused.waitForExistence(timeout: 5), "going to the background must pause the scan")
         Thread.sleep(forTimeInterval: 4)
         XCTAssertFalse(element(app, "lh.result").exists, "the analysis must not finish while she is away")
 

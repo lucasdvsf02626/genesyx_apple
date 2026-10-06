@@ -75,7 +75,8 @@ extension LhScanServices {
                 #endif
             },
             makeAssessor: { MockScanFrameAssessor(scenario: frames) },
-            analyser: MockLhTestAnalyzer(scenario: scenario, delay: delay ?? (frames == .slowReading ? 3 : 0.6))
+            analyser: MockLhTestAnalyzer(scenario: scenario, delay: delay ?? (frames == .slowReading ? 3 : 0.6),
+                                         awayScript: frames == .awayReading)
         )
     }
 }

@@ -121,6 +121,7 @@ final class ScanServiceTests: XCTestCase {
         XCTAssertEqual(MockScanScenario(launchValue: "reading-4.4"), .reading(4.4))
         XCTAssertEqual(MockScanScenario(launchValue: "reading-5.2"), .reading(5.2))
         XCTAssertEqual(MockScanScenario(launchValue: "slowReading"), .slowReading)
+        XCTAssertEqual(MockScanScenario(launchValue: "awayReading"), .awayReading)
         XCTAssertEqual(MockScanScenario(launchValue: "lowConfidence"), .lowConfidence)
         XCTAssertEqual(MockScanScenario(launchValue: "outOfRange"), .outOfRange)
         XCTAssertEqual(MockScanScenario(launchValue: "unreadable-glare"), .unreadable(.glare))

@@ -41,14 +41,21 @@ enum MockHcgScenario: Hashable, Sendable {
 struct MockHcgTestAnalyzer: HcgTestAnalyzing {
     let scenario: MockHcgScenario
     let delay: TimeInterval
+    /// The camera's `awayReading` script, in place of `delay`.
+    let awayScript: Bool
 
-    init(scenario: MockHcgScenario, delay: TimeInterval = 0.6) {
+    init(scenario: MockHcgScenario, delay: TimeInterval = 0.6, awayScript: Bool = false) {
         self.scenario = scenario
         self.delay = delay
+        self.awayScript = awayScript
     }
 
     func analyse(_ image: CGImage, configuration: HcgStripConfiguration) async -> HcgAnalysisOutcome {
-        if delay > 0 { try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000)) }
+        if awayScript {
+            await MockScanScenario.awayAnalysis()
+        } else if delay > 0 {
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+        }
 
         // Signals come from the configuration it is given, so a new strip's thresholds change
         // nothing about what a scenario means. Nothing is clamped: bad output must stay bad.
