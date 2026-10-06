@@ -81,6 +81,61 @@ final class CycleHistoryRulesTests: XCTestCase {
         XCTAssertEqual(apply(today.plusDays(1), to: []).outcome, .refused)
     }
 
+    // MARK: - The dates a period can be on
+
+    private let earliest = CalendarDate(1900, 1, 1)
+
+    func testAPeriodCanBeOnAnyDayFromTheEarliestDateToToday() {
+        XCTAssertEqual(CycleHistoryRules.earliestDate, earliest)
+
+        XCTAssertTrue(CycleHistoryRules.accepts(earliest, today: today))
+        XCTAssertTrue(CycleHistoryRules.accepts(mar1, today: today))
+        XCTAssertTrue(CycleHistoryRules.accepts(today, today: today))
+
+        XCTAssertFalse(CycleHistoryRules.accepts(earliest.minusDays(1), today: today))
+        XCTAssertFalse(CycleHistoryRules.accepts(today.plusDays(1), today: today))
+    }
+
+    /// The year a phone set to the Buddhist calendar reports, and one from a Japanese era.
+    func testAStartOutsideThoseDatesIsRefusedHoweverFarOut() {
+        let existing = [stored(mar1)]
+        for date in [CalendarDate(2027, 6, 30), CalendarDate(2099, 1, 1), CalendarDate(2569, 10, 6),
+                     CalendarDate(1899, 12, 31), CalendarDate(8, 10, 6)] {
+            XCTAssertEqual(apply(date, to: existing).outcome, .refused)
+            XCTAssertEqual(apply(date, to: existing).records, existing)
+            XCTAssertEqual(apply(date, to: []).records, [])
+        }
+    }
+
+    func testAStartOnTheEarliestDateIsAccepted() {
+        XCTAssertEqual(apply(earliest, to: []).outcome, .append(earliest))
+        XCTAssertEqual(apply(earliest, to: [stored(mar1)]).outcome, .backFill(earliest))
+    }
+
+    /// An end needs no lower bound of its own: it is never before its start, and no start before
+    /// the earliest date is accepted. Whatever `setEnd` accepts, `accepts` accepts too.
+    func testAnEndIsOnlyEverOnADateAPeriodCanBeOn() {
+        let onEarliest = apply(earliest, to: []).records
+        XCTAssertEqual(CycleHistoryRules.setEnd(earliest.minusDays(1), forStart: earliest, in: onEarliest, today: today, now: now).outcome,
+                       .refusedBeforeStart)
+        XCTAssertEqual(CycleHistoryRules.setEnd(earliest, forStart: earliest, in: onEarliest, today: today, now: now).outcome, .updated)
+        XCTAssertEqual(setEnd(earliest, mar1, [stored(mar1)]).outcome, .refusedBeforeStart)
+
+        var accepted = 0
+        for start in [earliest, mar1, today.minusDays(3), today] {
+            let records = apply(start, to: []).records
+            for offset in -12...12 {
+                let end = start.plusDays(offset)
+                if setEnd(end, start, records).outcome == .updated {
+                    accepted += 1
+                    XCTAssertTrue(CycleHistoryRules.accepts(end, today: today))
+                }
+            }
+        }
+        XCTAssertEqual(accepted, 10 + 10 + 4 + 1, "ten days from each early start, then only up to today")
+        XCTAssertEqual(setEnd(CalendarDate(2099, 1, 1), today, apply(today, to: []).records).outcome, .refusedFuture)
+    }
+
     // MARK: - Correction
 
     func testInsideTheWindowAtItsLaterEdgeIsACorrection() {
@@ -279,33 +334,57 @@ final class CycleHistoryRulesTests: XCTestCase {
 
     func testSeedIsTheLastPeriodDateAndNothingElse() {
         XCTAssertEqual(
-            CycleHistoryRules.seed(settings: settings, records: [], now: now),
+            CycleHistoryRules.seed(settings: settings, records: [], today: today, now: now),
             StoredPeriodRecord(period: PeriodRecord(startDate: mar1, endDate: nil, source: .seeded),
                                updatedAt: now, pendingSync: true)
         )
     }
 
     func testNoSettingsMeansNoSeed() {
-        XCTAssertNil(CycleHistoryRules.seed(settings: nil, records: [], now: now))
+        XCTAssertNil(CycleHistoryRules.seed(settings: nil, records: [], today: today, now: now))
     }
 
     func testSeedIsNotRepeated() throws {
-        let seeded = try XCTUnwrap(CycleHistoryRules.seed(settings: settings, records: [], now: now))
+        let seeded = try XCTUnwrap(CycleHistoryRules.seed(settings: settings, records: [], today: today, now: now))
 
-        XCTAssertNil(CycleHistoryRules.seed(settings: settings, records: [seeded], now: now))
-        XCTAssertNil(CycleHistoryRules.seed(settings: settings, records: [stored(mar20)], now: now))
+        XCTAssertNil(CycleHistoryRules.seed(settings: settings, records: [seeded], today: today, now: now))
+        XCTAssertNil(CycleHistoryRules.seed(settings: settings, records: [stored(mar20)], today: today, now: now))
     }
 
     /// A history she emptied on purpose is not refilled.
     func testSeedIsNotRepeatedAfterEverythingWasDeleted() {
-        XCTAssertNil(CycleHistoryRules.seed(settings: settings, records: [stored(mar1, source: .seeded, deleted: true)], now: now))
+        XCTAssertNil(CycleHistoryRules.seed(settings: settings, records: [stored(mar1, source: .seeded, deleted: true)], today: today, now: now))
+    }
+
+    private func seed(from lastPeriodDate: CalendarDate, today: CalendarDate) -> StoredPeriodRecord? {
+        let settings = CycleSettings(lastPeriodDate: lastPeriodDate, cycleLength: 31, periodLength: 4)
+        return CycleHistoryRules.seed(settings: settings, records: [], today: today, now: now)
+    }
+
+    /// Her settings can hold any date: Android and older builds write them freely. A date no
+    /// period can be on seeds nothing at all, never a record on some other date.
+    func testALastPeriodDateNoPeriodCanBeOnSeedsNothing() {
+        for date in [today.plusDays(1), CalendarDate(2027, 6, 30), CalendarDate(2099, 1, 1), CalendarDate(2569, 10, 6),
+                     CalendarDate(1899, 12, 31), CalendarDate(8, 10, 6)] {
+            XCTAssertNil(seed(from: date, today: today))
+        }
+        XCTAssertEqual(seed(from: today, today: today)?.id, today)
+        XCTAssertEqual(seed(from: earliest, today: today)?.id, earliest)
+    }
+
+    /// Nothing is remembered about the refusal, so the same settings seed once the day arrives.
+    func testALastPeriodDateOneDayAheadSeedsOnceThatDayArrives() {
+        let tomorrow = today.plusDays(1)
+
+        XCTAssertNil(seed(from: tomorrow, today: today))
+        XCTAssertEqual(seed(from: tomorrow, today: tomorrow)?.period, PeriodRecord(startDate: tomorrow, source: .seeded))
     }
 
     // MARK: - Keeping settings in step
 
     /// A user who records nothing new: seeding must not move her predictions at all.
     func testSeedingLeavesSettingsAndPredictionsIdentical() throws {
-        let seeded = try XCTUnwrap(CycleHistoryRules.seed(settings: settings, records: [], now: now))
+        let seeded = try XCTUnwrap(CycleHistoryRules.seed(settings: settings, records: [], today: today, now: now))
         let after = try XCTUnwrap(CycleHistoryRules.settingsInStep(settings, with: [seeded]))
 
         XCTAssertEqual(after, settings)
@@ -360,5 +439,87 @@ final class CycleHistoryRulesTests: XCTestCase {
     func testNoSettingsStayNoSettings() {
         XCTAssertNil(CycleHistoryRules.settingsInStep(nil, with: [stored(mar1)]))
         XCTAssertEqual(CycleHistoryRules.settingsInStep(settings, with: []), settings)
+    }
+
+    // MARK: - The device's rule against the server's
+
+    /// The server's rule, as the `period_records` table states it: not before 1900-01-01 and not
+    /// after the day after the server's own date in UTC. Worked out from the instant by plain
+    /// arithmetic, so it shares nothing with the calendar the device side goes through.
+    private func serverAccepts(_ date: CalendarDate, at instant: Date) -> Bool {
+        let utcToday = CalendarDate(dayNumber: Int((instant.timeIntervalSince1970 / 86_400).rounded(.down)))
+        return date >= CalendarDate(1900, 1, 1) && date <= utcToday.plusDays(1)
+    }
+
+    /// Her own date at `instant` on a phone `offset` seconds from UTC, read the way the app reads it.
+    private func localToday(at instant: Date, offset: Int) -> CalendarDate {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: offset)!
+        return CalendarDate.today(calendar, now: instant)
+    }
+
+    private func utc(_ date: CalendarDate, hour: Double = 0) -> Date {
+        Date(timeIntervalSince1970: Double(date.dayNumber) * 86_400 + hour * 3_600)
+    }
+
+    /// Every quarter-hour offset from UTC-12 to UTC+14, at every quarter of an hour across the
+    /// end of a year and across a leap day. Whatever the device accepts, the server accepts: at
+    /// once, and a week later if she was offline when she recorded it. The candidates run past
+    /// both ends of the rule, so a looser device rule would be caught here by the server.
+    func testADateTheDeviceAcceptsIsNeverRefusedByTheServerInAnyTimeZone() {
+        var refusedByTheServer = 0, accepted = 0
+        var daysAheadOfUTC = Set<Int>()
+        for offset in stride(from: -12 * 3_600, through: 14 * 3_600, by: 900) {
+            for firstDay in [CalendarDate(2027, 12, 30), CalendarDate(2028, 2, 27)] {
+                for quarter in 0..<(4 * 96) {
+                    let instant = utc(firstDay, hour: Double(quarter) / 4)
+                    let today = localToday(at: instant, offset: offset)
+                    daysAheadOfUTC.insert(today.dayNumber - localToday(at: instant, offset: 0).dayNumber)
+                    let candidates = [CycleHistoryRules.earliestDate.minusDays(1), CycleHistoryRules.earliestDate,
+                                      today.minusDays(400), today.minusDays(1), today, today.plusDays(1), today.plusDays(2)]
+                    for date in candidates where CycleHistoryRules.accepts(date, today: today) {
+                        accepted += 1
+                        if !serverAccepts(date, at: instant) { refusedByTheServer += 1 }
+                        if !serverAccepts(date, at: instant.addingTimeInterval(7 * 86_400)) { refusedByTheServer += 1 }
+                    }
+                }
+            }
+        }
+        XCTAssertEqual(refusedByTheServer, 0)
+        XCTAssertEqual(accepted, 105 * 2 * 384 * 4, "the four candidates inside the rule, in every zone at every instant")
+        XCTAssertEqual(daysAheadOfUTC, [-1, 0, 1], "her date is at most one day ahead of the UTC date, which is why the server adds one day and not two")
+    }
+
+    /// At UTC+14 her date is a day ahead of the UTC date for fourteen hours of every day: a
+    /// server that stopped at its own date would refuse an entry she made for today.
+    func testTheServersExtraDayIsNeededAtTheEasternEdge() {
+        let instant = utc(CalendarDate(2026, 10, 6), hour: 10.25)
+        let today = localToday(at: instant, offset: 14 * 3_600)
+
+        XCTAssertEqual(today, CalendarDate(2026, 10, 7))
+        XCTAssertTrue(CycleHistoryRules.accepts(today, today: today))
+        XCTAssertTrue(serverAccepts(today, at: instant))
+        XCTAssertFalse(serverAccepts(today.plusDays(1), at: instant))
+    }
+
+    /// At UTC-12 the server's bound is two days ahead of her date. The device knows her date and
+    /// stops at it.
+    func testTheDeviceIsStricterThanTheServerAtTheWesternEdge() {
+        let instant = utc(CalendarDate(2026, 10, 6), hour: 6)
+        let today = localToday(at: instant, offset: -12 * 3_600)
+
+        XCTAssertEqual(today, CalendarDate(2026, 10, 5))
+        XCTAssertTrue(serverAccepts(today.plusDays(2), at: instant))
+        XCTAssertFalse(CycleHistoryRules.accepts(today.plusDays(1), today: today))
+    }
+
+    /// What the device cannot know: its own clock. Set two days ahead, it accepts a date the
+    /// server refuses, which is the one way a refusal from the server is still reached.
+    func testAPhoneWhoseClockIsAheadAcceptsADateTheServerRefuses() {
+        let instant = utc(CalendarDate(2026, 10, 6), hour: 12)
+        let wrongToday = localToday(at: instant.addingTimeInterval(2 * 86_400), offset: 0)
+
+        XCTAssertTrue(CycleHistoryRules.accepts(wrongToday, today: wrongToday))
+        XCTAssertFalse(serverAccepts(wrongToday, at: instant))
     }
 }

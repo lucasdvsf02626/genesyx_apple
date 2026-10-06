@@ -10,7 +10,8 @@ public enum PeriodStartOutcome: Hashable, Sendable {
     case append(CalendarDate)
     /// A past period, earlier than the latest recorded one.
     case backFill(CalendarDate)
-    /// A date after today. Nothing is written.
+    /// A date no period can be on (`CycleHistoryRules.accepts`): after today, or before the
+    /// earliest date. Nothing is written.
     case refused
 }
 
@@ -65,13 +66,31 @@ public enum CycleHistoryRules {
     /// no new number is introduced.
     public static let correctionWindowDays = CycleEngine.periodLengthRange.upperBound
 
+    // MARK: - The dates a period can be on
+
+    /// The earliest day a period can be recorded on. Nobody using the app had a period before
+    /// it, and it stops a year read from a device calendar that is not Gregorian. The server
+    /// holds the same bound.
+    public static let earliestDate = CalendarDate(1900, 1, 1)
+
+    /// Whether a period can start or end on `date`: not before `earliestDate` and not after
+    /// `today`, her own local date, which the caller passes in.
+    ///
+    /// The server is looser at the top. It accepts up to the day after its own date in UTC,
+    /// because her date can be one day ahead of the UTC date and never two. So a date accepted
+    /// here, on a phone whose clock is right, is accepted there in every time zone, and a date
+    /// the server still refuses can only come from a phone whose own date was wrong.
+    public static func accepts(_ date: CalendarDate, today: CalendarDate) -> Bool {
+        date >= earliestDate && date <= today
+    }
+
     // MARK: - Recording a start
 
     /// Decides what a proposed period start means and returns the resulting records.
     ///
     /// | Situation | Outcome |
     /// |---|---|
-    /// | After `today` | `refused` |
+    /// | After `today`, or before `earliestDate` | `refused` |
     /// | Already a visible start | `noChange` |
     /// | Within `correctionWindowDays` of a visible start, either side | `correction` of the nearest |
     /// | Later than the latest start (or no start exists) | `append` |
@@ -90,7 +109,7 @@ public enum CycleHistoryRules {
         today: CalendarDate,
         now: Date
     ) -> PeriodStartChange {
-        guard newStart <= today else { return PeriodStartChange(outcome: .refused, records: records) }
+        guard accepts(newStart, today: today) else { return PeriodStartChange(outcome: .refused, records: records) }
 
         let periods = PeriodSync.visible(records)
         if periods.contains(where: { $0.startDate == newStart }) {
@@ -128,7 +147,8 @@ public enum CycleHistoryRules {
     ///
     /// An end is accepted only if it is on or after its start, makes a period no longer than the
     /// longest the app accepts, falls before the next recorded start, and is not after `today`.
-    /// The record's source is left as it was.
+    /// It needs no earliest date of its own: it is never before its start, and no start before
+    /// `earliestDate` is accepted. The record's source is left as it was.
     public static func setEnd(
         _ end: CalendarDate?,
         forStart start: CalendarDate,
@@ -174,12 +194,18 @@ public enum CycleHistoryRules {
     /// Returns nil when she has no cycle settings, and when any record exists already, tombstones
     /// included, so a history she has emptied on purpose is never refilled. Nothing else is ever
     /// made up: no earlier periods, no end date, no lengths.
+    ///
+    /// Her settings are written freely by Android and by older builds, so the date is held to
+    /// the same rule as a start she records (`accepts`). One that fails seeds nothing, never a
+    /// record on another date; the same settings seed later, once the date is one a period can
+    /// be on.
     public static func seed(
         settings: CycleSettings?,
         records: [StoredPeriodRecord],
+        today: CalendarDate,
         now: Date
     ) -> StoredPeriodRecord? {
-        guard let settings, records.isEmpty else { return nil }
+        guard let settings, records.isEmpty, accepts(settings.lastPeriodDate, today: today) else { return nil }
         return StoredPeriodRecord(
             period: PeriodRecord(startDate: settings.lastPeriodDate, source: .seeded),
             updatedAt: now,
