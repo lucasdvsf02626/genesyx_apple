@@ -18,6 +18,8 @@ public enum NotificationCategory: String, CaseIterable, Sendable {
     case insights    = "insights"
     case learn       = "learn"
     case milestones  = "milestones"
+    /// The 90-Day Programme's reminders. Only means anything to someone who holds Programme Access.
+    case programme   = "programme"
 
     public var title: String {
         switch self {
@@ -29,6 +31,7 @@ public enum NotificationCategory: String, CaseIterable, Sendable {
         case .insights:    return "Insights"
         case .learn:       return "Weekly read"
         case .milestones:  return "Milestones"
+        case .programme:   return "Programme reminders"
         }
     }
 }
@@ -42,6 +45,7 @@ public extension NotificationSlot {
         case .track:     return .logging
         case .insights:  return .insights
         case .learn:     return .learn
+        case .programme, .programmeReview: return .programme
         }
     }
 }

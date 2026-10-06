@@ -9,6 +9,10 @@ struct ProfileView: View {
     private static let privacyPolicyURL = URL(string: "https://genesyx.co.uk/policies/privacy-policy")!
     private static let supportURL = URL(string: "https://genesyx.co.uk")!
 
+    /// The categories listed as mute toggles. "Programme reminders" is left out: it is shown only
+    /// with Programme Access, and is wired by the Fertility Kit UI wave.
+    static let listedNotificationCategories = NotificationCategory.allCases.filter { $0 != .programme }
+
     @EnvironmentObject private var session: SessionRepository
     @EnvironmentObject private var prefs: PreferencesRepository
     @EnvironmentObject private var notifications: NotificationService
@@ -351,7 +355,7 @@ struct ProfileView: View {
                     }
                     .padding(.horizontal, 14).padding(.vertical, 8)
 
-                    ForEach(NotificationCategory.allCases, id: \.self) { category in
+                    ForEach(Self.listedNotificationCategories, id: \.self) { category in
                         divider
                         Toggle(category.title, isOn: Binding(
                             get: { !prefs.mutedNotifications.contains(category) },

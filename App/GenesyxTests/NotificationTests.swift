@@ -555,4 +555,92 @@ final class NotificationTests: XCTestCase {
         XCTAssertTrue(remembered.isEmpty,
                       "a cancelled notification never fired, so it must not be remembered as sent")
     }
+
+    // MARK: - The 90-Day Programme's reminders, before anyone holds the programme
+
+    /// The planner knows the programme's reminders; the app does not send them yet and nobody has
+    /// Programme Access. So the mute toggles in Profile are pinned to exactly what they were: by raw
+    /// value, which is the row's identifier, and by title, which is what she reads, in listed order.
+    @MainActor
+    func testProfileListsExactlyTheReminderCategoriesItDidBeforeTheProgramme() {
+        let listed = ProfileView.listedNotificationCategories
+
+        XCTAssertEqual(listed.map(\.rawValue),
+                       ["check_in", "cycle", "ph", "logging", "supplements", "insights", "learn", "milestones"],
+                       "a switch for reminders nobody can receive must not appear in Profile")
+        XCTAssertEqual(listed.map(\.title),
+                       ["Evening check-in", "Cycle", "pH readings", "Logging reminders",
+                        "Supplement reminders", "Insights", "Weekly read", "Milestones"])
+    }
+
+    /// The category has no switch yet, but its raw value is already a legal thing to find in the
+    /// store, and one this build does not know must be dropped rather than stop the launch.
+    @MainActor
+    func testTheMuteStoreAcceptsTheProgrammeCategoryAndDropsAnUnknownOne() {
+        let store = LocalStore(defaults: UserDefaults(suiteName: "test.\(UUID().uuidString)")!)
+        XCTAssertFalse(PreferencesRepository(store: store).mutedNotifications.contains(.programme),
+                       "it starts on, like every category")
+
+        store.save(["programme", "ph", "not_a_category"], forKey: "muted_notifications")
+
+        XCTAssertEqual(PreferencesRepository(store: store).mutedNotifications, [.programme, .ph])
+    }
+
+    /// The service has no programme data to give the planner, so a live schedule holds no programme
+    /// reminder. Read from the fire times the service remembers for what it queued in this pass:
+    /// the check-in must be there, or an empty schedule would prove nothing.
+    @MainActor
+    func testALiveScheduleHoldsNoProgrammeReminderWhileTheServiceSuppliesNoProgramme() async {
+        let container = containerWithAWeekOfLogging()
+        container.session.signIn(email: "maya@example.com", name: "Maya")
+        container.prefs.pushEnabled = true
+        let service = service(for: container)
+        service.readAuthorizationStatus = { .authorized }
+
+        await service.reconcile()
+
+        let scheduled = container.store.load([String: Date].self, forKey: "notification_scheduled_fire") ?? [:]
+        XCTAssertNotNil(scheduled[NotificationKind.dailyHydration.rawValue], "the schedule should be live")
+        for slot in NotificationSlot.allCases where slot.category == .programme {
+            XCTAssertNil(scheduled[NotificationKind(slot: slot).rawValue],
+                         "\(slot) was scheduled for someone who has no programme")
+        }
+        service.cancelAll()
+    }
+
+    /// A plan for someone who does hold the programme: day 18, in week 3, four activities today.
+    private func programmePlan(done: Int = 0, reviewReadyWeek: Int? = nil) -> NotificationPlan {
+        NotificationPlanner.plan(NotificationSnapshot(
+            streak: StreakState(dailyHydration: 0, weeklyStreak: 0, daysLoggedThisWeek: 0,
+                                bestDailyStreak: 0, milestones: [], lapsedCelebrations: [], weekDots: []),
+            daysSinceLastPh: 1, phReadingsLast30Days: 6, daysSinceLastLog: 0, topSymptom: nil,
+            learnCandidates: [], daysSinceSent: [:],
+            programme: ProgrammeReminderFacts(hasAccess: true, started: true, day: 18, week: 3,
+                                              activitiesToday: 4, activitiesDone: done,
+                                              reviewReadyWeek: reviewReadyWeek)))
+    }
+
+    /// Each programme slot needs an id to be scheduled and cancelled under, and somewhere for a tap
+    /// to land. The ids are pinned because a raw value can never change after release; the tab is
+    /// Home until the Fertility Kit screens exist.
+    func testEveryProgrammeSlotHasAStableIdAndLandsOnHome() {
+        XCTAssertEqual(NotificationKind(slot: .programme).rawValue, "genesyx.programme.day")
+        XCTAssertEqual(NotificationKind(slot: .programmeReview).rawValue, "genesyx.programme.review")
+
+        // The lines the planner can write: nothing done yet, some done, and a review ready.
+        let lines = [programmePlan(), programmePlan(done: 2), programmePlan(reviewReadyWeek: 2)]
+            .flatMap(\.weekly)
+            .filter { $0.slot.category == .programme }
+        XCTAssertEqual(Set(lines.map(\.slot)),
+                       Set(NotificationSlot.allCases.filter { $0.category == .programme }),
+                       "every programme slot should be reached, or its destination goes unchecked")
+
+        for line in lines {
+            let tab = NotificationTab(rawValue: line.target.rawValue)
+            XCTAssertEqual(tab, .home, "\(line.slot) should land on Home")
+            let payload = NotificationRouter.payload(tab: tab ?? .home, learnSlug: line.learnSlug)
+            XCTAssertEqual(NotificationRouter.destination(from: payload),
+                           NotificationRouter.Destination(tab: .home, learnSlug: nil))
+        }
+    }
 }

@@ -38,6 +38,54 @@ public struct LearnCandidate: Equatable, Sendable {
     }
 }
 
+/// The 90-Day Programme, reduced to what the planner needs to decide whether to speak about it.
+///
+/// Counts and flags only, filled by the app from today's programme plan, its clock and its record
+/// of what has fired. Which activities they are, and anything she recorded in them, never reaches
+/// the planner, so it cannot reach a lock screen either.
+public struct ProgrammeReminderFacts: Equatable, Sendable {
+    /// She holds Programme Access.
+    public let hasAccess: Bool
+    /// The programme is running: she chose a start date, it has arrived, and she has not left.
+    /// Access alone starts nothing.
+    public let started: Bool
+    /// Today's programme day: 1 on the start date, above 90 once the programme is complete.
+    public let day: Int
+    /// Today's programme week, 1 to 13.
+    public let week: Int
+    /// Activities counted today, and how many of those are fully done.
+    public let activitiesToday: Int
+    public let activitiesDone: Int
+    /// An ovulation test is one of today's counted activities and is still open. A yes or a no:
+    /// no result exists at this point, and none is ever passed.
+    public let ovulationTestOpen: Bool
+    /// The programme week whose review has become ready and has not been opened. nil when none.
+    public let reviewReadyWeek: Int?
+    /// The hour it is now, 0 to 23. The planner has no clock of its own, and needs this to know
+    /// that a line for an hour already gone can no longer be delivered today.
+    public let hourNow: Int
+    /// One of the planned notifications has already reached her today: today by the calendar, not
+    /// within the last 24 hours. The sent memory counts whole days, so it cannot answer this.
+    /// Supplement alarms and milestones are outside the plan and do not count.
+    public let notifiedToday: Bool
+
+    public init(hasAccess: Bool, started: Bool, day: Int, week: Int,
+                activitiesToday: Int, activitiesDone: Int,
+                ovulationTestOpen: Bool = false, reviewReadyWeek: Int? = nil,
+                hourNow: Int = 0, notifiedToday: Bool = false) {
+        self.hasAccess = hasAccess
+        self.started = started
+        self.day = day
+        self.week = week
+        self.activitiesToday = activitiesToday
+        self.activitiesDone = activitiesDone
+        self.ovulationTestOpen = ovulationTestOpen
+        self.reviewReadyWeek = reviewReadyWeek
+        self.hourNow = hourNow
+        self.notifiedToday = notifiedToday
+    }
+}
+
 /// Everything the planner knows about her. Assembled by the app from the repositories.
 public struct NotificationSnapshot {
     public let streak: StreakState
@@ -66,6 +114,9 @@ public struct NotificationSnapshot {
     /// Categories she has switched off. Empty means everything is on, so a category added in a
     /// later build arrives on rather than silently off for everyone who upgraded.
     public let mutedCategories: Set<NotificationCategory>
+    /// The 90-Day Programme today. nil for everyone without it, and with nil the plan is exactly
+    /// what it was before the programme existed.
+    public let programme: ProgrammeReminderFacts?
 
     public init(
         streak: StreakState,
@@ -81,7 +132,8 @@ public struct NotificationSnapshot {
         reminderHour: Int = NotificationPlanner.hydrationHour,
         daysUntilFertileWindow: Int? = nil,
         todayWeekday: Int = 1,
-        mutedCategories: Set<NotificationCategory> = []
+        mutedCategories: Set<NotificationCategory> = [],
+        programme: ProgrammeReminderFacts? = nil
     ) {
         self.streak = streak
         self.daysSinceLastPh = daysSinceLastPh
@@ -97,6 +149,7 @@ public struct NotificationSnapshot {
         self.daysUntilFertileWindow = daysUntilFertileWindow
         self.todayWeekday = todayWeekday
         self.mutedCategories = mutedCategories
+        self.programme = programme
     }
 }
 
@@ -104,6 +157,10 @@ public struct NotificationSnapshot {
 
 public enum NotificationSlot: String, CaseIterable, Sendable {
     case hydration, ph, learn, insights, track, fertile
+    /// The 90-Day Programme: the day's line, and the weekly review line. Two slots because they are
+    /// two kinds of nudge: the review is one of the week's four and keeps a sent memory, and the
+    /// day's line is that day's own message.
+    case programme, programmeReview
 }
 
 /// Where a tap lands. Raw values match the app's tab order.
@@ -146,7 +203,8 @@ public struct NotificationPlan: Equatable, Sendable {
 
     /// The daily hydration nudge, if it's on this week.
     public var hydration: PlannedNotification? { notifications.first { $0.slot == .hydration } }
-    /// The weekly nudges, at most four (invariant 2 gives each its own day).
+    /// Everything but the check-in: the weekly nudges, at most four (invariant 2 gives each its own
+    /// day), and with the programme its line about today, on a day none of them owns.
     public var weekly: [PlannedNotification] { notifications.filter { $0.slot != .hydration } }
     /// Weekdays hydration must stand down on, because a weekly nudge already lands there.
     ///
@@ -191,6 +249,9 @@ public enum NotificationPlanner {
     /// re-planned — not a new one.
     static let fertileRepeatGuardDays = 14
 
+    /// The programme's morning line. Its other lines use the hour she chose.
+    static let programmeHour = 9
+
     public static func plan(_ snapshot: NotificationSnapshot) -> NotificationPlan {
         // Muting is applied here rather than to the finished plan, and that placement is the point:
         // a nudge dropped afterwards would still have consumed its share of the weekly budget and
@@ -216,13 +277,30 @@ public enum NotificationPlanner {
         // pinned to a date she cannot be told about later: "your window opens today" is worthless
         // on Thursday. Everything else keeps just as well for a week.
         let fertileNudge = allowed(fertile(snapshot))
+        // The programme's weekly line, the review, comes second: inside the same budget of four and
+        // the same one-a-day rule, never on top of either. It is pinned to today, so it stands down
+        // when the fertile nudge lands today. Both are dates, so the offsets are compared: a window
+        // seven days out shares today's weekday and nothing else. An evergreen nudge on its weekday
+        // gives way to it, as it does to the fertile nudge. Without the programme this is nil, and
+        // nothing below differs from what it was.
+        let reviewNudge = fertileNudge?.dayOffset == 0 ? nil : allowed(programmeReview(snapshot))
         let evergreen = [ph(snapshot), insights(snapshot), track(snapshot), learn(snapshot)]
             .compactMap(allowed)
             .filter { $0.weekday != fertileNudge?.weekday }   // invariant 2 — one a day
-        let weekly = (Array([fertileNudge].compactMap { $0 }) + evergreen).prefix(weeklyBudget)
+            .filter { $0.weekday != reviewNudge?.weekday }
+        let weekly = Array(([fertileNudge, reviewNudge].compactMap { $0 } + evergreen).prefix(weeklyBudget))
+
+        // The programme's line about today is not a fifth weekly nudge. It is that day's one daily
+        // message, said in the evening check-in's place: planned only on a day none of the weekly
+        // nudges owns, which are the days the check-in itself would speak, and the check-in rests
+        // that day as it does for every nudge here. So it takes no place in the budget of four and
+        // costs no weekly nudge its morning, and a week with the programme holds what a week
+        // without it holds: at most four weekly nudges, and at most one message on any day.
+        let ownedDays = NotificationPlan(notifications: weekly).hydrationRestDays
+        let dayLine = ownedDays.contains(snapshot.todayWeekday) ? nil : allowed(programme(snapshot))
 
         let evening = allowed(hydration(snapshot)).map { [$0] } ?? []
-        return NotificationPlan(notifications: evening + Array(weekly))
+        return NotificationPlan(notifications: evening + weekly + [dayLine].compactMap { $0 })
     }
 
     // MARK: Fertile window — the one nudge that cannot wait a week
@@ -255,6 +333,86 @@ public enum NotificationPlanner {
         ((weekday - 1 + offset) % 7) + 1
     }
 
+    // MARK: Programme: a weekly review line, and one line about today while it is still true
+
+    /// The programme, when it may speak at all: she holds access, it is running, today is day 1 to
+    /// 90, and she has not switched its reminders off. nil otherwise, and with nil every rule in
+    /// the planner is the rule from before the programme existed. The switch is asked here as well
+    /// as in `plan`, because the check-in needs the same answer.
+    static func activeProgramme(_ snapshot: NotificationSnapshot) -> ProgrammeReminderFacts? {
+        guard let facts = snapshot.programme, facts.hasAccess, facts.started,
+              (1...ProgrammeCalendar.totalDays).contains(facts.day),
+              !snapshot.mutedCategories.contains(.programme) else { return nil }
+        return facts
+    }
+
+    /// A programme line, pinned to today as the fertile nudge is pinned to its date: tomorrow has
+    /// its own counts. nil once she has been notified today, so one a day holds across the replans
+    /// of a day and not only inside one plan. nil once its hour has gone, so a line that can no
+    /// longer be delivered does not take the day from the check-in.
+    static func programmeLine(_ slot: NotificationSlot, _ body: String, hour: Int,
+                              _ facts: ProgrammeReminderFacts,
+                              _ snapshot: NotificationSnapshot) -> PlannedNotification? {
+        guard !facts.notifiedToday, hour > facts.hourNow else { return nil }
+        return PlannedNotification(slot: slot, title: "Your Programme", body: body, target: .home,
+                                   weekday: snapshot.todayWeekday, hour: hour, dayOffset: 0)
+    }
+
+    /// The programme's weekly line: a review that has become ready, told once for each review.
+    ///
+    /// The sent memory for this slot has to count calendar days. A line that fired last night and
+    /// one that fired this morning are both under 24 hours old, and only the second was sent on
+    /// the day this review became ready. Counted in 24 hours, a review can be taken for the one
+    /// before it and go unannounced.
+    static func programmeReview(_ snapshot: NotificationSnapshot) -> PlannedNotification? {
+        // Only a week that has ended has a review, whatever the flag says.
+        guard let facts = activeProgramme(snapshot),
+              let week = facts.reviewReadyWeek, week >= 1, week < facts.week else { return nil }
+        // Whole days this review has been ready, 0 on the day after its week ends. Below 0 the day
+        // says the week is still running, and a day and a week that disagree are not a yes. A
+        // review line sent within those days was this one. Counted from the programme day rather
+        // than a fixed gap, so next week's review is not held back by this week's.
+        let readyFor = facts.day - week * ProgrammeCalendar.daysPerWeek - 1
+        guard readyFor >= 0, (snapshot.daysSinceSent[.programmeReview] ?? .max) > readyFor else { return nil }
+        // At the hour she chose, as the check-in is.
+        return programmeLine(.programmeReview, "Your Week \(week) Programme Review is ready.",
+                             hour: snapshot.reminderHour, facts, snapshot)
+    }
+
+    /// The programme's line about today. nil for everyone without the programme.
+    ///
+    /// Every question is answered before a word is written, and any "no" is silence:
+    ///   • does she hold access, has the programme started, is today day 1 to 90, and is the
+    ///     category on? (`activeProgramme`)
+    ///   • is something relevant still open today? A finished activity is never mentioned.
+    ///   • has she been notified already today, and can the line still be delivered?
+    ///     (`programmeLine`)
+    ///   • is today free? Answered in `plan`: it speaks only on a day no weekly nudge owns.
+    ///
+    /// One line: the morning line while nothing is done, the evening line once some but not all are
+    /// done, and the testing line in place of either while an ovulation test is open.
+    ///
+    /// Counts only. No line says what she recorded, and none looks back at a day that is over.
+    static func programme(_ snapshot: NotificationSnapshot) -> PlannedNotification? {
+        guard let facts = activeProgramme(snapshot) else { return nil }
+        let total = facts.activitiesToday, done = facts.activitiesDone
+        guard done >= 0, done < total else { return nil }
+
+        let body: String
+        // The testing line is timed by her cycle, so it is one of the notes she switches off with
+        // the Cycle category, and it names neither her cycle nor a test: a lock screen is read by
+        // whoever is holding the phone. Which activity it is stays inside the app.
+        if facts.ovulationTestOpen, !snapshot.mutedCategories.contains(.cycle) {
+            body = "Today's Programme has an activity that is specific to today. Tap to see it."
+        } else if done > 0 {
+            body = "You've completed \(done) of today's \(total) Programme activities."
+        } else {
+            body = "Day \(facts.day) of your Genesyx Programme. You have \(total) Programme \(total == 1 ? "activity" : "activities") today."
+        }
+        return programmeLine(.programme, body, hour: done > 0 ? snapshot.reminderHour : programmeHour,
+                             facts, snapshot)
+    }
+
     // MARK: Evening check-in — one nudge at the hour she chose, in present-tense, guilt-free words
 
     /// The daily evening reminder (mirrors the Android reminder). Two branches, both inviting and
@@ -271,6 +429,10 @@ public enum NotificationPlanner {
                 target: .home, weekday: nil, hour: snapshot.reminderHour, dayOffset: dayOffset)
         }
 
+        // With the programme, a nudge that has fired today has left the plan, and today no longer
+        // looks taken. She has had today's one message, so the next invitation is tomorrow's.
+        // Without the programme this is never asked, and tonight is decided as it always was.
+        if activeProgramme(snapshot)?.notifiedToday == true { return invitation(dayOffset: 1) }
         if !snapshot.hasMeaningfulLogToday { return invitation() }
         if snapshot.waterTodayMl < snapshot.waterGoalMl {
             return PlannedNotification(
@@ -475,6 +637,32 @@ public enum NotificationPlanner {
 
         var copy = states.flatMap { plan($0).notifications.flatMap { [$0.title, $0.body] } }
         copy += [dormantNudge().title, dormantNudge().body]
+        copy += programmeCopy()
         return copy
+    }
+
+    /// Every programme sentence, in every state. Part of `allPossibleCopy`, and listed on its own
+    /// because the programme lines are held to a longer banned list than the rest.
+    public static func programmeCopy() -> [String] {
+        func snapshot(done: Int, of total: Int, test: Bool = false, review: Int? = nil) -> NotificationSnapshot {
+            NotificationSnapshot(
+                streak: StreakState(dailyHydration: 0, weeklyStreak: 0, daysLoggedThisWeek: 0,
+                                    bestDailyStreak: 0, milestones: [], lapsedCelebrations: [], weekDots: []),
+                daysSinceLastPh: nil, phReadingsLast30Days: 0, daysSinceLastLog: nil, topSymptom: nil,
+                learnCandidates: [], daysSinceSent: [:],
+                programme: ProgrammeReminderFacts(
+                    hasAccess: true, started: true, day: 43, week: 7,
+                    activitiesToday: total, activitiesDone: done,
+                    ovulationTestOpen: test, reviewReadyWeek: review))
+        }
+
+        let states = [
+            snapshot(done: 0, of: 1),               // morning line, a single activity
+            snapshot(done: 0, of: 4),               // morning line
+            snapshot(done: 4, of: 5),               // evening line
+            snapshot(done: 0, of: 4, test: true),   // testing line
+            snapshot(done: 4, of: 4, review: 6),    // weekly review line
+        ]
+        return states.compactMap { programmeReview($0) ?? programme($0) }.flatMap { [$0.title, $0.body] }
     }
 }

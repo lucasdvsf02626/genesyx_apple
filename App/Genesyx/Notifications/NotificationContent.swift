@@ -15,6 +15,8 @@ enum NotificationKind: String, CaseIterable {
     case weeklyNutrition = "genesyx.weekly.nutrition"   // retired (build 9) — kept to cancel
     case weeklyPhase     = "genesyx.weekly.phase"       // retired (build 9) — kept to cancel
     case cycleFertile    = "genesyx.cycle.fertile"
+    case programmeDay    = "genesyx.programme.day"
+    case programmeReview = "genesyx.programme.review"
     case milestone7      = "genesyx.milestone.7"
     case milestone14     = "genesyx.milestone.14"
     case milestoneWeek1  = "genesyx.milestone.w1"
@@ -28,6 +30,8 @@ enum NotificationKind: String, CaseIterable {
         case .insights:  self = .weeklyInsights
         case .track:     self = .weeklyTrack
         case .fertile:   self = .cycleFertile
+        case .programme:       self = .programmeDay
+        case .programmeReview: self = .programmeReview
         }
     }
 

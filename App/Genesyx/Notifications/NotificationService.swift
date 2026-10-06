@@ -310,6 +310,7 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
         content.body = planned.body
         content.sound = .default
         content.userInfo = NotificationRouter.payload(
+            // A programme reminder lands on Home for now; the Fertility Kit UI wave will retarget it.
             tab: NotificationTab(rawValue: planned.target.rawValue) ?? .home,
             learnSlug: planned.learnSlug
         )
