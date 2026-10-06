@@ -47,6 +47,16 @@ enum FeatureFlags {
     #else
     static let scanTest = false
     #endif
+    /// **DEBUG only.** Gates cycle history: period records kept on the device and in
+    /// `period_records`, seeded once from her cycle settings. Stays off for Release until
+    /// (1) the `period_records` migration has been applied through the database review gate,
+    /// (2) the consent wording has been reviewed to cover period history, and (3) the Android
+    /// contract is agreed. Read in one place, `AppContainer.init`, which passes it on.
+    #if DEBUG
+    static let cycleHistory = true
+    #else
+    static let cycleHistory = false
+    #endif
 }
 
 // MARK: - Learn content model (parity with Android LearnContent.kt)

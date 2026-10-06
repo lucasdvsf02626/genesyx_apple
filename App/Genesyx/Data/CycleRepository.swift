@@ -16,6 +16,11 @@ final class CycleRepository: ObservableObject {
     /// collection and stops with the rest of it.
     var isCollectionPermitted: HealthDataCollectionGate = { true }
 
+    /// Cycle history's way into a save she makes. Given the settings about to be stored, it
+    /// records the period start and returns what to store (`PeriodRepository.settingsToStore`).
+    /// Nil while cycle history is off, and then `upsert` behaves exactly as it always has.
+    var periodStartRecorder: ((CycleSettings) -> CycleSettings)?
+
     private let store: LocalStore
     private let backend: CycleBackend?
     private let key = "cycle_settings"
@@ -40,6 +45,7 @@ final class CycleRepository: ObservableObject {
     @discardableResult
     func upsert(_ settings: CycleSettings) -> Bool {
         guard isCollectionPermitted() else { return false }
+        let settings = periodStartRecorder?(settings) ?? settings
         self.settings = settings
         store.save(settings, forKey: key)
         pendingPush = true

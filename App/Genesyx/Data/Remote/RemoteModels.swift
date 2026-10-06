@@ -253,6 +253,64 @@ struct LhResultRow: Codable {
     }
 }
 
+/// One row of `period_records`, keyed by `(user_id, start_date)`. The column names and the
+/// `source` values are a contract with the Android app from the moment it reads them.
+/// `updated_at` is sent, and a trigger overwrites it on insert and on update, so the server's
+/// clock decides it. The tombstone is `deleted_at`, as on `LhResultRow`.
+struct PeriodRecordRow: Codable {
+    var userId: String
+    var startDate: String   // yyyy-MM-dd
+    var endDate: String?    // yyyy-MM-dd
+    var source: String
+    var updatedAt: String
+    var deletedAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case userId = "user_id"
+        case startDate = "start_date"
+        case endDate = "end_date"
+        case source
+        case updatedAt = "updated_at"
+        case deletedAt = "deleted_at"
+    }
+
+    /// Nil when the start date cannot be read: it is the record's identity. An unknown source
+    /// reads as `recorded` and an unreadable end as none, so a period is never lost over either.
+    var domain: StoredPeriodRecord? {
+        guard let start = CalendarDate(iso: startDate) else { return nil }
+        return StoredPeriodRecord(
+            period: PeriodRecord(startDate: start, endDate: endDate.flatMap(CalendarDate.init(iso:)),
+                                 source: PeriodSource(rawValue: source) ?? .recorded),
+            updatedAt: parseISO(updatedAt),
+            pendingSync: false,
+            deleted: deletedAt != nil
+        )
+    }
+
+    init(userId: String, record: StoredPeriodRecord) {
+        self.userId = userId
+        self.startDate = record.period.startDate.iso
+        self.endDate = record.period.endDate?.iso
+        self.source = record.period.source.rawValue
+        self.updatedAt = isoFormatter.string(from: record.updatedAt)
+        // The deletion's timestamp is the edit that made it.
+        self.deletedAt = record.deleted ? isoFormatter.string(from: record.updatedAt) : nil
+    }
+
+    /// Written by hand because the synthesised `encode` omits a nil key, and an upsert leaves an
+    /// omitted column as it was. Unlike an LH result this row is edited in place: clearing an end
+    /// date, or recording again on a date she once deleted, has to send an explicit null.
+    func encode(to encoder: Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(userId, forKey: .userId)
+        try values.encode(startDate, forKey: .startDate)
+        try values.encode(endDate, forKey: .endDate)
+        try values.encode(source, forKey: .source)
+        try values.encode(updatedAt, forKey: .updatedAt)
+        try values.encode(deletedAt, forKey: .deletedAt)
+    }
+}
+
 /// Row-level security on `daily_logs` is what actually keeps this private — a partner holds a
 /// `partner_id` link, not a read grant, and nothing in the app ever selects another user's logs.
 /// That matters more here than on the other tables because of `sexual_activity`.

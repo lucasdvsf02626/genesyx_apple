@@ -26,6 +26,10 @@ enum RemoteError: Error {
     /// `over_*_rate_limit` code). Its own case so the auth UI can show an honest "wait a few
     /// minutes" message and a longer cooldown instead of the generic "please try again" copy.
     case rateLimited
+    /// The server reached us and refused this one row because the row itself breaks a rule of the
+    /// table (a Postgres CHECK, SQLSTATE 23514). Offering the same row again is refused again. Its
+    /// own case so a queue can stop offering the row instead of retrying it on every drain.
+    case rowRefused
 }
 
 /// Classifies a sync failure so the queue drains know whether to stop or step over one item.
@@ -57,6 +61,14 @@ enum SyncError {
         if error is URLError { return true }
         if let remote = error as? RemoteError { return remote == .notAuthenticated }
         return false
+    }
+
+    /// True for the one rejection that does carry its reason up to this layer: the backend saw
+    /// the server refuse the row for what is in it (`RemoteError.rowRefused`). Retrying it as it
+    /// stands is pointless, so the queue that owns the row decides what becomes of it. Every
+    /// other rejection still looks transient from here and is retried, as described above.
+    static func isRowRefused(_ error: Error) -> Bool {
+        (error as? RemoteError) == .rowRefused
     }
 }
 
@@ -177,6 +189,15 @@ protocol LhBackend {
     func upsert(_ record: LhRecord) async throws
 }
 
+/// Period records, in `period_records`, one row per user per start date. One write path, as with
+/// LH: a delete is an upsert carrying a tombstone, and `list` returns tombstones so a deletion
+/// made on her other phone arrives as one. A corrected start is two upserts: a tombstone on the
+/// old date and a row on the new one.
+protocol PeriodBackend {
+    func list(updatedSince: Date?) async throws -> SyncPage<[StoredPeriodRecord]>
+    func upsert(_ record: StoredPeriodRecord) async throws
+}
+
 /// Her own supplements, in `user_supplements` — the same table Android reads and writes. One write
 /// path, as with pH: a delete is an upsert carrying a tombstone, and `list` returns tombstones so a
 /// deletion made on her other phone arrives as a deletion rather than as an absence.
@@ -268,6 +289,7 @@ protocol GenesyxBackend {
     var cycle: CycleBackend { get }
     var ph: PhBackend { get }
     var lh: LhBackend { get }
+    var periods: PeriodBackend { get }
     var supplements: SupplementBackend { get }
     var dailyLog: DailyLogBackend { get }
     var profile: ProfileBackend { get }

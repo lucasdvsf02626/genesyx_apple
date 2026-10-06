@@ -86,15 +86,18 @@ final class ScanReleaseGateTests: XCTestCase {
         // Nothing else may open the feature: More is built only by the tab bar, Scan home only by
         // More, the camera cover only by Scan home, and the services are asked for only by the
         // tab bar. The LH half hangs off Scan home: its screen is built only there, its cover only
-        // by that screen, and its services are asked for only by that screen.
+        // by that screen, and its services are asked for only by that screen. The pregnancy test
+        // half hangs off Scan home in the same way.
         var entryPoints: [String: Set<String>] = [:]
         for file in try Self.appSources() {
             for line in Self.releaseLines(try String(contentsOf: file, encoding: .utf8)) {
-                // So a pH name is not found inside the LH name that ends with it.
+                // So a pH name is not found inside the LH or pregnancy test name that ends with it.
                 let phLine = line.replacingOccurrences(of: "LhScan", with: "Lh")
+                    .replacingOccurrences(of: "HcgScan", with: "Hcg")
                 for name in ["MoreView(", "ScanTabView(", "ScanCaptureView(", "ScanServices.current",
-                             "LhScanHomeView(", "LhScanCaptureView(", "LhScanServices.current"]
-                where (name.hasPrefix("Lh") ? line : phLine).contains(name) {
+                             "LhScanHomeView(", "LhScanCaptureView(", "LhScanServices.current",
+                             "HcgScanHomeView(", "HcgScanCaptureView(", "HcgScanServices.current"]
+                where (name.hasPrefix("Lh") || name.hasPrefix("Hcg") ? line : phLine).contains(name) {
                     entryPoints[name, default: []].insert(file.lastPathComponent)
                 }
             }
@@ -107,6 +110,9 @@ final class ScanReleaseGateTests: XCTestCase {
             "LhScanHomeView(": ["ScanTabView.swift"],
             "LhScanCaptureView(": ["LhScanHomeView.swift"],
             "LhScanServices.current": ["LhScanHomeView.swift"],
+            "HcgScanHomeView(": ["ScanTabView.swift"],
+            "HcgScanCaptureView(": ["HcgScanHomeView.swift"],
+            "HcgScanServices.current": ["HcgScanHomeView.swift"],
         ], "Scan Test has exactly one way in, the gated More tab. " + Self.signOffMessage)
     }
 
@@ -115,7 +121,8 @@ final class ScanReleaseGateTests: XCTestCase {
     func testSimulatedAndDebugOnlyNamesStayInsideDebugRegions() throws {
         let forbidden = ["MockPh", "MockScan", "FakeScanFrameSource", "ScanDebug", "PhotosPicker", "PhotosUI",
                          "uiTestScanScenario", "uiTestConsentWithdrawn", "uiTestMore",
-                         "MockLh", "uiTestLhScenario"]
+                         "MockLh", "uiTestLhScenario",
+                         "MockHcg", "uiTestHcgScenario", "uiTestHcgSeed"]
         let files = try Self.appSources()
         XCTAssertGreaterThan(files.count, 60, "Source scan found almost nothing: the path is wrong, not the code")
 
@@ -153,6 +160,47 @@ final class ScanReleaseGateTests: XCTestCase {
                       "`LhScanServices.current` must still branch on DEBUG")
         XCTAssertTrue(source.contains("#else return nil #endif"),
                       "Outside DEBUG `LhScanServices.current` must be nil: there is no real analyser. " + Self.signOffMessage)
+    }
+
+    func testReleaseHasNoHcgScanServices() throws {
+        let source = Self.collapsed(try Self.source("App/Genesyx/Services/Scan/HcgScanServices.swift"))
+        XCTAssertTrue(source.contains("static var current: HcgScanServices? { #if DEBUG"),
+                      "`HcgScanServices.current` must still branch on DEBUG")
+        XCTAssertTrue(source.contains("#else return nil #endif"),
+                      "Outside DEBUG `HcgScanServices.current` must be nil: there is no real analyser. " + Self.signOffMessage)
+    }
+
+    // MARK: - The pregnancy test stays inside the Scan area
+
+    /// A pregnancy test result is read by nothing outside its own flow: no other screen, no
+    /// notification, no prediction. So the files that may name it are listed, and its screens may
+    /// not name the parts of the app a result must never reach.
+    func testPregnancyTestCodeStaysInsideTheScanArea() throws {
+        let views: Set<String> = ["HcgScanHomeView.swift", "HcgScanCaptureView.swift", "HcgResultView.swift",
+                                  "HcgManualEntrySheet.swift"]
+        let unreachable = ["pregnancyMode", "FocusMode", "focusMode", "CycleRepository", "CycleEngine",
+                           "PreferencesRepository", "NotificationService", "TabRouter", "PregnancyView",
+                           "pregnancyAccent", "print("]
+        var naming: Set<String> = []
+        var offenders: [String] = []
+        for file in try Self.appSources() {
+            let name = file.lastPathComponent
+            for (number, line, _) in Self.annotated(try String(contentsOf: file, encoding: .utf8)) {
+                if line.contains("Hcg") || line.contains("hcg") { naming.insert(name) }
+                if views.contains(name), unreachable.contains(where: { line.contains($0) }) {
+                    offenders.append("\(name):\(number)  \(line)")
+                }
+            }
+        }
+        // Equal, not a subset: a search that finds nothing must fail too.
+        XCTAssertEqual(naming, views.union([
+            "HcgRepository.swift", "PersistenceDTOs.swift", "AppContainer.swift", "GenesyxApp.swift",
+            "HcgTestAnalyzing.swift", "MockHcgTestAnalyzer.swift", "HcgScanServices.swift", "ScanTabView.swift",
+        ]), "Pregnancy test code is named outside the files that own it. A result must not leave the Scan area.")
+        XCTAssertTrue(offenders.isEmpty, """
+            A pregnancy test screen names a part of the app its result must never reach:
+            \(offenders.joined(separator: "\n"))
+            """)
     }
 
     // MARK: - Helpers

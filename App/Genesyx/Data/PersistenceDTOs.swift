@@ -231,3 +231,98 @@ extension LhRecord {
         )
     }
 }
+
+/// The persisted form of an `HcgResult`. Only `id`, `recordedAt` and `classification` are
+/// required. On-device only, so there is no sync bookkeeping, and nothing measured is kept: no
+/// signal, no confidence, no cycle day.
+struct HcgResultDTO: Codable {
+    var id: String
+    var recordedAt: Date
+    var classification: String
+    var scannerVersion: String? = nil
+    var scanConfigurationID: String? = nil
+    var scanConfigurationVersion: String? = nil
+}
+
+extension HcgResultDTO {
+    /// Nil when `classification` is not a value this build knows: a result is never guessed, so
+    /// the entry is dropped on read.
+    var result: HcgResult? {
+        guard let classification = HcgClassification(rawValue: classification) else { return nil }
+        // A scan only when all three version fields are present; otherwise manual.
+        var scan: HcgScanProvenance?
+        if let scannerVersion, let scanConfigurationID, let scanConfigurationVersion {
+            scan = HcgScanProvenance(scannerVersion: scannerVersion, configurationID: scanConfigurationID,
+                                     configurationVersion: scanConfigurationVersion)
+        }
+        return HcgResult(id: id, recordedAt: recordedAt, classification: classification, scan: scan)
+    }
+}
+
+/// The only DTO `HcgRepository` persists through.
+extension HcgResult {
+    var dto: HcgResultDTO {
+        HcgResultDTO(
+            id: id,
+            recordedAt: recordedAt,
+            classification: classification.rawValue,
+            scannerVersion: scan?.scannerVersion,
+            scanConfigurationID: scan?.configurationID,
+            scanConfigurationVersion: scan?.configurationVersion
+        )
+    }
+}
+
+/// The persisted form of a `StoredPeriodRecord`. The dates are stored as `CalendarDate` encodes
+/// itself, the same way `CycleSettings.lastPeriodDate` is kept. Every field is optional with a
+/// defaulting read, and each is decoded on its own, so one unreadable value costs that value and
+/// never the list. A record with no bookkeeping has never been pushed, so `pendingSync` defaults
+/// to true.
+struct PeriodRecordDTO: Codable {
+    var startDate: CalendarDate? = nil
+    var endDate: CalendarDate? = nil
+    var source: String? = nil
+    var updatedAt: Date? = nil
+    var pendingSync: Bool? = nil
+    var deleted: Bool? = nil
+}
+
+extension PeriodRecordDTO {
+    init(from decoder: Decoder) throws {
+        let values = try? decoder.container(keyedBy: CodingKeys.self)
+        startDate = try? values?.decode(CalendarDate.self, forKey: .startDate)
+        endDate = try? values?.decode(CalendarDate.self, forKey: .endDate)
+        source = try? values?.decode(String.self, forKey: .source)
+        updatedAt = try? values?.decode(Date.self, forKey: .updatedAt)
+        pendingSync = try? values?.decode(Bool.self, forKey: .pendingSync)
+        deleted = try? values?.decode(Bool.self, forKey: .deleted)
+    }
+
+    /// Nil when the start date is missing or unreadable: the start is the record's identity, so
+    /// the entry is dropped on read. An unknown source reads as `recorded`, so a period is never
+    /// lost over a source this build does not know.
+    var record: StoredPeriodRecord? {
+        guard let startDate else { return nil }
+        return StoredPeriodRecord(
+            period: PeriodRecord(startDate: startDate, endDate: endDate,
+                                 source: source.flatMap(PeriodSource.init(rawValue:)) ?? .recorded),
+            updatedAt: updatedAt ?? Date(timeIntervalSince1970: 0),
+            pendingSync: pendingSync ?? true,
+            deleted: deleted ?? false
+        )
+    }
+}
+
+/// The only DTO `PeriodRepository` persists through.
+extension StoredPeriodRecord {
+    var dto: PeriodRecordDTO {
+        PeriodRecordDTO(
+            startDate: period.startDate,
+            endDate: period.endDate,
+            source: period.source.rawValue,
+            updatedAt: updatedAt,
+            pendingSync: pendingSync,
+            deleted: deleted
+        )
+    }
+}

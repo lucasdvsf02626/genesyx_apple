@@ -17,6 +17,12 @@ final class AppContainer: ObservableObject {
     let dailyLog: DailyLogRepository
     let ph: PhRepository
     let lh: LhRepository
+    let hcg: HcgRepository
+    let periods: PeriodRepository
+    /// Whether cycle history is on for this container (`FeatureFlags.cycleHistory`). Off means
+    /// nothing is seeded, no period record is written or pulled, and saving cycle settings does
+    /// exactly what it did before.
+    let cycleHistory: Bool
     let supplements: SupplementsRepository
     let prefs: PreferencesRepository
     let session: SessionRepository
@@ -27,8 +33,11 @@ final class AppContainer: ObservableObject {
 
     /// Designated init. Allows an injected store (used by previews/tests for isolation).
     /// `monitorNetwork: false` keeps tests off the host's real connectivity.
-    init(store: LocalStore, backend: GenesyxBackend?, monitorNetwork: Bool = true) {
+    /// `cycleHistory` is a parameter so the tests can build the Release configuration.
+    init(store: LocalStore, backend: GenesyxBackend?, monitorNetwork: Bool = true,
+         cycleHistory: Bool = FeatureFlags.cycleHistory) {
         self.store = store
+        self.cycleHistory = cycleHistory
         self.backend = backend
         self.reachability = Reachability(monitoring: monitorNetwork)
 
@@ -36,6 +45,8 @@ final class AppContainer: ObservableObject {
         self.dailyLog = DailyLogRepository(store: store, backend: backend?.dailyLog)
         self.ph = PhRepository(store: store, backend: backend?.ph)
         self.lh = LhRepository(store: store, backend: backend?.lh)
+        self.hcg = HcgRepository(store: store)
+        self.periods = PeriodRepository(store: store, backend: backend?.periods)
         self.supplements = SupplementsRepository(store: store, backend: backend?.supplements)
         self.prefs = PreferencesRepository(store: store, backend: backend?.profile)
         self.session = SessionRepository(store: store, auth: backend?.auth)
@@ -53,8 +64,22 @@ final class AppContainer: ObservableObject {
         dailyLog.isCollectionPermitted = permitted
         ph.isCollectionPermitted = permitted
         lh.isCollectionPermitted = permitted
+        hcg.isCollectionPermitted = permitted
+        periods.isCollectionPermitted = { cycleHistory && permitted() }
         supplements.isCollectionPermitted = permitted
         prefs.isCollectionPermitted = permitted
+
+        // Cycle history, all of it behind the one flag. Saving cycle settings (the existing sheet)
+        // goes through history, and history saves a moved `lastPeriodDate` through the existing
+        // `CycleRepository.upsert`, so it syncs as it does today. Weak on one side: the two
+        // repositories would otherwise hold each other.
+        if cycleHistory {
+            periods.cycleSettings = { [cycle] in cycle.settings }
+            periods.saveCycleSettings = { [cycle] in cycle.upsert($0) }
+            cycle.periodStartRecorder = { [weak periods] in periods?.settingsToStore($0) ?? $0 }
+            // With a backend, seeding waits for the first pull (see `PeriodRepository.refresh`).
+            if backend == nil { periods.seedIfEmpty() }
+        }
 
         // Auth-transition wiring: wipe on-device health data on sign-out / account deletion, and
         // rehydrate from the backend on sign-in. Weak self avoids a retain cycle (container owns session).
@@ -140,6 +165,10 @@ final class AppContainer: ObservableObject {
         // Behind the Scan Test flag, like partner below: while it is off the app never reads
         // `lh_results` at all, a table that may not exist yet.
         if FeatureFlags.scanTest { await lh.refresh() }
+        // After `cycle.refresh()` above, on purpose: seeding and the comparison with her settings
+        // both read the settings that pull brought down. While the flag is off the app never
+        // reads `period_records` at all, a table that may not exist yet.
+        if cycleHistory { await periods.refresh() }
         // Excluded from the 1.2.0 public release, so this is skipped rather than merely hidden:
         // with the flag off the app never reads `partner_invites` or a partner's profile row at
         // all. See `FeatureFlags.partnerInvites`.
@@ -157,6 +186,9 @@ final class AppContainer: ObservableObject {
         await ph.drainPending()
         await supplements.drainPending()
         await lh.drainPending()
+        // Behind the flag too: a drain saves the (empty) list back, and while cycle history is
+        // off nothing about it may reach the store.
+        if cycleHistory { await periods.drainPending() }
         // A partner accepting an invite is a change made on *another* device, so there is nothing
         // owed to push — only something to pull. Without this the inviter had to fully relaunch
         // the app before her partner ever showed up as linked.
@@ -171,6 +203,8 @@ final class AppContainer: ObservableObject {
         cycle.clearLocalState()
         ph.clearLocalState()
         lh.clearLocalState()
+        hcg.clearLocalState()
+        periods.clearLocalState()
         dailyLog.clearLocalState()
         // Notification state is derived from her data, so it is her data: milestone flags and the
         // read-article list must not follow her out of the app.
@@ -271,6 +305,17 @@ final class AppContainer: ObservableObject {
                                          classification: .low))
             container.lh.create(LhResult(recordedAt: positiveAt, cycleDay: LhCycleDay.snapshot(settings: container.cycle.settings, at: positiveAt),
                                          classification: .positive))
+        }
+        // `-uiTestHcgSeed YES`: opt-in, unlike the LH seed, so no screenshot or walkthrough ever
+        // carries a pregnancy test result.
+        if UserDefaults.standard.bool(forKey: "uiTestHcgSeed") {
+            container.hcg.create(HcgResult(recordedAt: Date().addingTimeInterval(-2 * 86_400), classification: .noTestLineDetected))
+            container.hcg.create(HcgResult(recordedAt: Date().addingTimeInterval(-1 * 86_400), classification: .testLineDetected))
+        }
+        // `-uiTestCycleHistory YES`: opt-in, three earlier period starts behind the seeded one, so
+        // there are completed cycles of 28, 31 and 26 days ending at her current period.
+        if UserDefaults.standard.bool(forKey: "uiTestCycleHistory"), let latest = container.cycle.settings?.lastPeriodDate {
+            for daysBefore in [26, 57, 85] { container.periods.recordStart(latest.minusDays(daysBefore)) }
         }
         // Public screenshots must never expose a real person's account details.
         // Onboarding and signed-out launches must not sign in: a signed-in session now opens

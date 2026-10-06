@@ -21,6 +21,7 @@ struct ScanTabView: View {
 
     @State private var showInstructions = false
     @State private var showLh = false
+    @State private var showHcg = false
     @State private var showCapture = false
     @State private var showManualEntry = false
     /// How the cover ended. Acted on once it has gone: a sheet raised from a view that is still
@@ -48,6 +49,8 @@ struct ScanTabView: View {
                          icon: "drop", identifier: "scan.home.phCard") { showInstructions = true }
                 testCard(title: LhScanCopy.cardTitle, description: LhScanCopy.cardDescription,
                          icon: "testtube.2", identifier: "scan.home.lhCard") { showLh = true }
+                testCard(title: HcgScanCopy.cardTitle, description: HcgScanCopy.cardDescription,
+                         icon: "doc.text.magnifyingglass", identifier: "scan.home.hcgCard") { showHcg = true }
             }
             .padding(.horizontal, 20).padding(.bottom, 24)
             .accessibilityElement(children: .contain)
@@ -63,6 +66,9 @@ struct ScanTabView: View {
         }
         .navigationDestination(isPresented: $showLh) {
             LhScanHomeView().environment(\.scenePhase, scenePhase)
+        }
+        .navigationDestination(isPresented: $showHcg) {
+            HcgScanHomeView().environment(\.scenePhase, scenePhase)
         }
         .fullScreenCover(isPresented: $showCapture, onDismiss: coverDismissed) {
             ScanCaptureView(services: services) { exit in

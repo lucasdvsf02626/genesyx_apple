@@ -83,6 +83,8 @@ extension View {
             .environmentObject(container.dailyLog)
             .environmentObject(container.ph)
             .environmentObject(container.lh)
+            .environmentObject(container.hcg)
+            .environmentObject(container.periods)
             .environmentObject(container.prefs)
             .environmentObject(container.session)
             .environmentObject(container.partner)

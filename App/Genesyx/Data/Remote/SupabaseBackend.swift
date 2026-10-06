@@ -15,6 +15,7 @@ final class SupabaseBackend: GenesyxBackend {
     lazy var cycle: CycleBackend = SupabaseCycle(client: client, auth: auth)
     lazy var ph: PhBackend = SupabasePh(client: client, auth: auth)
     lazy var lh: LhBackend = SupabaseLh(client: client, auth: auth)
+    lazy var periods: PeriodBackend = SupabasePeriods(client: client, auth: auth)
     lazy var supplements: SupplementBackend = SupabaseUserSupplements(client: client, auth: auth)
     lazy var dailyLog: DailyLogBackend = SupabaseDailyLog(client: client, auth: auth)
     lazy var profile: ProfileBackend = SupabaseProfile(client: client, auth: auth)
@@ -232,6 +233,41 @@ private struct SupabaseLh: LhBackend {
     func upsert(_ record: LhRecord) async throws {
         let uid = try requireUID(auth)
         try await client.from("lh_results").upsert(LhResultRow(userId: uid, record: record)).execute()
+    }
+}
+
+private struct SupabasePeriods: PeriodBackend {
+    let client: SupabaseClient
+    let auth: AuthBackend
+
+    /// Tombstones are included, as for LH: a period deleted or corrected on another device has to
+    /// arrive as a deletion, not as an absence.
+    func list(updatedSince: Date?) async throws -> SyncPage<[StoredPeriodRecord]> {
+        let uid = try requireUID(auth)
+        var query = client.from("period_records").select().eq("user_id", value: uid)
+        if let since = updatedSince {
+            query = query.gte("updated_at", value: ISO8601DateFormatter().string(from: since))
+        }
+        let rows: [PeriodRecordRow] = try await query.order("start_date").execute().value
+        // The cursor is read off the raw column of every row, including any dropped for an
+        // unreadable start date, never the parsed domain date.
+        return SyncPage(payload: rows.compactMap(\.domain), latestUpdatedAt: syncCursor(from: rows.map(\.updatedAt)))
+    }
+
+    /// Records, corrections, ends and deletes all land here, keyed by the table's primary key
+    /// `(user_id, start_date)`.
+    ///
+    /// A CHECK on the table refusing the row (SQLSTATE 23514: a date outside the range the server
+    /// accepts) is rethrown as `RemoteError.rowRefused`, because the same row would be refused
+    /// again. Everything else passes through unchanged. The server's error is never logged: its
+    /// detail quotes the row.
+    func upsert(_ record: StoredPeriodRecord) async throws {
+        let uid = try requireUID(auth)
+        do {
+            try await client.from("period_records").upsert(PeriodRecordRow(userId: uid, record: record)).execute()
+        } catch let error as PostgrestError where error.code == "23514" {
+            throw RemoteError.rowRefused
+        }
     }
 }
 
