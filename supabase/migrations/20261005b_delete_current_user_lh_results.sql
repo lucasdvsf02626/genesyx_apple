@@ -8,7 +8,9 @@
 --   1) CORRECTED 20261005_lh_results.sql,
 --   2) VERIFY ITS GRANTS (verification 1 at the foot of that file),
 --   3) THIS FILE,
---   4) ONLY THEN `supabase functions deploy delete_account`.
+--   4) ONLY THEN `supabase functions deploy delete_account`, AND ONLY WHEN BOTH public.lh_results
+--      AND public.period_records EXIST (the latter is created by 20261006_period_records.sql):
+--      the edge function in this repo deletes from BOTH tables.
 -- WHY: THE `delete_account` EDGE FUNCTION NOW DELETES FROM public.lh_results. DEPLOYED BEFORE THE
 -- TABLE EXISTS, EVERY iOS ACCOUNT DELETION RETURNS 500 AFTER IT HAS ALREADY DELETED THE USER'S
 -- ph_readings, daily_logs, cycle_settings, quiz_answers AND user_supplements ROWS, LEAVING THE
