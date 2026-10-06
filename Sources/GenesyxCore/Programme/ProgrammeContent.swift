@@ -104,9 +104,12 @@ public struct ProgrammeContentReview: Hashable, Sendable {
 
 /// One row of the review report.
 public struct ProgrammeReviewItem: Hashable, Sendable {
-    public enum Kind: String, Sendable, CaseIterable { case week, day, lesson, nutritionFocus }
+    /// `dayCopy` and `guideSection` are the written day copy and Programme Guide sections. Only
+    /// `itemsNeedingClinicalReview()` lists them; `reviewItems()` stays the 206 schedule items.
+    public enum Kind: String, Sendable, CaseIterable { case week, day, lesson, nutritionFocus, dayCopy, guideSection }
     public let kind: Kind
-    /// Stable within the content: "week-04", "day-023", the lesson id, "nutrition-focus-04".
+    /// Stable within the content: "week-04", "day-023", the lesson id, "nutrition-focus-04",
+    /// "day-copy-023", the guide section's slug.
     public let id: String
     public let review: ProgrammeContentReview
 }
@@ -460,9 +463,32 @@ public struct ProgrammeContent: Sendable {
         reviewItems().filter { $0.review.status == status }
     }
 
-    /// Items that interpret health or fertility and have not been clinically reviewed.
+    /// Items that interpret health or fertility and have not been clinically reviewed. This is the
+    /// list handed to a clinician, so it is the union of every flag: the schedule's own marks
+    /// (`reviewItems()`), the written lessons, the written day copy and the Programme Guide
+    /// sections. A written lesson carries the id of its lesson reference, so one flagged in a week
+    /// that is not flagged as a whole still lists that lesson. The written day copy follows the
+    /// day's status and the written lesson the lesson's, where this content records one.
     public func itemsNeedingClinicalReview() -> [ProgrammeReviewItem] {
-        reviewItems().filter {
+        let writtenLessonFlags = Dictionary(
+            ProgrammeLessonsDraft.all.map { ($0.id, $0.review.containsHealthInterpretation) },
+            uniquingKeysWith: { $0 || $1 })
+        let schedule = reviewItems().map { item -> ProgrammeReviewItem in
+            guard item.kind == .lesson, writtenLessonFlags[item.id] == true else { return item }
+            return ProgrammeReviewItem(
+                kind: .lesson, id: item.id,
+                review: ProgrammeContentReview(status: item.review.status, containsHealthInterpretation: true))
+        }
+        let dayCopy = ProgrammeDayCopyDraft.all.map {
+            ProgrammeReviewItem(
+                kind: .dayCopy, id: String(format: "day-copy-%03d", $0.day),
+                review: ProgrammeContentReview(status: dayStatuses[$0.day] ?? $0.review.status,
+                                               containsHealthInterpretation: $0.review.containsHealthInterpretation))
+        }
+        let guide = ProgrammeGuideDraft.sections.map {
+            ProgrammeReviewItem(kind: .guideSection, id: $0.id, review: $0.review)
+        }
+        return (schedule + dayCopy + guide).filter {
             $0.review.containsHealthInterpretation
                 && $0.review.status != .clinicalReviewed && $0.review.status != .approved
         }

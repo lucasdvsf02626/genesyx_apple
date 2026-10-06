@@ -206,9 +206,12 @@ final class ProgrammeContentTests: XCTestCase {
         let items = content.reviewItems()
         XCTAssertEqual(items.count, 13 + 13 + 90 + 90)
         XCTAssertEqual(Set(items.map(\.id)).count, items.count, "review ids must be unique")
-        for kind in ProgrammeReviewItem.Kind.allCases {
+        // `reviewItems()` is the schedule only. The written day copy and guide sections are added by
+        // `itemsNeedingClinicalReview()`, so those two kinds are not counted here.
+        for kind in ProgrammeReviewItem.Kind.allCases where kind != .dayCopy && kind != .guideSection {
             XCTAssertEqual(items.filter { $0.kind == kind }.count, kind == .week || kind == .nutritionFocus ? 13 : 90)
         }
+        XCTAssertTrue(items.allSatisfy { $0.kind != .dayCopy && $0.kind != .guideSection })
         XCTAssertEqual(content.reviewItems(with: .draft).count, items.count)
         for status in [ProgrammeReviewStatus.editorialReviewed, .clinicalReviewed, .approved] {
             XCTAssertTrue(content.reviewItems(with: status).isEmpty)
@@ -225,6 +228,90 @@ final class ProgrammeContentTests: XCTestCase {
                        ["week-02", "week-03", "week-04", "week-05", "week-06", "week-07", "week-09", "week-10", "week-12"])
         XCTAssertTrue(needing.contains { $0.id == "day-040" })
         XCTAssertFalse(needing.contains { $0.id == "day-001" })
+    }
+
+    // ── The clinician's report is the union of every flag ──
+
+    /// Interprets health and no clinician has signed it off.
+    private func isOpen(_ review: ProgrammeContentReview) -> Bool {
+        review.containsHealthInterpretation && review.status != .clinicalReviewed && review.status != .approved
+    }
+
+    /// Every flagged item, whichever file holds the flag: the schedule's weeks, days, lesson
+    /// references and nutrition focuses, the written lessons, the written day copy and the guide.
+    func testTheClinicalReportListsEveryFlaggedItemWhereverTheFlagIsHeld() {
+        let needing = content.itemsNeedingClinicalReview()
+        func listed(_ kind: ProgrammeReviewItem.Kind, _ id: String) -> Bool {
+            needing.contains { $0.kind == kind && $0.id == id }
+        }
+        for item in content.reviewItems() where isOpen(item.review) {
+            XCTAssertTrue(listed(item.kind, item.id), "\(item.kind) \(item.id) dropped from the report")
+        }
+        let lessons = ProgrammeLessonsDraft.all.filter { isOpen($0.review) }
+        XCTAssertFalse(lessons.isEmpty)
+        for lesson in lessons {
+            XCTAssertTrue(listed(.lesson, lesson.id), "written lesson \(lesson.id) is flagged but not in the report")
+        }
+        let writings = ProgrammeDayCopyDraft.all.filter { isOpen($0.review) }
+        XCTAssertFalse(writings.isEmpty)
+        for writing in writings {
+            let id = String(format: "day-copy-%03d", writing.day)
+            XCTAssertTrue(listed(.dayCopy, id), "written day copy \(id) is flagged but not in the report")
+        }
+        let sections = ProgrammeGuideDraft.sections.filter { isOpen($0.review) }
+        XCTAssertFalse(sections.isEmpty)
+        for section in sections {
+            XCTAssertTrue(listed(.guideSection, section.id), "guide section \(section.id) is flagged but not in the report")
+        }
+    }
+
+    /// Weeks 1, 8, 11 and 13 are not flagged as weeks, but lessons and day copy written for their
+    /// days are. A report that read only the week flag said nothing about them.
+    func testWeeksOneEightElevenAndThirteenAreNotSilentInTheClinicalReport() throws {
+        let needing = content.itemsNeedingClinicalReview()
+        for number in [1, 8, 11, 13] {
+            let week = try XCTUnwrap(content.week(number))
+            let days = week.dayRange
+            let flaggedLessons = ProgrammeLessonsDraft.all.filter { lesson in
+                isOpen(lesson.review) && days.contains { lesson.id == String(format: "programme-day-%03d", $0) }
+            }
+            let flaggedCopy = ProgrammeDayCopyDraft.all.filter { isOpen($0.review) && days.contains($0.day) }
+            XCTAssertFalse(flaggedLessons.isEmpty && flaggedCopy.isEmpty, "week \(number) holds no flagged written item")
+            let reportedInWeek = needing.filter { item in
+                (item.kind == .lesson || item.kind == .dayCopy)
+                    && days.contains { item.id.hasSuffix(String(format: "%03d", $0)) }
+            }
+            XCTAssertEqual(reportedInWeek.count, flaggedLessons.count + flaggedCopy.count,
+                           "week \(number): \(flaggedLessons.count) lessons and \(flaggedCopy.count) day copy flagged, "
+                           + "\(reportedInWeek.count) reported")
+        }
+    }
+
+    func testTheClinicalReportListsEachItemOnceAndEveryEntryAsFlagged() {
+        let needing = content.itemsNeedingClinicalReview()
+        XCTAssertEqual(Set(needing.map { "\($0.kind.rawValue)/\($0.id)" }).count, needing.count, "an item is listed twice")
+        XCTAssertTrue(needing.allSatisfy { isOpen($0.review) })
+        // A lesson in a week that is not flagged is listed with the flag its written text carries,
+        // and a written lesson that is not flagged in such a week stays out.
+        XCTAssertEqual(content.week(1)?.review.containsHealthInterpretation, false)
+        let flagged = needing.first { $0.kind == .lesson && $0.id == "programme-day-002" }
+        XCTAssertEqual(flagged?.review.containsHealthInterpretation, true)
+        XCTAssertEqual(flagged?.review.status, .draft)
+        XCTAssertEqual(ProgrammeLessonsDraft.lesson(forID: "programme-day-001")?.review.containsHealthInterpretation, false)
+        XCTAssertFalse(needing.contains { $0.kind == .lesson && $0.id == "programme-day-001" })
+    }
+
+    func testWrittenItemsLeaveTheReportOnceTheirDayOrLessonIsReviewed() {
+        let draft = ProgrammeContent.draft
+        let revised = ProgrammeContent(version: "test", weeks: draft.weeks, phaseTitles: draft.phaseTitles,
+                                       kindCopy: draft.kindCopy, kindReflections: draft.kindReflections,
+                                       kindReadMinutes: draft.kindReadMinutes, testGuidanceWeeks: draft.testGuidanceWeeks,
+                                       dayStatuses: [40: .clinicalReviewed], lessonStatuses: [40: .approved])
+        XCTAssertTrue(content.itemsNeedingClinicalReview().contains { $0.kind == .dayCopy && $0.id == "day-copy-040" })
+        let after = revised.itemsNeedingClinicalReview()
+        XCTAssertFalse(after.contains { $0.kind == .dayCopy && $0.id == "day-copy-040" })
+        XCTAssertFalse(after.contains { $0.kind == .lesson && $0.id == "programme-day-040" })
+        XCTAssertTrue(after.contains { $0.kind == .dayCopy && $0.id == "day-copy-041" })
     }
 
     func testAStatusThatMovesOnIsListedUnderItsNewStatus() {
