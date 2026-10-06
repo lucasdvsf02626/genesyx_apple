@@ -62,8 +62,13 @@ public enum ProgrammeActivationOutcome: Hashable, Sendable {
 /// Activation-code rules. Pure: the caller decides what an accepted code grants.
 public enum ProgrammeActivationCode {
 
-    /// The internal QA codes. Private, and absent from every outcome and description.
+    /// The internal QA codes. Private, and absent from every outcome and description. Compiled
+    /// only into a development build: a Release build holds an empty set, so it recognises none.
+    #if DEBUG
     private static let internalQACodes: Set<String> = ["GX90-QA-001", "GX90-QA-002", "GX90-QA-003"]
+    #else
+    private static let internalQACodes: Set<String> = []
+    #endif
 
     /// Surrounding whitespace removed, upper-cased. Nothing inside the entry is altered, so a code
     /// typed without its hyphens stays a different code.
