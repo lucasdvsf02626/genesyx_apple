@@ -341,3 +341,73 @@ place because it renders from a bundled constant —
 `Sources/GenesyxCore/Content/NutritionContent.swift:250-255` — and reads no products table at all.
 So the two platforms will legitimately differ here until the range is finalised. That is a content
 decision, not a defect; don't "fix" it by seeding products.
+
+---
+
+## 7. Cycle history: the `period_records` table (contract, not yet live)
+
+Added 5 Oct 2026 with the iOS data layer for cycle history. Nothing here is applied or shipped:
+the migration is a file (`supabase/migrations/20261006_period_records.sql`) waiting for the
+database review gate, and iOS keeps the feature behind `FeatureFlags.cycleHistory` (DEBUG only).
+**The migration is not to be applied until this contract is agreed.**
+
+**What changes for Android today: nothing.** Android reads and writes `cycle_settings` only, and
+that table, its columns and its meaning are unchanged. `cycle_settings.last_period_date` is
+still written by iOS on every change and is still the only input to predictions.
+
+**The new table.** One row per user per period start date.
+
+| Column | Type | Meaning |
+|---|---|---|
+| `user_id` | `uuid` | owner; row level security is owner only |
+| `start_date` | `date` (`yyyy-MM-dd`) | first day of the period. Together with `user_id` it is the primary key |
+| `end_date` | `date`, nullable | last day of the period, inclusive. Null until she records one |
+| `source` | `text` | `recorded` (she entered it) or `seeded` (the one row copied from her cycle settings when history first switched on). Read an unknown value as `recorded` |
+| `created_at` | `timestamptz` | server default |
+| `updated_at` | `timestamptz` | stamped by the server on insert and on update; the sync cursor |
+| `deleted_at` | `timestamptz`, nullable | tombstone. Null means live |
+
+**Rules a client must follow.**
+
+- **The key is the start date.** Upsert on `(user_id, start_date)`. There is no row id. The same
+  start recorded on two devices is one row.
+- **A correction is a tombstone plus an insert.** Moving a start from one date to another cannot
+  change the key, so it is two upserts: the old date with `deleted_at` set, then the new date.
+  Push the tombstone first. If the second write fails, keep it queued and retry: other devices
+  then briefly see that period missing, never twice.
+- **Send `end_date` and `deleted_at` on every upsert, as an explicit null when empty.** Recording
+  again on a date that holds a tombstone must clear `deleted_at`, and clearing an end must clear
+  `end_date`; an omitted key leaves the stored value in place.
+- **A delete is a tombstone**, never a row delete, so it reaches her other devices.
+- **Cycles are derived, never stored.** A cycle runs from one live start to the day before the
+  next; the latest is open. Lengths are plain date differences and are never clamped.
+- **`cycle_settings.last_period_date` must follow the latest live start** whenever a client adds,
+  corrects or deletes a start. `cycle_length` and `period_length` are never rewritten from
+  history. Deleting her only start leaves the settings as they are.
+- **Which of "new period", "correction" or "past period" a date means** is decided by one rule
+  set, in `Sources/GenesyxCore/CycleHistory/CycleHistoryRules.swift` (`apply`, `setEnd`, `delete`,
+  `seed`, `settingsInStep`): the same date is no change; within 10 days of an existing start,
+  either side, is a correction of the nearest; later than the latest start is a new period;
+  earlier is a past period; a future date is refused. Android should adopt these rules
+  unchanged. **A JSON test-vector file for them has not been produced yet**; until it exists the
+  Swift tests in `Tests/GenesyxCoreTests/CycleHistory/` are the reference.
+- **The server range-checks both dates.** `start_date` must be on or after 1900-01-01 and neither
+  `start_date` nor `end_date` may be later than tomorrow's date in UTC (the server's clock plus one
+  day, so a user ahead of UTC is never refused); anything else is rejected with Postgres error
+  23514 (`check_violation`), so validate the same way before sending.
+- **Tolerate what a merge can produce.** Two starts a few days apart (two devices recorded the
+  same period on different dates) and an `end_date` on or after the next start are both valid
+  rows. Show them; never merge or repair them silently. The database has no constraint across
+  rows on purpose.
+
+**Until Android implements this, it must tolerate the table and not write it.** Android has no
+consent gate (section 3), and period dates are special-category data: no writes to
+`period_records` before that gate exists. When Android (or an older iOS build) changes
+`last_period_date`, the new iOS app turns that into history on its next sync
+(`PeriodReconcile` in `App/Genesyx/Data/PeriodRepository.swift`): more than 10 days after the
+latest start appends a record; within 10 days corrects the latest start; anything earlier
+changes no history and leaves the settings as they were set.
+
+**Account deletion.** `period_records` is added to `delete_current_user()`
+(`20261006b_delete_current_user_period_records.sql`) and to the `delete_account` edge function.
+Android's deletion path needs no code change.

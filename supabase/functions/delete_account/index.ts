@@ -27,6 +27,20 @@
 import { serviceClient, requireUser, json, NotAuthenticated } from "../_shared/client.ts";
 import { hasAppleIdentity, revokeAppleTokens } from "../_shared/apple.ts";
 
+// Every table this function deletes from by her id, with the column that holds it. The preflight
+// and the delete loop below both read this one list, so they cannot drift apart. The reason for
+// each entry, and the order rule for deploying, are in the comment above the delete loop.
+const OWNED = [
+  ["ph_readings", "user_id"],
+  ["daily_logs", "user_id"],
+  ["cycle_settings", "user_id"],
+  ["quiz_answers", "user_id"],
+  ["user_supplements", "user_id"],
+  ["lh_results", "user_id"],
+  ["period_records", "user_id"],
+  ["partner_invites", "inviter_id"],
+] as const;
+
 Deno.serve(async (req) => {
   try {
     const user = await requireUser(req);
@@ -37,6 +51,21 @@ Deno.serve(async (req) => {
       console.error(`delete_account: ${what} failed —`, message);
       return json({ error: "Something went wrong" }, 500);
     };
+
+    // PREFLIGHT: before anything is revoked, unlinked or deleted, every table this function deletes
+    // from has to answer a zero-row read. Deployed ahead of a table that does not exist yet, the
+    // loop below would erase the earlier tables, fail on the missing one, and leave her half
+    // deleted with the account still in place; every retry would do the same again. Failing here
+    // instead deletes NOTHING, and she stays exactly as she was. `profiles` and `waitlist_emails`
+    // are deleted outside the loop, so they are probed too.
+    // A plain GET with `limit(0)`, not a HEAD request: supabase-js reads a 404 with no body, which
+    // is all a HEAD can return, as "no content" rather than as an error, so a missing table would
+    // pass. Nothing is selected, and only the table name and the database's own message are logged.
+    const probed = [...OWNED, ["profiles", "id"], ["waitlist_emails", "email"]] as const;
+    for (const [table, column] of probed) {
+      const { error } = await db.from(table).select(column).limit(0);
+      if (error) return failed(`${table} preflight`, error.message);
+    }
 
     // Revoke Apple's grant before touching any data. The code is optional in the body because this
     // function has to keep working for clients that do not send one — see the enforcement note below.
@@ -101,15 +130,9 @@ Deno.serve(async (req) => {
     // `lh_results`: this function must NOT be deployed until `20261005_lh_results.sql` has been
     // applied, because a missing table makes this loop return an error before the account is
     // deleted.
-    for (const [table, column] of [
-      ["ph_readings", "user_id"],
-      ["daily_logs", "user_id"],
-      ["cycle_settings", "user_id"],
-      ["quiz_answers", "user_id"],
-      ["user_supplements", "user_id"],
-      ["lh_results", "user_id"],
-      ["partner_invites", "inviter_id"],
-    ] as const) {
+    // `period_records`: the same order rule. Table first (`20261006_period_records.sql`), then
+    // this function; never deploy this function before BOTH that table and `lh_results` exist.
+    for (const [table, column] of OWNED) {
       const { error } = await db.from(table).delete().eq(column, uid);
       if (error) return failed(`${table} delete`, error.message);
     }

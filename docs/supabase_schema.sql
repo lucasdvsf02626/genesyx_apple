@@ -8,7 +8,7 @@
 -- Column names, types, and upsert keys are matched EXACTLY to the app's row DTOs
 -- in App/Genesyx/Data/Remote/RemoteModels.swift. If you change one, change both.
 --
--- Tables:  profiles · cycle_settings · ph_readings · lh_results · daily_logs · partner_invites
+-- Tables:  profiles · cycle_settings · period_records · ph_readings · lh_results · daily_logs · partner_invites
 -- Safe to re-run: uses IF NOT EXISTS / DROP POLICY IF EXISTS throughout.
 -- ============================================================================
 
@@ -63,6 +63,41 @@ create table if not exists public.cycle_settings (
     period_length    integer not null,
     updated_at       timestamptz not null default now()
 );
+
+-- ------------------------------------------------------------------
+-- period_records: cycle history, one row per (user, period start date). PK (user_id, start_date), drives .upsert()
+-- ------------------------------------------------------------------
+-- 5 Oct 2026: kept in sync with migration 20261006_period_records.sql, which is the authoritative
+-- copy (it also asserts the result). Not applied to the live database yet. Cycles are never
+-- stored: clients derive them from consecutive starts. A corrected start is a tombstone on the
+-- old date plus a row on the new one. No constraint compares one row with another. The dates are
+-- range-checked: start_date on or after 1900-01-01, and neither date later than tomorrow's date
+-- in UTC (the server's clock plus one day, so a user ahead of UTC is never refused).
+create table if not exists public.period_records (
+    user_id    uuid not null references auth.users (id) on delete cascade,
+    start_date date not null,                   -- yyyy-MM-dd, first day of the period
+    end_date   date,                            -- yyyy-MM-dd, last day inclusive; null = not recorded
+    source     text not null check (source in ('recorded', 'seeded')),
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    deleted_at timestamptz,                     -- tombstone: null = live
+    primary key (user_id, start_date),
+    constraint period_records_dates_finite check (
+        isfinite(start_date) and (end_date is null or isfinite(end_date))
+    ),
+    constraint period_records_end_not_before_start check (
+        end_date is null or end_date >= start_date
+    ),
+    constraint period_records_dates_in_range check (
+        start_date >= date '1900-01-01'
+        and start_date <= (now() at time zone 'utc')::date + 1
+        and (end_date is null or end_date <= (now() at time zone 'utc')::date + 1)
+    )
+);
+-- The server's clock owns updated_at, on insert as well as update (see lh_results below).
+drop trigger if exists period_records_bump_updated_at on public.period_records;
+create trigger period_records_bump_updated_at before insert or update on public.period_records
+    for each row execute function public.bump_updated_at();
 
 -- ------------------------------------------------------------------
 -- ph_readings — many per user (id is a client-generated UUID string)
@@ -216,6 +251,11 @@ create policy ph_readings_owner on public.ph_readings
     for all to authenticated
     using (user_id = auth.uid()) with check (user_id = auth.uid());
 
+drop policy if exists period_records_owner on public.period_records;
+create policy period_records_owner on public.period_records
+    for all to authenticated
+    using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+
 drop policy if exists lh_results_owner on public.lh_results;
 create policy lh_results_owner on public.lh_results
     for all to authenticated
@@ -247,6 +287,10 @@ grant select, insert, update, delete on
 revoke all on public.lh_results from anon, authenticated;
 grant select, insert, update, delete on public.lh_results to authenticated;
 grant all on public.lh_results to service_role;
+-- period_records: the same revoke-first rule.
+revoke all on public.period_records from anon, authenticated;
+grant select, insert, update, delete on public.period_records to authenticated;
+grant all on public.period_records to service_role;
 
 -- ============================================================================
 -- Sanity check (optional) — run after the above; every table should show rls = true.
