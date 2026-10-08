@@ -160,6 +160,15 @@ final class FertilityKitAccessService: ObservableObject {
         }
         keep(ProgrammeAccessDecisions.reset(cached, internalQAAllowed: internalQAAllowed))
     }
+
+    /// UI-test seed: the signed-in account holds access, in the stand-in server's ledger and in
+    /// the cache, so the first `refresh()` keeps it. Nothing is typed and no entry is stored.
+    func seedGrantForUITests() {
+        guard let account = accountIdentity(),
+              let access = (provider as? InternalQAFertilityKitAccessProvider)?.seedGrant(accountID: account, now: now())
+        else { return }
+        keep(access)
+    }
     #endif
 
     /// No access is stored as the absence of the key.

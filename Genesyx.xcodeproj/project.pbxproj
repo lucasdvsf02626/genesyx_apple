@@ -12,31 +12,44 @@
 		02627E4829DB5CB264B0BB65 /* LhScanCaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62FFF8D134A0373A7FBBC066 /* LhScanCaptureView.swift */; };
 		02CDDD6278836CD356A2B6E9 /* RemoteBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48F5A8AF942299142460B70F /* RemoteBackend.swift */; };
 		06137468D8FB583AD4405C0C /* CitationLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 894F6388CCC93D23E7C89DBA /* CitationLink.swift */; };
+		0A52053616890CAC0B520E32 /* FertilityKitAccessUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 087E43D844AA12FF05C477FA /* FertilityKitAccessUITests.swift */; };
 		0A98509A9EDFF1F6335455A5 /* SessionRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 709D1C1FC95A6647B86AFD2E /* SessionRepository.swift */; };
 		0DC6B2D021CC16BAFACC6B2E /* GenesyxControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D297DB3865857FC294B954E /* GenesyxControls.swift */; };
 		0DCC3D33A978CC1789DDCDB2 /* CycleSettingsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E5C7355A555DF5D7CDD47A0 /* CycleSettingsSheet.swift */; };
+		0FBB4E087F207254FA0C91D2 /* FertilityKitHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 124CCF63746FC817BC163117 /* FertilityKitHomeView.swift */; };
+		1079EFF49BF43354F7BB1744 /* FertilityKitComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10F4C333B721CA21F31F553 /* FertilityKitComponents.swift */; };
 		107B7052AF78CF3D802DDB2B /* InviteShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF1A0DDC1903F444BDA44FC2 /* InviteShareSheet.swift */; };
 		1146798384EB5D274EF846F5 /* medical_sources.json in Resources */ = {isa = PBXBuildFile; fileRef = AA0A2838F2F34E16B2B9B5DC /* medical_sources.json */; };
 		124D54F21735EE26A507A3D4 /* LhScanHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF20AC281DD717878ABCD1B6 /* LhScanHomeView.swift */; };
 		1413FE71B9060C273AC9D89C /* PhContentGuardTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2F8D8EAE8E2F5145C9AE700 /* PhContentGuardTests.swift */; };
 		1494A02CFC3EEF97529A059C /* MedicalSourcesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B4F125B2519639D68DF8408 /* MedicalSourcesView.swift */; };
+		16540631789FB310EA235E0D /* ProgrammeReaderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A77E5B7822D3A5A6EE49662 /* ProgrammeReaderTests.swift */; };
 		171C66812D35CE18F49E8077 /* ErrorStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98022BBAD2E97CCAD9CBDF20 /* ErrorStateView.swift */; };
 		179450D82831FD20FBB06431 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FAEDB5BABAF4DB17A1EA885 /* RootView.swift */; };
+		17B741BD630D448A7F3F57EC /* FertilityKitReleaseGateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4094A9A079D04C8C601E672B /* FertilityKitReleaseGateTests.swift */; };
 		191ABA3EA2167B60289B39E7 /* AppBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C6AEDE2C83DDBA1A2CF2E59 /* AppBackend.swift */; };
 		19D20718E9D21DC08671E277 /* OnboardingFlowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAB2D6EDC638116F42330F79 /* OnboardingFlowView.swift */; };
 		19E192F77DEF4C7726F9A530 /* DeepLinkTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43EE7B189D1FA0D84CB24653 /* DeepLinkTests.swift */; };
 		1B161462363D78E3F6630794 /* GenesyxColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D2256A8461234A12EC51385 /* GenesyxColors.swift */; };
+		1C5FC11D81BCB1B7D71C7E7A /* FertilityKitContrastTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDC91BEEEF87E05A822A6628 /* FertilityKitContrastTests.swift */; };
 		1D51684AF02E313624423D60 /* HcgRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 792D1A812B35D7841D6BD3DE /* HcgRepository.swift */; };
 		202EAA74A385EFB175D5DCEB /* HydrationPrefs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 967D3123F21E6B868560B588 /* HydrationPrefs.swift */; };
+		20A7169D5FB3763545B1C266 /* FertilityKitScreensUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B1514A97F67B1E213DCE774 /* FertilityKitScreensUITests.swift */; };
+		2140C6BD788663E7E8AEE9AD /* DietPlanScreenTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD07AC4971AC64C185B66837 /* DietPlanScreenTests.swift */; };
 		23BDA7246328A719FE281E11 /* CameraAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = B49064B825A360B1EDBE80CA /* CameraAccess.swift */; };
 		241D03D61A8790BA0FF26826 /* ScanCaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34D93AB059AFE7DCBDF0F114 /* ScanCaptureView.swift */; };
 		266F87C581BAAA0AD90BAB89 /* Genesyx_7_Day_Fertility_Nutrition_Starter_Guide.pdf in Resources */ = {isa = PBXBuildFile; fileRef = 92E6DF0178CA7C34A5C75CBA /* Genesyx_7_Day_Fertility_Nutrition_Starter_Guide.pdf */; };
+		26F90EE8946F2CE427FE7894 /* ProgrammeWeeklyReviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED68DE99B1CBAF10135605A8 /* ProgrammeWeeklyReviewView.swift */; };
 		2784F238C500EEF89F459F93 /* HydrationInsightTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B18E3F542DC87A9DB38AE90F /* HydrationInsightTests.swift */; };
 		29E363F8DC2980D3AE3D0D6B /* HcgAnalyserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 945C1BB9AC4E742C32CECDFF /* HcgAnalyserTests.swift */; };
 		2A61DF86DC8A79DAB133FEAF /* RepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FD8DC508575F00BB7566E22 /* RepositoryTests.swift */; };
+		2AC9344F1E71B11FB6412732 /* PeriodEditSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 481520E1BBE98BEBD6708475 /* PeriodEditSheet.swift */; };
 		2CFBB75151ED772EF42BE762 /* AppContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A724E422A810E5B8921F4A15 /* AppContainer.swift */; };
 		2D87D33BB877A9CC3E207660 /* FreeGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DC465C5240CC69D726DBF74 /* FreeGuideView.swift */; };
+		2E30ECFAFC05DA64FCA54909 /* FertilityKitContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85171181F9288D622840628C /* FertilityKitContext.swift */; };
 		2F693E70E4DFB53572FEBD1F /* RootRoutingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FA54BF7FB0AC1AF1C928196 /* RootRoutingTests.swift */; };
+		2F82382854DE56B491B7C284 /* FertilityKitRoutes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E53AAD8F757EBA82C1D6C5E /* FertilityKitRoutes.swift */; };
+		337671CAFA5A0E82B0956388 /* FertilityKitAccessFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEF677308DB65C6202102D38 /* FertilityKitAccessFlowTests.swift */; };
 		369ADB44A682ACC75AFF81C2 /* LearnReadLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E3D2B9C5458CBBD4620E47E /* LearnReadLog.swift */; };
 		36C87A06EB5CFFF312367D11 /* InviteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E8224E3C264A5AAABD3B6F4 /* InviteView.swift */; };
 		3924E9760802BE0291932FD9 /* PartnerRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CEF9376EE55F833D33CFEA5 /* PartnerRepository.swift */; };
@@ -47,15 +60,23 @@
 		3C786426F8C9E9FF5E55F9F2 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC4D301E002F9F92D74DCA2E /* MainTabView.swift */; };
 		3D63A628C151330C2E790EF8 /* PersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 303189AF2EDB7CEDB86E0060 /* PersistenceTests.swift */; };
 		3F505A683ED429FA98F171FB /* LhTestAnalyzing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 718B407C0084FB596594EF71 /* LhTestAnalyzing.swift */; };
+		40064CEB798F8A300DF9C923 /* FertilityPictureScreenTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A62AB0A24A6EF40C4275D7B /* FertilityPictureScreenTests.swift */; };
 		4108B666B22225121B8DE0F6 /* MedicalSourceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13C6BEC7D425708D2971050B /* MedicalSourceStore.swift */; };
+		44328FC7AAA8A51D757F9916 /* ProgrammeTaskListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD4EBC71AA5624115D684F6E /* ProgrammeTaskListView.swift */; };
+		468F93585AA36019E80E9FF3 /* FertilityKitContextTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B40ADDA0CB11271D936CD781 /* FertilityKitContextTests.swift */; };
 		48E3074CD9FFCEC5B1C9F220 /* PartnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07AB939CB828EB246F36B517 /* PartnerTests.swift */; };
+		4C11CD6A5BEDD1CE8DC27290 /* ProgrammeGuideSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40B8549EA5C3312D59017D58 /* ProgrammeGuideSectionView.swift */; };
 		4CEA0388B97943AD41DB7BB5 /* AppGuideTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 289CA7CD505881E3512D358B /* AppGuideTests.swift */; };
 		4DCC0A28A74F6681A43FAF8E /* LhScanServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFC33A9FC5BB34F723F98990 /* LhScanServiceTests.swift */; };
 		4E836317F53A104C24EC51B1 /* CustomerWalkthroughUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B555756E30A8616BCB88A1F /* CustomerWalkthroughUITests.swift */; };
+		506C8E4E95B938EACCDBE006 /* ProgrammeGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42E73C0F10D92CD56182633E /* ProgrammeGuideView.swift */; };
+		55FEFC0BFA8E343344C026F9 /* FertilityKitTestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3147DA77F790E18A38180AC1 /* FertilityKitTestSupport.swift */; };
 		571B4D150B01B670F598A173 /* HcgResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 891242713A29447F46EB5A06 /* HcgResultView.swift */; };
 		57380349F4D6348FC2B14FEA /* NotificationFlowUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A792C435055372123D5BEC67 /* NotificationFlowUITests.swift */; };
 		57841B3DEE07C928CEF38FBC /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29302184F2B6D0C0053D36D1 /* Theme.swift */; };
+		583BF3756E5A806CBF46A99E /* ProgrammeNinetyDayReviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D369B5327C1962D516E4CAD4 /* ProgrammeNinetyDayReviewView.swift */; };
 		59757A4374E2D2F60A8E0D81 /* HcgScanServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4BC5E311D2240230941DA12 /* HcgScanServices.swift */; };
+		5A294BEE53F17A2769DADB6C /* FertilityKitAccountSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = D841B5F2A67B562C9EF0B120 /* FertilityKitAccountSection.swift */; };
 		5A54A96F1A2FFD0E191BCC01 /* MoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74ACAD37BBD94AE51D54F517 /* MoreView.swift */; };
 		5BB5FEF6CA7E37FDB9F884ED /* LhManualEntrySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B85FD847FF93E4729873309F /* LhManualEntrySheet.swift */; };
 		5D61FD77753CAD3C6DC9F99A /* TrackView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8235770B012CBBA13E031E3 /* TrackView.swift */; };
@@ -66,13 +87,16 @@
 		65143C8E59455DA1D16BBC9E /* ProgrammePlanService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB6EBF4665768B3E6111DE47 /* ProgrammePlanService.swift */; };
 		651A078688B74ECA03A31657 /* LearnContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = C945804E1BB5F3133A5710D6 /* LearnContent.swift */; };
 		65A5F1876DC627D25E629435 /* NutritionHydrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04A99C624A4D983AB1E3D538 /* NutritionHydrationTests.swift */; };
+		65B0C227A9B1D5725A662D02 /* DietPlanMealSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A53F847B7E047FD197F9871 /* DietPlanMealSheet.swift */; };
 		65C1637D3AC2119529EA6AF6 /* ScanServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A88C3844087F2C9CB392814 /* ScanServiceTests.swift */; };
 		66327E678733E50F505D9B22 /* AppleReauthorization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 245746F077A6A18D48D9D210 /* AppleReauthorization.swift */; };
 		66E73F8089D9F88A5DE05F21 /* ConsentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D7549E328CD90A4942ACBC1 /* ConsentView.swift */; };
 		6835DB6E7BBE2692B1220320 /* FlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18B326C15BF47D3EA69920B6 /* FlowLayout.swift */; };
 		6ACA61212B85E4B1813DBC9D /* HcgScanServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E9061B0C8FF119305CB2514 /* HcgScanServiceTests.swift */; };
 		6B9C9FABB66FE3899D1B4F18 /* FertilityKitAccessProviders.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D86EEED9F2A87F00F8BCD16 /* FertilityKitAccessProviders.swift */; };
+		715B96B9F4ACEDBE2B8E68AF /* FertilityKitActivationSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B18005920C72F445947949FB /* FertilityKitActivationSheet.swift */; };
 		72E52DF5C287CE9601E07DD9 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25158C5D4C95C0D86A2FFC22 /* NotificationService.swift */; };
+		730E37A36496FC31C29FD227 /* FertilityPictureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFD570C6F1F2E19241644BE0 /* FertilityPictureView.swift */; };
 		737644606227A6C403C4AF5C /* SupplementsRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D2E2ABAC8638F3B3332297D /* SupplementsRepository.swift */; };
 		7521944224B99CB7C02D31C9 /* FertilityKitAccessService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA0F14C3B00BA3A0B77CB6AE /* FertilityKitAccessService.swift */; };
 		76717DC3CE6638E6011E812D /* ScanResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A961988078A533232B9CA55 /* ScanResultView.swift */; };
@@ -83,6 +107,7 @@
 		7DEE045EA130EDC0364688A0 /* GenesyxUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD452495CEE851EB8D542EDD /* GenesyxUITests.swift */; };
 		7E4CD1BF46B1F859F7A9E624 /* LogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49849D9AB56307E72089D622 /* LogView.swift */; };
 		7F826845B793AEFD208F3AF9 /* SessionExpiryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89A702D17E4F743D8FBCC58 /* SessionExpiryTests.swift */; };
+		8015D2D658DEF1060C45D6F9 /* FertilityKitAccessCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1212511A09A81C712B18414 /* FertilityKitAccessCard.swift */; };
 		80E86EC3B5ADC14AABBDB677 /* GenesyxApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40F30A3F8C1E804BE4B86F8F /* GenesyxApp.swift */; };
 		84493793553503DF4433B3DB /* HcgRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA268FA24588C586C5D8C43C /* HcgRepositoryTests.swift */; };
 		84B56738DE6EA54CD4C985BD /* PasswordResetTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8090EDB3E193E58373847533 /* PasswordResetTests.swift */; };
@@ -92,6 +117,7 @@
 		8BF2F3FE44A66B2BB65C9CBC /* LhRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 372A0C43D192EE9F1C404BDA /* LhRepository.swift */; };
 		8C182A380CB8D71E2AD91BA0 /* ScanReleaseGateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A4E9B95FCCE429B78D50FA8 /* ScanReleaseGateTests.swift */; };
 		8EA94F3BAFC89185D2817A44 /* ProgrammePlanSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65727073CD719CC775A141F9 /* ProgrammePlanSource.swift */; };
+		91384EF209F81F2900973BE7 /* FertilityKitBannedText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A96C019E1BD4693B5656F5D /* FertilityKitBannedText.swift */; };
 		923CEB24A8D8BD700C7C6360 /* HcgScanHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 947F43E3306C3465F5A2FA73 /* HcgScanHomeView.swift */; };
 		92C49067F4CFC43B2EEEC85E /* SupabaseBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = B272F6444F9A44B3497D5370 /* SupabaseBackend.swift */; };
 		95374EE4612300DE8ECB082C /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 31285057904654880C873C5C /* PrivacyInfo.xcprivacy */; };
@@ -107,28 +133,38 @@
 		A5CFFE487FC1011AC30B6196 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41348920BE9C91F44EC334CD /* HomeView.swift */; };
 		A622C0B1281C36D54DA18430 /* ProgrammePlanServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E27801449368FE3027C7DA2 /* ProgrammePlanServiceTests.swift */; };
 		A8CFAFC54BE8362144D42958 /* EmailValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6D3F941F8A48D807333965C /* EmailValidator.swift */; };
+		A9CC04537B5C020F84BF3D10 /* CycleHistoryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 910DBB1BD05C44AB35E6C49E /* CycleHistoryUITests.swift */; };
 		AB6DFF4387BD6F1244E9F4AA /* PeriodRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABBE1EC10342BBD4553AA5F1 /* PeriodRepositoryTests.swift */; };
 		B07097DA3A3F2D2E4BA97906 /* YearMonth+Foundation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A35F920C88F39DE4A48AA3 /* YearMonth+Foundation.swift */; };
+		B1AA3604C1656E09E59E8D79 /* CycleHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14A2126259A1778DE3896C55 /* CycleHistoryView.swift */; };
 		B2045711301001147777B2E8 /* ScanTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 053F7044CD3798047C211EE1 /* ScanTabView.swift */; };
 		B255B6A91AD19BF4028FF31E /* PeriodRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30B9F122A3F6B9035C3646F /* PeriodRepository.swift */; };
 		B2959DD289B32100108DD607 /* ReleaseScopeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C6A6190C90B87C3AA7B9D4 /* ReleaseScopeTests.swift */; };
+		B5F8C02A6D9B8A434CD407B1 /* ProgrammeRelatedContentList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047C1D12FFDEAFF2304B0E5D /* ProgrammeRelatedContentList.swift */; };
 		B6E509C4E98BD004D072025C /* CitationE2ETests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2915F9FE693FBE33A7871BC /* CitationE2ETests.swift */; };
 		B83D55BEB6DADD41CAA812E0 /* ProgrammeRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56A9EDD40103E7BD26C034B0 /* ProgrammeRepositoryTests.swift */; };
 		BCC0CE448AC34CDDD5CD6736 /* Typography.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BD8D73ED6547E875275A4E1 /* Typography.swift */; };
 		BDF26386397FB86F5CC861AC /* LhScanServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D8AD689C5761E1766BC9ED2 /* LhScanServices.swift */; };
+		C20F768DE940247ACEA24AA6 /* FertilityKitSourceGuardTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E32F4BA2DB0CD873BE9190B /* FertilityKitSourceGuardTests.swift */; };
 		C299AD26420ECFDC65766380 /* SeventhTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBF075D7CAC0AF87A05457B0 /* SeventhTab.swift */; };
+		C399E84F1E489E87F6F4B85A /* FertilityKitUITestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E6360542F26464146005979 /* FertilityKitUITestSupport.swift */; };
 		C4A444E7B1D33B58A8A1DAB1 /* LearnModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40B409A2563A374272520A72 /* LearnModels.swift */; };
 		C850284037447966A3511645 /* PhRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA1FD2DBFCCA2572F4AF84F1 /* PhRepository.swift */; };
 		C8D8A6E74E7EA7B0F2070013 /* PlaceholderScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A00188AAFEE31CD41906486 /* PlaceholderScreen.swift */; };
 		C995A3B58C049256766518E6 /* FakeScanFrameSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C49751D24A2BC16D11BEFC8 /* FakeScanFrameSource.swift */; };
+		C9A5623E6808DB71D60F2FE2 /* ProgrammeReviewsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C7BA96461B4DC518C60E0C9 /* ProgrammeReviewsView.swift */; };
 		C9EE7E47540C49C939B39E43 /* PhTrackerSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = D48509B6EC8A02B3A142AF09 /* PhTrackerSection.swift */; };
 		CAA6C90C15832BC3A97CC099 /* FreeGuideBundleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F5E81E13FAC805D726F44D3 /* FreeGuideBundleTests.swift */; };
 		CD66002B3D5BBE1411B24650 /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 080CEB58B93445D2DB9D5400 /* AuthView.swift */; };
 		CE627C179758A746A463F2ED /* LhResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 700D4CDC91F0E2703A7E6FC9 /* LhResultView.swift */; };
 		CE7DC2E3CD51F7D69AA10F61 /* AuthRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD311BB01E946FB3AB4FE7F8 /* AuthRepository.swift */; };
+		CEE5162657B0512D455BA09B /* FertilityKitProgrammeUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 975668DD0FBBAE1B7A4C6BC3 /* FertilityKitProgrammeUITests.swift */; };
+		D364AB3F0EFACFD94E1D1029 /* FertilityKitHomeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CD91AEC26795C94794C1C07 /* FertilityKitHomeTests.swift */; };
+		D4A49C6E0286034D58003E9D /* ProgrammeDayReaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D94D3CF1ED54F484A9C2AE78 /* ProgrammeDayReaderView.swift */; };
 		D4E0FFE2FE7AE0AABA1FAA13 /* RootRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = B66AE0A68717265089D96482 /* RootRouting.swift */; };
 		D7EED7DE499B033ACFD1633C /* LifecycleE2ETests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 319A34E30FAB0B26C4DA0DB7 /* LifecycleE2ETests.swift */; };
 		D88DA4E0E583B4A9E30F7F6F /* ResetPasswordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45B783DF2E15B614E72F15FF /* ResetPasswordView.swift */; };
+		DCDA2B6B459DBCB4C969470E /* CycleHistoryScreenTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20D9664C8C012FBB43E9242F /* CycleHistoryScreenTests.swift */; };
 		DE5566C1E61D568E2379FAA9 /* SleepSmokeUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84C182890D97D31185267B5B /* SleepSmokeUITests.swift */; };
 		DE66AFB5DBD72C004DA52461 /* CameraPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F634F1E2D257AF2E642FE101 /* CameraPreviewView.swift */; };
 		DE9C3F479BE6E8224ED0C78C /* BackendSwapTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEB6BAF8FC459A7A15C72AB8 /* BackendSwapTests.swift */; };
@@ -136,18 +172,22 @@
 		E0CF7E74B001DD8894E56900 /* MockPhTestAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9120DC6606448CA63B34EA8A /* MockPhTestAnalyzer.swift */; };
 		E11E796D15E7BC987E6780E2 /* PersistenceDTOs.swift in Sources */ = {isa = PBXBuildFile; fileRef = C514C0E95E071BDA9843904E /* PersistenceDTOs.swift */; };
 		E173C6750E0F0556C6C306F2 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = DEAB44EE02032528E4C7A894 /* Supabase */; };
+		E1A5740B42C3246B395DAEBE /* ProgrammeReviewScreenTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E05B0B4D5FE5E85466E447C /* ProgrammeReviewScreenTests.swift */; };
 		E35A43E19769AF5855E930A7 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 31FA256D16825BC48D9FF01C /* Assets.xcassets */; };
 		E3B087854F5FC9910584C3DA /* HcgManualEntrySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B1F7459B104E52382E41DFE /* HcgManualEntrySheet.swift */; };
+		E4B1F1CF1CA97F551AF2C209 /* DietPlanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E09F32A75051416FBC61C4D /* DietPlanView.swift */; };
 		E54366A509A127056046BEC5 /* DailyLogRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF6F37408A02568413C57CE0 /* DailyLogRepository.swift */; };
 		E6031BE67078AE4BEF7ED0D1 /* LocalStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B2790DAD76D0036331A0789 /* LocalStore.swift */; };
 		E615C09D58D8381EC619A732 /* ScanCameraTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAF136CBCF47091517207CB2 /* ScanCameraTests.swift */; };
 		E64155928D1F2A5192BEC13C /* MockLhTestAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABDE1ECD21CB9894BC4DB4FD /* MockLhTestAnalyzer.swift */; };
 		E6C31815C8A833D847C2404E /* CycleRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = E090A64261B2333C8D7643F1 /* CycleRepository.swift */; };
+		E6F3D65E5E7E03BCCF69B192 /* FertilityKitHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7436CAFDE457BA6B50E1F5B9 /* FertilityKitHost.swift */; };
 		E85889261BA59AF5FE1ABE33 /* WeeklySummaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80049AAB53BF065200499100 /* WeeklySummaryView.swift */; };
 		E8ADD5119E72A8A7D7708D6F /* ScanFlowUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28C7DD9E48D56E1CF42DA87A /* ScanFlowUITests.swift */; };
 		E94CD508A4E5D59C54D8EEFE /* MockHcgTestAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C881FF8DFA3730373866C4B /* MockHcgTestAnalyzer.swift */; };
 		EC5AD95C81D8E668D0AA8B59 /* InsightsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9CDAEFE038258E2457FE471 /* InsightsView.swift */; };
 		ED6676295BABDD824EE51AE4 /* GenesyxCore in Frameworks */ = {isa = PBXBuildFile; productRef = 9A6451E74177E670774A6BAA /* GenesyxCore */; };
+		EE8F5702A1030348B144511C /* FertilityKitDebugControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = E27141687B40D1F644CE467A /* FertilityKitDebugControls.swift */; };
 		EEDE83F0AF5220C2F2BD57D2 /* RealInsightsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A6A7DAC8C3FC99236B1ADB7 /* RealInsightsTests.swift */; };
 		EF2873940DAB692F98EAC899 /* HcgScanCaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0B1703FF9113C347105D9B1 /* HcgScanCaptureView.swift */; };
 		EFEAF46E26A100B0AAA02104 /* HcgScanFlowUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AD7C4B7072B35A6A818BA31 /* HcgScanFlowUITests.swift */; };
@@ -157,6 +197,7 @@
 		F97DC46FEF1D747736CDDE17 /* HcgTestAnalyzing.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE3C7C78C6D167C082F93FD9 /* HcgTestAnalyzing.swift */; };
 		F9D71D8FE7A64E15910D6C54 /* BrandAssetTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED048B54AB44204938AE8902 /* BrandAssetTests.swift */; };
 		FAADD53B29FD9F749FD87AAB /* CameraSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EABAA93089A9218832E60EB /* CameraSessionManager.swift */; };
+		FCDFA932F234A2B13CB89C4F /* ProgrammeStartSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AED638FEDB57620A25EBF51D /* ProgrammeStartSheet.swift */; };
 		FDC13A48823289A4B1483BDE /* Reachability.swift in Sources */ = {isa = PBXBuildFile; fileRef = D003741163D1BDCE4D6697C4 /* Reachability.swift */; };
 /* End PBXBuildFile section */
 
@@ -179,21 +220,29 @@
 
 /* Begin PBXFileReference section */
 		00A35F920C88F39DE4A48AA3 /* YearMonth+Foundation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YearMonth+Foundation.swift"; sourceTree = "<group>"; };
+		047C1D12FFDEAFF2304B0E5D /* ProgrammeRelatedContentList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgrammeRelatedContentList.swift; sourceTree = "<group>"; };
 		04A99C624A4D983AB1E3D538 /* NutritionHydrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionHydrationTests.swift; sourceTree = "<group>"; };
 		053F7044CD3798047C211EE1 /* ScanTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanTabView.swift; sourceTree = "<group>"; };
 		07AB939CB828EB246F36B517 /* PartnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PartnerTests.swift; sourceTree = "<group>"; };
 		080CEB58B93445D2DB9D5400 /* AuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthView.swift; sourceTree = "<group>"; };
+		087E43D844AA12FF05C477FA /* FertilityKitAccessUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FertilityKitAccessUITests.swift; sourceTree = "<group>"; };
 		0A374BA412A71C4681304F6B /* NotificationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationTests.swift; sourceTree = "<group>"; };
 		0BB009E4A76DD866CD295E9D /* MedicalSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MedicalSource.swift; sourceTree = "<group>"; };
 		0C6AEDE2C83DDBA1A2CF2E59 /* AppBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppBackend.swift; sourceTree = "<group>"; };
+		0C7BA96461B4DC518C60E0C9 /* ProgrammeReviewsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgrammeReviewsView.swift; sourceTree = "<group>"; };
 		0E5056238C379BFC87EEE98F /* DeepLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLink.swift; sourceTree = "<group>"; };
 		E1E9DB93360F5E3469EA18FF /* genesxy_apple.V1.02 */ = {isa = PBXFileReference; lastKnownFileType = folder; name = genesxy_apple.V1.02; path = .; sourceTree = SOURCE_ROOT; };
+		124CCF63746FC817BC163117 /* FertilityKitHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FertilityKitHomeView.swift; sourceTree = "<group>"; };
 		13C6BEC7D425708D2971050B /* MedicalSourceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MedicalSourceStore.swift; sourceTree = "<group>"; };
+		14A2126259A1778DE3896C55 /* CycleHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CycleHistoryView.swift; sourceTree = "<group>"; };
 		18B326C15BF47D3EA69920B6 /* FlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
 		1AF0D3FE652286E4FAA96E1D /* ScanDebugControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanDebugControls.swift; sourceTree = "<group>"; };
 		1B2790DAD76D0036331A0789 /* LocalStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalStore.swift; sourceTree = "<group>"; };
 		1C881FF8DFA3730373866C4B /* MockHcgTestAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockHcgTestAnalyzer.swift; sourceTree = "<group>"; };
+		1CD91AEC26795C94794C1C07 /* FertilityKitHomeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FertilityKitHomeTests.swift; sourceTree = "<group>"; };
 		1D86EEED9F2A87F00F8BCD16 /* FertilityKitAccessProviders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FertilityKitAccessProviders.swift; sourceTree = "<group>"; };
+		1E6360542F26464146005979 /* FertilityKitUITestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FertilityKitUITestSupport.swift; sourceTree = "<group>"; };
+		20D9664C8C012FBB43E9242F /* CycleHistoryScreenTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CycleHistoryScreenTests.swift; sourceTree = "<group>"; };
 		245746F077A6A18D48D9D210 /* AppleReauthorization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleReauthorization.swift; sourceTree = "<group>"; };
 		25158C5D4C95C0D86A2FFC22 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
 		289CA7CD505881E3512D358B /* AppGuideTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppGuideTests.swift; sourceTree = "<group>"; };
@@ -203,9 +252,11 @@
 		2A6A7DAC8C3FC99236B1ADB7 /* RealInsightsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealInsightsTests.swift; sourceTree = "<group>"; };
 		2B555756E30A8616BCB88A1F /* CustomerWalkthroughUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomerWalkthroughUITests.swift; sourceTree = "<group>"; };
 		2C49751D24A2BC16D11BEFC8 /* FakeScanFrameSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeScanFrameSource.swift; sourceTree = "<group>"; };
+		2E05B0B4D5FE5E85466E447C /* ProgrammeReviewScreenTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgrammeReviewScreenTests.swift; sourceTree = "<group>"; };
 		2FA54BF7FB0AC1AF1C928196 /* RootRoutingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootRoutingTests.swift; sourceTree = "<group>"; };
 		303189AF2EDB7CEDB86E0060 /* PersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceTests.swift; sourceTree = "<group>"; };
 		31285057904654880C873C5C /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		3147DA77F790E18A38180AC1 /* FertilityKitTestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FertilityKitTestSupport.swift; sourceTree = "<group>"; };
 		319A34E30FAB0B26C4DA0DB7 /* LifecycleE2ETests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LifecycleE2ETests.swift; sourceTree = "<group>"; };
 		31FA256D16825BC48D9FF01C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		3396EA1311B91F430A9A56FC /* LearnContentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearnContentTests.swift; sourceTree = "<group>"; };
@@ -213,21 +264,29 @@
 		34D93AB059AFE7DCBDF0F114 /* ScanCaptureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanCaptureView.swift; sourceTree = "<group>"; };
 		372A0C43D192EE9F1C404BDA /* LhRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LhRepository.swift; sourceTree = "<group>"; };
 		397DC99D1C37CD68DFB1AA05 /* RemoteModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteModels.swift; sourceTree = "<group>"; };
+		3A53F847B7E047FD197F9871 /* DietPlanMealSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DietPlanMealSheet.swift; sourceTree = "<group>"; };
 		3A961988078A533232B9CA55 /* ScanResultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanResultView.swift; sourceTree = "<group>"; };
 		3D7549E328CD90A4942ACBC1 /* ConsentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsentView.swift; sourceTree = "<group>"; };
+		3E32F4BA2DB0CD873BE9190B /* FertilityKitSourceGuardTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FertilityKitSourceGuardTests.swift; sourceTree = "<group>"; };
 		406D34D93DA7A1D21CCC5069 /* PreferencesRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesRepository.swift; sourceTree = "<group>"; };
+		4094A9A079D04C8C601E672B /* FertilityKitReleaseGateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FertilityKitReleaseGateTests.swift; sourceTree = "<group>"; };
 		40B409A2563A374272520A72 /* LearnModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearnModels.swift; sourceTree = "<group>"; };
+		40B8549EA5C3312D59017D58 /* ProgrammeGuideSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgrammeGuideSectionView.swift; sourceTree = "<group>"; };
 		40F30A3F8C1E804BE4B86F8F /* GenesyxApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenesyxApp.swift; sourceTree = "<group>"; };
 		41348920BE9C91F44EC334CD /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		42E73C0F10D92CD56182633E /* ProgrammeGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgrammeGuideView.swift; sourceTree = "<group>"; };
 		43EE7B189D1FA0D84CB24653 /* DeepLinkTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinkTests.swift; sourceTree = "<group>"; };
 		45B783DF2E15B614E72F15FF /* ResetPasswordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResetPasswordView.swift; sourceTree = "<group>"; };
+		481520E1BBE98BEBD6708475 /* PeriodEditSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeriodEditSheet.swift; sourceTree = "<group>"; };
 		48F5A8AF942299142460B70F /* RemoteBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteBackend.swift; sourceTree = "<group>"; };
 		49849D9AB56307E72089D622 /* LogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogView.swift; sourceTree = "<group>"; };
 		4A88C3844087F2C9CB392814 /* ScanServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanServiceTests.swift; sourceTree = "<group>"; };
+		4A96C019E1BD4693B5656F5D /* FertilityKitBannedText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FertilityKitBannedText.swift; sourceTree = "<group>"; };
 		4CEF9376EE55F833D33CFEA5 /* PartnerRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PartnerRepository.swift; sourceTree = "<group>"; };
 		4EABAA93089A9218832E60EB /* CameraSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraSessionManager.swift; sourceTree = "<group>"; };
 		50C6A6190C90B87C3AA7B9D4 /* ReleaseScopeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReleaseScopeTests.swift; sourceTree = "<group>"; };
 		56A9EDD40103E7BD26C034B0 /* ProgrammeRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgrammeRepositoryTests.swift; sourceTree = "<group>"; };
+		5A77E5B7822D3A5A6EE49662 /* ProgrammeReaderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgrammeReaderTests.swift; sourceTree = "<group>"; };
 		5BD8D73ED6547E875275A4E1 /* Typography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Typography.swift; sourceTree = "<group>"; };
 		5D8AD689C5761E1766BC9ED2 /* LhScanServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LhScanServices.swift; sourceTree = "<group>"; };
 		5DC465C5240CC69D726DBF74 /* FreeGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FreeGuideView.swift; sourceTree = "<group>"; };
@@ -246,9 +305,12 @@
 		709D1C1FC95A6647B86AFD2E /* SessionRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionRepository.swift; sourceTree = "<group>"; };
 		70CFFA90DC002A583118F417 /* AuthPartnerBackendTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthPartnerBackendTests.swift; sourceTree = "<group>"; };
 		718B407C0084FB596594EF71 /* LhTestAnalyzing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LhTestAnalyzing.swift; sourceTree = "<group>"; };
+		7436CAFDE457BA6B50E1F5B9 /* FertilityKitHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FertilityKitHost.swift; sourceTree = "<group>"; };
 		74ACAD37BBD94AE51D54F517 /* MoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoreView.swift; sourceTree = "<group>"; };
 		792D1A812B35D7841D6BD3DE /* HcgRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HcgRepository.swift; sourceTree = "<group>"; };
+		7B1514A97F67B1E213DCE774 /* FertilityKitScreensUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FertilityKitScreensUITests.swift; sourceTree = "<group>"; };
 		7D0BEA36D2FE560E98C71D10 /* NotificationRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationRouter.swift; sourceTree = "<group>"; };
+		7E09F32A75051416FBC61C4D /* DietPlanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DietPlanView.swift; sourceTree = "<group>"; };
 		7E27801449368FE3027C7DA2 /* ProgrammePlanServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgrammePlanServiceTests.swift; sourceTree = "<group>"; };
 		7F5E81E13FAC805D726F44D3 /* FreeGuideBundleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FreeGuideBundleTests.swift; sourceTree = "<group>"; };
 		7F8902F736BE65A51377ABF0 /* QuizContentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuizContentTests.swift; sourceTree = "<group>"; };
@@ -258,25 +320,31 @@
 		8090EDB3E193E58373847533 /* PasswordResetTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordResetTests.swift; sourceTree = "<group>"; };
 		81A5FC014DEE5C3D5537E78E /* LhRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LhRepositoryTests.swift; sourceTree = "<group>"; };
 		84C182890D97D31185267B5B /* SleepSmokeUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepSmokeUITests.swift; sourceTree = "<group>"; };
+		85171181F9288D622840628C /* FertilityKitContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FertilityKitContext.swift; sourceTree = "<group>"; };
 		891242713A29447F46EB5A06 /* HcgResultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HcgResultView.swift; sourceTree = "<group>"; };
 		894F6388CCC93D23E7C89DBA /* CitationLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CitationLink.swift; sourceTree = "<group>"; };
 		8B1F7459B104E52382E41DFE /* HcgManualEntrySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HcgManualEntrySheet.swift; sourceTree = "<group>"; };
 		8E3D2B9C5458CBBD4620E47E /* LearnReadLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearnReadLog.swift; sourceTree = "<group>"; };
 		8E8224E3C264A5AAABD3B6F4 /* InviteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InviteView.swift; sourceTree = "<group>"; };
 		8FD8DC508575F00BB7566E22 /* RepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepositoryTests.swift; sourceTree = "<group>"; };
+		910DBB1BD05C44AB35E6C49E /* CycleHistoryUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CycleHistoryUITests.swift; sourceTree = "<group>"; };
 		9120DC6606448CA63B34EA8A /* MockPhTestAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPhTestAnalyzer.swift; sourceTree = "<group>"; };
 		92E6DF0178CA7C34A5C75CBA /* Genesyx_7_Day_Fertility_Nutrition_Starter_Guide.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Genesyx_7_Day_Fertility_Nutrition_Starter_Guide.pdf; sourceTree = "<group>"; };
 		937F0D4815323B0B5E7DA0C1 /* AuthGateUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthGateUITests.swift; sourceTree = "<group>"; };
 		945C1BB9AC4E742C32CECDFF /* HcgAnalyserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HcgAnalyserTests.swift; sourceTree = "<group>"; };
 		947F43E3306C3465F5A2FA73 /* HcgScanHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HcgScanHomeView.swift; sourceTree = "<group>"; };
 		967D3123F21E6B868560B588 /* HydrationPrefs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HydrationPrefs.swift; sourceTree = "<group>"; };
+		975668DD0FBBAE1B7A4C6BC3 /* FertilityKitProgrammeUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FertilityKitProgrammeUITests.swift; sourceTree = "<group>"; };
 		98022BBAD2E97CCAD9CBDF20 /* ErrorStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorStateView.swift; sourceTree = "<group>"; };
+		9A62AB0A24A6EF40C4275D7B /* FertilityPictureScreenTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FertilityPictureScreenTests.swift; sourceTree = "<group>"; };
 		9AD7C4B7072B35A6A818BA31 /* HcgScanFlowUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HcgScanFlowUITests.swift; sourceTree = "<group>"; };
 		9C3ADEDF6CA1AE1E9D790580 /* Genesyx.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Genesyx.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D2256A8461234A12EC51385 /* GenesyxColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenesyxColors.swift; sourceTree = "<group>"; };
 		9D2E2ABAC8638F3B3332297D /* SupplementsRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplementsRepository.swift; sourceTree = "<group>"; };
+		9E53AAD8F757EBA82C1D6C5E /* FertilityKitRoutes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FertilityKitRoutes.swift; sourceTree = "<group>"; };
 		9E9061B0C8FF119305CB2514 /* HcgScanServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HcgScanServiceTests.swift; sourceTree = "<group>"; };
 		A0B1703FF9113C347105D9B1 /* HcgScanCaptureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HcgScanCaptureView.swift; sourceTree = "<group>"; };
+		A10F4C333B721CA21F31F553 /* FertilityKitComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FertilityKitComponents.swift; sourceTree = "<group>"; };
 		A2915F9FE693FBE33A7871BC /* CitationE2ETests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CitationE2ETests.swift; sourceTree = "<group>"; };
 		A724E422A810E5B8921F4A15 /* AppContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppContainer.swift; sourceTree = "<group>"; };
 		A792C435055372123D5BEC67 /* NotificationFlowUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationFlowUITests.swift; sourceTree = "<group>"; };
@@ -287,9 +355,12 @@
 		ABDE1ECD21CB9894BC4DB4FD /* MockLhTestAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockLhTestAnalyzer.swift; sourceTree = "<group>"; };
 		AE0BDF46FCE64B4692A96017 /* LearnViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearnViews.swift; sourceTree = "<group>"; };
 		AEB6BAF8FC459A7A15C72AB8 /* BackendSwapTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendSwapTests.swift; sourceTree = "<group>"; };
+		AED638FEDB57620A25EBF51D /* ProgrammeStartSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgrammeStartSheet.swift; sourceTree = "<group>"; };
 		B109D7AA3E1A1E26FE200791 /* GenesyxUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = GenesyxUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		B18005920C72F445947949FB /* FertilityKitActivationSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FertilityKitActivationSheet.swift; sourceTree = "<group>"; };
 		B18E3F542DC87A9DB38AE90F /* HydrationInsightTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HydrationInsightTests.swift; sourceTree = "<group>"; };
 		B272F6444F9A44B3497D5370 /* SupabaseBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseBackend.swift; sourceTree = "<group>"; };
+		B40ADDA0CB11271D936CD781 /* FertilityKitContextTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FertilityKitContextTests.swift; sourceTree = "<group>"; };
 		B4834C4EFBAF2195C2FE2FBA /* ConsentRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsentRepository.swift; sourceTree = "<group>"; };
 		B49064B825A360B1EDBE80CA /* CameraAccess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraAccess.swift; sourceTree = "<group>"; };
 		B66AE0A68717265089D96482 /* RootRouting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootRouting.swift; sourceTree = "<group>"; };
@@ -298,6 +369,7 @@
 		BA268FA24588C586C5D8C43C /* HcgRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HcgRepositoryTests.swift; sourceTree = "<group>"; };
 		BC4D301E002F9F92D74DCA2E /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		BD311BB01E946FB3AB4FE7F8 /* AuthRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthRepository.swift; sourceTree = "<group>"; };
+		BD4EBC71AA5624115D684F6E /* ProgrammeTaskListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgrammeTaskListView.swift; sourceTree = "<group>"; };
 		BF1A0DDC1903F444BDA44FC2 /* InviteShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InviteShareSheet.swift; sourceTree = "<group>"; };
 		BFC33A9FC5BB34F723F98990 /* LhScanServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LhScanServiceTests.swift; sourceTree = "<group>"; };
 		C2F8D8EAE8E2F5145C9AE700 /* PhContentGuardTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhContentGuardTests.swift; sourceTree = "<group>"; };
@@ -307,19 +379,28 @@
 		C89A702D17E4F743D8FBCC58 /* SessionExpiryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionExpiryTests.swift; sourceTree = "<group>"; };
 		C945804E1BB5F3133A5710D6 /* LearnContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearnContent.swift; sourceTree = "<group>"; };
 		CA1FD2DBFCCA2572F4AF84F1 /* PhRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhRepository.swift; sourceTree = "<group>"; };
+		CEF677308DB65C6202102D38 /* FertilityKitAccessFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FertilityKitAccessFlowTests.swift; sourceTree = "<group>"; };
 		D003741163D1BDCE4D6697C4 /* Reachability.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Reachability.swift; sourceTree = "<group>"; };
 		D262BD3C0DBE243270F855CB /* GenesyxAppTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = GenesyxAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D369B5327C1962D516E4CAD4 /* ProgrammeNinetyDayReviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgrammeNinetyDayReviewView.swift; sourceTree = "<group>"; };
 		D48509B6EC8A02B3A142AF09 /* PhTrackerSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhTrackerSection.swift; sourceTree = "<group>"; };
 		D6D3F941F8A48D807333965C /* EmailValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmailValidator.swift; sourceTree = "<group>"; };
+		D841B5F2A67B562C9EF0B120 /* FertilityKitAccountSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FertilityKitAccountSection.swift; sourceTree = "<group>"; };
+		D94D3CF1ED54F484A9C2AE78 /* ProgrammeDayReaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgrammeDayReaderView.swift; sourceTree = "<group>"; };
 		D9CDAEFE038258E2457FE471 /* InsightsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsView.swift; sourceTree = "<group>"; };
 		DA0F14C3B00BA3A0B77CB6AE /* FertilityKitAccessService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FertilityKitAccessService.swift; sourceTree = "<group>"; };
 		DAB2D6EDC638116F42330F79 /* OnboardingFlowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFlowView.swift; sourceTree = "<group>"; };
 		DBF075D7CAC0AF87A05457B0 /* SeventhTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeventhTab.swift; sourceTree = "<group>"; };
+		DDC91BEEEF87E05A822A6628 /* FertilityKitContrastTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FertilityKitContrastTests.swift; sourceTree = "<group>"; };
 		E090A64261B2333C8D7643F1 /* CycleRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CycleRepository.swift; sourceTree = "<group>"; };
+		E1212511A09A81C712B18414 /* FertilityKitAccessCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FertilityKitAccessCard.swift; sourceTree = "<group>"; };
+		E27141687B40D1F644CE467A /* FertilityKitDebugControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FertilityKitDebugControls.swift; sourceTree = "<group>"; };
 		E4BC5E311D2240230941DA12 /* HcgScanServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HcgScanServices.swift; sourceTree = "<group>"; };
 		E8235770B012CBBA13E031E3 /* TrackView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackView.swift; sourceTree = "<group>"; };
 		ED048B54AB44204938AE8902 /* BrandAssetTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrandAssetTests.swift; sourceTree = "<group>"; };
+		ED68DE99B1CBAF10135605A8 /* ProgrammeWeeklyReviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgrammeWeeklyReviewView.swift; sourceTree = "<group>"; };
 		EE3C7C78C6D167C082F93FD9 /* HcgTestAnalyzing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HcgTestAnalyzing.swift; sourceTree = "<group>"; };
+		EFD570C6F1F2E19241644BE0 /* FertilityPictureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FertilityPictureView.swift; sourceTree = "<group>"; };
 		F1D34D08C3CECE90DB71985D /* PreviewSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewSupport.swift; sourceTree = "<group>"; };
 		F21E5D92371409ED4064F9DA /* NutritionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionView.swift; sourceTree = "<group>"; };
 		F30B9F122A3F6B9035C3646F /* PeriodRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeriodRepository.swift; sourceTree = "<group>"; };
@@ -329,6 +410,7 @@
 		F8D91473C07E5587E47C1E5A /* DemoWalkthroughTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoWalkthroughTests.swift; sourceTree = "<group>"; };
 		FB6EBF4665768B3E6111DE47 /* ProgrammePlanService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgrammePlanService.swift; sourceTree = "<group>"; };
 		FCC8EEB1A5285AC81104328E /* ScanServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanServices.swift; sourceTree = "<group>"; };
+		FD07AC4971AC64C185B66837 /* DietPlanScreenTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DietPlanScreenTests.swift; sourceTree = "<group>"; };
 		FD452495CEE851EB8D542EDD /* GenesyxUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenesyxUITests.swift; sourceTree = "<group>"; };
 		FF20AC281DD717878ABCD1B6 /* LhScanHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LhScanHomeView.swift; sourceTree = "<group>"; };
 		FF6F37408A02568413C57CE0 /* DailyLogRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyLogRepository.swift; sourceTree = "<group>"; };
@@ -362,7 +444,13 @@
 				937F0D4815323B0B5E7DA0C1 /* AuthGateUITests.swift */,
 				A2915F9FE693FBE33A7871BC /* CitationE2ETests.swift */,
 				2B555756E30A8616BCB88A1F /* CustomerWalkthroughUITests.swift */,
+				910DBB1BD05C44AB35E6C49E /* CycleHistoryUITests.swift */,
 				F8D91473C07E5587E47C1E5A /* DemoWalkthroughTests.swift */,
+				087E43D844AA12FF05C477FA /* FertilityKitAccessUITests.swift */,
+				4A96C019E1BD4693B5656F5D /* FertilityKitBannedText.swift */,
+				975668DD0FBBAE1B7A4C6BC3 /* FertilityKitProgrammeUITests.swift */,
+				7B1514A97F67B1E213DCE774 /* FertilityKitScreensUITests.swift */,
+				1E6360542F26464146005979 /* FertilityKitUITestSupport.swift */,
 				FD452495CEE851EB8D542EDD /* GenesyxUITests.swift */,
 				9AD7C4B7072B35A6A818BA31 /* HcgScanFlowUITests.swift */,
 				5F6441F8927C6AE727148C18 /* LhScanFlowUITests.swift */,
@@ -427,8 +515,18 @@
 				70CFFA90DC002A583118F417 /* AuthPartnerBackendTests.swift */,
 				AEB6BAF8FC459A7A15C72AB8 /* BackendSwapTests.swift */,
 				ED048B54AB44204938AE8902 /* BrandAssetTests.swift */,
+				20D9664C8C012FBB43E9242F /* CycleHistoryScreenTests.swift */,
 				43EE7B189D1FA0D84CB24653 /* DeepLinkTests.swift */,
+				FD07AC4971AC64C185B66837 /* DietPlanScreenTests.swift */,
+				CEF677308DB65C6202102D38 /* FertilityKitAccessFlowTests.swift */,
 				A7ED093DEAEC87A1C0560ADD /* FertilityKitAccessServiceTests.swift */,
+				B40ADDA0CB11271D936CD781 /* FertilityKitContextTests.swift */,
+				DDC91BEEEF87E05A822A6628 /* FertilityKitContrastTests.swift */,
+				1CD91AEC26795C94794C1C07 /* FertilityKitHomeTests.swift */,
+				4094A9A079D04C8C601E672B /* FertilityKitReleaseGateTests.swift */,
+				3E32F4BA2DB0CD873BE9190B /* FertilityKitSourceGuardTests.swift */,
+				3147DA77F790E18A38180AC1 /* FertilityKitTestSupport.swift */,
+				9A62AB0A24A6EF40C4275D7B /* FertilityPictureScreenTests.swift */,
 				7F5E81E13FAC805D726F44D3 /* FreeGuideBundleTests.swift */,
 				945C1BB9AC4E742C32CECDFF /* HcgAnalyserTests.swift */,
 				BA268FA24588C586C5D8C43C /* HcgRepositoryTests.swift */,
@@ -447,7 +545,9 @@
 				303189AF2EDB7CEDB86E0060 /* PersistenceTests.swift */,
 				C2F8D8EAE8E2F5145C9AE700 /* PhContentGuardTests.swift */,
 				7E27801449368FE3027C7DA2 /* ProgrammePlanServiceTests.swift */,
+				5A77E5B7822D3A5A6EE49662 /* ProgrammeReaderTests.swift */,
 				56A9EDD40103E7BD26C034B0 /* ProgrammeRepositoryTests.swift */,
+				2E05B0B4D5FE5E85466E447C /* ProgrammeReviewScreenTests.swift */,
 				7F8902F736BE65A51377ABF0 /* QuizContentTests.swift */,
 				2A6A7DAC8C3FC99236B1ADB7 /* RealInsightsTests.swift */,
 				50C6A6190C90B87C3AA7B9D4 /* ReleaseScopeTests.swift */,
@@ -486,6 +586,15 @@
 				74ACAD37BBD94AE51D54F517 /* MoreView.swift */,
 			);
 			path = More;
+			sourceTree = "<group>";
+		};
+		44A7C7F03DE9EBE7EDA15807 /* CycleHistory */ = {
+			isa = PBXGroup;
+			children = (
+				14A2126259A1778DE3896C55 /* CycleHistoryView.swift */,
+				481520E1BBE98BEBD6708475 /* PeriodEditSheet.swift */,
+			);
+			path = CycleHistory;
 			sourceTree = "<group>";
 		};
 		44F2BCDD622961BF9240BF0E /* Auth */ = {
@@ -692,6 +801,8 @@
 				F1D34D08C3CECE90DB71985D /* PreviewSupport.swift */,
 				44F2BCDD622961BF9240BF0E /* Auth */,
 				531C800FEA53B21AD393AB71 /* Components */,
+				44A7C7F03DE9EBE7EDA15807 /* CycleHistory */,
+				AED93CE0CFCA9537F92F3D77 /* FertilityKit */,
 				CCEB365D87147F1C9D32C459 /* Home */,
 				16E046CE4778F185061ADDAA /* Insights */,
 				B77F8AFE8BA6F27BA81DDF97 /* Invite */,
@@ -708,6 +819,34 @@
 				124CDB4900CE5C43FFCFB5C9 /* Track */,
 			);
 			path = UI;
+			sourceTree = "<group>";
+		};
+		AED93CE0CFCA9537F92F3D77 /* FertilityKit */ = {
+			isa = PBXGroup;
+			children = (
+				3A53F847B7E047FD197F9871 /* DietPlanMealSheet.swift */,
+				7E09F32A75051416FBC61C4D /* DietPlanView.swift */,
+				E1212511A09A81C712B18414 /* FertilityKitAccessCard.swift */,
+				D841B5F2A67B562C9EF0B120 /* FertilityKitAccountSection.swift */,
+				B18005920C72F445947949FB /* FertilityKitActivationSheet.swift */,
+				A10F4C333B721CA21F31F553 /* FertilityKitComponents.swift */,
+				85171181F9288D622840628C /* FertilityKitContext.swift */,
+				E27141687B40D1F644CE467A /* FertilityKitDebugControls.swift */,
+				124CCF63746FC817BC163117 /* FertilityKitHomeView.swift */,
+				7436CAFDE457BA6B50E1F5B9 /* FertilityKitHost.swift */,
+				9E53AAD8F757EBA82C1D6C5E /* FertilityKitRoutes.swift */,
+				EFD570C6F1F2E19241644BE0 /* FertilityPictureView.swift */,
+				D94D3CF1ED54F484A9C2AE78 /* ProgrammeDayReaderView.swift */,
+				40B8549EA5C3312D59017D58 /* ProgrammeGuideSectionView.swift */,
+				42E73C0F10D92CD56182633E /* ProgrammeGuideView.swift */,
+				D369B5327C1962D516E4CAD4 /* ProgrammeNinetyDayReviewView.swift */,
+				047C1D12FFDEAFF2304B0E5D /* ProgrammeRelatedContentList.swift */,
+				0C7BA96461B4DC518C60E0C9 /* ProgrammeReviewsView.swift */,
+				AED638FEDB57620A25EBF51D /* ProgrammeStartSheet.swift */,
+				BD4EBC71AA5624115D684F6E /* ProgrammeTaskListView.swift */,
+				ED68DE99B1CBAF10135605A8 /* ProgrammeWeeklyReviewView.swift */,
+			);
+			path = FertilityKit;
 			sourceTree = "<group>";
 		};
 		B77F8AFE8BA6F27BA81DDF97 /* Invite */ = {
@@ -915,15 +1054,28 @@
 				06137468D8FB583AD4405C0C /* CitationLink.swift in Sources */,
 				7AFAD96EC15D187D937A7508 /* ConsentRepository.swift in Sources */,
 				66E73F8089D9F88A5DE05F21 /* ConsentView.swift in Sources */,
+				B1AA3604C1656E09E59E8D79 /* CycleHistoryView.swift in Sources */,
 				E6C31815C8A833D847C2404E /* CycleRepository.swift in Sources */,
 				0DCC3D33A978CC1789DDCDB2 /* CycleSettingsSheet.swift in Sources */,
 				E54366A509A127056046BEC5 /* DailyLogRepository.swift in Sources */,
 				86B9753D403F1175DD52D577 /* DeepLink.swift in Sources */,
+				65B0C227A9B1D5725A662D02 /* DietPlanMealSheet.swift in Sources */,
+				E4B1F1CF1CA97F551AF2C209 /* DietPlanView.swift in Sources */,
 				A8CFAFC54BE8362144D42958 /* EmailValidator.swift in Sources */,
 				171C66812D35CE18F49E8077 /* ErrorStateView.swift in Sources */,
 				C995A3B58C049256766518E6 /* FakeScanFrameSource.swift in Sources */,
+				8015D2D658DEF1060C45D6F9 /* FertilityKitAccessCard.swift in Sources */,
 				6B9C9FABB66FE3899D1B4F18 /* FertilityKitAccessProviders.swift in Sources */,
 				7521944224B99CB7C02D31C9 /* FertilityKitAccessService.swift in Sources */,
+				5A294BEE53F17A2769DADB6C /* FertilityKitAccountSection.swift in Sources */,
+				715B96B9F4ACEDBE2B8E68AF /* FertilityKitActivationSheet.swift in Sources */,
+				1079EFF49BF43354F7BB1744 /* FertilityKitComponents.swift in Sources */,
+				2E30ECFAFC05DA64FCA54909 /* FertilityKitContext.swift in Sources */,
+				EE8F5702A1030348B144511C /* FertilityKitDebugControls.swift in Sources */,
+				0FBB4E087F207254FA0C91D2 /* FertilityKitHomeView.swift in Sources */,
+				E6F3D65E5E7E03BCCF69B192 /* FertilityKitHost.swift in Sources */,
+				2F82382854DE56B491B7C284 /* FertilityKitRoutes.swift in Sources */,
+				730E37A36496FC31C29FD227 /* FertilityPictureView.swift in Sources */,
 				6835DB6E7BBE2692B1220320 /* FlowLayout.swift in Sources */,
 				2D87D33BB877A9CC3E207660 /* FreeGuideView.swift in Sources */,
 				80E86EC3B5ADC14AABBDB677 /* GenesyxApp.swift in Sources */,
@@ -969,6 +1121,7 @@
 				3B236BD816ADD547436DCF4A /* NutritionView.swift in Sources */,
 				19D20718E9D21DC08671E277 /* OnboardingFlowView.swift in Sources */,
 				3924E9760802BE0291932FD9 /* PartnerRepository.swift in Sources */,
+				2AC9344F1E71B11FB6412732 /* PeriodEditSheet.swift in Sources */,
 				B255B6A91AD19BF4028FF31E /* PeriodRepository.swift in Sources */,
 				E11E796D15E7BC987E6780E2 /* PersistenceDTOs.swift in Sources */,
 				C850284037447966A3511645 /* PhRepository.swift in Sources */,
@@ -978,9 +1131,18 @@
 				795CDA6439BC0D8D1A06F880 /* PregnancyView.swift in Sources */,
 				9D27EC5A52BE53D875F4A7AF /* PreviewSupport.swift in Sources */,
 				3C2FD7275110E323A3A88875 /* ProfileView.swift in Sources */,
+				D4A49C6E0286034D58003E9D /* ProgrammeDayReaderView.swift in Sources */,
+				4C11CD6A5BEDD1CE8DC27290 /* ProgrammeGuideSectionView.swift in Sources */,
+				506C8E4E95B938EACCDBE006 /* ProgrammeGuideView.swift in Sources */,
+				583BF3756E5A806CBF46A99E /* ProgrammeNinetyDayReviewView.swift in Sources */,
 				65143C8E59455DA1D16BBC9E /* ProgrammePlanService.swift in Sources */,
 				8EA94F3BAFC89185D2817A44 /* ProgrammePlanSource.swift in Sources */,
+				B5F8C02A6D9B8A434CD407B1 /* ProgrammeRelatedContentList.swift in Sources */,
 				E08FFA20A5F4EBB99CAC09A0 /* ProgrammeRepository.swift in Sources */,
+				C9A5623E6808DB71D60F2FE2 /* ProgrammeReviewsView.swift in Sources */,
+				FCDFA932F234A2B13CB89C4F /* ProgrammeStartSheet.swift in Sources */,
+				44328FC7AAA8A51D757F9916 /* ProgrammeTaskListView.swift in Sources */,
+				26F90EE8946F2CE427FE7894 /* ProgrammeWeeklyReviewView.swift in Sources */,
 				FDC13A48823289A4B1483BDE /* Reachability.swift in Sources */,
 				02CDDD6278836CD356A2B6E9 /* RemoteBackend.swift in Sources */,
 				9F148CCE3A2DE5173BFFAA39 /* RemoteModels.swift in Sources */,
@@ -1012,8 +1174,18 @@
 				9BAF00B09D32CC497A7FB2A5 /* AuthPartnerBackendTests.swift in Sources */,
 				DE9C3F479BE6E8224ED0C78C /* BackendSwapTests.swift in Sources */,
 				F9D71D8FE7A64E15910D6C54 /* BrandAssetTests.swift in Sources */,
+				DCDA2B6B459DBCB4C969470E /* CycleHistoryScreenTests.swift in Sources */,
 				19E192F77DEF4C7726F9A530 /* DeepLinkTests.swift in Sources */,
+				2140C6BD788663E7E8AEE9AD /* DietPlanScreenTests.swift in Sources */,
+				337671CAFA5A0E82B0956388 /* FertilityKitAccessFlowTests.swift in Sources */,
 				8B93DAEF448AC884CE024A5C /* FertilityKitAccessServiceTests.swift in Sources */,
+				468F93585AA36019E80E9FF3 /* FertilityKitContextTests.swift in Sources */,
+				1C5FC11D81BCB1B7D71C7E7A /* FertilityKitContrastTests.swift in Sources */,
+				D364AB3F0EFACFD94E1D1029 /* FertilityKitHomeTests.swift in Sources */,
+				17B741BD630D448A7F3F57EC /* FertilityKitReleaseGateTests.swift in Sources */,
+				C20F768DE940247ACEA24AA6 /* FertilityKitSourceGuardTests.swift in Sources */,
+				55FEFC0BFA8E343344C026F9 /* FertilityKitTestSupport.swift in Sources */,
+				40064CEB798F8A300DF9C923 /* FertilityPictureScreenTests.swift in Sources */,
 				CAA6C90C15832BC3A97CC099 /* FreeGuideBundleTests.swift in Sources */,
 				29E363F8DC2980D3AE3D0D6B /* HcgAnalyserTests.swift in Sources */,
 				84493793553503DF4433B3DB /* HcgRepositoryTests.swift in Sources */,
@@ -1032,7 +1204,9 @@
 				3D63A628C151330C2E790EF8 /* PersistenceTests.swift in Sources */,
 				1413FE71B9060C273AC9D89C /* PhContentGuardTests.swift in Sources */,
 				A622C0B1281C36D54DA18430 /* ProgrammePlanServiceTests.swift in Sources */,
+				16540631789FB310EA235E0D /* ProgrammeReaderTests.swift in Sources */,
 				B83D55BEB6DADD41CAA812E0 /* ProgrammeRepositoryTests.swift in Sources */,
+				E1A5740B42C3246B395DAEBE /* ProgrammeReviewScreenTests.swift in Sources */,
 				023C7A8E010B52705228034E /* QuizContentTests.swift in Sources */,
 				EEDE83F0AF5220C2F2BD57D2 /* RealInsightsTests.swift in Sources */,
 				B2959DD289B32100108DD607 /* ReleaseScopeTests.swift in Sources */,
@@ -1052,7 +1226,13 @@
 				F696DBEE6A663FCD8C05B2D6 /* AuthGateUITests.swift in Sources */,
 				B6E509C4E98BD004D072025C /* CitationE2ETests.swift in Sources */,
 				4E836317F53A104C24EC51B1 /* CustomerWalkthroughUITests.swift in Sources */,
+				A9CC04537B5C020F84BF3D10 /* CycleHistoryUITests.swift in Sources */,
 				5DF33EF62266A388C4C9CA48 /* DemoWalkthroughTests.swift in Sources */,
+				0A52053616890CAC0B520E32 /* FertilityKitAccessUITests.swift in Sources */,
+				91384EF209F81F2900973BE7 /* FertilityKitBannedText.swift in Sources */,
+				CEE5162657B0512D455BA09B /* FertilityKitProgrammeUITests.swift in Sources */,
+				20A7169D5FB3763545B1C266 /* FertilityKitScreensUITests.swift in Sources */,
+				C399E84F1E489E87F6F4B85A /* FertilityKitUITestSupport.swift in Sources */,
 				7DEE045EA130EDC0364688A0 /* GenesyxUITests.swift in Sources */,
 				EFEAF46E26A100B0AAA02104 /* HcgScanFlowUITests.swift in Sources */,
 				3B4D007DBDB95FE610A414E9 /* LhScanFlowUITests.swift in Sources */,

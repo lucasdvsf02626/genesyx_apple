@@ -10,6 +10,8 @@ struct ScanTabView: View {
     let services: ScanServices
     /// A scan was saved and she has been sent to the pH tab: More goes back to its list.
     let onSaved: () -> Void
+    /// The screen to open as Scan home appears, when the Fertility Kit sent her here for one test.
+    let opening: ScanDeepLink?
 
     @EnvironmentObject private var router: TabRouter
     @EnvironmentObject private var container: AppContainer
@@ -27,9 +29,12 @@ struct ScanTabView: View {
     /// How the cover ended. Acted on once it has gone: a sheet raised from a view that is still
     /// being dismissed does not appear.
     @State private var pendingExit: ScanExit?
+    /// The deep link is honoured once: coming Back to Scan home must not push it again.
+    @State private var openedDeepLink = false
 
-    init(services: ScanServices, onSaved: @escaping () -> Void) {
+    init(services: ScanServices, opening: ScanDeepLink? = nil, onSaved: @escaping () -> Void) {
         self.services = services
+        self.opening = opening
         self.onSaved = onSaved
     }
 
@@ -59,6 +64,12 @@ struct ScanTabView: View {
         .frame(maxWidth: .infinity)
         .gxPageBackground()
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            guard !openedDeepLink else { return }
+            openedDeepLink = true
+            if opening == .ovulationTest { showLh = true }
+            if opening == .pregnancyTest { showHcg = true }
+        }
         .navigationDestination(isPresented: $showInstructions) {
             ScanInstructionsView(
                 onOpenCamera: { showCapture = true },

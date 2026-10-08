@@ -253,7 +253,7 @@ public enum ProgrammeReviewLogic {
     /// symptoms, period starts and lessons uncounted, so a period can hold records and no credit;
     /// it then has no line, and is never said to have nothing recorded. Otherwise the counts,
     /// with the percentage in front of them when there is one.
-    private static func lines(for figure: ProgrammeConsistencyFigure, nothingTracked: Bool = false) -> [String] {
+    public static func lines(for figure: ProgrammeConsistencyFigure, nothingTracked: Bool = false) -> [String] {
         guard figure.counted > 0 else { return [] }
         if figure.nothingRecorded { return nothingTracked ? [ProgrammeReviewCopy.nothingRecorded] : [] }
         let counts = ProgrammeReviewCopy.activitiesCompleted(

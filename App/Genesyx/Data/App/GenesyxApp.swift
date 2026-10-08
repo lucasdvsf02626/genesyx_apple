@@ -92,5 +92,7 @@ extension View {
             .environmentObject(container.learn)
             .environmentObject(container.reachability)
             .environmentObject(container.supplements)
+            .environmentObject(container.programme)
+            .environmentObject(container.kitAccess)
     }
 }

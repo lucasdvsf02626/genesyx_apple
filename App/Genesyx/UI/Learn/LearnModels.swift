@@ -57,6 +57,15 @@ enum FeatureFlags {
     #else
     static let cycleHistory = false
     #endif
+    /// **DEBUG only.** Gates the Genesyx Fertility Kit (90-Day Programme, Your Diet Plan, My
+    /// Fertility Picture and their reviews). Stays off for Release until the owner has decided the
+    /// production access route, the consent wording, and the legal and clinical review of the
+    /// draft content. Read in one place, `AppContainer.init`, which passes it on.
+    #if DEBUG
+    static let fertilityKit = true
+    #else
+    static let fertilityKit = false
+    #endif
 }
 
 // MARK: - Learn content model (parity with Android LearnContent.kt)

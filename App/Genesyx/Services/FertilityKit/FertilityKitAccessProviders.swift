@@ -86,6 +86,14 @@ final class InternalQAFertilityKitAccessProvider: FertilityKitAccessProviding {
 
     /// QA reset: the stand-in server forgets this account's grant.
     func forget(accountID: String) { ledger[accountID] = nil }
+
+    /// UI-test seed: the stand-in server records a grant for this account, with no entry at all.
+    func seedGrant(accountID: String, now: Date) -> ProgrammeAccess {
+        let access = ProgrammeAccess(status: .active, source: .internalQA, productID: "internal-qa-fertility-kit",
+                                     accountID: accountID, grantedAt: now, externalReference: makeGrantReference())
+        ledger[accountID] = access
+        return access
+    }
 }
 #endif
 

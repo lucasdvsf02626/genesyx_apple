@@ -20,6 +20,7 @@ struct ProfileView: View {
     @EnvironmentObject private var router: TabRouter
     @EnvironmentObject private var consent: ConsentRepository
     @EnvironmentObject private var reachability: Reachability
+    @Environment(\.fertilityKit) private var kit
 
     @State private var personalOpen = false
     @State private var healthOpen = false
@@ -77,6 +78,7 @@ struct ProfileView: View {
                         PartnerSectionView(showAuth: $showAuth)
                     }
                     accountGroup
+                    if kit.isHosted { FertilityKitAccountSection() }
                     consentSection
                     trackingGroup
                     remindersSection

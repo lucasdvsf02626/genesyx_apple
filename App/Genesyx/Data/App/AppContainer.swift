@@ -23,6 +23,11 @@ final class AppContainer: ObservableObject {
     /// nothing is seeded, no period record is written or pulled, and saving cycle settings does
     /// exactly what it did before.
     let cycleHistory: Bool
+    /// Whether the Fertility Kit is on for this container (`FeatureFlags.fertilityKit`). Off means
+    /// the programme refuses every write, access is never asked for, and no kit screen is built.
+    let fertilityKit: Bool
+    let programme: ProgrammeRepository
+    let kitAccess: FertilityKitAccessService
     let supplements: SupplementsRepository
     let prefs: PreferencesRepository
     let session: SessionRepository
@@ -33,11 +38,13 @@ final class AppContainer: ObservableObject {
 
     /// Designated init. Allows an injected store (used by previews/tests for isolation).
     /// `monitorNetwork: false` keeps tests off the host's real connectivity.
-    /// `cycleHistory` is a parameter so the tests can build the Release configuration.
+    /// `cycleHistory` and `fertilityKit` are parameters so the tests can build the Release
+    /// configuration.
     init(store: LocalStore, backend: GenesyxBackend?, monitorNetwork: Bool = true,
-         cycleHistory: Bool = FeatureFlags.cycleHistory) {
+         fertilityKit: Bool = FeatureFlags.fertilityKit, cycleHistory: Bool = FeatureFlags.cycleHistory) {
         self.store = store
         self.cycleHistory = cycleHistory
+        self.fertilityKit = fertilityKit
         self.backend = backend
         self.reachability = Reachability(monitoring: monitorNetwork)
 
@@ -53,6 +60,12 @@ final class AppContainer: ObservableObject {
         self.partner = PartnerRepository(backend: backend?.partner)
         self.consent = ConsentRepository(store: store, backend: backend?.consent)
         self.learn = LearnProgress()
+        self.programme = ProgrammeRepository(store: store)
+        // Access belongs to an account, by the rule `SessionRepository.applySignIn` uses to name one.
+        let auth = backend?.auth
+        self.kitAccess = FertilityKitAccessService(
+            store: store, provider: FertilityKitAccessProviders.current(store: store),
+            accountIdentity: { [session] in session.isSignedIn ? (auth?.currentUserId ?? session.email) : nil })
 
         // The one place the Article 9 gate is wired to the real answer. Every repository that
         // stores special-category data asks this immediately before it writes, so a withdrawal
@@ -68,6 +81,10 @@ final class AppContainer: ObservableObject {
         periods.isCollectionPermitted = { cycleHistory && permitted() }
         supplements.isCollectionPermitted = permitted
         prefs.isCollectionPermitted = permitted
+        // The Fertility Kit, all of it behind the one flag: with it off the programme refuses
+        // every write, whatever consent and access say.
+        programme.isCollectionPermitted = { fertilityKit && permitted() }
+        programme.isAccessActive = { [kitAccess] in fertilityKit && kitAccess.hasAccess }
 
         // Cycle history, all of it behind the one flag. Saving cycle settings (the existing sheet)
         // goes through history, and history saves a moved `lastPeriodDate` through the existing
@@ -151,6 +168,8 @@ final class AppContainer: ObservableObject {
         // so could never re-grant. Awaiting it here is also what makes the gate below current — a
         // withdrawal recorded on another phone is known before the first health pull is attempted.
         await consent.refresh()
+        // While the flag is off the provider is never asked.
+        if fertilityKit { _ = await kitAccess.refresh() }
         // Each of these gates its own *pull* on consent (see the note on `CycleRepository.refresh`).
         // Two boundaries hold across all of them, deliberately:
         //   • Data already on the device keeps displaying. Withdrawal stops collection and further
@@ -206,6 +225,9 @@ final class AppContainer: ObservableObject {
         hcg.clearLocalState()
         periods.clearLocalState()
         dailyLog.clearLocalState()
+        // Her programme and her access are hers: the next account starts with neither.
+        programme.clearLocalState()
+        kitAccess.clearLocalState()
         // Notification state is derived from her data, so it is her data: milestone flags and the
         // read-article list must not follow her out of the app.
         prefs.clearNotificationState()
@@ -325,6 +347,13 @@ final class AppContainer: ObservableObject {
         if !wantsOnboarding && !wantsSignedOut {
             container.session.signIn(email: "maya@example.com", name: "Maya")
         }
+        // The Fertility Kit's part of the seed (`-uiTestKit...`). After the sign-in, because a
+        // grant belongs to an account, and before the withdrawal below, because a start is refused
+        // without consent. The date is read once and kept, so the kit's clock and every seeded
+        // kit date come from the same day whatever the wall clock does afterwards.
+        let anchor = CalendarDate.today(.autoupdatingCurrent)
+        UserDefaults.standard.set(anchor.dayNumber, forKey: "uiTestKitAnchor")
+        KitUITestSeed(defaults: .standard).apply(to: container, anchor: anchor)
         // `-uiTestConsentWithdrawn YES` is the woman who has taken her permission back: still signed
         // in and still on the tabs, with every recording control refused. After the seed, because
         // the seed is health data and the gate would refuse it.
@@ -363,3 +392,65 @@ final class AppContainer: ObservableObject {
     }
     #endif
 }
+
+#if DEBUG
+/// The Fertility Kit's part of a seeded launch, as a value, so a unit test runs exactly what a
+/// launch runs. Every number is nought or more: the argument domain drops a value that starts
+/// with a hyphen, so no kit argument ever takes one.
+struct KitUITestSeed: Equatable {
+    var access = false               // -uiTestKitAccess
+    var day: Int? = nil              // -uiTestKitDay
+    var startsIn: Int? = nil         // -uiTestKitStartsIn
+    var logs = 0                     // -uiTestKitLogs
+    var goal: String? = nil          // -uiTestKitGoal
+    var supplements: String? = nil   // -uiTestKitSupplements
+
+    /// nil for absent, for text that is not a number, for nought and for anything below it.
+    static func positive(_ text: String?) -> Int? {
+        guard let text, let number = Int(text), number > 0 else { return nil }
+        return number
+    }
+
+    /// Day 1 of the programme: today is day `day`, or it starts in `startsIn` days. The day wins.
+    func startDate(anchor: CalendarDate) -> CalendarDate? {
+        if let day { return anchor.minusDays(day - 1) }
+        if let startsIn { return anchor.plusDays(startsIn) }
+        return nil
+    }
+
+    /// Touches the container only. Calendar dates throughout: whole days from the anchor.
+    @MainActor func apply(to container: AppContainer, anchor: CalendarDate) {
+        // Every seeded launch, because the in-process wipe leaves some keys readable.
+        container.programme.clearLocalState()
+        container.kitAccess.resetForQA()
+        if logs > 0 {
+            for daysBefore in 1...logs {
+                container.dailyLog.upsert(
+                    DailyLog(mood: .good, energy: .normal, sleepMinutes: 450, waterMl: 2_400,
+                             foodGroups: ["vegetables", "fruit", "protein", "starchyCarbs"]),
+                    on: anchor.minusDays(daysBefore))
+            }
+        }
+        // One call: recording the answers replaces the whole set.
+        var answers: [String: String] = [:]
+        if let goal { answers["stage"] = goal }
+        if let supplements { answers["supplements"] = supplements }
+        if !answers.isEmpty { container.prefs.recordQuizAnswers(answers) }
+        guard access else { return }
+        container.kitAccess.seedGrantForUITests()
+        if let start = startDate(anchor: anchor) { _ = container.programme.start(today: start) }
+    }
+}
+
+extension KitUITestSeed {
+    /// In an extension, so the memberwise initialiser stays for tests.
+    init(defaults: UserDefaults) {
+        self.init(access: defaults.bool(forKey: "uiTestKitAccess"),
+                  day: Self.positive(defaults.string(forKey: "uiTestKitDay")),
+                  startsIn: Self.positive(defaults.string(forKey: "uiTestKitStartsIn")),
+                  logs: Self.positive(defaults.string(forKey: "uiTestKitLogs")) ?? 0,
+                  goal: defaults.string(forKey: "uiTestKitGoal"),
+                  supplements: defaults.string(forKey: "uiTestKitSupplements"))
+    }
+}
+#endif
