@@ -93,7 +93,9 @@ public struct PhStripConfiguration: Hashable, Sendable, Codable {
     public static let developmentPlaceholder = PhStripConfiguration(
         id: "genesyx_ph_multizone_v1",
         version: "0.0.0-dev",
-        expectedAspectRatio: 0.08,
+        // Width over length of an upright strip. Approximate strip size supplied by the owner on
+        // 8 October 2026: 65 mm long by 5 mm wide. Not measured from validated product samples.
+        expectedAspectRatio: 5.0 / 65.0,
         reagentRegions: [
             NormalisedRect(x: 0.1, y: 0.04, width: 0.8, height: 0.08),
             NormalisedRect(x: 0.1, y: 0.14, width: 0.8, height: 0.08),

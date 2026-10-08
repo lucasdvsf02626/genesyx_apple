@@ -83,7 +83,10 @@ public struct HcgStripConfiguration: Hashable, Sendable, Codable {
     public static let developmentPlaceholder = HcgStripConfiguration(
         id: "genesyx_hcg_strip_v1",
         version: "0.0.0-dev",
-        expectedAspectRatio: 12.5,
+        // Length over width of a strip laid on its side. Approximate strip size supplied by the
+        // owner on 8 October 2026: 75 mm long by 3.5 mm wide. Not measured from validated product
+        // samples.
+        expectedAspectRatio: 75.0 / 3.5,
         testLineRegion: NormalisedRect(x: 0.42, y: 0.1, width: 0.04, height: 0.8),
         controlLineRegion: NormalisedRect(x: 0.52, y: 0.1, width: 0.04, height: 0.8),
         minimumControlSignal: 0.2,
