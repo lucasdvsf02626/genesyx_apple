@@ -1,9 +1,13 @@
 import SwiftUI
 import GenesyxCore
+#if canImport(GoogleSignIn)
+import GoogleSignIn
+#endif
 
 /// Decides the top-level surface: onboarding until complete, then the main tabs.
 /// Also handles partner-invite deep links (custom scheme + Universal Links).
-/// (Auth gating is deferred — v1 is local-only with a mock session; Auth is reachable from Profile.)
+/// The dashboard is gated behind Auth: `onboardingComplete` only becomes true after a successful
+/// sign-in inside the onboarding flow (Android parity), so the main tabs are unreachable otherwise.
 struct RootView: View {
 
     @EnvironmentObject private var prefs: PreferencesRepository
@@ -22,6 +26,9 @@ struct RootView: View {
         }
         .preferredColorScheme(colorScheme)
         .onOpenURL { url in
+            #if canImport(GoogleSignIn)
+            if GIDSignIn.sharedInstance.handle(url) { return }   // Google OAuth callback
+            #endif
             if let code = DeepLink.inviteCode(from: url) { invite = InvitePresentation(code: code) }
         }
         .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
