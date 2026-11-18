@@ -698,64 +698,56 @@ final class HcgScanFlowUITests: XCTestCase {
         XCTAssertTrue(element(app, "hcg.result.save").isEnabled)
     }
 
-    /// The app switcher, as far as a simulator shows it. The cover is one flat colour, so the
-    /// middle of the app's card must be: a result, a list or a sheet showing through is not.
+    /// The app switcher, as far as a simulator shows it. The cover is one flat colour over the
+    /// whole of the app's card: a result, a list, a sheet, a title or the tab bar showing through
+    /// is not.
     func testAResultIsHiddenInTheAppSwitcher() {
         let app = openHcgHome("detected")
         openCamera(app)
         let title = element(app, "hcg.result.title")
         XCTAssertTrue(title.waitForExistence(timeout: 15))
 
-        snapInAppSwitcher("hcg-14-app-switcher-result-covered")
+        assertAppSwitcherCardIsFlat("hcg-14-app-switcher-result-covered")
 
         app.activate()
         XCTAssertTrue(title.waitForExistence(timeout: 10))
+        snap("hcg-14-returned-result")
     }
 
     /// The same look at the screen with its saved results open, and at the manual entry sheet.
     func testTheScreenAndTheSheetAreHiddenInTheAppSwitcher() {
         let app = openHcgHome(extra: Self.seed)
         openHistory(app)
-        snapInAppSwitcher("hcg-14b-app-switcher-saved-results-covered")
+        assertAppSwitcherCardIsFlat("hcg-14b-app-switcher-saved-results-covered")
         app.activate()
+        XCTAssertTrue(app.navigationBars["Pregnancy Test"].waitForExistence(timeout: 10), "she is back on the screen she left")
+        XCTAssertTrue(element(app, "hcg.home").waitForExistence(timeout: 10))
+        snap("hcg-14b-returned-screen")
 
         reach(app, "hcg.enterManually", up: false).tap()
         let option = element(app, "hcg.manual.option.testLineDetected")
         XCTAssertTrue(option.waitForExistence(timeout: 10))
         option.tap()
-        snapInAppSwitcher("hcg-14c-app-switcher-manual-sheet-covered")
+        assertAppSwitcherCardIsFlat("hcg-14c-app-switcher-manual-sheet-covered")
         app.activate()
         XCTAssertTrue(option.waitForExistence(timeout: 10))
         XCTAssertTrue(option.isSelected, "an overlay, so her choice is kept")
+        snap("hcg-14c-returned-manual-sheet")
     }
 
-    private func snapInAppSwitcher(_ name: String, file: StaticString = #filePath, line: UInt = #line) {
-        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
-        let bottom = springboard.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.999))
-        let middle = springboard.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.55))
-        bottom.press(forDuration: 0.1, thenDragTo: middle, withVelocity: .slow, thenHoldForDuration: 1.5)
-        Thread.sleep(forTimeInterval: 1)
-        snap(name)
+    /// The cover is for what she is looking at. With the pregnancy test screen left open in More
+    /// and another tab in front, the app's card is that tab, not a blank.
+    func testAnotherTabIsNotCoveredWhileTheScreenStaysOpenBehindIt() {
+        let app = openHcgHome(extra: Self.seed)
+        app.buttons.matching(identifier: "Home").firstMatch.tap()
+        XCTAssertFalse(element(app, "hcg.home").isHittable)
 
-        // The middle of the screen lies well inside the app's card.
-        guard let image = XCUIScreen.main.screenshot().image.cgImage else { return XCTFail("no screenshot", file: file, line: line) }
-        var pixels = [UInt8](repeating: 0, count: image.width * image.height * 4)
-        let context = CGContext(data: &pixels, width: image.width, height: image.height, bitsPerComponent: 8,
-                                bytesPerRow: image.width * 4, space: CGColorSpaceCreateDeviceRGB(),
-                                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
-        context?.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
-        var lowest = [UInt8](repeating: 255, count: 3), highest = [UInt8](repeating: 0, count: 3)
-        for y in stride(from: image.height * 3 / 10, to: image.height * 7 / 10, by: 4) {
-            for x in stride(from: image.width * 3 / 10, to: image.width * 7 / 10, by: 4) {
-                for channel in 0..<3 {
-                    let value = pixels[(y * image.width + x) * 4 + channel]
-                    lowest[channel] = min(lowest[channel], value)
-                    highest[channel] = max(highest[channel], value)
-                }
-            }
-        }
-        let spread = (0..<3).map { Int(highest[$0]) - Int(lowest[$0]) }.max() ?? 255
-        XCTAssertLessThan(spread, 8, "\(name): something shows through the privacy cover in the app switcher", file: file, line: line)
+        let spread = appSwitcherCardSpread("hcg-14d-app-switcher-another-tab-not-covered")
+        XCTAssertGreaterThan(spread ?? 0, 60, "the Home tab must show in the app switcher as it always has")
+
+        app.activate()
+        app.buttons.matching(identifier: "More").firstMatch.tap()
+        XCTAssertTrue(element(app, "hcg.home").waitForExistence(timeout: 10), "the screen is still open in More")
     }
 
     /// The screen itself: hidden while away, and the saved results closed again on return. The

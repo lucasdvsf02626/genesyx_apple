@@ -94,6 +94,8 @@ struct MainTabView: View {
             .opacity(active ? 1 : 0)
             .allowsHitTesting(active)
             .accessibilityHidden(!active)
+            // So a result left open in a tab she is not looking at hides nothing (`ScanPrivacyShield`).
+            .environment(\.tabIsSelected, active)
     }
 
     private var tabBar: some View {

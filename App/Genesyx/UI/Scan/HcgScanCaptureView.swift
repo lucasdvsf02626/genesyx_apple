@@ -15,6 +15,7 @@ struct HcgScanCaptureView: View {
     @EnvironmentObject private var hcg: HcgRepository
     @EnvironmentObject private var container: AppContainer
     @Environment(\.scenePhase) private var scenePhase
+    @ObservedObject private var shield = ScanPrivacyShield.shared
 
     @State private var session: HcgScanSession
     /// Nil until first appear, so a parent re-render never builds a second camera.
@@ -45,7 +46,8 @@ struct HcgScanCaptureView: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("hcg.capture")
         // Over the result as well as the camera.
-        .hcgPrivacyCover(scenePhase != .active)
+        .hcgPrivacyCover(obscured)
+        .scanPrivacyShield(presented: true)
         .onAppear {
             guard source == nil else { return }
             source = services.makeFrameSource()
@@ -122,6 +124,10 @@ struct HcgScanCaptureView: View {
         .onDisappear { source?.stop() }
     }
 
+    /// On UIKit's own notice, which arrives as the app stops being active. The scene phase gets
+    /// here late, and is kept only in case a notice is ever missed.
+    private var obscured: Bool { !shield.appIsActive || scenePhase != .active }
+
     private var topBar: some View {
         ZStack {
             Text(HcgScanCopy.cameraTitle)
@@ -174,7 +180,7 @@ struct HcgScanCaptureView: View {
                 expectedAspectRatio: services.configuration.expectedAspectRatio,
                 preview: source?.makePreview() ?? AnyView(EmptyView()),
                 // So the app-switcher snapshot holds no camera image.
-                isObscured: scenePhase != .active,
+                isObscured: obscured,
                 onManualEntry: { onExit(.manualEntry) },
                 onOpenSettings: {
                     if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }

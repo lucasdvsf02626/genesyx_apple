@@ -97,6 +97,8 @@ struct ScanTabView: View {
                     // A refused write keeps the sheet open, as on the pH tab.
                     if ph.create(reading) {
                         showManualEntry = false
+                        // Ends where a saved scan ends: More back at its list, and the pH tab.
+                        onSaved()
                         router.selection = 2   // pH tab
                     }
                 },

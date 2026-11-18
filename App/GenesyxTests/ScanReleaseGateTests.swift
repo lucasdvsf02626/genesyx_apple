@@ -170,6 +170,28 @@ final class ScanReleaseGateTests: XCTestCase {
                       "Outside DEBUG `HcgScanServices.current` must be nil: there is no real analyser. " + Self.signOffMessage)
     }
 
+    // MARK: - The privacy cover
+
+    /// The window that hides a result in the app switcher is asked for only by the scan screens,
+    /// and is built the first time one asks. So where Scan Test is off it is never built, observes
+    /// nothing and covers nothing: the rest of the app looks in the app switcher as it always has.
+    func testThePrivacyCoverIsAskedForOnlyByScanScreens() throws {
+        var asking: Set<String> = []
+        for file in try Self.appSources() {
+            let lines = Self.codeLines(try String(contentsOf: file, encoding: .utf8))
+            guard lines.contains(where: { $0.contains("ScanPrivacyShield") || $0.contains("scanPrivacyShield(") }) else { continue }
+            asking.insert(file.lastPathComponent)
+            XCTAssertTrue(file.path.contains("/App/Genesyx/UI/Scan/"),
+                          "\(file.lastPathComponent) names the scan privacy cover from outside the Scan area. " + Self.signOffMessage)
+        }
+        XCTAssertTrue(asking.contains("ScanPrivacyShield.swift") && asking.count > 1,
+                      "The search found no screen asking for the cover: a search that finds nothing proves nothing")
+
+        let shield = Self.collapsed(Self.codeLines(try Self.source("App/Genesyx/UI/Scan/ScanPrivacyShield.swift")).joined(separator: "\n"))
+        XCTAssertTrue(shield.contains("static let shared = ScanPrivacyShield()"), "built lazily, on first use")
+        XCTAssertTrue(shield.contains("private override init()"), "and by nothing else")
+    }
+
     // MARK: - The pregnancy test stays inside the Scan area
 
     /// A pregnancy test result is read by nothing outside its own flow: no other screen, no

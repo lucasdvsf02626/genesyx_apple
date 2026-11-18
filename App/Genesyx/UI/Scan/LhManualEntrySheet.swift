@@ -72,6 +72,8 @@ struct LhManualEntrySheet: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("lh.manual")
+        // Only once she has marked what her test shows.
+        .scanPrivacyShield(selection != nil, presented: true)
     }
 
     /// The choice is marked by the tick and the selected trait, not by colour alone.

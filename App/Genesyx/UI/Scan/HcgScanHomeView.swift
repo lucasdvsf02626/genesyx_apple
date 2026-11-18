@@ -22,6 +22,7 @@ struct HcgScanHomeView: View {
     @EnvironmentObject private var hcg: HcgRepository
     @EnvironmentObject private var consent: ConsentRepository
     @Environment(\.scenePhase) private var scenePhase
+    @ObservedObject private var shield = ScanPrivacyShield.shared
 
     @State private var showCapture = false
     @State private var showManual = false
@@ -123,11 +124,12 @@ struct HcgScanHomeView: View {
         }
         .frame(maxWidth: .infinity)
         .gxPageBackground()
-        .hcgPrivacyCover(scenePhase != .active)
+        .hcgPrivacyCover(obscured)
+        .scanPrivacyShield(presented: false)
         .navigationTitle(HcgScanCopy.screenTitle)
         .navigationBarTitleDisplayMode(.inline)
-        .onChange(of: scenePhase) { phase in
-            if phase != .active { closeDown() }
+        .onChange(of: obscured) { hidden in
+            if hidden { closeDown() }
         }
         .fullScreenCover(isPresented: $showCapture, onDismiss: coverDismissed) {
             if let services {
@@ -165,6 +167,10 @@ struct HcgScanHomeView: View {
             Text(HcgScanCopy.deleteAllConfirmMessage)
         }
     }
+
+    /// On UIKit's own notice, which arrives as the app stops being active. The scene phase gets
+    /// here late, and is kept only in case a notice is ever missed.
+    private var obscured: Bool { !shield.appIsActive || scenePhase != .active }
 
     private func closeDown() {
         showHistory = false

@@ -475,7 +475,45 @@ final class LhScanFlowUITests: XCTestCase {
         XCTAssertEqual(rowCount(app), 1)
     }
 
-    // MARK: - Leaving the app mid-scan
+    // MARK: - Leaving the app
+
+    /// The app switcher, as far as a simulator shows it: with a result on screen the whole of the
+    /// app's card is one flat colour, and the result is still there, unsaved, when she returns.
+    func testAResultIsHiddenInTheAppSwitcher() {
+        let app = openLhHome("positive")
+        openCamera(app)
+        let title = element(app, "lh.result.title")
+        XCTAssertTrue(title.waitForExistence(timeout: 15))
+
+        assertAppSwitcherCardIsFlat("lh-14-app-switcher-result-covered")
+
+        app.activate()
+        XCTAssertTrue(title.waitForExistence(timeout: 10), "the result is still there on return")
+        XCTAssertFalse(element(app, "lh.result.saved").exists)
+        XCTAssertTrue(element(app, "lh.result.save").isEnabled)
+        snap("lh-14-returned-result")
+    }
+
+    /// The same look at the LH screen with its saved results listed, and at the manual entry
+    /// sheet with a choice marked.
+    func testSavedResultsAndTheSheetAreHiddenInTheAppSwitcher() {
+        let app = openLhHome()
+        XCTAssertEqual(rowCount(app), 2, "the two seeded results are listed")
+        assertAppSwitcherCardIsFlat("lh-14b-app-switcher-saved-results-covered")
+        app.activate()
+        XCTAssertTrue(element(app, "lh.home").waitForExistence(timeout: 10), "she is back on the screen she left")
+        XCTAssertEqual(rowCount(app), 2)
+
+        element(app, "lh.enterManually").tap()
+        let option = element(app, "lh.manual.option.positive")
+        XCTAssertTrue(option.waitForExistence(timeout: 10))
+        option.tap()
+        assertAppSwitcherCardIsFlat("lh-14c-app-switcher-manual-sheet-covered")
+        app.activate()
+        XCTAssertTrue(option.waitForExistence(timeout: 10))
+        XCTAssertTrue(option.isSelected, "her choice is kept")
+    }
+
 
     /// Backgrounded while analysing, on the script whose analysis is over the moment the app stops
     /// being active: the hardest case, and no timer for the test to race. The scan must be dropped,

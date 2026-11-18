@@ -356,6 +356,11 @@ final class ScanFlowUITests: XCTestCase {
         _ = openPhHistory(app)
         XCTAssertTrue(app.buttons["phHistoryRow3"].waitForExistence(timeout: 10))
         XCTAssertTrue(historyRow(app, containing: "4.2").exists, "the typed 4.2 must be in her history")
+
+        // More is back at its list, as after a saved scan.
+        tabButton(app, "More").tap()
+        XCTAssertTrue(element(app, "more.scan").waitForExistence(timeout: 10))
+        XCTAssertFalse(element(app, "scan.openCamera").exists)
     }
 
     // MARK: - Manual entry, cancel, consent
@@ -374,6 +379,22 @@ final class ScanFlowUITests: XCTestCase {
         XCTAssertTrue(app.buttons["phHistoryRow3"].waitForExistence(timeout: 10))
         XCTAssertEqual(toggle.label, "Reading history (4)")
         XCTAssertTrue(historyRow(app, containing: "4.2").exists)
+    }
+
+    /// A typed reading ends where a scanned one does: on the pH tab, with More back at its list
+    /// and no scan screen left open behind it.
+    func testAManualReadingLeavesNoScanScreenOpenBehindIt() {
+        let app = openScanHome("reading-4.4")
+        openInstructions(app)
+        element(app, "scan.enterManually").tap()
+        XCTAssertTrue(app.navigationBars["Log pH reading"].waitForExistence(timeout: 10))
+        app.buttons["Save"].tap()
+        XCTAssertTrue(app.navigationBars["Vaginal pH"].waitForExistence(timeout: 10))
+
+        tabButton(app, "More").tap()
+        XCTAssertTrue(element(app, "more.scan").waitForExistence(timeout: 10), "More must be back at its list")
+        XCTAssertFalse(element(app, "scan.openCamera").exists, "the instructions must not be left open behind a saved reading")
+        XCTAssertFalse(element(app, "scan.home.phCard").exists, "nor Scan home")
     }
 
     func testCancellingDuringAnalysisSavesNothing() {
@@ -412,7 +433,26 @@ final class ScanFlowUITests: XCTestCase {
         XCTAssertFalse(element(app, "scan.capture").waitForExistence(timeout: 2), "a disabled Open Camera must do nothing")
     }
 
-    // MARK: - Leaving the app mid-scan
+    // MARK: - Leaving the app
+
+    /// The app switcher, as far as a simulator shows it: with a reading on screen the whole of the
+    /// app's card is one flat colour, and the reading is still there, unsaved, when she returns.
+    func testAResultIsHiddenInTheAppSwitcher() {
+        let app = openScanHome("reading-5.2")
+        openCamera(app)
+        let value = element(app, "scan.result.value")
+        XCTAssertTrue(value.waitForExistence(timeout: 15))
+
+        assertAppSwitcherCardIsFlat("15-app-switcher-result-covered")
+
+        app.activate()
+        XCTAssertTrue(value.waitForExistence(timeout: 10), "the reading is still there on return")
+        XCTAssertEqual(value.label, "pH 5.2")
+        XCTAssertFalse(element(app, "scan.result.saved").exists)
+        XCTAssertTrue(element(app, "scan.result.save").isEnabled)
+        snap("15-returned-result")
+    }
+
 
     /// Backgrounded while analysing, on the script whose analysis is over the moment the app stops
     /// being active: the hardest case, and no timer for the test to race. The scan must be dropped,

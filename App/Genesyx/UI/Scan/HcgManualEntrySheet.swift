@@ -11,6 +11,7 @@ struct HcgManualEntrySheet: View {
     @EnvironmentObject private var hcg: HcgRepository
     @EnvironmentObject private var consent: ConsentRepository
     @Environment(\.scenePhase) private var scenePhase
+    @ObservedObject private var shield = ScanPrivacyShield.shared
 
     @State private var selection: HcgClassification?
     @State private var recordedAt = Date()
@@ -74,7 +75,9 @@ struct HcgManualEntrySheet: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("hcg.manual")
-        .hcgPrivacyCover(scenePhase != .active)
+        // On UIKit's own notice; the scene phase gets here late and is only a second line.
+        .hcgPrivacyCover(!shield.appIsActive || scenePhase != .active)
+        .scanPrivacyShield(presented: true)
     }
 
     /// The choice is marked by the tick and the selected trait, not by colour alone.

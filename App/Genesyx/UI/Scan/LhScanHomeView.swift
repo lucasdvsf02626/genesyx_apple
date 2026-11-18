@@ -77,6 +77,8 @@ struct LhScanHomeView: View {
         }
         .frame(maxWidth: .infinity)
         .gxPageBackground()
+        // Only while there is a saved result in the list below.
+        .scanPrivacyShield(!lh.results.isEmpty, presented: false)
         .navigationTitle(LhScanCopy.instructionsTitle)
         .navigationBarTitleDisplayMode(.inline)
         .fullScreenCover(isPresented: $showCapture, onDismiss: coverDismissed) {

@@ -49,6 +49,7 @@ struct ScanCaptureView: View {
         .background(GenesyxColor.background.ignoresSafeArea())
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("scan.capture")
+        .scanPrivacyShield(showsResult, presented: true)
         .onAppear {
             guard source == nil else { return }
             source = services.makeFrameSource()
@@ -122,6 +123,12 @@ struct ScanCaptureView: View {
             announceGuidance()
         }
         .onDisappear { source?.stop() }
+    }
+
+    /// A result is on screen. Nothing else on this cover needs hiding from the app switcher.
+    private var showsResult: Bool {
+        if case .result = session.state { return true }
+        return false
     }
 
     private var topBar: some View {
