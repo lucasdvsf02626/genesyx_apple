@@ -53,4 +53,10 @@ final class PhRepository: ObservableObject {
     private func persist() {
         store.save(readings.map(\.dto), forKey: key)
     }
+
+    /// Clear on-device state (memory + store). Invoked on sign-out / account deletion.
+    func clearLocalState() {
+        readings = []
+        store.remove(forKey: key)
+    }
 }

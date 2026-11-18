@@ -63,8 +63,9 @@ private struct SplashView: View {
                 GxGhostButton(title: "Sign in", action: onSignIn)
                 HStack(spacing: 6) {
                     Image(systemName: "sparkles").font(.system(size: 14)).foregroundStyle(GenesyxColor.primary)
-                    Text("Educational fertility wellness support, tailored to you.")
+                    Text("Educational wellness support — not medical advice. Consult a healthcare professional for medical concerns.")
                         .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+                        .multilineTextAlignment(.center)
                 }
                 .padding(.top, 8)
             }

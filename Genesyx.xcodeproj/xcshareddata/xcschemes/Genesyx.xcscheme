@@ -35,6 +35,20 @@
                ReferencedContainer = "container:Genesyx.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "D9704A8E449080CC0757F7F7"
+               BuildableName = "GenesyxUITests.xctest"
+               BlueprintName = "GenesyxUITests"
+               ReferencedContainer = "container:Genesyx.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction
@@ -62,6 +76,17 @@
                BlueprintIdentifier = "44FFB2E1550DA5444CD100BC"
                BuildableName = "GenesyxAppTests.xctest"
                BlueprintName = "GenesyxAppTests"
+               ReferencedContainer = "container:Genesyx.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "D9704A8E449080CC0757F7F7"
+               BuildableName = "GenesyxUITests.xctest"
+               BlueprintName = "GenesyxUITests"
                ReferencedContainer = "container:Genesyx.xcodeproj">
             </BuildableReference>
          </TestableReference>

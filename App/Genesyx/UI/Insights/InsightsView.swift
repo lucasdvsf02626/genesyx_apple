@@ -6,6 +6,7 @@ import GenesyxCore
 struct InsightsView: View {
 
     @EnvironmentObject private var ph: PhRepository
+    @EnvironmentObject private var dailyLog: DailyLogRepository
 
     // Mock analytics, ported verbatim from the Android InsightsScreen.
     private let cycleBars = [82, 78, 90, 85, 88, 80, 92]
@@ -17,7 +18,12 @@ struct InsightsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     header
+                    logHistoryLink
                     PhInsightsCard(ph: insights)
+                    // v1: mock analytics (cycle regularity, symptom heatmap, nutrition consistency)
+                    // are hidden pending real data — only the pH insight above is computed from real
+                    // readings. To restore, remove the /* */ around the block below.
+                    /*
                     BarsCard(
                         title: "Cycle regularity", trailing: "Last 7 cycles",
                         values: cycleBars, labels: (1...7).map { "C\($0)" }, barHeight: 128,
@@ -31,6 +37,7 @@ struct InsightsView: View {
                         gradient: LinearGradient(colors: [GenesyxColor.electricBlue, GenesyxColor.powderBlue], startPoint: .top, endPoint: .bottom),
                         insight: "You've stayed close to your hydration goal four days this week — gentle progress."
                     )
+                    */
                 }
                 .padding(.horizontal, 20).padding(.bottom, 24)
             }
@@ -38,6 +45,30 @@ struct InsightsView: View {
             .background(GenesyxColor.background)
             .navigationBarTitleDisplayMode(.inline)
         }
+    }
+
+    private var logHistoryLink: some View {
+        NavigationLink {
+            LogHistoryView()
+        } label: {
+            HStack(spacing: 14) {
+                Image(systemName: "book.closed.fill")
+                    .font(.system(size: 18)).foregroundStyle(GenesyxColor.primary)
+                    .frame(width: 40, height: 40)
+                    .background(GenesyxColor.primary.opacity(0.12))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("My logs").font(.gxCardHeadingSmall).foregroundStyle(GenesyxColor.foreground)
+                    Text("See everything you've tracked").font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").font(.system(size: 14, weight: .semibold)).foregroundStyle(GenesyxColor.mutedForeground)
+            }
+            .padding(20)
+            .background(GenesyxColor.card)
+            .clipShape(RoundedRectangle(cornerRadius: 24))
+        }
+        .buttonStyle(.plain)
     }
 
     private var header: some View {
@@ -59,7 +90,12 @@ private struct PhInsightsCard: View {
             HStack {
                 Text("Urine pH").font(.gxCardHeading).foregroundStyle(GenesyxColor.foreground)
                 Spacer()
-                Text("Open tracker").font(.gxBodySmall.weight(.medium)).foregroundStyle(GenesyxColor.primary)
+                NavigationLink {
+                    PhTrackerScreen()
+                } label: {
+                    Text("Open tracker").font(.gxBodySmall.weight(.medium)).foregroundStyle(GenesyxColor.primary)
+                }
+                .buttonStyle(.plain)
             }
             if !ph.hasReadings {
                 Text("No pH readings yet. Log your first one on Track or Nutrition.")
@@ -194,5 +230,138 @@ private struct SymptomPatternsCard: View {
         if intensity > 0.4 { return 0.3 }
         if intensity > 0.15 { return 0.15 }
         return 0.05
+    }
+}
+
+/// Full urine-pH tracker (card + chart + Log pH), pushed from the Insights "Open tracker" link.
+private struct PhTrackerScreen: View {
+    var body: some View {
+        ScrollView {
+            PhTrackerSection()
+                .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 24)
+        }
+        .frame(maxWidth: .infinity)
+        .background(GenesyxColor.background)
+        .navigationTitle("Urine pH")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+// MARK: - Log history
+
+/// Full history of the user's daily logs — every entry made on "Log Today", newest first.
+/// Pushed from Insights so the user can read back all their logs. Read-only.
+struct LogHistoryView: View {
+
+    @EnvironmentObject private var dailyLog: DailyLogRepository
+
+    private var entries: [(date: CalendarDate, log: DailyLog)] {
+        dailyLog.logByDate
+            .filter { !$0.value.isBlank }
+            .map { (date: $0.key, log: $0.value) }
+            .sorted { $0.date > $1.date }
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                if entries.isEmpty {
+                    emptyState
+                } else {
+                    ForEach(entries, id: \.date) { entry in
+                        LogHistoryCard(date: entry.date, log: entry.log)
+                    }
+                }
+            }
+            .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 24)
+        }
+        .frame(maxWidth: .infinity)
+        .background(GenesyxColor.background)
+        .navigationTitle("Your logs")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "book.closed")
+                .font(.system(size: 28)).foregroundStyle(GenesyxColor.mutedForeground)
+            Text("No logs yet")
+                .font(.gxCardHeading).foregroundStyle(GenesyxColor.foreground)
+            Text("Your daily logs will appear here once you start logging.")
+                .font(.gxBodySmall).foregroundStyle(GenesyxColor.mutedForeground)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 60)
+    }
+}
+
+private struct LogHistoryCard: View {
+    let date: CalendarDate
+    let log: DailyLog
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(Self.dateFormatter.string(from: date.toDate()))
+                .font(.gxCardHeadingSmall).foregroundStyle(GenesyxColor.foreground)
+
+            if log.mood != nil || log.energy != nil {
+                HStack(spacing: 8) {
+                    if let mood = log.mood { pill("Mood", mood.label) }
+                    if let energy = log.energy { pill("Energy", energy.rawValue.capitalized) }
+                }
+            }
+
+            if !log.symptoms.isEmpty {
+                metricRow("Symptoms", log.symptoms.sorted().joined(separator: ", "))
+            }
+            if let minutes = log.sleepMinutes {
+                metricRow("Sleep", "\(minutes / 60)h \(minutes % 60)m")
+            }
+            if log.waterMl > 0 {
+                metricRow("Water", String(format: "%.1f L", Double(log.waterMl) / 1000))
+            }
+            if !log.supplements.isEmpty {
+                metricRow("Supplements", log.supplements.sorted().joined(separator: ", "))
+            }
+            if let notes = log.notes, !notes.isEmpty {
+                metricRow("Notes", notes)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(20)
+        .background(GenesyxColor.card)
+        .clipShape(RoundedRectangle(cornerRadius: 24))
+    }
+
+    private func pill(_ label: String, _ value: String) -> some View {
+        HStack(spacing: 4) {
+            Text(label).font(.system(size: 11, weight: .medium)).foregroundStyle(GenesyxColor.mutedForeground)
+            Text(value).font(.system(size: 12, weight: .semibold)).foregroundStyle(GenesyxColor.foreground)
+        }
+        .padding(.horizontal, 12).padding(.vertical, 6)
+        .background(GenesyxColor.muted.opacity(0.5))
+        .clipShape(Capsule())
+    }
+
+    private func metricRow(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Eyebrow(label, color: GenesyxColor.mutedForeground)
+            Text(value).font(.gxBody).foregroundStyle(GenesyxColor.foreground.opacity(0.85))
+        }
+    }
+
+    private static let dateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "EEE, d MMM yyyy"
+        return f
+    }()
+}
+
+private extension DailyLog {
+    /// A log with no data worth showing in history.
+    var isBlank: Bool {
+        mood == nil && energy == nil && symptoms.isEmpty && sleepMinutes == nil
+            && supplements.isEmpty && (notes?.isEmpty ?? true) && waterMl == 0
     }
 }

@@ -1,5 +1,8 @@
 import SwiftUI
 import GenesyxCore
+#if canImport(UIKit)
+import UIKit
+#endif
 
 /// Profile — account, focus toggle, partner linking, preferences (theme/push), and about.
 /// Ported from the Android `ProfileScreen` + `ProfileViewModel`.
@@ -8,10 +11,12 @@ struct ProfileView: View {
     @EnvironmentObject private var session: SessionRepository
     @EnvironmentObject private var prefs: PreferencesRepository
     @EnvironmentObject private var partner: PartnerRepository
+    @EnvironmentObject private var notifications: NotificationService
 
     @State private var nameOpen = false
     @State private var detail: String?
     @State private var deleteOpen = false
+    @State private var deleteError: String?
     @State private var showAuth = false
     @State private var showPregnancy = false
 
@@ -23,6 +28,7 @@ struct ProfileView: View {
         "Tracking Preferences": "Keep notifications on and update your cycle settings any time your rhythm changes.",
         "Privacy & Data": "Your saved data is private to your account. You can log out or delete your account from Profile.",
         "Help & Support": "For best results, complete cycle setup, log today, and use the Track or Nutrition tabs to add pH readings.",
+        "Medical Disclaimer": "Genesyx provides educational fertility and wellness information only. It is not a medical device and does not provide medical advice, diagnosis, or treatment. Always consult a qualified healthcare professional about your health, fertility, or any medical concerns. Do not rely on this app for contraception.",
     ]
 
     var body: some View {
@@ -34,7 +40,8 @@ struct ProfileView: View {
                     PartnerSectionView(showAuth: $showAuth)
                     accountGroup
                     trackingGroup
-                    preferencesGroup
+                    remindersSection
+                    themeSection
                     aboutGroup
                     signOutButton
                     if session.isSignedIn { deleteButton }
@@ -54,10 +61,20 @@ struct ProfileView: View {
             Text(detail.flatMap { Self.detailCopy[$0] } ?? "This section is ready for your saved app settings.")
         }
         .alert("Delete your account?", isPresented: $deleteOpen) {
-            Button("Delete", role: .destructive) { session.signOut() }
+            Button("Delete", role: .destructive) {
+                Task {
+                    do { try await session.deleteAccount() }
+                    catch { deleteError = "We couldn't delete your account. Please try again." }
+                }
+            }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("This will permanently delete your account and all your data. This cannot be undone.")
+        }
+        .alert("Deletion failed", isPresented: Binding(get: { deleteError != nil }, set: { if !$0 { deleteError = nil } })) {
+            Button("OK") { deleteError = nil }
+        } message: {
+            Text(deleteError ?? "")
         }
     }
 
@@ -93,7 +110,8 @@ struct ProfileView: View {
                 focusSeg("Fertility Prep", selected: prefs.focusMode == .prep) { prefs.focusMode = .prep }
                 focusSeg("Pregnancy", selected: prefs.focusMode == .pregnancy) {
                     prefs.focusMode = .pregnancy
-                    showPregnancy = true
+                    // v1: Pregnancy preview entry hidden (destination intact, unreachable). Restore by uncommenting.
+                    // showPregnancy = true
                 }
             }
             .padding(4).background(GenesyxColor.muted).clipShape(RoundedRectangle(cornerRadius: 16))
@@ -135,15 +153,52 @@ struct ProfileView: View {
         }
     }
 
-    private var preferencesGroup: some View {
+    private var remindersSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            groupLabel("Preferences")
+            groupLabel("Notifications")
             cardGroup {
-                switchRow("Push Notifications", isOn: Binding(get: { prefs.pushEnabled }, set: { prefs.pushEnabled = $0 }))
-                divider
-                switchRow("Dark Mode", isOn: Binding(get: { prefs.themeMode == .dark }, set: { prefs.themeMode = $0 ? .dark : .system }))
+                Toggle("Weekly reminders", isOn: Binding(
+                    get: { prefs.pushEnabled },
+                    set: { notifications.setEnabled($0) }
+                ))
+                .tint(GenesyxColor.primary)
+                .foregroundStyle(GenesyxColor.foreground)
+                .padding(.horizontal, 14).padding(.vertical, 8)
+            }
+            if notifications.isSystemDenied && prefs.pushEnabled {
+                Button {
+                    #if canImport(UIKit)
+                    if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
+                    #endif
+                } label: {
+                    Text("Enable notifications in Settings to receive weekly reminders")
+                        .font(.gxBodySmall).foregroundStyle(GenesyxColor.primary)
+                        .frame(maxWidth: .infinity, alignment: .leading).padding(.leading, 4)
+                }
             }
         }
+    }
+
+    private var themeSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            groupLabel("Theme")
+            HStack(spacing: 6) {
+                themeSeg("System", .system)
+                themeSeg("Light", .light)
+                themeSeg("Dark", .dark)
+            }
+            .padding(4).background(GenesyxColor.muted).clipShape(RoundedRectangle(cornerRadius: 16))
+        }
+    }
+
+    private func themeSeg(_ label: String, _ mode: ThemeMode) -> some View {
+        let selected = prefs.themeMode == mode
+        return Text(label).font(.system(size: 13, weight: .medium))
+            .foregroundStyle(selected ? GenesyxColor.foreground : GenesyxColor.mutedForeground)
+            .frame(maxWidth: .infinity, minHeight: 40)
+            .background(selected ? GenesyxColor.card : .clear)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .onTapGesture { prefs.themeMode = mode }
     }
 
     private var aboutGroup: some View {
@@ -153,6 +208,8 @@ struct ProfileView: View {
                 rowItem("Privacy & Data") { detail = "Privacy & Data" }
                 divider
                 rowItem("Help & Support") { detail = "Help & Support" }
+                divider
+                rowItem("Medical Disclaimer") { detail = "Medical Disclaimer" }
             }
         }
     }

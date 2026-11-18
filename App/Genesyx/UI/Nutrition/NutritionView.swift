@@ -13,12 +13,13 @@ struct NutritionView: View {
 
     @State private var expandedFood: String?
     @State private var planOpen = false
-    @State private var article: Article?
+    @EnvironmentObject private var router: TabRouter
+    @State private var articlePath: [String] = []
 
     private var phase: Phase? { cycle.settings.map { CycleEngine.cyclePhase(settings: $0, target: today).phase } }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $articlePath) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     header
@@ -36,9 +37,11 @@ struct NutritionView: View {
             .frame(maxWidth: .infinity)
             .background(GenesyxColor.background)
             .navigationBarTitleDisplayMode(.inline)
+            .navigationDestination(for: String.self) { slug in
+                ArticleDetailView(slug: slug, path: $articlePath)
+            }
         }
         .sheet(isPresented: $planOpen) { SupplementPlanSheet() }
-        .sheet(item: $article) { a in ArticleSheet(article: a) }
     }
 
     private var header: some View {
@@ -170,13 +173,20 @@ struct NutritionView: View {
 
     private var articlesSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Eyebrow("Learn more", color: GenesyxColor.mutedForeground).padding(.leading, 4).padding(.bottom, 2)
-            ForEach(NutritionContent.articles, id: \.title) { a in
-                Button { article = a } label: {
+            HStack {
+                Eyebrow("Learn more", color: GenesyxColor.mutedForeground).padding(.leading, 4)
+                Spacer()
+                Button("See all articles") { router.selection = 4 }   // 4 = Learn tab
+                    .font(.gxBodySmall.weight(.medium)).foregroundStyle(GenesyxColor.primary)
+            }
+            .padding(.bottom, 2)
+            ForEach(learnArticles.filter { $0.category == .nutrition }, id: \.slug) { a in
+                Button { articlePath.append(a.slug) } label: {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(a.title).font(.gxLabel).foregroundStyle(GenesyxColor.foreground)
-                            Text(a.read).font(.system(size: 11.5)).foregroundStyle(GenesyxColor.mutedForeground)
+                                .multilineTextAlignment(.leading)
+                            Text(a.readingTime).font(.system(size: 11.5)).foregroundStyle(GenesyxColor.mutedForeground)
                         }
                         Spacer()
                         Image(systemName: "chevron.right").font(.system(size: 14)).foregroundStyle(GenesyxColor.mutedForeground)
@@ -231,22 +241,3 @@ private struct SupplementPlanSheet: View {
     }
 }
 
-private struct ArticleSheet: View {
-    let article: Article
-    @Environment(\.dismiss) private var dismiss
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 8) {
-                    Eyebrow(article.read, color: GenesyxColor.mutedForeground)
-                    Text("Keep the focus simple: regular meals, steady hydration, and phase-aware foods. Use your logs and pH tracker to notice patterns over time rather than chasing perfection.")
-                        .font(.gxBody).foregroundStyle(GenesyxColor.mutedForeground).padding(.top, 4)
-                }
-                .padding(20)
-            }
-            .background(GenesyxColor.background)
-            .navigationTitle(article.title).navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
-        }
-    }
-}

@@ -15,3 +15,11 @@ DerivedData/
 # Secrets (never commit Supabase keys etc.)
 Secrets.xcconfig
 *.local.xcconfig
+
+# Supabase CLI temp
+supabase/.temp/
+
+# Build junk
+build_archive.log
+run_archive.sh
+_xcodeproj_backup_*/
